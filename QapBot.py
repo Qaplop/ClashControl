@@ -2430,8 +2430,8 @@ async def main() -> None:
         _raid = await update_capital_raids_for_member_clans()
         if _raid["clans"] or _raid["errors"]:
             logging.info(
-                "[RAID-UPDATE] clans=%d fetched=%d snapshots=%d written=%d finalized=%d errors=%d",
-                _raid["clans"], _raid["fetched"], _raid["snapshot"], _raid["written"],
+                "[RAID-UPDATE] clans=%d fetched=%d snapshots=%d backfilled=%d written=%d finalized=%d errors=%d",
+                _raid["clans"], _raid["fetched"], _raid["snapshot"], _raid["backfilled"], _raid["written"],
                 _raid["finalized"], _raid["errors"],
             )
     except Exception as e:

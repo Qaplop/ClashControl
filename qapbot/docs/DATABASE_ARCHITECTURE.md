@@ -604,7 +604,8 @@ rules never apply. Every read queries `main` directly.
 - `capital_raid_seasons` — PK `(clan_tag, season_start)`. `season_start`/`season_end` are ISO UTC
   keys (`2026-09-18T07:00:00Z`, always a Friday 07:00), identical across clans. `state`:
   `pending` (roster snapshotted, API not serving the season yet) / `ongoing` / `ended` (API values)
-  / `no_result` (window closed and the API never delivered it). `finalized = 1` once `ended` or
+  / `no_result` (window closed and the API never delivered it — also the marker the one-time
+  first-run backfill writes for a clan that didn't raid last weekend, so it isn't polled again). `finalized = 1` once `ended` or
   `no_result`; a finalized row is frozen. `roster_snapshot_at` records when the eligibility
   snapshot was taken (>30 min after start is flagged in the output).
 - `capital_raid_members` — PK `(clan_tag, season_start, player_tag)`. One row per **eligible**

@@ -11885,6 +11885,16 @@ class WarHistoryDB:
             for row in rows
         ]
 
+    def has_capital_raid_data_sync(self, clan_tag: str) -> bool:
+        """True once a clan has ANY capital_raid_seasons row — including the 'no_result' marker the
+        one-time first-run backfill writes (plan §3.2). Gates that backfill to exactly one
+        out-of-weekend poll per clan."""
+        with self._sync_conn() as conn:
+            row = conn.execute(
+                "SELECT 1 AS present FROM capital_raid_seasons WHERE clan_tag = ? LIMIT 1", (clan_tag,)
+            ).fetchone()
+        return row is not None
+
     def get_capital_raid_season_rows_sync(
         self, clan_tags: List[str], season_starts: List[str],
     ) -> List[Dict[str, Any]]:

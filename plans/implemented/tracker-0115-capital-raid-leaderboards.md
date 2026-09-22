@@ -296,10 +296,23 @@ week's season is still unfinalized, and until the clan starts the new raid, the 
 serves last week's full `members[]` as `items[0]`. Matching only the latest row would miss it
 and lose that data. The loop finalizes it from the API as usual.
 
-**Tracking starts at the next Friday.** A member clan added mid-week gets its first snapshot the
-next Friday. Before that there's no eligibility data, so its current or previous season is
-deliberately not imported (a player list without a start-roster would break the §2.1 rule).
-A clan added **during** a raid weekend gets a late snapshot, which is flagged per §2.1.
+### 3.2 One-time first-run backfill (added 2026-09-22, build 53 — project owner's request)
+
+A member clan with **no raid data at all** (first deploy, or a clan added mid-week) gets exactly
+**one** out-of-weekend poll (`has_capital_raid_data_sync()` in the gate):
+
+- The API still serves last weekend's `members[]` (until the clan starts its next raid) → that
+  season is imported with **today's** roster as its eligibility snapshot. Attackers, loot and
+  medals are exact; the `raidmissed` list for that weekend is approximate (players who joined
+  since its start would be listed) and carries the §2.1 late-snapshot note automatically.
+- Otherwise (the clan didn't raid last weekend, never raids, or already started this weekend's
+  raid) → a `no_result` row for last weekend is written. It never counts anywhere, but it's
+  "data", so the clan is **not polled again between seasons** (project owner: no repeated polling
+  of clans that never take part in raid weekends).
+- The has-data check happens before the in-window snapshot, so a first run during a raid weekend
+  also gets its one backfill attempt for the previous weekend.
+- A roster-fetch failure skips the backfill (no API call, no marker) and retries next cycle; an
+  API error propagates without writing the marker, so it is retried too.
 
 `current_raid_season_bounds(now)` sits next to `is_capital_raid_window()` in `constants.py`. Both
 are pure, unit-tested clock helpers.

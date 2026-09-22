@@ -144,15 +144,16 @@ async def test_roster_none_keeps_zero_rows(db):
 
 async def test_update_snapshots_then_stores_ongoing_then_finalizes(cache, monkeypatch):
     _set_roster(monkeypatch, {"#A": "a", "#B": "b"})
-    # Friday 07:10, clan hasn't started yet: API still shows last week (no stored row for it).
+    # Friday 07:10, first run ever, clan hasn't started yet: API still shows last week, which the
+    # one-time backfill imports; this weekend is snapshotted and stays pending.
     _set_api(monkeypatch, _api_item(S1, E1, "ended", [_member("#A", "a", 6, 50)]))
     counts = await qh.update_capital_raid_for_clan("#C", _utc("2026-09-18T07:10"))
-    assert counts["snapshot"] == 1 and counts["written"] == 0
-    assert cache.db_manager.get_unfinalized_capital_raid_seasons_sync("#C")[0]["state"] == "pending"
+    assert counts["snapshot"] == 1 and counts["backfilled"] == 1 and counts["finalized"] == 1
+    assert [s["state"] for s in cache.db_manager.get_unfinalized_capital_raid_seasons_sync("#C")] == ["pending"]
 
     _set_api(monkeypatch, _api_item(S2, E2, "ongoing", [_member("#A", "a", 2, 20)]))
     counts = await qh.update_capital_raid_for_clan("#C", _utc("2026-09-19T10:00"))
-    assert counts == {"snapshot": 0, "fetched": 1, "written": 1, "finalized": 0}
+    assert counts == {"snapshot": 0, "fetched": 1, "written": 1, "finalized": 0, "backfilled": 0}
 
     cache.notification_state[qh.raid_notification_key("#C", S2)] = {"notified_players": {"B": {}}}
     _set_api(monkeypatch, _api_item(S2, E2, "ended", [_member("#A", "a", 6, 60)], offensiveReward=209, defensiveReward=211))
@@ -189,16 +190,56 @@ async def test_season_never_started_is_closed_as_no_result(cache, monkeypatch):
     assert "#A" not in text and "a " not in text.split("\n", 2)[-1]
 
 
-async def test_member_clans_gate_makes_no_api_calls_on_tuesday(cache, monkeypatch):
+async def test_member_clans_gate_polls_a_new_clan_exactly_once_between_seasons(cache, monkeypatch):
+    """A clan that never raids gets ONE out-of-weekend poll (first-run backfill), then none until
+    Friday — the project owner's gate (plan §3.2)."""
+    monkeypatch.setattr(cache, "server_config", {"1": {"member_clans": ["#C"], "member_families": []}})
+    api = _set_api(monkeypatch, None)     # clan has never raided
+    _set_roster(monkeypatch, {"#A": "a"})
+    totals = await qh.update_capital_raids_for_member_clans(_utc("2026-09-22T10:00"))
+    assert totals["clans"] == 1 and totals["backfilled"] == 1 and api.await_count == 1
+    for day in ("2026-09-22T10:05", "2026-09-23T10:00", "2026-09-24T22:00"):
+        await qh.update_capital_raids_for_member_clans(_utc(day))
+    assert api.await_count == 1           # never polled again between seasons
+    # The marker is a 'no_result' season: invisible to every leaderboard.
+    assert cache.db_manager.get_capital_raid_season_rows_sync(["#C"], [S2])[0]["state"] == "no_result"
+    assert "No raid weekends recorded yet" in qh.generate_leaderboard_text(
+        "#C", month=None, year=None, mode="raidmissed", style="terminal")
+
+
+async def test_unfinalized_season_is_caught_up_on_tuesday(cache, monkeypatch):
     monkeypatch.setattr(cache, "server_config", {"1": {"member_clans": ["#C"], "member_families": []}})
     api = _set_api(monkeypatch, None)
     _set_roster(monkeypatch, {})
-    totals = await qh.update_capital_raids_for_member_clans(_utc("2026-09-22T10:00"))
-    assert totals["clans"] == 0 and api.await_count == 0
-    # ...but an unfinalized season is caught up on Tuesday.
     await cache.db_manager.snapshot_capital_raid_roster("#C", S2, E2, {}, 5)
     totals = await qh.update_capital_raids_for_member_clans(_utc("2026-09-22T10:00"))
-    assert totals["clans"] == 1 and api.await_count == 1
+    assert totals["clans"] == 1 and totals["backfilled"] == 0 and api.await_count == 1
+
+
+async def test_first_run_backfill_imports_last_weekend_flagged_late(cache, monkeypatch):
+    _set_roster(monkeypatch, {"#A": "Alice", "#B": "Bob"})
+    _set_api(monkeypatch, _api_item(S2, E2, "ended", [_member("#A", "Alice", 6, 500, bonus=1)],
+                                    offensiveReward=209, defensiveReward=211))
+    counts = await qh.update_capital_raid_for_clan("#C", _utc("2026-09-22T10:00"))
+    assert counts["backfilled"] == 1 and counts["finalized"] == 1
+    stats = qh.calculate_raid_leaderboard("#C", season_start=S2)
+    assert stats["#A"]["Loot"] == 500 and stats["#A"]["Medals"] == 209 * 6 + 211   # attackers exact
+    missed = qh.generate_leaderboard_text("#C", month=None, year=None, mode="raidmissed", style="terminal")
+    assert "Bob" in missed and "after raid start" in missed                         # approximate -> flagged
+    # Once imported, the clan is not polled again between seasons.
+    api = _set_api(monkeypatch, None)
+    await qh.update_capital_raids_for_member_clans(_utc("2026-09-23T10:00"))
+    assert api.await_count == 0
+
+
+async def test_first_run_during_started_weekend_marks_last_week_no_result(cache, monkeypatch):
+    """First run on Saturday after the clan started this weekend's raid: last week's members[] are
+    gone from the API, so last week gets the marker and this weekend is tracked normally."""
+    _set_roster(monkeypatch, {"#A": "a"})
+    _set_api(monkeypatch, _api_item(S2, E2, "ongoing", [_member("#A", "a", 2, 20)]))
+    await qh.update_capital_raid_for_clan("#C", _utc("2026-09-19T10:00"))
+    rows = {r["season_start"]: r["state"] for r in cache.db_manager.get_capital_raid_season_rows_sync(["#C"], [S1, S2])}
+    assert rows == {S1: "no_result", S2: "ongoing"}
 
 
 # ── Leaderboards ─────────────────────────────────────────────────────────────

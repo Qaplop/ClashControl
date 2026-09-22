@@ -8327,19 +8327,24 @@ async def update_capital_raid_for_clan(clan_tag: str, now: Optional[datetime] = 
        unfinalized season while the API is still serving its members[] (plan §3 "Friday catch-up").
     3. A season whose window is over but that the API isn't serving is closed as 'no_result'.
     4. On finalization, the season's reminder dedup state is dropped (same lifecycle as a war).
+    5. One-time first-run backfill (plan §3.2) for a clan with NO raid data yet: the last
+       weekend is imported if the API still serves it (roster = today's, flagged as a late
+       snapshot), otherwise a 'no_result' marker row for it is written. Either way the clan then
+       has data, so this out-of-weekend poll happens exactly once per clan — a clan that never
+       raids is not polled again between seasons.
 
     Args:
         clan_tag: Member clan tag.
         now: Reference time (tests); defaults to the current UTC time.
 
     Returns:
-        Counters {"snapshot", "fetched", "written", "finalized"} for the cycle log line.
+        Counters {"snapshot", "fetched", "written", "finalized", "backfilled"} for the cycle log line.
     """
     from qapbot.constants import (
         RAID_BASE_ATTACK_LIMIT, coc_timestamp_to_iso, current_raid_season_bounds, is_capital_raid_window,
     )
 
-    counts = {"snapshot": 0, "fetched": 0, "written": 0, "finalized": 0}
+    counts = {"snapshot": 0, "fetched": 0, "written": 0, "finalized": 0, "backfilled": 0}
     db = CACHE.db_manager
     if db is None:
         return counts
@@ -8352,6 +8357,9 @@ async def update_capital_raid_for_clan(clan_tag: str, now: Optional[datetime] = 
     except Exception as e:
         # No roster -> no snapshot this cycle (retried next cycle) and no leaver cleanup.
         logging.warning(f"[RAID-UPDATE] Roster fetch failed for {clan_tag}: {e}")
+
+    # Decided before the snapshot below, which would otherwise create this clan's first row.
+    needs_backfill = roster is not None and not await asyncio.to_thread(db.has_capital_raid_data_sync, clan_tag)
 
     if roster is not None and is_capital_raid_window(now):
         season_start, season_end = current_raid_season_bounds(now)
@@ -8366,7 +8374,7 @@ async def update_capital_raid_for_clan(clan_tag: str, now: Optional[datetime] = 
                 )
 
     open_seasons = await asyncio.to_thread(db.get_unfinalized_capital_raid_seasons_sync, clan_tag)
-    if not open_seasons:
+    if not open_seasons and not needs_backfill:
         return counts
 
     data = await CACHE.get_capital_raid_seasons_from_api(clan_tag, limit=1)
@@ -8374,6 +8382,29 @@ async def update_capital_raid_for_clan(clan_tag: str, now: Optional[datetime] = 
     items = data.get("items") or []
     item: Optional[Dict[str, Any]] = items[0] if items else None
     api_start = coc_timestamp_to_iso(item.get("startTime", "")) if item else ""
+
+    if needs_backfill and roster is not None:
+        # The last COMPLETED-or-running weekend before the current one: outside the raid window
+        # that's current_raid_season_bounds() itself; inside it, the weekend a week earlier
+        # (the current one was just snapshotted normally above).
+        last_start, last_end = current_raid_season_bounds(now)
+        if is_capital_raid_window(now):
+            last_start, last_end = current_raid_season_bounds(_iso_to_dt(last_start) - timedelta(seconds=1))
+        if api_start == last_start:
+            await db.snapshot_capital_raid_roster(clan_tag, last_start, last_end, roster, RAID_BASE_ATTACK_LIMIT)
+            counts["backfilled"] = 1
+            logging.info(
+                f"[RAID-UPDATE] First-run backfill for {clan_tag}: importing season {last_start} "
+                f"(roster snapshot is today's — flagged as late)"
+            )
+        else:
+            # Clan didn't raid last weekend (or never has): record that, so it isn't polled again
+            # between seasons. 'no_result' rows never count as misses anywhere.
+            await db.snapshot_capital_raid_roster(clan_tag, last_start, last_end, {}, RAID_BASE_ATTACK_LIMIT)
+            await db.upsert_capital_raid_season(clan_tag, last_start, last_end, "no_result", {}, [], None)
+            counts["backfilled"] = 1
+            logging.info(f"[RAID-UPDATE] First-run check for {clan_tag}: no data for season {last_start}")
+        open_seasons = await asyncio.to_thread(db.get_unfinalized_capital_raid_seasons_sync, clan_tag)
 
     for season in open_seasons:
         finalized = False
@@ -8407,10 +8438,11 @@ async def update_capital_raid_for_clan(clan_tag: str, now: Optional[datetime] = 
 async def update_capital_raids_for_member_clans(now: Optional[datetime] = None) -> Dict[str, int]:
     """Per-cycle Clan Capital raid update for every guild member clan (plan §3).
 
-    A clan is processed when the raid window (Fri 07:00 -> Mon 07:00 UTC) is open, or when it
+    A clan is processed when the raid window (Fri 07:00 -> Mon 07:00 UTC) is open, when it
     still has an unfinalized season (catch-up: the Monday post-end fetch and recovery from
-    downtime, possible until the next Friday). Outside both — the normal Tue-Thu case — this
-    makes zero API calls.
+    downtime, possible until the next Friday), or when it has no raid data at all yet (the
+    one-time first-run backfill — exactly one poll per clan, see update_capital_raid_for_clan).
+    Otherwise — the normal Tue-Thu case — this makes zero API calls.
 
     Returns:
         Aggregated counters plus "clans" (processed) and "errors" for the [RAID-UPDATE] line.
@@ -8418,7 +8450,7 @@ async def update_capital_raids_for_member_clans(now: Optional[datetime] = None) 
     from qapbot.constants import is_capital_raid_window
     from qapbot.QBdiscocmdshelper_cwl import all_member_clan_tags
 
-    totals = {"clans": 0, "snapshot": 0, "fetched": 0, "written": 0, "finalized": 0, "errors": 0}
+    totals = {"clans": 0, "snapshot": 0, "fetched": 0, "written": 0, "finalized": 0, "backfilled": 0, "errors": 0}
     db = CACHE.db_manager
     if db is None:
         return totals
@@ -8428,7 +8460,8 @@ async def update_capital_raids_for_member_clans(now: Optional[datetime] = None) 
         due = tags
     else:
         due = await asyncio.to_thread(
-            lambda: [t for t in tags if db.get_unfinalized_capital_raid_seasons_sync(t)]
+            lambda: [t for t in tags
+                     if db.get_unfinalized_capital_raid_seasons_sync(t) or not db.has_capital_raid_data_sync(t)]
         )
     if not due:
         return totals

@@ -1,6 +1,15 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-22 (9)  Build 53.
+- Added: one-time first-run backfill for Clan Capital raids (tracker #0115). A member clan with
+  no raid data yet gets exactly ONE out-of-weekend poll: if the API still serves last weekend's
+  player list it is imported (attackers exact; roster is today's, so raidmissed shows the
+  late-snapshot note), otherwise a 'no_result' marker row is written. Either way the clan has
+  data afterwards, so clans that never raid are not polled again between seasons.
+  Files: QBhelperfunctions.py, db_manager.py (has_capital_raid_data_sync), QapBot.py (log line)
+  (+ tests). 3328 tests pass.
+
 2026-09-22 (8)  Build 52.
 - Added: Clan Capital raid weekend tracking (tracker #0115). Member clans' raid seasons are
   fetched once per update cycle Fri 07:00 -> Mon 07:00 UTC only (+ catch-up for unfinalized

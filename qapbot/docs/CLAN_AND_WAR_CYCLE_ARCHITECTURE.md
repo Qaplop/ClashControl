@@ -254,7 +254,9 @@ the API calls show up as `get_capital_raid_seasons` in `[API-CALL-MIX]`.
 
 - Scope: every guild's member clans (`all_member_clan_tags()`), not subscribed/guest clans.
 - Gate: raid window Fri 07:00 -> Mon 07:00 UTC (`is_capital_raid_window()`), or the clan still has
-  an unfinalized season (catch-up). A normal Tue-Thu cycle makes zero API calls.
+  an unfinalized season (catch-up), or it has no raid data at all yet (one-time first-run
+  backfill of last weekend — afterwards it always has data, so a clan that never raids is polled
+  exactly once between seasons). A normal Tue-Thu cycle makes zero API calls.
 - Per clan (`update_capital_raid_for_clan()`): one-time roster snapshot at season start, then
   `capitalraidseasons?limit=1` matched against EVERY unfinalized season (not just the newest —
   the "Friday catch-up" case), closing seasons the API never delivered as `no_result`.

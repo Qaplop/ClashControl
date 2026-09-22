@@ -1062,6 +1062,8 @@
       "signup_status_confirmed": "Confirmatus",
       "signup_status_declined": "Recusatus",
       "signup_status_auto_confirmed": "Automatice Confirmatus",
+      "signup_status_passive": "Subsellium",
+      "signup_status_auto_passive": "Subsellium automaticum",
       "signup_status_missing_dm": "Lusores novi sine invitatione per nuntium privatum",
       "signups_block_title": "Inscriptiones",
       "button_configure_clans": "Configura Gentes Participantes",

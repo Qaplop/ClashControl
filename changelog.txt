@@ -1,6 +1,17 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-22 (23)  Build 64.
+- Fixed: the season overview printed "cwl.management.signup_status_passive" and
+  "…_auto_passive" as raw key paths — tracker #0114 added those two count lines but never the
+  keys themselves. Added in all five languages ("Ersatzbank" / "Ersatzbank (automatisch)").
+  Added a structural test that every literal t('...') key in the code exists in en.json: the
+  language parity check could not catch this, because the key was missing from every file
+  equally. It pins the 17 OTHER keys that are already missing (pre-existing, listed in
+  KNOWN_MISSING_KEYS) so no new one can be added, and fails if a pinned one is fixed but left
+  in the list. Files: qapbot/translations/*.json, tests/unit/test_translation_keys_exist.py.
+  3413 tests pass.
+
 2026-09-22 (22)  Build 63.
 - Changed (tracker #0114 follow-ups, all from live review):
   * CWL Settings: the view selector now sits directly under Refresh, with every button below it

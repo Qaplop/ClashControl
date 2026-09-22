@@ -1062,6 +1062,8 @@
       "signup_status_confirmed": "Confirmado",
       "signup_status_declined": "Rechazado",
       "signup_status_auto_confirmed": "Auto-Confirmado",
+      "signup_status_passive": "Banquillo",
+      "signup_status_auto_passive": "Banquillo automático",
       "signup_status_missing_dm": "Jugadores nuevos sin invitación por MD",
       "signups_block_title": "Inscripciones",
       "button_configure_clans": "Configurar Clanes Participantes",

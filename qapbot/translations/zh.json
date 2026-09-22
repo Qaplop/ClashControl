@@ -1062,6 +1062,8 @@
       "signup_status_confirmed": "已确认",
       "signup_status_declined": "已拒绝",
       "signup_status_auto_confirmed": "自动确认",
+      "signup_status_passive": "替补",
+      "signup_status_auto_passive": "自动替补",
       "signup_status_missing_dm": "尚未收到私信邀请的新玩家",
       "signups_block_title": "报名情况",
       "button_configure_clans": "配置参赛部落",

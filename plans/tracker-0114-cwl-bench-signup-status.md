@@ -1,260 +1,358 @@
-# Tracker #0114 — "Bench" CWL sign-up status (passive participation)
+# Tracker #0114 — "Ersatzbank / Bench" CWL sign-up status (passive participation)
 
-Status: **plan, awaiting the project owner's review of the open decisions (§9)**. Nothing implemented.
+Status: **plan, revision 2**. Decisions from the project owner's review are folded in (§9). One
+question from the consistency review is still open (§9, item 5).
 
 ## 1. Request
 
-Reporter (Lucas, forwarding Eren): players want to sign up "nur als Mitnahme" — on the CWL roster
-without attacking. The project owner's spec (2026-09-22):
+Reporter (Lucas, forwarding Eren): players want to sign up "nur als Mitnahme", i.e. on the CWL
+roster without attacking. The project owner's spec (2026-09-22):
 
 - A new sign-up status meaning **"I want to be part of this CWL but not actively attack."** Two
   real uses: passive players still get the base CWL season reward, and clans want backfill players
   in case a regular participant drops out.
 - **Per-guild mode**, set in the CWL configuration: **Standard** (today: Confirm / Opt Out only,
-  the default for every guild) or **Extended** (adds the new status per CoC account).
-- Only when Extended is explicitly enabled does anything new appear: DM buttons, Activity screens,
-  legends, context menus, admin override.
-- A speaking name, a short explanation in the DMs, and a new icon.
+  default for every guild) or **Extended** (adds the new status per CoC account).
+- Only when Extended is explicitly enabled does anything new appear on that server's screens.
+- A speaking name, a short explanation in the DMs, a new icon.
+- Review decisions: German name **Ersatzbank**; add an **"Always Bench"** standing preference;
+  include the board's active/bench column split and the roster-announcement marker; **DMs follow
+  the player**, not the sending server (§3.2).
 
-## 2. Naming and icon (proposal)
+## 2. Naming and icons
 
 | | German | English |
 |---|---|---|
-| Status label | **Mitnahme** | **Bench** |
-| DM / Hub button | 🪑 Nur Mitnahme | 🪑 Bench only |
-| Guild mode | Erweiterte Anmeldung (mit Mitnahme) | Extended sign-up (with Bench) |
+| Status label | **Ersatzbank** | **Bench** |
+| Auto status label (from the standing preference) | Ersatzbank (automatisch) | Auto-Bench |
+| DM / Hub button | 🪑 Ersatzbank | 🪑 Bench |
+| Standing preference | Immer Ersatzbank | Always Bench |
+| Guild mode | Erweiterte Anmeldung (mit Ersatzbank) | Extended sign-up (with Bench) |
 
-"Mitnahme" is the reporter's own word ("nur als Mitnahme dabei sein", "mitgenommen werden ohne
-anzugreifen"), and German CoC players already use it. "Bench" is the closest English equivalent
-and also covers the backfill meaning.
+Internal values: status `passive`, auto status `auto_passive`, DM/Hub action `passive`, standing
+preference mode `bench` (column `user_players.cwl_permanent_bench`), guild column
+`guild_config.cwl_signup_mode = 'standard'|'extended'`. Labels live in i18n only.
 
-Internal value: `passive` (status), `passive` (DM button action), `cwl_signup_mode =
-'standard'|'extended'` (guild config). Labels live in i18n only, so renaming later is text-only.
-
-**DM explanation** (Extended only), appended under the existing `cwl.template.dm_body`:
+**DM explanation** (shown whenever the DM offers the Bench button, §3.2):
 
 > ✅ **Bestätigen** — du spielst mit und greifst an.
-> 🪑 **Nur Mitnahme** — du möchtest im Kader sein (für die Saison-Belohnung oder als Ersatz), willst aber nicht regelmäßig angreifen.
+> 🪑 **Ersatzbank** — du möchtest im Kader sein (für die Saison-Belohnung oder als Ersatz), willst aber nicht regelmäßig angreifen.
 > ❌ **Abmelden** — diese Saison nicht.
 
-(EN: "✅ Confirm — you play and attack. 🪑 Bench only — you'd like to be on the roster (for the
-season rewards or as a backup) but don't plan to attack regularly. ❌ Opt out — not this season.")
+EN: "✅ Confirm — you play and attack. 🪑 Bench — you'd like to be on the roster (for the season
+rewards or as a backup) but don't plan to attack regularly. ❌ Opt out — not this season."
 
-**Icon**: new `activity/client/src/assets/bench.svg` in the existing icon style (44×44 rounded
-square, white glyph, same as gcheck/redx/pending/autoconfirmed): a **blue** square (`#5b8def`,
-clearly apart from the greens, the yellow and the red already in use) with a white bench glyph
-(seat plank, backrest, two legs). Discord buttons and text use the 🪑 emoji.
+**Icons** (`activity/client/src/assets/`, same style as gcheck/redx/pending/autoconfirmed: a 44×44
+rounded square with a white glyph):
+- `bench.svg`: blue `#5b8def`, white bench glyph (seat plank, backrest, two legs).
+- `autobench.svg`: the same glyph on light blue `#9dbcf5`. It relates to `bench.svg` the way
+  `autoconfirmed.svg` relates to `gcheck.svg`: same meaning, lighter because no manual click.
+- Discord buttons and text use 🪑.
 
-## 3. Core design decision: store raw truth, map at display time
+Note: the Manage Teams board is English-only by policy (`signupStatus.ts` header, Phase 6e), so
+the board shows "Bench"/"Auto-Bench" even on German servers. The Player Hub, DMs and Hub message
+are localized and show "Ersatzbank".
+
+## 3. Core design
+
+### 3.1 Store the raw truth, map on admin screens
 
 A player's response is **global across guilds**: `cwl_player_season_status` is the single source
-of truth, `propagate_cwl_player_response()` fans it out to every pooling guild's local mirror
-(`cwl_signups.status`, `cwl_shared_clan_players.status`). The mode is **per guild**. So a player
-can pick Bench through an Extended guild while also being pooled by a Standard guild.
+of truth, and `propagate_cwl_player_response()` copies it into every pooling guild's local mirror
+(`cwl_signups.status`, `cwl_shared_clan_players.status`). The mode is per guild.
 
-**Decision:** always store `passive` as-is everywhere (global row and every mirror). A Standard
-guild never *sees* it: one Python helper maps it to `confirmed` when building anything a
-Standard guild displays or counts.
+**Decision:** always store `passive` / `auto_passive` as-is, everywhere. One helper maps them for
+a Standard guild's **admin-facing** output:
 
 ```python
 def effective_cwl_signup_status(status: Optional[str], guild_id: int) -> Optional[str]:
-    """'passive' reads as 'confirmed' in a guild whose cwl_signup_mode is not 'extended'."""
+    """In a guild whose cwl_signup_mode is not 'extended': 'passive' -> 'confirmed',
+    'auto_passive' -> 'auto_confirmed'. Everything else, and every status in an Extended
+    guild, passes through unchanged."""
 ```
 
-Why not write `confirmed` into Standard guilds' mirrors instead:
-- the mirror would contradict the global truth (Pitfall 25's two-facts-one-column trap, again);
-- a guild switching Standard → Extended mid-season would silently show wrong data;
-- mapping at read time is reversible, a write is not.
+Why not write `confirmed` into Standard mirrors: the mirror would contradict the global truth
+(Pitfall 25), a Standard → Extended switch mid-season would show wrong data, and mapping at read
+time is reversible where a write is not. "Wants to be part of CWL" is what both `confirmed` and
+`passive` mean, so the mapping is correct, not lossy.
 
-"Want to be part of CWL" is the meaning of both `confirmed` and `passive`, so mapping `passive` →
-`confirmed` in Standard mode is semantically correct, not a lossy approximation.
+Mapping happens **server-side** (payload builders, Hub counts). A Standard guild's admin payloads
+therefore stay byte-identical to today's output, which keeps the blast radius on every existing
+guild at zero until an admin opts in.
 
-Mapping is done **server-side** (payload builders and Hub counts), never in the client: Standard
-guilds then receive byte-identical payloads to today, which is what keeps the blast radius on
-Standard guilds (every guild, by default) at zero. The client only needs one flag
-(`signup_mode`) to decide whether to show the Bench menu entry, legend row and Hub button.
+### 3.2 Player-facing vs admin-facing (Q4: "more player related than server related")
+
+- **Admin/leader surfaces follow the server's mode**: Manage Teams board (icons, legend,
+  right-click menu, column split), CWL Management Hub counts, CWL Settings.
+- **DMs follow the player**: a DM offers the Bench button (and the three-line explanation) when
+  the **sending guild is Extended OR the recipient Discord user is a member of any guild with
+  Extended mode**. One helper, `cwl_bench_offered_to(discord_id, sending_guild_id) -> bool`,
+  checks `CACHE.server_config` for Extended guilds and `bot.get_guild(g).get_member(uid)` (the same
+  member cache #0092's coordinator sync uses). Pure in-memory, no API call.
+- **Player Hub (`/cwl preferences`)**: see open question §9.5. Proposed: follow the player too
+  (same helper), for the reasons given there.
+
+Every DM builder calls that one helper, so the enrollment DM, Remind Pending, the roster-update
+DM's `never_asked` buttons, the re-rendered reminder DM and the roster-announcement marker can
+never disagree about one player.
 
 ## 4. Change inventory
 
-### 4.1 Storage — `qapbot/db_manager.py`
-- `guild_config.cwl_signup_mode TEXT NOT NULL DEFAULT 'standard'`: CREATE TABLE +
-  `_add_column_if_missing` + `get_guild_config` dict + `save_guild_config` INSERT/UPDATE/params
-  (all four places, same as #0092's `cwl_coordinator_role_mode`).
-- **No status-column migration**: `cwl_signups.status`, `cwl_shared_clan_players.status` and
-  `cwl_player_season_status.status` are plain `TEXT DEFAULT 'pending'` with no CHECK constraint
-  (verified), so `'passive'` needs no DDL.
-- `get_cwl_signup_status_counts_sync` (GROUP BY status) already returns a `passive` key untouched.
-- `guild_config` is not one of the hot/history mirrored tables (Cardinal Rule 1 N/A).
+### Phase 0 — fix a live bug the new preference depends on (`qapbot/db_manager.py`)
 
-### 4.2 Settings UI — CWL Settings screen
-- `add_cwl_settings_components` (`ui_cwl_roster.py`): toggle button in the same
-  activate/deactivate pattern as `include_all_accounts` ("Enable Extended Sign-up (Bench)" /
-  "Disable ..."), `_make_cwl_settings_toggle_signup_mode_callback`. Check the button-row budget
-  (row 3 already holds retention, include-all, coordinator role; row 1 holds channels + 2 hub
-  toggles) and put it where there's room.
-- `format_clan_management_cwl_settings` (`QBdiscocmdshelper_cwl.py`): readout block
-  "Sign-up mode: 🟢/🔴 Standard/Extended" + one-line description, like the enrollment-pool block.
-- Toggle mid-season is allowed (see §6 for what happens), and refreshes the Hub message and bumps
-  the enrollment board version so open boards re-render.
+`get_user()` (~10490) loads only `cwl_permanent_optout` + `cwl_default_preferred_league_rank`
+into the CACHE player dict, and `_replace_user_players_rows()` (~10615) — a DELETE + re-INSERT of
+every row of that Discord user — writes only those two. So **every `save_user()` silently resets
+`cwl_permanent_optin` and `cwl_optout_send_dm_anyway` to 0** for that user (a link change, a
+player-info refresh, anything that saves the user). The PROD copy holds 0 opt-ins and 0 "DM
+anyway" flags against 1 opt-out, which fits. A `cwl_permanent_bench` column would be wiped the same
+way.
 
-### 4.3 DM buttons — `qapbot/ui_cwl_roster.py`
-- `CWL_SIGNUP_RESPONSE_TEMPLATE` / `CWL_REMINDER_RESPONSE_TEMPLATE`: action group
-  `confirm|optout` → `confirm|passive|optout`. Existing DMs keep matching (additive regex).
-- `build_cwl_signup_response_view(event_id, player_tag, guild_id)`: add the middle
-  `passive` button **only when that guild is Extended**. Order: Confirm (green), Bench only
-  (blue/primary), Opt Out (grey).
-- `build_cwl_reminder_response_view(...)`: same, per account row. Three labeled buttons per row
-  (✅/🪑/❌ + name) still fit Discord's 5-per-row limit; the 5-row account cap is unchanged. Used by
-  Remind Pending, `rerender_cwl_dm_after_response`, and the roster-update DM's `never_asked`
-  buttons (`QBdiscocmdshelper_cwl.py` ~4198) — all three get it through this one builder.
-- `CwlSignupResponseButton` / `CwlReminderResponseButton`: label/style for `passive`.
-- `_apply_cwl_signup_response`: `new_status`/`source` mapping gains `passive` →
-  (`'passive'`, `'template_passive'`). **Accepted even if the guild has since switched back to
-  Standard** — storing `passive` is harmless there (§3 mapping), and rejecting a button the bot
-  itself sent would be worse.
-- `rerender_cwl_dm_after_response`: finalize text `cwl.template.passive_msg` for `action ==
-  "passive"` ("🪑 Got it — **{player_name}** is on the bench for this season's CWL roster pool.").
-- DM text: `cwl.template.dm_body` gets the three-line explanation (§2) **only in Extended guilds**
-  — a separate key `dm_body_extended`, chosen by the sending guild's mode. Same for
-  `cwl.reminder.dm_intro_body` ("confirm, bench or opt out").
-- `_send_cwl_enrollment_dm_batch` (~3586) and `send_cwl_reminder_dm_group` (~3636) pick the
-  body key by mode; the view builders already receive `guild_id`.
+Fix: load and re-insert all four preference columns (`optout`, `optin`, `bench`,
+`send_dm_anyway`) plus the league rank. Regression guard: a **structural** test asserting that the
+INSERT column list in `_replace_user_players_rows` covers every `cwl_%` column of
+`user_players` (per `PRAGMA table_info`), so the next preference column can't be forgotten again —
+same reasoning as Cardinal Rule 14's structural-test note. Plus a behavioural round-trip test
+(set opt-in → `save_user()` → still opted in). Ships as its own changelog entry; it's a fix
+regardless of #114.
 
-### 4.4 Status semantics — `qapbot/QBdiscocmdshelper_cwl.py`
-- New `effective_cwl_signup_status()` + `is_cwl_extended_signup(guild_id)` helpers (one place).
-- `settled_statuses` in `resolve_cwl_pool_tags_missing_dm_sync` (~970) gains `passive`, or a Bench
-  player would be re-invited by "Notify New Pool Members". Same audit for the two docstring-level
-  "settled" descriptions at ~899/~945.
-- Every `status == "pending"` filter (remind targets, pending split, DM re-render, handover at
-  ~5046) is already correct: `passive` is an answer, not pending. No change, but covered by tests.
-- Hub season overview counts (~584): Extended shows a separate "🪑 Bench: N" line after Confirmed;
-  Standard folds `passive` into Confirmed. New i18n key `cwl.management.signup_status_passive`.
-- `resolve_seeded_cwl_signup_status` carries an existing global `passive` into new local seeds
-  unchanged. Correct, no change.
-- **Auto-assignment stays status-agnostic** (verified: placement is driven by attack history,
-  not by status). Bench players are placed like everyone else; the admin decides.
+### Phase 1 — storage and the guild mode
 
-### 4.5 Web bridge — `qapbot/web_bridge.py`
-- `_build_enrollment_payload_sync`: apply `effective_cwl_signup_status` at all four
-  `signup_status` sites (~483 `_owner_signup_status_for`, ~539, ~570, ~640) and add
-  `"signup_mode": "standard"|"extended"` to the payload.
-- `_build_player_prefs_payload_sync` (~1544): same mapping + `signup_mode`.
-- `ADMIN_SETTABLE_ENROLLMENT_STATUSES` → per-mode: Standard `("confirmed","declined","pending")`
-  unchanged; Extended adds `"passive"`. `handle_post_cwl_enrollment_status` validates against the
-  **guild's** set, so a Standard guild can't be made to write `passive` even by a crafted request.
-- `handle_post_cwl_player_prefs_status` (~1675): accept `passive` only when the guild is Extended
-  (the Hub never shows the button otherwise; this is the defensive check).
-- The Worker (`activity/server`) is a pass-through for these routes (verified): no change.
+- `guild_config.cwl_signup_mode TEXT NOT NULL DEFAULT 'standard'`: CREATE TABLE,
+  `_add_column_if_missing`, `get_guild_config` dict, `save_guild_config` INSERT/UPDATE/params.
+- `user_players.cwl_permanent_bench INTEGER NOT NULL DEFAULT 0`: CREATE TABLE +
+  `_add_column_if_missing`; added to the SELECT and result dict of the three link/member readers
+  (~5445, ~5516, ~5580 — the ones already returning `cwl_permanent_optin`), `get_user()`,
+  `_replace_user_players_rows()`.
+- `set_cwl_preferences_sync` (~5625): mode `'bench'` → optout=0, optin=0, bench=1; every other
+  mode clears bench. Mutually exclusive by construction, as the three-flag form already is for two.
+  Read precedence where flags are combined (defensive, same as today's opt-out-wins rule):
+  **optout > bench > optin**.
+- **No status-column migration**: the three `status` columns are plain `TEXT DEFAULT 'pending'`
+  without a CHECK constraint (verified), so `passive`/`auto_passive` need no DDL.
+- Neither table is hot/history-mirrored (Cardinal Rule 1 N/A).
+- CWL Settings (`ui_cwl_roster.add_cwl_settings_components` + `format_clan_management_cwl_settings`):
+  activate/deactivate toggle button in the `include_all_accounts` pattern, plus a readout block
+  "Anmeldemodus: 🟢 Erweitert / 🔴 Standard" with a one-line description. Check the component-row
+  budget before picking a row. Toggling refreshes the Hub message and bumps the enrollment board
+  version, so open boards re-render in the new mode.
 
-### 4.6 Activity client — `activity/client/src`
-- `signupStatus.ts`: `VisibleStatus` += `'passive'`, `STATUS_ICON.passive = bench.svg`,
-  `STATUS_LABEL.passive = 'Bench'`, `STATUS_LABEL_KEY.passive = 'status_passive'`,
-  `isVisibleStatus` accepts it.
-- `types.ts`: `signup_status` unions += `'passive'` (both), `AdminSettableStatus` += `'passive'`,
-  `PlayerPrefsStatusAction` += `'passive'`, payload types += `signup_mode`.
-- `enrollmentBoard.ts`:
-  - legend (~756): Bench row **only when `signup_mode === 'extended'`**, explanation text
-    "Wants to be on the roster for the season rewards or as a backup, not to attack regularly."
-  - right-click menu (~585): "Bench" entry between Confirmed and Declined, Extended only.
-  - `isOptedOut` unchanged (Bench is not opted out); sort order unchanged.
-  - Clan column header (recommended, Extended only): split the fill count, e.g. `12 + 3🪑 / 15`,
-    so the admin sees how many *active* players a roster really has — the actual reason this
-    status is useful for backfill planning.
-- `playerPrefs.ts`: third "🪑 Bench only" button between "I'm in" and "I'm out", Extended only;
-  disabled when already `passive`; tooltips; `status_passive` label; `fireStatusChange('passive')`.
-  In Standard nothing changes (server already maps any `passive` to `confirmed`).
-- i18n (`cwl.activity.*` via `/api/i18n`): `status_passive`, `button_bench`,
-  `bench_tooltip_default`, `bench_tooltip_already_bench`, `status_tooltip_passive`.
+### Phase 2 — status semantics, mapping, validation (Python)
 
-### 4.7 Roster announcement (Start Preparation) — recommended, Extended only
-`_build_cwl_roster_account_lines` / `announce_cwl_rosters`: for a Bench player add "(🪑 Bench)"
-to their line, so a player who chose Bench and still got placed knows the leader registered that.
-No logic change, text only.
+- `QBdiscocmdshelper_cwl.py`: `effective_cwl_signup_status()`, `is_cwl_extended_signup(guild_id)`,
+  `cwl_bench_offered_to(discord_id, sending_guild_id)`.
+- `resolve_seeded_cwl_signup_status` (~2720): new branch `permanent_bench -> ('auto_passive',
+  'auto_bench')`, after opt-out and before opt-in (the precedence above). Signature gains the bench
+  flag; its three callers (~1281, ~2942, ~3524) pass it. An existing global response still wins, as
+  today. The account is still DMed (same as `auto_confirmed`).
+- `settled_statuses` in `resolve_cwl_pool_tags_missing_dm_sync` (~970) += `passive`,
+  `auto_passive`. Without it "Notify New Pool Members" re-invites Bench players.
+- Every `status == "pending"` filter (remind targets, pending split, DM re-render, the ownership
+  handover at ~5046) is already correct, since both new statuses are answers. No change, covered by
+  tests.
+- Hub overview counts (~584): Extended adds "Ersatzbank (automatisch)" and "Ersatzbank" lines
+  (same order logic as auto_confirmed/confirmed); Standard folds them into Auto-Confirmed /
+  Confirmed. New keys `cwl.management.signup_status_passive` / `_auto_passive`.
+- **Auto-assignment stays status-agnostic** (verified: placement comes from attack history). Bench
+  players are placed like everyone else; the admin decides.
+- `web_bridge.py`:
+  - `_build_enrollment_payload_sync`: map all four `signup_status` sites (~483, ~539, ~570, ~640)
+    and add `"signup_mode"` to the payload.
+  - `_build_player_prefs_payload_sync` (~1498, ~1544): `mode` gains `'bench'` (precedence above);
+    map `signup_status` per §9.5's outcome; add `"bench_offered": bool` for the Hub UI.
+  - `ADMIN_SETTABLE_ENROLLMENT_STATUSES` becomes per-mode: Standard unchanged, Extended adds
+    `passive` (never `auto_passive`, for the same reason `auto_confirmed` is excluded).
+    `handle_post_cwl_enrollment_status` validates against the guild's own set.
+  - `handle_post_cwl_player_prefs_status` (~1675): accept `passive` when `bench_offered`.
+  - The preferences POST (~1581–1628): accept mode `'bench'`.
+- The Worker (`activity/server`) passes these routes through (verified): no code change.
 
-### 4.8 i18n, docs, housekeeping
+### Phase 3 — DMs (`ui_cwl_roster.py`, `QBdiscocmdshelper_cwl.py`)
+
+- `CWL_SIGNUP_RESPONSE_TEMPLATE` / `CWL_REMINDER_RESPONSE_TEMPLATE`: `confirm|optout` →
+  `confirm|passive|optout`. Additive, so every DM already sent keeps working.
+- `build_cwl_signup_response_view(...)` and `build_cwl_reminder_response_view(...)` gain a
+  `bench: bool` parameter; the callers compute it with `cwl_bench_offered_to()`. Button order:
+  Confirm (green), Bench (blue/primary), Opt Out (grey). Reminder rows: three labeled buttons
+  (✅/🪑/❌ + name), still within Discord's 5-per-row limit; the 5-account-per-message cap stays.
+- Callers: `_send_cwl_enrollment_dm_batch` (~3586), `send_cwl_reminder_dm_group` (~3636), the
+  roster-update DM's `never_asked` view (~4198), `rerender_cwl_dm_after_response` (~3154 — it must
+  recompute the same decision, or re-rendering a reminder would drop the Bench button).
+- DM texts: `cwl.template.dm_body_bench`, `cwl.reminder.dm_intro_body_bench`,
+  `cwl.update.dm_confirm_prompt_bench` (Bench variants with the explanation), chosen by the same
+  boolean. Finalize text `cwl.template.passive_msg` ("🪑 Alles klar — **{player_name}** sitzt diese
+  Saison auf der CWL-Ersatzbank.") in `rerender_cwl_dm_after_response`.
+- `_apply_cwl_signup_response`: `passive` → (`'passive'`, `'template_passive'`). **Always accepted**
+  — the bot itself offered the button, and a stored `passive` reads as Confirmed on any Standard
+  screen, so there is nothing to protect by refusing it.
+
+### Phase 4 — Activity client (`activity/client/src`)
+
+- `signupStatus.ts`: `VisibleStatus` += `'passive' | 'auto_passive'`; icons, English labels
+  (Bench / Auto-Bench), `STATUS_LABEL_KEY` (`status_passive`, `status_auto_passive`),
+  `isVisibleStatus`.
+- `types.ts`: both `signup_status` unions, `AdminSettableStatus` += `'passive'`,
+  `PlayerPrefsStatusAction` += `'passive'`, preference `mode` unions += `'bench'`, payload fields
+  `signup_mode` / `bench_offered`.
+- `enrollmentBoard.ts` (all Extended only):
+  - legend (~756): Bench and Auto-Bench rows with a one-line explanation;
+  - right-click menu (~585): "Bench" between Confirmed and Declined;
+  - clan column header: split the fill count, e.g. `12 + 3🪑 / 15` (bench = `passive` +
+    `auto_passive`), so the admin sees how many *active* players a roster really has;
+  - `isOptedOut` and sort order unchanged (Bench is not opted out).
+- `playerPrefs.ts` (shown when `bench_offered`):
+  - third "🪑 Ersatzbank" button between "I'm in" and "I'm out"; disabled when already `passive`;
+    `auto_passive` stays clickable (same reasoning as `auto_confirmed`, tracker #0051); the error
+    path re-enables all three buttons correctly;
+  - `buildModeSelect` and the "apply to all accounts" select: "Immer Ersatzbank" option; if an
+    account already has `bench` while `bench_offered` is false, the option is still rendered so
+    the select never displays a wrong value or silently overwrites it on save;
+  - status label/icon/tooltip for both new statuses.
+- i18n (`cwl.activity.*` via `/api/i18n`): `status_passive`, `status_auto_passive`,
+  `status_tooltip_auto_passive`, `button_bench`, `bench_tooltip_default`,
+  `bench_tooltip_already_bench`, `bench_tooltip_auto_bench`, `mode_bench`.
+- `npm run typecheck && npm run build`; deploy both halves.
+
+### Phase 5 — roster announcement, docs, housekeeping
+
+- `_build_cwl_roster_account_lines` / `announce_cwl_rosters`: "(🪑 Ersatzbank)" after a Bench
+  player's line, decided by `cwl_bench_offered_to()` like every other DM (the announcement is sent
+  by the clan's owning guild; the marker follows the recipient, per §3.2).
+- Docs: `CWL_ROSTER_PLANNING_PLAN.md` (§2 status list, §6 DMs, §7 board, the two-audience rule of
+  §3.2), `DATABASE_ARCHITECTURE.md` (two new columns, two new status values),
+  `CODE_STRUCTURE.md` (the three helpers), CWL help text (one line about Extended sign-up).
 - en.json + de.json in the same pass, parity check (Cardinal Rule 6).
-- `CWL_ROSTER_PLANNING_PLAN.md` §6/§7 (status vocabulary, mode, mapping rule), the `cwl_signups`
-  status list in its §2; `DATABASE_ARCHITECTURE.md` (new column, new status value);
-  `CODE_STRUCTURE.md` (new helper); CWL help text (`cwl.management.help_details_description`) gets
-  one line about Extended mode.
-- `BOT_BUILD` bump, changelog, manual tracker test cases.
+- `BOT_BUILD` bump, changelog, tracker test cases.
 
 ## 5. Visibility matrix
 
 | Surface | Standard guild | Extended guild |
 |---|---|---|
-| Enrollment DM | Confirm / Opt Out, current text | + Bench only, 3-line explanation |
-| Remind Pending / roster-update DM | 2 buttons per account | 3 buttons per account |
-| Board card icon | a Bench player shows ✅ Confirmed | 🪑 Bench icon |
-| Board legend | unchanged | + Bench row |
-| Board right-click menu | Confirmed / Declined / Pending | + Bench |
+| Enrollment / reminder / roster-update DM | Bench button only if the recipient is on an Extended server | Bench button + explanation |
+| Board card icon | Bench → ✅, Auto-Bench → Auto-Confirmed icon | 🪑 icons |
+| Board legend, right-click menu | unchanged | + Bench (menu: Bench only, never Auto-Bench) |
 | Board column fill | unchanged | `active + bench / size` |
-| Player Hub | I'm in / I'm out, Bench shown as Confirmed | + Bench only button, Bench label |
-| Hub overview counts | Bench folded into Confirmed | separate Bench line |
-| CWL Settings | mode readout + "Enable" button | mode readout + "Disable" button |
+| Hub overview counts | Bench folded into Confirmed / Auto-Confirmed | separate lines |
+| CWL Settings | "Standard" readout + Enable button | "Extended" readout + Disable button |
+| Player Hub | per §9.5 | Bench button, Always Bench option, 🪑 labels |
+| Roster announcement | marker only if the recipient is on an Extended server | marker |
 
 ## 6. Mode-switch and cross-guild behaviour
 
-- **Extended → Standard mid-season**: every `passive` response stays stored and shows as
-  Confirmed. Switching back restores the Bench display. Nothing is lost or rewritten.
-- **Standard → Extended mid-season**: DMs already sent keep their 2 buttons (a sent message is
-  not rebuilt). Players can pick Bench in the Player Hub; admins via the board menu; still-pending
-  players get the 3-button version with the next Remind Pending.
-- **Player pooled by an Extended and a Standard guild**: the one enrollment DM per season is sent
-  through whichever guild's event gets there first, and **that guild's mode decides the buttons**.
-  A Bench answer via the Extended guild shows as Confirmed in the Standard one. If the Standard
-  guild's admin then sets Confirmed/Declined, it overwrites the global status for both guilds.
-  That is today's "last action wins" rule, unchanged.
-- **Button of a sent DM clicked after the guild switched to Standard**: stored as `passive`,
-  shown as Confirmed (§4.3).
+- **Extended → Standard mid-season**: every stored `passive`/`auto_passive` stays and shows as
+  Confirmed/Auto-Confirmed on admin screens. Switching back restores them. Nothing is rewritten.
+- **Standard → Extended while enrollment is open** (project owner, 2026-09-22): still-unanswered
+  DMs are **upgraded automatically** — see §6.1.
+- **Player pooled by an Extended and a Standard server**: their DM offers Bench whichever server
+  sends it (§3.2). A Bench answer shows as Bench on the Extended server and as Confirmed on the
+  Standard one. If the Standard server's admin then sets Confirmed/Declined, that overwrites the
+  global status for both — today's "last action wins" rule, unchanged.
+- **"Always Bench" preference in a Standard-only world**: the seed is `auto_passive`, displayed as
+  Auto-Confirmed. The preference is account-wide, not per server.
+
+### 6.1 Upgrading unanswered DMs when a server enables Extended
+
+Feasible without new bookkeeping: every DM send already records, per account,
+`cwl_player_season_status.dm_sent_via_message_id` / `dm_sent_via_channel_id` / `dmed_discord_id`
+(written by `mark_cwl_player_dm_sent_sync`), and the bot may edit its own DM messages.
+
+New `upgrade_pending_cwl_dms_for_bench(guild_id)` (`QBdiscocmdshelper_cwl.py`), started by the
+CWL Settings toggle when it switches **to** Extended:
+
+1. Only while that guild's current event is `signup_open` — DM buttons answer
+   `signup_closed` in every later phase, so upgrading them then would only add dead buttons.
+2. Candidates: this season's global rows with `status = 'pending'` and `dm_sent = 1` whose
+   recipient now qualifies under §3.2 — i.e. DMs sent by this guild, **and** DMs sent by any other
+   guild to someone who is a member of this guild (Q4: the DM follows the player).
+3. Grouped by message ID (one Remind Pending / roster-update DM can cover up to 5 accounts), per
+   message: fetch it, rebuild the view from the accounts of that message that are still pending
+   (the scope `rerender_cwl_dm_after_response` already derives), and append the Bench explanation
+   to the existing content unless it's already there. Appending instead of replacing matters: a
+   roster-update DM's text (where to play, when) must survive the edit — re-using
+   `rerender_cwl_dm_after_response` as-is would replace it with the reminder intro.
+4. Runs as a tracked background task (`QBcore.spawn_tracked`), sequential with a short pause per
+   message and Discord-rate-limit handling via the existing retry wrapper. A deleted or
+   unreachable DM (`NotFound`/`Forbidden`) is logged and skipped, never fatal (Pitfall 13).
+5. The toggle's confirmation says how many unanswered invitations are being updated.
+6. Idempotent: running it twice changes nothing the second time (the explanation check, and the
+   view is rebuilt from live state).
+
+**Switching back to Standard does not touch sent DMs**: a Bench button left in a DM is harmless
+(an answer is stored as `passive` and shows as Confirmed there), and under §3.2 the player may
+still be on another Extended server anyway.
+
+Tests: candidates (own-guild DM, other-guild DM to a member, non-member excluded, answered
+excluded, non-`signup_open` → no-op); one edit per message for a multi-account DM; content
+appended once; `NotFound` skipped.
 
 ## 7. Blast radius and rollout
 
-- Default is Standard for every guild, and Standard payloads stay identical to today's output
-  (server-side mapping). No existing guild sees a difference until an admin enables Extended.
-  Guarded by a test comparing a Standard guild's payload for a `passive` player with a
+- Default Standard everywhere; Standard admin payloads stay identical (server-side mapping),
+  guarded by a test comparing a Standard guild's payload for a `passive` player with a
   `confirmed` one.
-- Deploy order: **bot first** (the Python side is inert in Standard mode), then **Activity client
-  + Worker** (Worker unchanged but re-deploy per the both-halves rule), then enable Extended on one
-  guild. An old client receiving `passive` would render no icon, which is why the client must be
-  live before any guild enables Extended.
-- DynamicItem regex change is additive: every existing DM button keeps matching.
+- **One exception, by the Q4 decision**: a player who is on an Extended server gets the Bench
+  button in DMs sent by *any* server. Before any server enables Extended, nobody gets it.
+- Phase 0 changes CACHE write-through for every user save: covered by the structural + round-trip
+  tests; it only ever *preserves* values that were previously dropped.
+- Deploy order: bot first (inert while every guild is Standard), then Activity client + Worker
+  (both halves per the deploy rule), then enable Extended on one server. The client must be live
+  before any server enables Extended, or an old client would render `passive` without an icon.
+- DynamicItem regex change is additive.
 
 ## 8. Tests
 
-- Unit: `effective_cwl_signup_status` (both modes, every status); `settled_statuses` includes
-  `passive` (a Bench player is not re-invited); Hub counts fold vs split.
-- DM: view builders produce 2 vs 3 buttons by mode; regex parses `passive`; `_apply_cwl_signup_
-  response('passive')` writes `passive` globally and to every mirror; accepted after a switch to
-  Standard; finalize text.
-- Bridge: admin override rejects `passive` in Standard (400), accepts in Extended; player-prefs
-  status same; enrollment and player-prefs payloads map in Standard, pass through in Extended,
-  carry `signup_mode`.
-- Cross-guild: Extended guild A + Standard guild B pooling one player; Bench via A → A's payload
-  `passive`, B's `confirmed`.
-- DB: `cwl_signup_mode` default + round-trip.
-- Client: `npm run typecheck && npm run build`.
+- Phase 0: structural column-coverage test; opt-in / DM-anyway / bench survive `save_user()`.
+- `effective_cwl_signup_status` (both modes, every status); `cwl_bench_offered_to` (sending guild
+  Extended; recipient on another Extended guild; neither); precedence optout > bench > optin in
+  `resolve_seeded_cwl_signup_status` and the prefs payload; `set_cwl_preferences_sync('bench')`
+  clears the other flags.
+- Settled set: a Bench / Auto-Bench player is not re-invited; Hub counts fold vs split.
+- DMs: view builders 2 vs 3 buttons; regex parses `passive`; `_apply_cwl_signup_response('passive')`
+  writes globally and to every mirror; re-render keeps the Bench button; finalize text.
+- Bridge: admin override rejects `passive` in Standard (400) and `auto_passive` everywhere;
+  player-prefs status and mode `bench`; payload mapping and `signup_mode` / `bench_offered`.
+- Cross-guild: Extended A + Standard B pooling one player; Bench via A's DM → A shows `passive`,
+  B shows `confirmed`.
+- Client: typecheck + build.
 
-## 9. Open decisions for the project owner
+## 9. Decisions
 
-1. **Names**: "Mitnahme" / "Bench" (+ 🪑, blue bench icon) — OK, or prefer e.g. "Reserve"/"Ersatz"?
-2. **Standing preference**: should the Player Hub's permanent preference (today none / opt-in /
-   opt-out, stored per account in `user_players`) also get "always Bench"? It needs a new column
-   and an `auto_passive` seed status, and it interacts with the per-guild mode. **Recommendation:
-   leave it out of v1**, add it if players ask.
-3. **Board column split** (`12 + 3🪑 / 15`, §4.6) and **roster-announcement marker** (§4.7):
-   recommended, but optional. Include in v1?
-4. **Cross-guild DM buttons** (§6): the sending guild's mode decides. Recommendation: accept this.
-   The alternative (show Bench if *any* pooling guild is Extended) would leak one guild's setting
-   into another guild's DM.
+1. Names: **Ersatzbank** (DE) / Bench (EN), 🪑, blue bench icon. ✅ decided.
+2. **Always Bench** standing preference: in scope. ✅ decided.
+3. Board column split + roster-announcement marker: in scope. ✅ decided.
+4. DMs follow the player: Bench offered if the recipient is on any Extended server. ✅ decided.
+5. **Open — Player Hub**: the original spec says Standard servers show only standard statuses on
+   Activity screens, but decision 4 makes DMs player-based. If the Hub stays server-based, two
+   concrete problems follow on a Standard server:
+   - a player who picked Bench from a DM sees "Confirmed" in that server's Hub with "I'm in"
+     disabled, so they can't switch from Bench to active there;
+   - an account with "Always Bench" (set on another server) shows a preference the select can't
+     display.
+   **Proposal:** the Player Hub is player-facing like the DMs and follows the same rule
+   (`bench_offered`), while the board, legend, context menu, Hub counts and settings stay strictly
+   server-based.
+
+## 9a. Pre-existing bugs found during this review (not caused by #114)
+
+1. **CWL preferences wiped on every `save_user()`** — "always in" and "send DM anyway" are
+   dropped by the CACHE load/save round-trip. Fixed in Phase 0 (it would break "Always Bench" too).
+2. **Dead buttons in the roster-update DM**: `send_cwl_roster_updates` gives a never-asked player
+   (added to a roster during Preparation) confirm/opt-out buttons plus "Please confirm below…",
+   but `_apply_cwl_signup_response` refuses every click once the event has left `signup_open`
+   (→ "Sign-up isn't open for this season anymore"). The same send also records no DM message ID
+   (`mark_cwl_player_dm_sent_sync(..., None, None)`, ~4212), so the DM can't be retracted by
+   Delete Season, re-rendered, or upgraded by §6.1. Options: (a) accept responses during
+   `announced`/`war` for players with no settled answer, (b) drop the buttons from that DM. Either
+   way the message ID should be recorded. Needs the project owner's call; independent of #114.
 
 ## 10. Phasing
 
-1. Storage + mode toggle + settings readout (no visible change yet).
-2. Status helper, settled/counts, bridge mapping + validation (Standard payloads proven identical).
-3. DM buttons + texts.
-4. Activity client (icon, legend, menu, Player Hub, column split).
+0. `user_players` preference round-trip fix (own changelog entry).
+1. Storage, guild mode toggle, settings readout, `cwl_permanent_bench` + preference write path.
+2. Helpers, seeding, settled/counts, bridge mapping and validation.
+3. DM buttons and texts, plus the automatic DM upgrade on enabling Extended (§6.1).
+4. Activity client.
 5. Roster-announcement marker, docs, help text, changelog, tracker test cases.
 
-Each phase ends with `.\run_tests.ps1` green. Phases 1–3 are Python-only and safe to ship before
+Each phase ends with `.\run_tests.ps1` green. Phases 0–3 are Python-only and safe to ship before
 the client.

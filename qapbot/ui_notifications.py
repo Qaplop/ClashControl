@@ -536,8 +536,18 @@ class LanguageSelectionView(TrackedView):
         self.message: Optional[discord.Message] = None
         
         # Add language selection dropdown
-        from qapbot.i18n import t
-        
+        from qapbot.i18n import t, get_available_languages
+
+        # (translation_key, value, description, emoji) — description stays plain English,
+        # matching the existing en/de entries; only the label goes through t().
+        LANGUAGE_CHOICES = [
+            ("warnotifications.language_english", "en", "English notifications", "🇺🇸"),
+            ("warnotifications.language_german", "de", "German / Deutsch", "🇩🇪"),
+            ("warnotifications.language_spanish", "es", "Spanish / Español", "🇪🇸"),
+            ("warnotifications.language_mandarin", "zh", "Mandarin / 中文", "🇨🇳"),
+            ("warnotifications.language_latin", "la", "Latin / Latina", "🏛️"),
+        ]
+        available = set(get_available_languages())
         language_select = discord.ui.Select(
             placeholder=t('ui_components.language_selector.placeholder', user_id=self.user_id, guild_id=self.guild_id),
             options=[  # type: ignore[arg-type]
@@ -547,18 +557,16 @@ class LanguageSelectionView(TrackedView):
                     description="Automatically detect from your Discord language",
                     emoji="🔄"
                 ),
-                discord.SelectOption(
-                    label=t('warnotifications.language_english', user_id=self.user_id, guild_id=self.guild_id),
-                    value="en",
-                    description="English notifications",
-                    emoji="🇺🇸"
-                ),
-                discord.SelectOption(
-                    label=t('warnotifications.language_german', user_id=self.user_id, guild_id=self.guild_id),
-                    value="de",
-                    description="German / Deutsch",
-                    emoji="🇩🇪"
-                )
+                *[
+                    discord.SelectOption(
+                        label=t(key, user_id=self.user_id, guild_id=self.guild_id),
+                        value=code,
+                        description=description,
+                        emoji=emoji
+                    )
+                    for key, code, description, emoji in LANGUAGE_CHOICES
+                    if code in available
+                ]
             ]
         )
         language_select.callback = self.language_selected
@@ -587,10 +595,16 @@ class LanguageSelectionView(TrackedView):
         if selected_language == "auto":
             # Auto mode: clear the lock and detect from Discord
             user_data["user_language_locked"] = False
-            # Get current Discord locale to set the language
+            # Get current Discord locale to set the language. Latin isn't a Discord client
+            # locale, so it's never auto-detected — only selectable manually below.
             locale = getattr(interaction, 'locale', None)  # type: ignore[arg-type]
-            if locale:
-                user_data["user_language"] = 'de' if str(locale).startswith('de') else 'en'
+            loc = str(locale) if locale else ''
+            if loc.startswith('de'):
+                user_data["user_language"] = 'de'
+            elif loc.startswith('es'):
+                user_data["user_language"] = 'es'
+            elif loc.startswith('zh'):
+                user_data["user_language"] = 'zh'
             else:
                 user_data["user_language"] = 'en'  # Default fallback
         else:

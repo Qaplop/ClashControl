@@ -3727,7 +3727,10 @@ def format_notification_settings(user_data: Dict[str, Any], display_name: str, u
         # User manually set the language - map language codes to translation keys
         language_map = {
             "en": "warnotifications.language_english",
-            "de": "warnotifications.language_german"
+            "de": "warnotifications.language_german",
+            "es": "warnotifications.language_spanish",
+            "zh": "warnotifications.language_mandarin",
+            "la": "warnotifications.language_latin",
         }
         language_display_key = language_map.get(user_language.lower(), "warnotifications.language_english")
         language_display = t(language_display_key, user_id=user_id, guild_id=guild_id)
@@ -4962,7 +4965,8 @@ async def _format_clan_management_config(guild: discord.Guild) -> Tuple[discord.
     
     # Get current language
     current_language = get_guild_language(guild_id_int)
-    language_display = "English" if current_language == "en" else "Deutsch" if current_language == "de" else current_language
+    from qapbot.i18n import get_language_display_name
+    language_display = get_language_display_name(current_language)
     
     # Format language block
     language_block = f"⠀\n{t('ui_components.basic_config.config_language_block', guild_id=guild_id_int, language_name=language_display)}"

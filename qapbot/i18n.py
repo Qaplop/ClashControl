@@ -210,13 +210,26 @@ class TranslationManager:
     def get_available_languages(self) -> list[str]:
         """
         Get list of available language codes.
-        
+
         Returns:
             List of language codes (e.g., ["en", "es", "fr"])
         """
         if not self._loaded:
             self.load_translations()
         return list(self.translations.keys())
+
+    def get_language_display_name(self, language_code: str) -> str:
+        """
+        Native display name for a language code, read from that file's own `_meta.language`
+        (e.g. "es" -> "Español", "zh" -> "中文（简体）"). Single source of truth for every
+        language-name label in the UI, so a new `translations/{code}.json` file is enough —
+        no `en`/`de`-only ternary or dict needs updating elsewhere.
+
+        Returns the language code itself if the language isn't loaded or has no `_meta.language`.
+        """
+        if not self._loaded:
+            self.load_translations()
+        return self.translations.get(language_code, {}).get('_meta', {}).get('language', language_code)
 
 
 # Global translation manager instance
@@ -451,8 +464,16 @@ def reload_translations() -> None:
 def get_available_languages() -> list[str]:
     """
     Get list of available language codes.
-    
+
     Returns:
         List of language codes (e.g., ["en", "es", "fr"])
     """
     return _translation_manager.get_available_languages()
+
+
+def get_language_display_name(language_code: str) -> str:
+    """
+    Native display name for a language code (e.g. "es" -> "Español"), read from that
+    language's own translation file. See TranslationManager.get_language_display_name.
+    """
+    return _translation_manager.get_language_display_name(language_code)

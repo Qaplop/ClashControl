@@ -2281,7 +2281,8 @@ class ClanManagementView(discord.ui.View):
         await self._refresh_config_view(interaction)
         
         # Send confirmation in new language
-        language_display_name = "English" if selected_language == "en" else "Deutsch"
+        from qapbot.i18n import get_language_display_name
+        language_display_name = get_language_display_name(selected_language)
         success_msg = t('ui_components.basic_config.language_updated', guild_id=guild_id, language_name=language_display_name)
         await interaction.followup.send(success_msg, ephemeral=True)
     
@@ -2641,7 +2642,8 @@ class ClanManagementView(discord.ui.View):
             timeout=300
         )
         
-        language_display = "English" if current_language == "en" else "Deutsch" if current_language == "de" else current_language
+        from qapbot.i18n import get_language_display_name
+        language_display = get_language_display_name(current_language)
         header_msg = f"🌍 **Language Configuration**\n\nCurrent Language: **{language_display}**"
         
         # Use followup.send() to get a proper discord.Message object
@@ -3221,14 +3223,26 @@ class LanguageConfigurationView(discord.ui.View):
     
     def _add_language_select(self):
         """Add language selector."""
+        from qapbot.i18n import get_available_languages, get_language_display_name
+
+        # Emoji is cosmetic only; native display names come from each file's own `_meta.language`
+        # (see i18n.get_language_display_name) so a new translations/{code}.json is enough on its
+        # own — this dict only needs a line added for a nicer icon, never for the label itself.
+        LANGUAGE_EMOJI = {"en": "🇬🇧", "de": "🇩🇪", "es": "🇪🇸", "zh": "🇨🇳", "la": "🏛️"}
+        language_codes = sorted(get_available_languages(), key=lambda c: (c != "en", c))
         language_options = [
-            discord.SelectOption(label="English", value="en", emoji="🇬🇧"),  # type: ignore[arg-type]
-            discord.SelectOption(label="Deutsch", value="de", emoji="🇩🇪", default=(self.selected_language == "de"))  # type: ignore[arg-type]
+            discord.SelectOption(
+                label=get_language_display_name(code),
+                value=code,
+                emoji=LANGUAGE_EMOJI.get(code),
+                default=(self.selected_language == code),
+            )  # type: ignore[arg-type]
+            for code in language_codes
         ]
-        # Set default on English if not de
-        if self.selected_language != "de":
+        # Fall back to defaulting English if the stored language isn't a known option.
+        if not any(opt.default for opt in language_options) and language_options:
             language_options[0].default = True
-        
+
         language_select = discord.ui.Select(
             placeholder="Select language...",
             min_values=1,

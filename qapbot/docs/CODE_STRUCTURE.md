@@ -194,6 +194,17 @@ Real-world example: `qapbot/ui_tracker.py`'s `TrackerItemModal.title_input`/`des
 fix note). Same idiom as "Select Menus Inside Modals" below, just for a plain text field instead
 of a Select/RadioGroup.
 
+### Adding a new `qapbot/translations/{lang}.json` file
+`i18n.py`'s `TranslationManager.load_translations()` auto-discovers every `*.json` in
+`qapbot/translations/` by filename stem, so dropping in a new file (matching `en.json`'s exact
+key structure, `_meta.language_code` set to the file's own stem) is enough for `t()` and
+`get_available_languages()` to pick it up — no code change needed there. It is **not** enough to
+make the language choosable in the UI, though: the per-guild language selector dropdowns
+(`ui_clan_management.py`'s `_add_language_select()` `SelectOption` list, and
+`ui_common.py`'s `LanguageSelectView`/its `lang_names` display-name dict) hard-code the
+`(code, display_name)` pairs shown to users, separately from the translations directory. A new
+`.json` file needs those lists updated too before a server admin can actually select it.
+
 ### Select Menus Inside Modals (discord.py 2.6+)
 Plain `discord.ui.Select`/etc. can't be added to a `Modal` directly — wrap it in
 `discord.ui.Label` (Components V2), still as a class attribute per Cardinal Rule 10:

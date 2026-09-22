@@ -215,20 +215,16 @@ class LanguageSelectView(TrackedView):
 
     async def _on_select(self, interaction: discord.Interaction) -> None:
         """Handle language selection."""
-        from qapbot.i18n import set_guild_language, t
-        
+        from qapbot.i18n import set_guild_language, t, get_language_display_name
+
         selected_language = self.select.values[0]
-        
+
         # Set the guild language
         success = await set_guild_language(self.guild_id, selected_language)
-        
+
         if success:
             # Get language name for confirmation message
-            lang_names = {
-                "en": "English",
-                "de": "Deutsch (German)"
-            }
-            lang_display = lang_names.get(selected_language, selected_language)
+            lang_display = get_language_display_name(selected_language)
             
             # Use the NEW language for the success message
             success_msg = t("commands.admin.set_language.success", guild_id=self.guild_id, language_name=lang_display)

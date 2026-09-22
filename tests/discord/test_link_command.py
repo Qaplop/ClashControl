@@ -43,7 +43,7 @@ class TestLinkClan:
         await QBdiscordcmds.link_clan.callback(mock_interaction, clan="qcrew")  # type: ignore[arg-type]
 
         mock_interaction.response.defer.assert_awaited_once_with(thinking=True, ephemeral=False)
-        assert _public_text(mock_interaction) == f"**The QCrew**: {CLAN_URL}"
+        assert _public_text(mock_interaction) == f"**The QCrew**: <{CLAN_URL}>"
 
     @pytest.mark.asyncio
     async def test_untracked_tag_is_looked_up_not_tracked(self, mock_interaction, monkeypatch):
@@ -61,7 +61,7 @@ class TestLinkClan:
         get_clan.assert_awaited_once_with("#L2J0C0PY")
         track.assert_not_called()
         # Markdown in the name is escaped so it renders literally.
-        assert _public_text(mock_interaction) == f"**Some\\_Clan**: {CLAN_URL}"
+        assert _public_text(mock_interaction) == f"**Some\\_Clan**: <{CLAN_URL}>"
 
     @pytest.mark.asyncio
     async def test_unknown_tag_sends_ephemeral_error(self, mock_interaction, monkeypatch):
@@ -95,7 +95,7 @@ class TestLinkPlayer:
         await QBdiscordcmds.link_player.callback(mock_interaction, player="#p2yov8lq")  # type: ignore[arg-type]
 
         get_player.assert_awaited_once_with("#P2Y0V8LQ")
-        assert _public_text(mock_interaction) == f"**Qaplop**: {PLAYER_URL}"
+        assert _public_text(mock_interaction) == f"**Qaplop**: <{PLAYER_URL}>"
 
     @pytest.mark.asyncio
     async def test_explicit_tag_not_found_sends_ephemeral_error(self, mock_interaction, monkeypatch):
@@ -115,7 +115,7 @@ class TestLinkPlayer:
 
         await QBdiscordcmds.link_player.callback(mock_interaction, player="qap")  # type: ignore[arg-type]
 
-        assert _public_text(mock_interaction) == f"**Qaplop**: {PLAYER_URL}"
+        assert _public_text(mock_interaction) == f"**Qaplop**: <{PLAYER_URL}>"
 
     @pytest.mark.asyncio
     async def test_no_name_match_sends_ephemeral_error(self, mock_interaction, monkeypatch):
@@ -154,7 +154,7 @@ class TestLinkPlayer:
 
         dropdown_msg.delete.assert_awaited_once()
         select_interaction.response.defer.assert_awaited_once_with(thinking=True, ephemeral=False)
-        assert _public_text(select_interaction) == f"**Qaplop**: {PLAYER_URL}"
+        assert _public_text(select_interaction) == f"**Qaplop**: <{PLAYER_URL}>"
 
 
 class TestSharedPlayerSearch:

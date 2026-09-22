@@ -5291,8 +5291,9 @@ link_group = app_commands.Group(name="link", description=dev_mode+"Post an in-ga
 
 
 def _format_profile_link(name: str, url: str) -> str:
-    """Render the public /link result line: ``**Name**: <deep link>``."""
-    return f"**{discord.utils.escape_markdown(name)}**: {url}"
+    """Render the public /link result line: ``**Name**: <deep link>``. The URL is wrapped in
+    angle brackets so Discord doesn't unfurl it into a large Clash of Clans preview card."""
+    return f"**{discord.utils.escape_markdown(name)}**: <{url}>"
 
 
 async def _link_send_private(

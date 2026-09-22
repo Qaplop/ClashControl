@@ -1,6 +1,10 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-22 (13)  Build 57.
+- Changed: /link clan and /link player wrap the URL in <> so Discord no longer unfurls it into
+  a large Clash of Clans preview card. File: QBdiscordcmds.py (+ tests). 3342 tests pass.
+
 2026-09-22 (12)  Build 56.
 - Added: /link clan and /link player post an in-game profile link publicly as
   "**Name**: https://link.clashofclans.com/...". Clans resolve like /analyse (autocomplete, tag or

@@ -359,6 +359,14 @@ function renderBlockTwo(
   block.appendChild(tzNote)
 
   const enrollmentOpen = payload.event_status === 'signup_open'
+  // Phase 0b (2026-09-22, plans/tracker-0114-cwl-bench-signup-status.md): after enrollment closes
+  // the server still accepts an answer from an account that never gave one — the roster-update DM
+  // of a late-added player asks for exactly that. Mirror that rule here instead of hiding every
+  // button, or the Hub would contradict the DM the same player just received. A settled answer
+  // stays final once the rosters went out.
+  const answersStillAccepted =
+    enrollmentOpen ||
+    (payload.event_status === 'announced' || payload.event_status === 'war')
 
   const scroll = document.createElement('div')
   scroll.className = 'table-scroll'
@@ -383,7 +391,8 @@ function renderBlockTwo(
   const accountNames = new Map(payload.accounts.map((a) => [a.player_tag, a.player_name]))
 
   for (const row of payload.season_rows) {
-    tbody.appendChild(buildSeasonRow(row, accountNames.get(row.player_tag) ?? null, t, enrollmentOpen, onStatusChange, rerender, blockStatus))
+    const rowActionable = enrollmentOpen || (answersStillAccepted && row.signup_status === 'pending')
+    tbody.appendChild(buildSeasonRow(row, accountNames.get(row.player_tag) ?? null, t, rowActionable, onStatusChange, rerender, blockStatus))
   }
 
   table.appendChild(tbody)
@@ -393,7 +402,11 @@ function renderBlockTwo(
   if (!enrollmentOpen) {
     const note = document.createElement('div')
     note.className = 'block-status'
-    note.textContent = t('enrollment_not_open')
+    // A player who can still answer (pending, rosters already out) gets the softer note — the
+    // blanket "enrollment is closed" would read as "your buttons do nothing", which is now wrong.
+    const anyActionable =
+      answersStillAccepted && payload.season_rows.some((r) => r.signup_status === 'pending')
+    note.textContent = anyActionable ? t('enrollment_closed_pending_still_answerable') : t('enrollment_not_open')
     block.appendChild(note)
   }
 

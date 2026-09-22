@@ -3047,7 +3047,19 @@ async def _apply_cwl_signup_response(
     known_owner_ids = {oid for oid in (signup.get("dmed_discord_id"), live_discord_id) if oid}
     if known_owner_ids and user_id_str not in known_owner_ids:
         return {"code": "not_your_signup", "guild_id": guild_id, "player_name": signup.get("player_name")}
-    if event["status"] != "signup_open":
+    # Phase 0b (2026-09-22, plans/tracker-0114-cwl-bench-signup-status.md): a player who was never
+    # asked during the sign-up window still gets confirm/opt-out buttons in the roster-update DM
+    # (send_cwl_roster_updates' `never_asked` branch, QBdiscocmdshelper_cwl.py) — sent while the
+    # event is already 'announced', so every click used to come back "sign-up isn't open anymore"
+    # on a message that literally says "Please confirm below". An answer is still wanted from
+    # anyone who hasn't given one; someone who already answered can't change it after the rosters
+    # went out, which is what this guard is really for. 'draft'/'cancelled' stay closed outright.
+    # Whitelisted, not blocklisted: any status outside these two cases (including the retired
+    # 'finalized' value still sitting in old rows) stays closed.
+    answer_allowed = event["status"] == "signup_open" or (
+        event["status"] in ("announced", "war") and signup.get("status") == "pending"
+    )
+    if not answer_allowed:
         return {"code": "signup_closed", "guild_id": guild_id, "player_name": signup.get("player_name")}
 
     new_status = "confirmed" if action == "confirm" else "declined"

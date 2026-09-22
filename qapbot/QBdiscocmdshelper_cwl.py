@@ -4198,7 +4198,10 @@ async def send_cwl_roster_updates(guild_id: int, season: str) -> Dict[str, Any]:
             view = build_cwl_reminder_response_view(event["id"], never_asked[:5], guild_id)
             lines.append(t('cwl.update.dm_confirm_prompt', user_id=discord_id, guild_id=guild_id))
 
-        sent, outcome = await _send_cwl_dm_chunks(discord_id, intro, lines, view=view)
+        sent_message_ref: List[Any] = []
+        sent, outcome = await _send_cwl_dm_chunks(
+            discord_id, intro, lines, view=view, sent_message_out=sent_message_ref
+        )
         if not sent:
             names = [a["player_name"] for _kind, a in entries]
             summary[outcome].extend(names)
@@ -4206,12 +4209,20 @@ async def send_cwl_roster_updates(guild_id: int, season: str) -> Dict[str, Any]:
         if never_asked:
             # Record the DM globally so "Notify New Pool Members" doesn't send them a second,
             # redundant invitation — this message already asked the question.
+            #
+            # Phase 0b (2026-09-22): record the message/channel ids too. They were None here while
+            # every other DM sender stored them, which left this one message unfindable — it could
+            # not be retracted by Delete Season, re-rendered after an answer, or upgraded when a
+            # guild switches on extended sign-up.
             sent_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%MZ")
+            dm_message = sent_message_ref[0] if sent_message_ref else None
+            dm_message_id = str(dm_message.id) if dm_message is not None else None
+            dm_channel_id = str(dm_message.channel.id) if dm_message is not None else None
             for account in never_asked[:5]:
                 await asyncio.to_thread(
                     db.mark_cwl_player_dm_sent_sync,
                     account["player_tag"], season, account["player_name"], discord_id,
-                    event["id"], guild_id, sent_at, None, None,
+                    event["id"], guild_id, sent_at, dm_message_id, dm_channel_id,
                 )
         summary["contacted_users"] += 1
         for kind, account in entries:
@@ -4300,6 +4311,7 @@ def _build_cwl_roster_account_lines(
 
 async def _send_cwl_dm_chunks(
     discord_id: str, intro: str, lines: List[str], *, view: Optional[Any] = None,
+    sent_message_out: Optional[List[Any]] = None,
 ) -> Tuple[bool, str]:
     """Send an intro plus a list of per-account lines as one DM, splitting into further messages
     only if Discord's 2000-character limit would be exceeded (a member with many linked accounts).
@@ -4307,6 +4319,11 @@ async def _send_cwl_dm_chunks(
     `view`, when given, is attached to the LAST chunk — so the confirm/opt-out buttons for a
     late-added player (spec item 5's combined DM) always sit directly under the roster information
     they relate to, rather than in an earlier message the reader has already scrolled past.
+
+    `sent_message_out`, when given, receives the message object of the chunk the view was attached
+    to (Phase 0b, 2026-09-22) — the chunk whose buttons a later re-render or DM upgrade has to find,
+    which is why it is that chunk and not the first one. Left empty when nothing was sent or no
+    view was passed.
 
     Returns (sent, outcome) using send_user_dm_detailed's own vocabulary. A partial send counts as
     sent — the recipient did get the announcement — but any failure after the first chunk is logged,
@@ -4327,8 +4344,10 @@ async def _send_cwl_dm_chunks(
     first_outcome = "failed"
     for index, message in enumerate(messages):
         is_last = index == len(messages) - 1
+        carries_view = is_last and view is not None
         sent, outcome = await CACHE.send_user_dm_detailed(
-            discord_id, message, view=view if (is_last and view is not None) else None,
+            discord_id, message, view=view if carries_view else None,
+            sent_message_out=sent_message_out if carries_view else None,
         )
         if index == 0:
             if not sent:

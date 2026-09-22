@@ -1193,6 +1193,7 @@
       "optout_tooltip_already_declined": "Ya te has excluido — no hay nada más que hacer.",
       "status_action_tooltip_not_invited": "Aún no te han invitado a la LGC con esta cuenta — no hay nada que confirmar o rechazar.",
       "enrollment_not_open": "La inscripción aún no está abierta para esta temporada.",
+      "enrollment_closed_pending_still_answerable": "La inscripción para esta temporada está cerrada, pero aún puedes responder por las cuentas para las que no has respondido.",
       "saved": "Guardado.",
       "saving": "Guardando…",
       "save_failed": "No se pudo guardar — inténtalo de nuevo.",

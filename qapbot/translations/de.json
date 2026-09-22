@@ -1194,6 +1194,7 @@
       "optout_tooltip_already_declined": "Du hast bereits abgesagt — nichts weiter zu tun.",
       "status_action_tooltip_not_invited": "Du wurdest für diesen Account noch nicht zur CWL eingeladen — es gibt nichts zu bestätigen oder abzulehnen.",
       "enrollment_not_open": "Die Anmeldephase für diese Saison ist noch nicht geöffnet.",
+      "enrollment_closed_pending_still_answerable": "Die Anmeldung für diese Saison ist geschlossen, aber für Accounts ohne Antwort kannst du noch antworten.",
       "saved": "Gespeichert.",
       "saving": "Wird gespeichert…",
       "save_failed": "Konnte nicht gespeichert werden — bitte erneut versuchen.",

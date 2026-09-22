@@ -1193,6 +1193,7 @@
       "optout_tooltip_already_declined": "你已经选择退出了 — 无需其他操作。",
       "status_action_tooltip_not_invited": "此账号尚未被邀请参加部落战联赛 — 目前没有需要确认或拒绝的内容。",
       "enrollment_not_open": "此赛季的报名尚未开放。",
+      "enrollment_closed_pending_still_answerable": "本赛季报名已关闭，但你仍可为尚未回复的账号作出答复。",
       "saved": "已保存。",
       "saving": "保存中…",
       "save_failed": "无法保存 — 请重试。",

@@ -1193,6 +1193,7 @@
       "optout_tooltip_already_declined": "Iam recusavisti — nihil amplius agendum.",
       "status_action_tooltip_not_invited": "Nondum ad CWL hac ratione invitatus es — nihil est ad confirmandum vel recusandum.",
       "enrollment_not_open": "Inscriptio pro hoc tempore nondum aperta est.",
+      "enrollment_closed_pending_still_answerable": "Inscriptio huius temporis clausa est, sed pro rationibus nondum responsis adhuc respondere potes.",
       "saved": "Servatum.",
       "saving": "Servans…",
       "save_failed": "Servari non potuit — quaeso rursus conare.",

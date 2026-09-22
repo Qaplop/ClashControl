@@ -1194,6 +1194,7 @@
       "optout_tooltip_already_declined": "You've already opted out — nothing more to do.",
       "status_action_tooltip_not_invited": "You haven't been invited to CWL for this account yet — there's nothing to confirm or decline.",
       "enrollment_not_open": "Enrollment isn't open for this season yet.",
+      "enrollment_closed_pending_still_answerable": "Enrollment for this season is closed, but you can still answer for the account(s) you haven't replied for yet.",
       "saved": "Saved.",
       "saving": "Saving…",
       "save_failed": "Could not save — please try again.",

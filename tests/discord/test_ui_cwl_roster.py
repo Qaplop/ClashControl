@@ -2947,6 +2947,31 @@ class TestCwlSignupResponseButton:
         mock_interaction.response.send_message.assert_awaited_once()
         assert db.get_cwl_signup_sync(event_id, "#P1")["status"] == "pending"  # unchanged
 
+    @pytest.mark.discord
+    @pytest.mark.asyncio
+    async def test_click_in_announced_phase_is_accepted_while_still_pending(self, db, mock_interaction):
+        """Phase 0b (plans/tracker-0114-cwl-bench-signup-status.md): the roster-update DM of a
+        late-added player asks them to confirm while the event is already 'announced' — those
+        buttons have to work, or the DM asks for something the bot refuses."""
+        from qapbot.cache_manager import CACHE
+        from qapbot.ui_cwl_roster import CwlSignupResponseButton
+
+        await _seed_guild_and_clans(db, "9106", {"#CLAN1": "Alpha"})
+        CACHE.db_manager = db
+        event_id = db.create_cwl_event_sync("9106", "2026-08", "discordid1")
+        db.set_cwl_event_clans_sync(event_id, [{"clan_tag": "#CLAN1"}])
+        db.update_cwl_event_status_sync(event_id, "signup_open")
+        db.upsert_cwl_signup_sync(event_id, "#P1", "Alpha", "123456789", None, "template_confirm", "pending")
+        db.update_cwl_event_status_sync(event_id, "announced")
+
+        mock_interaction.user.id = 123456789
+        mock_interaction.message = MagicMock(id=1)
+
+        button = CwlSignupResponseButton("confirm", event_id, "#P1")
+        await button.callback(mock_interaction)
+
+        assert db.get_cwl_signup_sync(event_id, "#P1")["status"] == "confirmed"
+
 
 # ---------------------------------------------------------------------------
 # CwlReminderResponseButton — tracker #0038's combined-message reminder button

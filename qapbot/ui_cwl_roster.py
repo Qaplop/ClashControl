@@ -144,12 +144,16 @@ def _make_cwl_settings_coordinator_role_callback(view: discord.ui.View):
         await interaction.response.defer(thinking=False, ephemeral=True)
         if not interaction.guild:
             return
-        config = CACHE.server_config.get(str(interaction.guild.id), {})
-        role_id = config.get("cwl_coordinator_role_id")
-        current_role = interaction.guild.get_role(int(role_id)) if role_id else None
+        from qapbot.QBdiscocmdshelper_cwl import resolve_guild_member_clan_tags
 
+        config = CACHE.server_config.get(str(interaction.guild.id), {})
         role_view = CwlCoordinatorRoleConfigurationView(
-            guild=interaction.guild, parent_view=view, current_role=current_role
+            guild=interaction.guild,
+            parent_view=view,
+            clan_tags=resolve_guild_member_clan_tags(interaction.guild.id),
+            mode=config.get("cwl_coordinator_role_mode") or "single",
+            single_role_id=config.get("cwl_coordinator_role_id"),
+            role_ids_by_clan=config.get("cwl_clan_coordinator_roles") or {},
         )
         await interaction.followup.send(role_view.build_content(), view=role_view, ephemeral=True)
 
@@ -1645,129 +1649,303 @@ class CwlCoordinatorRoleConfigurationView(discord.ui.View):
     EXISTING guild role to CWL coordinator status, so a server whose coordinator channels are
     already gated behind their own role gets that role kept in sync automatically.
 
-    Deliberately a *link*, never a create/delete: the bot neither makes this role nor removes it
-    when unlinked, unlike the coc_role_*/clan-role families guild_role_manager owns outright. That
-    is the whole point of the ticket — the role already exists and carries permissions this bot
-    knows nothing about, so its lifecycle stays the admin's.
+    Tracker #0092 adds a mode switch: one role for every clan's coordinators ('single', the #0086
+    behaviour and the default) or one role PER CLAN ('per_clan'), so a coordinator of StayMad gets
+    "CWL Koordinator StayMad" and only sees #cwl-staymad. Someone coordinating several clans holds
+    each of those clans' roles — see guild_role_manager.cwl_coordinator_role_targets().
+
+    Deliberately a *link*, never a create/delete: the bot neither makes these roles nor removes
+    them when unlinked, unlike the coc_role_*/clan-role families guild_role_manager owns outright.
+    That is the whole point of the ticket — the role already exists and carries permissions this
+    bot knows nothing about, so its lifecycle stays the admin's. Switching mode is the same kind of
+    unlink for the other mode's roles: they stop being synced, nobody is stripped of them.
+
+    Everything the admin changes (mode, single role, every clan's link) lives in one working copy
+    and is persisted together by Save — unlike CwlCoordinatorConfigurationView's per-clan Save,
+    so switching the clan picker never silently discards another clan's unsaved link.
 
     Modelled on ui_clan_management.RoleConfigurationView's newbie/member RoleSelect shape, which is
     the existing precedent for "pick a role that already exists" (as opposed to that screen's
     bot-owned roles).
     """
 
+    MODES = ("single", "per_clan")
+
     def __init__(
         self,
         guild: discord.Guild,
         parent_view: discord.ui.View,
-        current_role: Optional[discord.Role] = None,
+        clan_tags: Optional[List[str]] = None,
+        mode: str = "single",
+        single_role_id: Optional[str] = None,
+        role_ids_by_clan: Optional[Dict[str, str]] = None,
         timeout: int = 300,
     ):
         super().__init__(timeout=timeout)
         self.guild = guild
         self.parent_view = parent_view
-        self.role: Optional[discord.Role] = current_role
+        links = {tag: str(rid) for tag, rid in (role_ids_by_clan or {}).items() if rid}
+        # A clan that still has a link but has since left the guild's member clans stays listed,
+        # so its link remains visible and clearable rather than becoming an invisible leftover.
+        all_tags = list(dict.fromkeys(list(clan_tags or []) + list(links)))
+        self.clan_tags: List[str] = sorted(
+            all_tags, key=lambda tag: (CACHE.get_clan_name(tag, tag) or tag).lower()
+        )[:25]
+        self.mode: str = mode if mode in self.MODES else "single"
+        self.single_role_id: Optional[str] = str(single_role_id) if single_role_id else None
+        self.role_ids_by_clan: Dict[str, str] = dict(links)
+        self.clan_tag: Optional[str] = self.clan_tags[0] if self.clan_tags else None
+        # Snapshot of what is persisted, for the "not saved yet" marker.
+        self._saved_state = self._state()
+        self._rebuild_counter = 0
+        # Same serializing lock CwlCoordinatorConfigurationView uses (Pitfall 49): every handler
+        # mutates the working copy and edits the same message, so a fast second click must queue
+        # behind the first rather than race it or be dropped.
+        self._lock = asyncio.Lock()
         self._build_items()
+
+    # -- state helpers ---------------------------------------------------------------------------
+
+    def _state(self) -> Tuple[str, Optional[str], Tuple[Tuple[str, str], ...]]:
+        return (self.mode, self.single_role_id, tuple(sorted(self.role_ids_by_clan.items())))
+
+    @property
+    def is_dirty(self) -> bool:
+        return self._state() != self._saved_state
+
+    @property
+    def role(self) -> Optional[discord.Role]:
+        """The role the RoleSelect currently edits: the single role, or the selected clan's."""
+        role_id = self.single_role_id if self.mode == "single" else (
+            self.role_ids_by_clan.get(self.clan_tag) if self.clan_tag else None
+        )
+        return self._resolve_role(role_id)
+
+    def _resolve_role(self, role_id: Optional[str]) -> Optional[discord.Role]:
+        if not role_id or not self.guild:
+            return None
+        try:
+            return self.guild.get_role(int(role_id))
+        except (TypeError, ValueError):
+            return None
+
+    def _clan_label(self, tag: str) -> str:
+        return f"{CACHE.get_clan_name(tag, tag)} ({tag})"
+
+    # -- components ------------------------------------------------------------------------------
 
     def _build_items(self) -> None:
         from qapbot.i18n import t
         guild_id = self.guild.id if self.guild else None
+        key = 'ui_components.cwl_coordinator_role_configuration'
+        per_clan = self.mode == "per_clan"
+        row = 0
 
-        role_select: discord.ui.RoleSelect[Any] = discord.ui.RoleSelect(
-            placeholder=t('ui_components.cwl_coordinator_role_configuration.placeholder_role_select', guild_id=guild_id),
+        # Rule 8: rebuilt selects mark the current choice with default=True.
+        mode_select: discord.ui.Select[Any] = discord.ui.Select(
+            placeholder=t(f'{key}.placeholder_mode_select', guild_id=guild_id),
             min_values=1,
             max_values=1,
-            custom_id="cwl_coordinator_role_select",
-            row=0,
+            options=[
+                discord.SelectOption(
+                    label=t(f'{key}.mode_single', guild_id=guild_id), value="single",
+                    default=(self.mode == "single"),
+                ),
+                discord.SelectOption(
+                    label=t(f'{key}.mode_per_clan', guild_id=guild_id), value="per_clan",
+                    default=per_clan,
+                ),
+            ],
+            custom_id=f"cwl_coordinator_role_mode_{self._rebuild_counter}",
+            row=row,
+        )
+        mode_select.callback = self._on_mode_select  # type: ignore[assignment]
+        self.add_item(mode_select)  # type: ignore[arg-type]
+        row += 1
+
+        if per_clan and self.clan_tags:
+            options = []
+            for tag in self.clan_tags:
+                linked = "🔗 " if tag in self.role_ids_by_clan else ""
+                label = f"{linked}{self._clan_label(tag)}"
+                if len(label) > 100:
+                    label = label[:97] + "..."
+                options.append(discord.SelectOption(label=label, value=tag, default=(tag == self.clan_tag)))
+            clan_select: discord.ui.Select[Any] = discord.ui.Select(
+                placeholder=t(f'{key}.placeholder_clan_select', guild_id=guild_id),
+                min_values=1,
+                max_values=1,
+                options=options,  # type: ignore[arg-type]
+                custom_id=f"cwl_coordinator_role_clan_{self._rebuild_counter}",
+                row=row,
+            )
+            clan_select.callback = self._on_clan_select  # type: ignore[assignment]
+            self.add_item(clan_select)  # type: ignore[arg-type]
+            row += 1
+
+        role_select_enabled = not per_clan or self.clan_tag is not None
+        current = self.role
+        # Dynamic custom_id so Discord treats the rebuilt select as new and shows default_values
+        # for the newly selected clan (same fix as CwlCoordinatorConfigurationView's UserSelect).
+        role_select: discord.ui.RoleSelect[Any] = discord.ui.RoleSelect(
+            placeholder=(
+                t(f'{key}.placeholder_role_select_clan', guild_id=guild_id,
+                  clan=CACHE.get_clan_name(self.clan_tag, self.clan_tag))
+                if per_clan and self.clan_tag
+                else t(f'{key}.placeholder_role_select', guild_id=guild_id)
+            ),
+            min_values=1,
+            max_values=1,
+            custom_id=f"cwl_coordinator_role_select_{self._rebuild_counter}",
+            row=row,
+            default_values=[discord.Object(id=int(current.id))] if current else [],
+            disabled=not role_select_enabled,
         )
         role_select.callback = self._on_role_select  # type: ignore[assignment]
         self.add_item(role_select)  # type: ignore[arg-type]
+        row += 1
 
         clear_button: discord.ui.Button[Any] = discord.ui.Button(
-            label=t('ui_components.cwl_coordinator_role_configuration.button_clear', guild_id=guild_id),
+            label=t(f'{key}.button_clear', guild_id=guild_id),
             style=discord.ButtonStyle.secondary,
             custom_id="cwl_coordinator_role_clear",
-            row=1,
-            disabled=(self.role is None),
+            row=row,
+            # Keyed on the stored id, not the resolved role: a link to a since-deleted role must
+            # still be clearable.
+            disabled=not (
+                self.clan_tag in self.role_ids_by_clan if per_clan and self.clan_tag
+                else (not per_clan and self.single_role_id)
+            ),
         )
         clear_button.callback = self._on_clear  # type: ignore[assignment]
         self.add_item(clear_button)  # type: ignore[arg-type]
 
         save_button: discord.ui.Button[Any] = discord.ui.Button(
-            label=t('ui_components.cwl_coordinator_role_configuration.button_save', guild_id=guild_id),
+            label=t(f'{key}.button_save', guild_id=guild_id),
             style=discord.ButtonStyle.success,
             custom_id="cwl_coordinator_role_save",
-            row=1,
+            row=row,
         )
         save_button.callback = self._on_save  # type: ignore[assignment]
         self.add_item(save_button)  # type: ignore[arg-type]
 
     def _rebuild_view(self) -> None:
+        self._rebuild_counter += 1
         self.clear_items()
         self._build_items()
 
     def build_content(self) -> str:
         from qapbot.i18n import t
         guild_id = self.guild.id if self.guild else None
-        role_display = (
-            self.role.mention if self.role
-            else t('ui_components.cwl_coordinator_role_configuration.not_set', guild_id=guild_id)
-        )
-        return t(
-            'ui_components.cwl_coordinator_role_configuration.header',
-            guild_id=guild_id, role=role_display,
-        )
+        key = 'ui_components.cwl_coordinator_role_configuration'
+        not_set = t(f'{key}.not_set', guild_id=guild_id)
+
+        if self.mode == "single":
+            role = self._resolve_role(self.single_role_id)
+            content = t(f'{key}.header', guild_id=guild_id, role=role.mention if role else not_set)
+        else:
+            lines = []
+            for tag in self.clan_tags:
+                role = self._resolve_role(self.role_ids_by_clan.get(tag))
+                marker = "▶ " if tag == self.clan_tag else "• "
+                lines.append(f"{marker}{self._clan_label(tag)} → {role.mention if role else not_set}")
+            links = "\n".join(lines) if lines else t(f'{key}.no_clans', guild_id=guild_id)
+            content = t(f'{key}.header_per_clan', guild_id=guild_id, links=links)
+
+        if self.is_dirty:
+            content += "\n\n" + t(f'{key}.unsaved', guild_id=guild_id)
+        return content
+
+    async def _refresh(self, interaction: discord.Interaction) -> None:
+        self._rebuild_view()
+        await interaction.edit_original_response(content=self.build_content(), view=self)
+
+    # -- handlers --------------------------------------------------------------------------------
+
+    async def _on_mode_select(self, interaction: discord.Interaction) -> None:
+        await interaction.response.defer(thinking=False, ephemeral=False)
+        async with self._lock:
+            values = interaction.data.get('values', [])  # type: ignore[union-attr]
+            if values and values[0] in self.MODES:
+                self.mode = values[0]
+            await self._refresh(interaction)
+
+    async def _on_clan_select(self, interaction: discord.Interaction) -> None:
+        await interaction.response.defer(thinking=False, ephemeral=False)
+        async with self._lock:
+            values = interaction.data.get('values', [])  # type: ignore[union-attr]
+            if values and values[0] in self.clan_tags:
+                self.clan_tag = values[0]
+            await self._refresh(interaction)
 
     async def _on_role_select(self, interaction: discord.Interaction) -> None:
         await interaction.response.defer(thinking=False, ephemeral=False)
-        values = interaction.data.get('values', [])  # type: ignore[union-attr]
-        if values:
-            self.role = self.guild.get_role(int(values[0]))
-        self._rebuild_view()
-        await interaction.edit_original_response(content=self.build_content(), view=self)
+        async with self._lock:
+            values = interaction.data.get('values', [])  # type: ignore[union-attr]
+            if values:
+                role_id = str(values[0])
+                if self.mode == "single":
+                    self.single_role_id = role_id
+                elif self.clan_tag:
+                    self.role_ids_by_clan[self.clan_tag] = role_id
+            await self._refresh(interaction)
 
     async def _on_clear(self, interaction: discord.Interaction) -> None:
         await interaction.response.defer(thinking=False, ephemeral=False)
-        self.role = None
-        self._rebuild_view()
-        await interaction.edit_original_response(content=self.build_content(), view=self)
+        async with self._lock:
+            if self.mode == "single":
+                self.single_role_id = None
+            elif self.clan_tag:
+                self.role_ids_by_clan.pop(self.clan_tag, None)
+            await self._refresh(interaction)
 
     async def _on_save(self, interaction: discord.Interaction) -> None:
-        """Persist the link and immediately reconcile who holds the role.
+        """Persist mode + single role + every clan's link together, then reconcile role holders.
 
-        Clearing the link does NOT strip the role from anyone (see the 'cleared' string): the role
-        pre-existed this feature and may well carry channel permissions the admin still wants those
-        people to have — unlinking means "stop syncing", not "revoke".
+        Unlinking (Clear, or switching mode away from a role) does NOT strip that role from anyone
+        (see the 'cleared' string): the role pre-existed this feature and may well carry channel
+        permissions the admin still wants those people to have — unlinking means "stop syncing",
+        not "revoke".
         """
         from qapbot.i18n import t
         from qapbot.guild_role_manager import sync_cwl_coordinator_role
 
         await interaction.response.defer(thinking=False, ephemeral=True)
-        guild_id = str(self.guild.id)
-        guild_id_for_t = self.guild.id
+        async with self._lock:
+            guild_id = str(self.guild.id)
+            guild_id_for_t = self.guild.id
+            key = 'ui_components.cwl_coordinator_role_configuration'
 
-        db = CACHE.db_manager
-        if db is None:
-            await interaction.followup.send(
-                t('ui_components.cwl_coordinator_role_configuration.error_no_database', guild_id=guild_id_for_t),
-                ephemeral=True,
-            )
-            return
+            db = CACHE.db_manager
+            if db is None:
+                await interaction.followup.send(
+                    t(f'{key}.error_no_database', guild_id=guild_id_for_t), ephemeral=True,
+                )
+                return
 
-        config = CACHE.server_config.setdefault(guild_id, {})
-        config["cwl_coordinator_role_id"] = str(self.role.id) if self.role else None
-        await db.save_guild_config(guild_id, config)
+            config = CACHE.server_config.setdefault(guild_id, {})
+            config["cwl_coordinator_role_mode"] = self.mode
+            config["cwl_coordinator_role_id"] = self.single_role_id
+            await db.save_guild_config(guild_id, config)
+            await db.save_cwl_clan_coordinator_roles(guild_id, dict(self.role_ids_by_clan))
+            config["cwl_clan_coordinator_roles"] = dict(self.role_ids_by_clan)
+            self._saved_state = self._state()
 
-        if self.role is None:
-            msg = t('ui_components.cwl_coordinator_role_configuration.cleared', guild_id=guild_id_for_t)
-        else:
-            added, removed = await sync_cwl_coordinator_role(self.guild)
-            msg = t(
-                'ui_components.cwl_coordinator_role_configuration.saved',
-                guild_id=guild_id_for_t, role=self.role.mention, added=added, removed=removed,
-            )
+            if self.mode == "single":
+                single_role = self._resolve_role(self.single_role_id)
+                if single_role is None:
+                    msg = t(f'{key}.cleared', guild_id=guild_id_for_t)
+                else:
+                    added, removed = await sync_cwl_coordinator_role(self.guild)
+                    msg = t(f'{key}.saved', guild_id=guild_id_for_t,
+                            role=single_role.mention, added=added, removed=removed)
+            else:
+                added, removed = await sync_cwl_coordinator_role(self.guild)
+                msg = t(f'{key}.saved_per_clan', guild_id=guild_id_for_t,
+                        count=len(self.role_ids_by_clan), added=added, removed=removed)
 
-        await interaction.edit_original_response(content=self.build_content(), view=self)
-        await interaction.followup.send(msg, ephemeral=True)
+            await self._refresh(interaction)
+            await interaction.followup.send(msg, ephemeral=True)
 
 
 class CwlDeleteSeasonConfirmView(discord.ui.View):

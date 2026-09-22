@@ -792,7 +792,16 @@
       "notify_dm_removed": "🛡️ Du bist nicht mehr CWL-Koordinator für **{clan}** auf **{guild}**."
     },
     "cwl_coordinator_role_configuration": {
-      "header": "**CWL-Koordinatoren-Rolle**\n\nVerknüpfe eine bestehende Discord-Rolle mit dem CWL-Koordinator-Status. Wer für irgendeinen Clan als Koordinator eingetragen ist, bekommt diese Rolle; wer keiner mehr ist, verliert sie wieder.\n\nDer Bot erstellt oder löscht diese Rolle nie — wähle eine, die du bereits hast (zum Beispiel die, die deine Koordinatoren-Kanäle freischaltet).\n\nAktuell: {role}",
+      "header": "**CWL-Koordinatoren-Rolle — eine Rolle für alle Clans**\n\nVerknüpfe eine bestehende Discord-Rolle mit dem CWL-Koordinator-Status. Wer für irgendeinen Clan als Koordinator eingetragen ist, bekommt diese Rolle; wer keiner mehr ist, verliert sie wieder.\n\nDer Bot erstellt oder löscht diese Rolle nie — wähle eine, die du bereits hast (zum Beispiel die, die deine Koordinatoren-Kanäle freischaltet). Lieber eine eigene Rolle pro Clan? Stelle oben den Modus um.\n\nAktuell: {role}",
+      "header_per_clan": "**CWL-Koordinatoren-Rollen — eine Rolle pro Clan**\n\nVerknüpfe jeden Clan mit einer bestehenden Discord-Rolle. Die Koordinatoren eines Clans bekommen dessen Rolle und verlieren sie wieder, sobald sie ihn nicht mehr koordinieren — so sieht ein Koordinator nur die Kanäle der Clans, die er tatsächlich koordiniert. Wer mehrere Clans koordiniert, bekommt jede dieser Rollen.\n\nDer Bot erstellt oder löscht diese Rollen nie. Wähle einen Clan, dann seine Rolle; **Speichern** speichert alle Clans auf einmal.\n\n{links}",
+      "no_clans": "Für diesen Server sind keine Member-Clans konfiguriert.",
+      "placeholder_mode_select": "Wähle den Modus für die Koordinatoren-Rolle...",
+      "mode_single": "Eine Koordinatoren-Rolle für alle Clans",
+      "mode_per_clan": "Eine Koordinatoren-Rolle pro Clan",
+      "placeholder_clan_select": "Wähle einen Clan...",
+      "placeholder_role_select_clan": "Wähle die Koordinatoren-Rolle für {clan}...",
+      "unsaved": "⚠️ Noch nicht gespeichert — klicke auf **Speichern**, um es zu übernehmen.",
+      "saved_per_clan": "✅ Koordinatoren-Rollen pro Clan gespeichert ({count} Clan(s) verknüpft).\nRollen-Mitglieder synchronisiert: +{added} / -{removed}\nRollen, die nicht mehr verknüpft sind, bleiben unverändert — niemandem wurden sie entzogen.",
       "placeholder_role_select": "Wähle die CWL-Koordinatoren-Rolle...",
       "button_clear": "❌ Löschen",
       "button_save": "✅ Speichern",
@@ -1020,6 +1029,8 @@
       "coordinator_role_not_set": "Nicht verknüpft",
       "coordinator_role_value": "Rolle: {role}",
       "coordinator_role_description": "Wer für irgendeinen Clan als CWL-Koordinator eingetragen ist, hat automatisch diese Rolle.",
+      "coordinator_role_per_clan_value": "Eine Rolle pro Clan — {linked} von {total} Clan(s) verknüpft",
+      "coordinator_role_per_clan_description": "Die CWL-Koordinatoren eines Clans haben automatisch dessen Rolle; wer mehrere Clans koordiniert, hat jede dieser Rollen.",
       "button_enable_include_all_accounts": "Alle verknüpften Accounts einbeziehen",
       "button_disable_include_all_accounts": "Alle verknüpften Accounts nicht mehr einbeziehen"
     },

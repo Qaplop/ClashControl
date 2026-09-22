@@ -190,6 +190,16 @@ path — that would let any ordinary member sync strip the role from everyone wh
 happened to be unloaded. The accepted cost: a coordinator who leaves and rejoins the guild doesn't
 regain the role until the coordinator (or role) config is saved again.
 
+**Per-clan roles** (#0092): `guild_config.cwl_coordinator_role_mode` switches between `'single'`
+(the paragraph above, default) and `'per_clan'`, where each clan links its own existing role in
+`cwl_clan_coordinator_roles` (e.g. "CWL Koordinator StayMad" gating `#cwl-staymad`). Someone
+coordinating several clans holds each of those clans' roles. Both modes are reduced by
+`guild_role_manager.cwl_coordinator_role_targets()` to `role_id -> user ids` and reconciled by the
+same loop; two clans linked to the *same* role union their coordinators, preserving the
+never-strip-while-still-covered rule. Roles not linked in the active mode (after a mode switch or a
+Clear) are left untouched — unlinking means "stop syncing", never "revoke". The config screen keeps
+mode, single role and every clan's link in one working copy saved together.
+
 ### Extensions to existing tables
 
 `user_players` gains four standing, per-CoC-account preferences (not per Discord user — a member

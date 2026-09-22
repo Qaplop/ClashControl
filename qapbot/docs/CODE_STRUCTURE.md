@@ -585,8 +585,8 @@ all rebuild/button-handler paths so the reference is never lost.
 - Data model: `_get_highest_coc_role_for_user` reads `player["coc_role"]` (memory-only, set by
   coc_cache); values are `"member"`, `"elder"`, `"coLeader"`, `"leader"` (match COC_ROLE_PRIORITY)
 - Two ownership models live here: the CoC/clan roles above are **created and owned by the bot**,
-  while `sync_cwl_coordinator_role()` (tracker #0086) only **links an existing** admin-picked role
-  and syncs its membership — it never creates or deletes that role. Don't extend one model's
+  while `sync_cwl_coordinator_role()` (tracker #0086; per-clan roles #0092) only **links existing**
+  admin-picked roles and syncs their membership — it never creates or deletes that role. Don't extend one model's
   helpers onto the other's role without checking which kind you're touching.
 
 🟫 qapbot/QBdiscocmdshelper.py (~4713 lines)
@@ -1096,10 +1096,13 @@ kept here only for functions not narrated elsewhere.
 ├── sync_roles_for_clan_members(guild, guild_id, clan_tag, coc_members)
 │   └── Fast path from coc_cache.py's per-clan fetch trigger — calls sync_roles_for_user()
 │       for just this clan's registered members, bounded-concurrent via _ROLE_SYNC_CONCURRENCY
-├── sync_cwl_coordinator_role(guild) -> (added, removed)   [tracker #0086]
+├── sync_cwl_coordinator_role(guild) -> (added, removed)   [tracker #0086, #0092]
 │   ├── Reconciles guild_config.cwl_coordinator_role_id's holders against the UNION of
 │   │   cwl_clan_coordinators across every clan (so losing one clan never strips the role
 │   │   from someone still coordinating another). No-ops when no role is linked.
+│   ├── #0092 per-clan mode: cwl_coordinator_role_targets(config) -> {role_id: user_ids}
+│   │   maps each clan's linked role (cwl_clan_coordinator_roles) to that clan's coordinators;
+│   │   every role is reconciled by the same loop, unlinked roles are never touched.
 │   ├── LINKS an existing role — never creates or deletes it, unlike every other role above
 │   └── Deliberately NOT called from sync_roles_for_user(): doing so would let an ordinary
 │       member sync strip the role from everyone whenever the CWL config is unloaded.

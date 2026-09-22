@@ -405,6 +405,24 @@ async def format_clan_management_cwl_settings(
         f"{t('cwl.settings.coordinator_role_value', guild_id=guild_id_int, role=coordinator_role_display)}\n"
         f"{t('cwl.settings.coordinator_role_description', guild_id=guild_id_int)}"
     )
+    # Tracker #0092: per-clan mode replaces the single-role readout with "N of M clans linked".
+    # Counted on links whose role still resolves, for the same reason as above — a deleted role is
+    # what the admin needs to notice, not a link that silently does nothing.
+    if (guild_config.get("cwl_coordinator_role_mode") or "single") == "per_clan":
+        per_clan_links: Dict[str, Any] = guild_config.get("cwl_clan_coordinator_roles") or {}
+        linked_count = 0
+        for linked_role_id in per_clan_links.values():
+            try:
+                if guild.get_role(int(linked_role_id)) is not None:
+                    linked_count += 1
+            except (TypeError, ValueError):
+                continue
+        total_clans = len(set(resolve_guild_member_clan_tags(guild_id_int)) | set(per_clan_links))
+        coordinator_role_block = (
+            f"⠀\n**{t('cwl.settings.coordinator_role_block_title', guild_id=guild_id_int)}**\n"
+            f"{t('cwl.settings.coordinator_role_per_clan_value', guild_id=guild_id_int, linked=linked_count, total=total_clans)}\n"
+            f"{t('cwl.settings.coordinator_role_per_clan_description', guild_id=guild_id_int)}"
+        )
 
     embed = discord.Embed(
         title=t('cwl.settings.title', guild_id=guild_id_int),

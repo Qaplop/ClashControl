@@ -594,6 +594,11 @@ async def sync_cwl_coordinator_role(guild: discord.Guild) -> Tuple[int, int]:
     someone as coordinator of clan A must NOT strip the role while they are still coordinator of
     clan B.
 
+    Tracker #0092 adds a per-guild mode switch (guild_config.cwl_coordinator_role_mode): in
+    'per_clan' mode each clan links its own role (cwl_clan_coordinator_roles) held by that clan's
+    coordinators only — e.g. "CWL Koordinator StayMad" gating #cwl-staymad. Both modes are reduced
+    to role -> targets by cwl_coordinator_role_targets() and reconciled by the same loop.
+
     Deliberately NOT wired into sync_roles_for_user()'s per-member hot path: doing so would let
     every ordinary member role sync strip this role from everyone whenever the CWL config happened
     to be unloaded, a mass-removal risk far worse than the gap it would close (a coordinator who
@@ -611,46 +616,102 @@ async def sync_cwl_coordinator_role(guild: discord.Guild) -> Tuple[int, int]:
 
     guild_id = str(guild.id)
     config = CACHE.server_config.get(guild_id, {})
-    role_id = config.get("cwl_coordinator_role_id")
-    if not role_id:
+    targets_by_role = cwl_coordinator_role_targets(config)
+    if not targets_by_role:
         return (0, 0)
-
-    role = guild.get_role(int(role_id))
-    if role is None:
-        logging.warning(f"[ROLE-SYNC] Configured CWL coordinator role {role_id} not found in guild {guild_id}")
-        return (0, 0)
-
-    by_clan: Dict[str, List[str]] = config.get("cwl_clan_coordinators") or {}
-    target_ids: Set[int] = set()
-    for coordinator_ids in by_clan.values():
-        for uid in coordinator_ids or []:
-            try:
-                target_ids.add(int(uid))
-            except (TypeError, ValueError):
-                continue
 
     added = 0
     removed = 0
-    reason = "QapBot CWL coordinator role sync (tracker #0086)"
+    reason = "QapBot CWL coordinator role sync (tracker #0086/#0092)"
 
-    for user_id in target_ids:
-        member = guild.get_member(user_id)
-        if member is None or role in member.roles:
+    for role_id, target_ids in targets_by_role.items():
+        role = guild.get_role(role_id)
+        if role is None:
+            logging.warning(f"[ROLE-SYNC] Configured CWL coordinator role {role_id} not found in guild {guild_id}")
             continue
-        if await assign_role_to_member(member, role, reason=reason):
-            added += 1
 
-    # Only members who actually hold the role are candidates for removal — iterating role.members
-    # rather than the whole guild keeps this proportional to the coordinator count, not guild size.
-    for member in list(role.members):
-        if member.id in target_ids:
-            continue
-        if await remove_role_from_member(member, role, reason=reason):
-            removed += 1
+        role_added = 0
+        role_removed = 0
+        for user_id in target_ids:
+            member = guild.get_member(user_id)
+            if member is None or role in member.roles:
+                continue
+            if await assign_role_to_member(member, role, reason=reason):
+                role_added += 1
 
-    if added or removed:
-        logging.info(f"[ROLE-SYNC] CWL coordinator role '{role.name}' in guild {guild_id}: +{added} / -{removed}")
+        # Only members who actually hold the role are candidates for removal — iterating role.members
+        # rather than the whole guild keeps this proportional to the coordinator count, not guild size.
+        for member in list(role.members):
+            if member.id in target_ids:
+                continue
+            if await remove_role_from_member(member, role, reason=reason):
+                role_removed += 1
+
+        if role_added or role_removed:
+            logging.info(
+                f"[ROLE-SYNC] CWL coordinator role '{role.name}' in guild {guild_id}: +{role_added} / -{role_removed}"
+            )
+        added += role_added
+        removed += role_removed
+
     return (added, removed)
+
+
+def cwl_coordinator_role_targets(config: Dict[str, Any]) -> Dict[int, Set[int]]:
+    """Reduce a guild's CWL coordinator role config to ``role_id -> user ids that must hold it``.
+
+    Both modes (tracker #0092) collapse to this one shape, so sync_cwl_coordinator_role() has a
+    single reconcile loop:
+
+    - ``single`` (default, the #0086 behaviour): the one linked role -> the union of every clan's
+      coordinators.
+    - ``per_clan``: each clan's linked role -> that clan's coordinators. Two clans linked to the
+      SAME role union their coordinators, so the shared role is never stripped from someone still
+      coordinating the other clan — the same rule the single-role union exists for.
+
+    A user coordinating several clans simply appears under several roles. Roles not linked in the
+    active mode are absent here and therefore never touched ("unlinked = stop syncing").
+
+    Args:
+        config: The guild's CACHE.server_config entry.
+
+    Returns:
+        role id -> set of Discord user ids. Empty when nothing is linked.
+    """
+    by_clan: Dict[str, List[str]] = config.get("cwl_clan_coordinators") or {}
+
+    def _ids(raw: Any) -> Set[int]:
+        out: Set[int] = set()
+        for uid in raw or []:
+            try:
+                out.add(int(uid))
+            except (TypeError, ValueError):
+                continue
+        return out
+
+    targets: Dict[int, Set[int]] = {}
+    if (config.get("cwl_coordinator_role_mode") or "single") == "per_clan":
+        role_by_clan: Dict[str, str] = config.get("cwl_clan_coordinator_roles") or {}
+        for clan_tag, raw_role_id in role_by_clan.items():
+            try:
+                role_id = int(raw_role_id)
+            except (TypeError, ValueError):
+                continue
+            targets.setdefault(role_id, set()).update(_ids(by_clan.get(clan_tag)))
+        return targets
+
+    raw_single = config.get("cwl_coordinator_role_id")
+    if not raw_single:
+        return targets
+    try:
+        single_role_id = int(raw_single)
+    except (TypeError, ValueError):
+        return targets
+    union: Set[int] = set()
+    for coordinator_ids in by_clan.values():
+        union |= _ids(coordinator_ids)
+    targets[single_role_id] = union
+    return targets
 
 
 # ---------------------------------------------------------------------------

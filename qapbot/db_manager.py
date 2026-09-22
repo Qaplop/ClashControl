@@ -2338,6 +2338,7 @@ class WarHistoryDB:
                 cwl_selected_season TEXT,
                 cwl_enrollment_include_all_linked_accounts BOOLEAN NOT NULL DEFAULT 0,
                 cwl_coordinator_role_id TEXT,
+                cwl_coordinator_role_mode TEXT NOT NULL DEFAULT 'single',
                 timezone_name TEXT NOT NULL DEFAULT 'UTC',
                 channel_raid_notifications_enabled BOOLEAN NOT NULL DEFAULT 0,
                 raid_notification_threshold_hours REAL NOT NULL DEFAULT 24,
@@ -2810,6 +2811,22 @@ class WarHistoryDB:
             "CREATE INDEX IF NOT EXISTS idx_cwl_clan_coordinators_guild_id ON cwl_clan_coordinators(guild_id)"
         )
 
+        # Per-clan CWL Coordinator roles (tracker #0092): an EXISTING guild role linked to one
+        # clan's coordinators, used only while guild_config.cwl_coordinator_role_mode = 'per_clan'
+        # (the 'single' mode keeps using guild_config.cwl_coordinator_role_id). Kept when the mode
+        # flips back to 'single' so switching again restores the previous links. Same standing
+        # per-clan shape as guild_clan_roles — but a linked role, never one this bot creates.
+        await self._conn.execute("""
+            CREATE TABLE IF NOT EXISTS cwl_clan_coordinator_roles (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                guild_id TEXT NOT NULL,
+                clan_tag TEXT NOT NULL,
+                role_id TEXT NOT NULL,
+                FOREIGN KEY (guild_id) REFERENCES guild_config(guild_id) ON DELETE CASCADE,
+                UNIQUE (guild_id, clan_tag)
+            )
+        """)
+
         # Subscriptions table
         await self._conn.execute("""
             CREATE TABLE IF NOT EXISTS subscriptions (
@@ -2925,6 +2942,9 @@ class WarHistoryDB:
         # Tracker #0086: an EXISTING guild role the admin links to CWL coordinator status
         # (never a bot-created role, unlike coc_role_*) — see sync_cwl_coordinator_role().
         await self._add_column_if_missing("guild_config", "cwl_coordinator_role_id", "TEXT")
+        # Tracker #0092: 'single' (one role for every clan's coordinators, the #0086 behaviour) or
+        # 'per_clan' (cwl_clan_coordinator_roles). Default keeps existing guilds unchanged.
+        await self._add_column_if_missing("guild_config", "cwl_coordinator_role_mode", "TEXT NOT NULL DEFAULT 'single'")
         await self._add_column_if_missing("guild_config", "timezone_name", "TEXT NOT NULL DEFAULT 'UTC'")
         await self._add_column_if_missing("cwl_event_clans", "participating", "INTEGER NOT NULL DEFAULT 1")
         # One-shot dedup for the 30-minutes-before roster status report to a clan's CWL
@@ -10810,6 +10830,15 @@ class WarHistoryDB:
         for coordinator_row in await cwl_coordinators_cursor.fetchall():
             cwl_clan_coordinators.setdefault(coordinator_row["clan_tag"], []).append(coordinator_row["discord_user_id"])
 
+        # Per-clan linked CWL coordinator roles (tracker #0092) — one role per clan_tag.
+        coordinator_roles_cursor = await self._conn.execute(
+            "SELECT clan_tag, role_id FROM cwl_clan_coordinator_roles WHERE guild_id = ?",
+            (guild_id,)
+        )
+        cwl_clan_coordinator_roles: Dict[str, str] = {
+            r["clan_tag"]: r["role_id"] for r in await coordinator_roles_cursor.fetchall()
+        }
+
         # Access by column name – immune to column order changes from ALTER TABLE migrations.
         return {
             "language": row["language"],
@@ -10852,6 +10881,8 @@ class WarHistoryDB:
             "cwl_selected_season": row["cwl_selected_season"],
             "cwl_enrollment_include_all_linked_accounts": bool(row["cwl_enrollment_include_all_linked_accounts"]) if row["cwl_enrollment_include_all_linked_accounts"] is not None else False,
             "cwl_coordinator_role_id": row["cwl_coordinator_role_id"],
+            "cwl_coordinator_role_mode": row["cwl_coordinator_role_mode"] or "single",
+            "cwl_clan_coordinator_roles": cwl_clan_coordinator_roles,
             "timezone_name": row["timezone_name"] if row["timezone_name"] is not None else "UTC",
             # Clan Capital raid channel reminders (tracker #0115)
             "channel_raid_notifications_enabled": bool(row["channel_raid_notifications_enabled"]),
@@ -10901,10 +10932,11 @@ class WarHistoryDB:
                  cwl_player_hub_channel_id, cwl_player_hub_message_id, cwl_player_hub_message_enabled, cwl_player_hub_message_last_bump_iso,
                  cwl_management_channel_id, cwl_management_message_id, cwl_management_message_enabled,
                  cwl_management_message_last_bump_iso, cwl_retention_months, cwl_selected_season,
-                 cwl_enrollment_include_all_linked_accounts, cwl_coordinator_role_id, timezone_name,
+                 cwl_enrollment_include_all_linked_accounts, cwl_coordinator_role_id,
+                 cwl_coordinator_role_mode, timezone_name,
                  channel_raid_notifications_enabled, raid_notification_threshold_hours,
                  raid_notification_scope, raid_notification_channel_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(guild_id) DO UPDATE SET
                     language = excluded.language,
                     newbie_role_id = excluded.newbie_role_id,
@@ -10939,6 +10971,7 @@ class WarHistoryDB:
                     cwl_selected_season = excluded.cwl_selected_season,
                     cwl_enrollment_include_all_linked_accounts = excluded.cwl_enrollment_include_all_linked_accounts,
                     cwl_coordinator_role_id = excluded.cwl_coordinator_role_id,
+                    cwl_coordinator_role_mode = excluded.cwl_coordinator_role_mode,
                     timezone_name = excluded.timezone_name,
                     channel_raid_notifications_enabled = excluded.channel_raid_notifications_enabled,
                     raid_notification_threshold_hours = excluded.raid_notification_threshold_hours,
@@ -10979,6 +11012,7 @@ class WarHistoryDB:
                 config.get("cwl_selected_season"),
                 1 if config.get("cwl_enrollment_include_all_linked_accounts", False) else 0,
                 config.get("cwl_coordinator_role_id"),
+                config.get("cwl_coordinator_role_mode") or "single",
                 config.get("timezone_name", "UTC"),
                 1 if config.get("channel_raid_notifications_enabled", False) else 0,
                 config.get("raid_notification_threshold_hours", 24),
@@ -11094,6 +11128,30 @@ class WarHistoryDB:
                 await self._conn.executemany(
                     "INSERT INTO cwl_clan_coordinators (guild_id, clan_tag, discord_user_id) VALUES (?, ?, ?)",
                     [(guild_id, clan_tag, uid) for uid in user_ids]
+                )
+            await self._conn.commit()
+
+    async def save_cwl_clan_coordinator_roles(self, guild_id: str, role_ids_by_clan: Dict[str, str]) -> None:
+        """Replace the guild's whole per-clan CWL coordinator role mapping (tracker #0092).
+
+        Replace-all rather than per-clan upserts: the role config screen edits every clan's link in
+        one working copy and saves them together, so the persisted mapping must end up exactly
+        equal to that copy (a link removed in the UI must disappear here too).
+
+        Args:
+            guild_id: Discord guild id.
+            role_ids_by_clan: clan_tag -> linked Discord role id. Empty clears every link.
+        """
+        await self._ensure_connection()
+        async with self._write_lock:
+            await self._conn.execute(
+                "DELETE FROM cwl_clan_coordinator_roles WHERE guild_id = ?",
+                (guild_id,)
+            )
+            if role_ids_by_clan:
+                await self._conn.executemany(
+                    "INSERT INTO cwl_clan_coordinator_roles (guild_id, clan_tag, role_id) VALUES (?, ?, ?)",
+                    [(guild_id, tag, str(role_id)) for tag, role_id in role_ids_by_clan.items()]
                 )
             await self._conn.commit()
 

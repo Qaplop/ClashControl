@@ -792,7 +792,16 @@
       "notify_dm_removed": "🛡️ You are no longer a CWL Coordinator for **{clan}** on **{guild}**."
     },
     "cwl_coordinator_role_configuration": {
-      "header": "**CWL Coordinator Role**\n\nLink an existing Discord role to CWL Coordinator status. Everyone configured as a coordinator for any clan gets this role; anyone who stops being a coordinator loses it again.\n\nThe bot never creates or deletes this role — pick one you already have (for example the one gating your coordinator channels).\n\nCurrently: {role}",
+      "header": "**CWL Coordinator Role — one role for all clans**\n\nLink an existing Discord role to CWL Coordinator status. Everyone configured as a coordinator for any clan gets this role; anyone who stops being a coordinator loses it again.\n\nThe bot never creates or deletes this role — pick one you already have (for example the one gating your coordinator channels). Want a separate role for each clan instead? Switch the mode above.\n\nCurrently: {role}",
+      "header_per_clan": "**CWL Coordinator Roles — one role per clan**\n\nLink an existing Discord role to each clan. A clan's coordinators get that clan's role and lose it again when they stop coordinating it — so a coordinator only sees the channels of the clans they actually coordinate. Someone coordinating several clans gets each of those roles.\n\nThe bot never creates or deletes these roles. Pick a clan, then its role; **Save** stores all clans at once.\n\n{links}",
+      "no_clans": "No member clans configured for this server.",
+      "placeholder_mode_select": "Choose the coordinator role mode...",
+      "mode_single": "One coordinator role for all clans",
+      "mode_per_clan": "One coordinator role per clan",
+      "placeholder_clan_select": "Select a clan...",
+      "placeholder_role_select_clan": "Select the coordinator role for {clan}...",
+      "unsaved": "⚠️ Not saved yet — press **Save** to apply.",
+      "saved_per_clan": "✅ Per-clan CWL coordinator roles saved ({count} clan(s) linked).\nRole members synced: +{added} / -{removed}\nRoles that are no longer linked were left as they are — nobody was stripped of them.",
       "placeholder_role_select": "Select the CWL coordinator role...",
       "button_clear": "❌ Clear",
       "button_save": "✅ Save",
@@ -1020,6 +1029,8 @@
       "coordinator_role_not_set": "Not linked",
       "coordinator_role_value": "Role: {role}",
       "coordinator_role_description": "Everyone configured as a CWL coordinator for any clan automatically holds this role.",
+      "coordinator_role_per_clan_value": "One role per clan — {linked} of {total} clan(s) linked",
+      "coordinator_role_per_clan_description": "Each clan's CWL coordinators automatically hold that clan's role; someone coordinating several clans holds each of them.",
       "button_enable_include_all_accounts": "Include All Linked Accounts",
       "button_disable_include_all_accounts": "Stop Including All Linked Accounts"
     },

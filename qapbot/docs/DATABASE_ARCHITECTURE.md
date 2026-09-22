@@ -372,7 +372,14 @@ The `get_clan_attack_history_sync()` method in `db_manager.py` aggregates `SUM(s
   `cwl_coordinator_role_id` (TEXT, tracker #0086 — an **existing** guild role the admin links to
   CWL coordinator status. The bot never creates or deletes it, unlike the `coc_role_*` family;
   `guild_role_manager.sync_cwl_coordinator_role()` only reconciles its membership against the
-  union of `cwl_clan_coordinators` across every clan. NULL = not linked = never synced)
+  union of `cwl_clan_coordinators` across every clan. NULL = not linked = never synced),
+  `cwl_coordinator_role_mode` (TEXT DEFAULT 'single', tracker #0092 — `'single'` uses
+  `cwl_coordinator_role_id`; `'per_clan'` uses `cwl_clan_coordinator_roles` below instead)
+- `cwl_clan_coordinator_roles` - Per-clan linked CWL coordinator role (tracker #0092):
+  `(guild_id, clan_tag, role_id)`, UNIQUE(guild_id, clan_tag), FK guild_config ON DELETE CASCADE.
+  Only active while `cwl_coordinator_role_mode = 'per_clan'`; kept across mode switches so
+  switching back restores the links. Written replace-all by `save_cwl_clan_coordinator_roles()`,
+  loaded into the guild config dict as `cwl_clan_coordinator_roles: {clan_tag: role_id}`.
 - `guild_member_families` - Junction: guilds ↔ families
 - `guild_member_clans` - Junction: guilds ↔ clans
 - `guild_guest_clans` - Junction: guilds ↔ clans they invited as CWL guests (2026-09-22), with

@@ -14,8 +14,8 @@ import gcheckIconUrl from './assets/gcheck.svg'
 import pendingIconUrl from './assets/pending.svg'
 import redxIconUrl from './assets/redx.svg'
 import autoConfirmedIconUrl from './assets/autoconfirmed.svg'
-import benchIconUrl from './assets/bench.svg'
-import autoBenchIconUrl from './assets/autobench.svg'
+import benchIconUrl from './assets/cwl_bench.svg'
+import autoBenchIconUrl from './assets/cwl_autobench.svg'
 import type { Translator } from './i18n'
 
 // The statuses a member's own DM response can produce, plus 'auto_confirmed' — seeded

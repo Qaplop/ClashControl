@@ -90,18 +90,18 @@ def th_icon_url(th_level: int) -> Optional[str]:
 # Application-owned emojis resolved at runtime (tracker #0117)
 # ---------------------------------------------------------------------------
 #
-# Every BotEmojis constant above is a hand-uploaded emoji whose id someone pasted in. The CWL
-# bench icon can't work that way: it ships WITH the bot (qapbot/assets/cwl_bench.png, the same
-# artwork as the Activity board's bench.svg), so the bot uploads it itself the first time it
-# starts and remembers the id for that session. That keeps the board, the DMs and the buttons
-# showing one identical icon instead of the board's blue bench next to Discord's brown 🪑.
+# Every BotEmojis constant above is a hand-uploaded GUILD emoji whose id someone pasted in, with
+# its source art in qapbot/icons/. The CWL bench icon is the first one the bot provisions itself:
+# qapbot/icons/cwl_bench.png (rendered from cwl_bench.svg, the same artwork the Activity board
+# bundles) is uploaded on first start and its id remembered for the session, so the board, the DMs
+# and the buttons all show one identical icon instead of a blue bench next to Discord's brown 🪑.
 #
 # Application emojis (discord.py 2.5+) belong to the app, not to a guild, so one upload works in
 # every server the bot is in — no per-guild emoji slots consumed.
 
 BENCH_EMOJI_NAME = "cwl_bench"
 BENCH_EMOJI_FALLBACK = "🪑"
-BENCH_EMOJI_ASSET = "assets/cwl_bench.png"
+BENCH_EMOJI_ASSET = "icons/cwl_bench.png"
 
 _resolved_bench_emoji: Optional[str] = None
 

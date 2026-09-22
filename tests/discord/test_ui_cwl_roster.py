@@ -4142,6 +4142,35 @@ async def test_coordinator_save_persists_current_clan_and_updates_cache(mock_int
 
 @pytest.mark.discord
 @pytest.mark.asyncio
+@pytest.mark.parametrize("sync_result, expect_line", [((1, 1), True), ((0, 0), False)])
+async def test_coordinator_save_reports_role_changes_only_when_something_changed(
+    mock_interaction, monkeypatch, sync_result, expect_line,
+):
+    """Tracker #0092 follow-up: Save always reconciles the coordinator roles, and the confirmation
+    says so whenever a role was actually assigned or removed — silent when nothing changed."""
+    from qapbot.cache_manager import CACHE
+    import qapbot.guild_role_manager as grm
+    from qapbot.ui_cwl_roster import CwlCoordinatorConfigurationView
+
+    CACHE.server_config[str(mock_interaction.guild.id)] = {}
+    CACHE.db_manager = MagicMock()
+    CACHE.db_manager.save_cwl_clan_coordinators = AsyncMock()
+    sync = AsyncMock(return_value=sync_result)
+    monkeypatch.setattr(grm, "sync_cwl_coordinator_role", sync)
+
+    view = CwlCoordinatorConfigurationView(
+        guild=mock_interaction.guild, clan_tags=["#CLAN1"],
+        current_coordinator_ids_by_clan={"#CLAN1": ["111"]},
+    )
+    await view._on_save(mock_interaction)
+
+    sync.assert_awaited_once_with(mock_interaction.guild)
+    sent = mock_interaction.followup.send.await_args.args[0]
+    assert ("+1 / -1" in sent) is expect_line
+
+
+@pytest.mark.discord
+@pytest.mark.asyncio
 async def test_coordinator_save_with_empty_selection_clears_cache_entry(mock_interaction):
     from qapbot.cache_manager import CACHE
     from qapbot.ui_cwl_roster import CwlCoordinatorConfigurationView
@@ -4339,6 +4368,80 @@ async def test_build_active_clans_table_falls_back_to_raw_id_for_unresolvable_me
 
     assert "999" in table
     assert "<@999>" not in table
+
+
+@pytest.mark.discord
+@pytest.mark.asyncio
+async def test_build_active_clans_table_shows_linked_role_in_per_clan_mode(db):
+    """Tracker #0092 follow-up: in per-clan role mode the table gains a Role column holding the
+    clan's linked role NAME (a mention would not render in the code block); unlinked clans and
+    links to deleted roles show the none placeholder."""
+    from qapbot.cache_manager import CACHE
+    from qapbot.ui_cwl_roster import CwlCoordinatorConfigurationView
+
+    CACHE.db_manager = db
+    CACHE.clan_name_cache = {"#CLAN1": {"name": "StayCalm"}, "#CLAN2": {"name": "StayMad"}}
+    CACHE.server_config["9704"] = {
+        "cwl_selected_season": "2026-09",
+        "cwl_coordinator_role_mode": "per_clan",
+        "cwl_clan_coordinator_roles": {"#CLAN1": "601", "#CLAN2": "602"},  # 602 was deleted
+    }
+
+    await _seed_guild_and_clans(db, "9704", {"#CLAN1": "StayCalm", "#CLAN2": "StayMad"})
+    event_id = db.create_cwl_event_sync("9704", "2026-09", "discordid1")
+    db.set_cwl_event_clans_sync(event_id, [
+        {"clan_tag": "#CLAN1", "participating": True},
+        {"clan_tag": "#CLAN2", "participating": True},
+    ])
+
+    role = MagicMock()
+    role.name = "CWL Koordinator StayCalm"
+    role.mention = "<@&601>"
+    guild = MagicMock()
+    guild.id = 9704
+    guild.get_member = MagicMock(return_value=None)
+    guild.get_role = MagicMock(side_effect=lambda rid: role if rid == 601 else None)
+
+    view = CwlCoordinatorConfigurationView(
+        guild=guild, clan_tags=["#CLAN1", "#CLAN2"], current_coordinator_ids_by_clan={},
+    )
+
+    table = view._build_active_clans_table()
+    lines = table.splitlines()
+
+    assert "Role" in lines[1]
+    assert any("StayCalm" in ln and ln.endswith("CWL Koordinator StayCalm") for ln in lines)
+    assert any("StayMad" in ln and ln.endswith("—") for ln in lines)
+    assert "<@&" not in table
+
+
+@pytest.mark.discord
+@pytest.mark.asyncio
+async def test_build_active_clans_table_has_no_role_column_in_single_mode(db):
+    from qapbot.cache_manager import CACHE
+    from qapbot.ui_cwl_roster import CwlCoordinatorConfigurationView
+
+    CACHE.db_manager = db
+    CACHE.clan_name_cache = {"#CLAN1": {"name": "StayCalm"}}
+    CACHE.server_config["9705"] = {
+        "cwl_selected_season": "2026-09",
+        "cwl_coordinator_role_id": "500",
+        "cwl_clan_coordinator_roles": {"#CLAN1": "601"},  # inactive in single mode
+    }
+
+    await _seed_guild_and_clans(db, "9705", {"#CLAN1": "StayCalm"})
+    event_id = db.create_cwl_event_sync("9705", "2026-09", "discordid1")
+    db.set_cwl_event_clans_sync(event_id, [{"clan_tag": "#CLAN1", "participating": True}])
+
+    guild = MagicMock()
+    guild.id = 9705
+    guild.get_member = MagicMock(return_value=None)
+
+    view = CwlCoordinatorConfigurationView(
+        guild=guild, clan_tags=["#CLAN1"], current_coordinator_ids_by_clan={},
+    )
+
+    assert "Role" not in view._build_active_clans_table()
 
 
 @pytest.mark.discord

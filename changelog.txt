@@ -1,6 +1,13 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-22 (15)  Build 59.
+- Added (tracker #0092 follow-ups): the Manage CWL Coordinators table gains a "Role" column
+  showing each clan's linked role name in per-clan role mode. Saving coordinators now reports
+  "Coordinator roles updated: +N / -M" whenever the role sync (which already ran on every Save)
+  actually assigned or removed a role; previously its result was discarded.
+  Files: qapbot/ui_cwl_roster.py, translations (+ tests). 3361 tests pass.
+
 2026-09-22 (14)  Build 58.
 - Added (tracker #0092): per-clan CWL coordinator roles. "Configure Coordinator Role" now has a
   mode switch, one role for all clans (unchanged default) or one linked existing role per clan.

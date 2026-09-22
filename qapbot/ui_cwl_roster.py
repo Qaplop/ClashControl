@@ -1388,6 +1388,27 @@ class CwlCoordinatorConfigurationView(discord.ui.View):
         header_coord = t('cwl.management.table_header_coordinators', guild_id=guild_id)
         none_label = t('cwl.management.coordinators_table_none', guild_id=guild_id)
 
+        # Tracker #0092 follow-up (project owner, 2026-09-22): in per-clan role mode, show each
+        # clan's linked coordinator role as a third column. Role NAME, not a mention — mentions
+        # don't render inside a code block. A link whose role was deleted reads as none, same as
+        # the CWL Settings readout.
+        guild_config = CACHE.server_config.get(str(guild_id), {})
+        role_ids_by_clan: Optional[Dict[str, str]] = (
+            guild_config.get("cwl_clan_coordinator_roles") or {}
+            if (guild_config.get("cwl_coordinator_role_mode") or "single") == "per_clan"
+            else None
+        )
+
+        def _role_name(clan_tag: str) -> str:
+            role_id = (role_ids_by_clan or {}).get(clan_tag)
+            role = None
+            if role_id and self.guild:
+                try:
+                    role = self.guild.get_role(int(role_id))
+                except (TypeError, ValueError):
+                    role = None
+            return role.name if role else none_label
+
         rows = []
         for c in sorted(active_clans, key=lambda c: (CACHE.get_clan_name(c["clan_tag"], c["clan_tag"]) or c["clan_tag"]).lower()):
             name = CACHE.get_clan_name(c["clan_tag"], c["clan_tag"]) or c["clan_tag"]
@@ -1407,16 +1428,26 @@ class CwlCoordinatorConfigurationView(discord.ui.View):
                 coord_text = ", ".join(names)
             else:
                 coord_text = none_label
-            rows.append((name, coord_text))
+            rows.append((name, coord_text, _role_name(c["clan_tag"])))
 
         name_w = max(len(header_clan), *(len(r[0]) for r in rows))
         coord_w = max(len(header_coord), *(len(r[1]) for r in rows))
-        lines = [
-            f"{header_clan.ljust(name_w)}  {header_coord}",
-            f"{'-' * name_w}  {'-' * coord_w}",
-        ]
-        for name, coord_text in rows:
-            lines.append(f"{name.ljust(name_w)}  {coord_text}")
+        if role_ids_by_clan is None:
+            lines = [
+                f"{header_clan.ljust(name_w)}  {header_coord}",
+                f"{'-' * name_w}  {'-' * coord_w}",
+            ]
+            for name, coord_text, _ in rows:
+                lines.append(f"{name.ljust(name_w)}  {coord_text}")
+        else:
+            header_role = t('cwl.management.table_header_coordinator_role', guild_id=guild_id)
+            role_w = max(len(header_role), *(len(r[2]) for r in rows))
+            lines = [
+                f"{header_clan.ljust(name_w)}  {header_coord.ljust(coord_w)}  {header_role}",
+                f"{'-' * name_w}  {'-' * coord_w}  {'-' * role_w}",
+            ]
+            for name, coord_text, role_text in rows:
+                lines.append(f"{name.ljust(name_w)}  {coord_text.ljust(coord_w)}  {role_text}")
         return "```\n" + "\n".join(lines) + "\n```"
 
     def build_content(self, body: str) -> str:
@@ -1528,10 +1559,14 @@ class CwlCoordinatorConfigurationView(discord.ui.View):
             # No-ops when no role is linked. Never allowed to fail the save itself: the coordinator
             # config is already persisted by this point, and a missing Manage Roles permission must
             # not read as "saving the coordinators failed".
+            # Tracker #0092 follow-up (project owner, 2026-09-22): the result is reported in the
+            # save confirmation below whenever a role actually changed — previously it was
+            # discarded, so the admin couldn't tell the save had assigned or removed any role.
+            roles_added = roles_removed = 0
             try:
                 from qapbot.guild_role_manager import sync_cwl_coordinator_role
 
-                await sync_cwl_coordinator_role(self.guild)
+                roles_added, roles_removed = await sync_cwl_coordinator_role(self.guild)
             except Exception as exc:  # pragma: no cover - defensive
                 logging.error(f"[CWL] Coordinator role sync failed for guild {guild_id}: {exc}", exc_info=True)
 
@@ -1562,6 +1597,12 @@ class CwlCoordinatorConfigurationView(discord.ui.View):
                 clan=self._current_clan_label(), names=self._current_names_text(),
                 limit=CWL_COORDINATOR_LIMIT,
             )
+            if roles_added or roles_removed:
+                msg += "\n" + t(
+                    'ui_components.cwl_coordinator_configuration.saved_roles_synced',
+                    user_id=user_id, guild_id=guild_id_for_t,
+                    added=roles_added, removed=roles_removed,
+                )
             await interaction.followup.send(msg, ephemeral=True)
 
     async def _on_notify(self, interaction: discord.Interaction) -> None:

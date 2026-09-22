@@ -3301,6 +3301,13 @@ def _dm_guard_blocks(discord_id: str) -> bool:
 DISCORD_MESSAGE_LIMIT = 2000
 
 
+def dm_guard_skipped_entries(accounts: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """The {player_tag, player_name} records every DM-sending process adds to its
+    `dm_guard_skipped` list when _dm_guard_blocks() holds a recipient back — the input of
+    format_cwl_dm_guard_skipped_report()."""
+    return [{"player_tag": a["player_tag"], "player_name": a.get("player_name")} for a in accounts]
+
+
 def format_cwl_dm_guard_skipped_report(
     skipped: List[Dict[str, Any]], guild_id: int, user_id: Optional[str] = None,
 ) -> List[str]:
@@ -3393,7 +3400,7 @@ async def _send_cwl_enrollment_dm_batch(
         "contacted": 0, "skipped_dm_guard": 0, "skipped_already_dm_globally": 0, "skipped_unlinked": 0,
         "blocked": [], "no_mutual_guild": [], "failed": [],
         # Who the DM guard held back ({player_tag, player_name}) — for the DEV-mode per-clan
-        # report after Start Enrollment (format_cwl_dm_guard_skipped_report). 2026-09-22.
+        # report every DM action's summary sends (ui_cwl_roster.send_dev_dm_guard_report). 2026-09-22.
         "dm_guard_skipped": [],
     }
     db = CACHE.db_manager
@@ -3418,9 +3425,7 @@ async def _send_cwl_enrollment_dm_batch(
             continue
         if _dm_guard_blocks(str(participant["discord_id"])):
             result["skipped_dm_guard"] += 1
-            result["dm_guard_skipped"].append(
-                {"player_tag": participant["player_tag"], "player_name": participant.get("player_name")}
-            )
+            result["dm_guard_skipped"].extend(dm_guard_skipped_entries([participant]))
             continue
         to_dm.append(participant)
 
@@ -4079,7 +4084,7 @@ async def send_cwl_roster_updates(guild_id: int, season: str) -> Dict[str, Any]:
     )
     summary: Dict[str, Any] = {
         "ok": True, "moved": 0, "dropped": 0, "new": 0, "contacted_users": 0,
-        "skipped_dm_guard": 0, "skipped_unlinked": 0,
+        "skipped_dm_guard": 0, "dm_guard_skipped": [], "skipped_unlinked": 0,
         "blocked": [], "no_mutual_guild": [], "failed": [],
     }
 
@@ -4104,6 +4109,7 @@ async def send_cwl_roster_updates(guild_id: int, season: str) -> Dict[str, Any]:
     for discord_id, entries in by_user.items():
         if _dm_guard_blocks(discord_id):
             summary["skipped_dm_guard"] += len(entries)
+            summary["dm_guard_skipped"].extend(dm_guard_skipped_entries(a for _kind, a in entries))
             continue
         display_name = CACHE.user_accounts.get(discord_id, {}).get("display_name") or discord_id
         intro = t(
@@ -4365,7 +4371,7 @@ async def announce_cwl_rosters(guild_id: int, season: str) -> Dict[str, Any]:
         return {"ok": False, "error": "nobody_to_notify"}
 
     summary: Dict[str, Any] = {
-        "ok": True, "contacted": 0, "contacted_users": 0, "skipped_dm_guard": 0,
+        "ok": True, "contacted": 0, "contacted_users": 0, "skipped_dm_guard": 0, "dm_guard_skipped": [],
         "skipped_unlinked": targets["skipped_unlinked"], "unlinked_names": targets["unlinked_names"],
         "skipped_not_owner": targets["skipped_not_owner"],
         "blocked": [], "no_mutual_guild": [], "failed": [],
@@ -4373,6 +4379,7 @@ async def announce_cwl_rosters(guild_id: int, season: str) -> Dict[str, Any]:
     for discord_id, accounts in targets["groups"].items():
         if _dm_guard_blocks(discord_id):
             summary["skipped_dm_guard"] += len(accounts)
+            summary["dm_guard_skipped"].extend(dm_guard_skipped_entries(accounts))
             continue
         group_result = await send_cwl_roster_dm_group(guild_id, season, discord_id, accounts)
         summary["contacted"] += group_result["contacted"]

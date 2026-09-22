@@ -1,6 +1,14 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-22 (7)  Build 51.
+- Added: the DEV-mode DM-guard report (entry 6) now follows EVERY CWL DM action whose summary
+  shows a "Skipped (DM guard)" count: Start Enrollment, Notify New Pool Members, Remind Pending,
+  Send Roster Updates (Hub button and the closed-board DM button) and Announce Rosters. Shared
+  code only: dm_guard_skipped_entries() records the skipped accounts at each counting site,
+  format_cwl_dm_guard_skipped_report() formats, ui_cwl_roster.send_dev_dm_guard_report() sends.
+  Files: QBdiscocmdshelper_cwl.py, ui_cwl_roster.py, web_bridge.py (+ tests). 3286 tests pass.
+
 2026-09-22 (6)  Build 50.
 - Added: in DEV mode, Start Enrollment sends a second ephemeral after its summary listing every
   player the DM guard skipped, grouped by current clan (clans A-Z, "No current clan" last),

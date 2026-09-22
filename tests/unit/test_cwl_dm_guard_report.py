@@ -84,3 +84,53 @@ async def test_batch_records_players_skipped_by_dm_guard(monkeypatch):
         {"player_tag": "#P1", "player_name": "One"}, {"player_tag": "#P2", "player_name": "Two"},
     ]
     assert result["contacted"] == 0
+
+
+# ── Every process that reports a DM-guard count also records who (2026-09-22) ─────────────────
+
+@pytest.fixture
+def guarded(monkeypatch):
+    """A season open for DMs, with the DM guard blocking every recipient."""
+    from qapbot import QBdiscocmdshelper_cwl as cwl
+    from qapbot.cache_manager import CACHE
+
+    db = MagicMock()
+    db.get_cwl_event_sync = MagicMock(return_value={"id": 7, "status": "signup_open"})
+    db.get_cwl_player_season_dm_status_bulk_sync = MagicMock(return_value={})
+    monkeypatch.setattr(CACHE, "db_manager", db)
+    monkeypatch.setattr(cwl, "_dm_guard_blocks", lambda discord_id: True)
+    return cwl
+
+
+ACCOUNTS = [{"player_tag": "#P1", "player_name": "One"}, {"player_tag": "#P2", "player_name": "Two"}]
+EXPECTED = [{"player_tag": "#P1", "player_name": "One"}, {"player_tag": "#P2", "player_name": "Two"}]
+
+
+async def test_send_roster_updates_records_dm_guard_skipped(guarded, monkeypatch):
+    monkeypatch.setattr(guarded, "resolve_cwl_pending_roster_updates_sync", lambda *a: {
+        "moved": [dict(ACCOUNTS[0], discord_id="10")], "new": [dict(ACCOUNTS[1], discord_id="20")], "dropped": [],
+    })
+    result = await guarded.send_cwl_roster_updates(1, "2026-10")
+    assert result["skipped_dm_guard"] == 2
+    assert result["dm_guard_skipped"] == EXPECTED
+
+
+async def test_announce_rosters_records_dm_guard_skipped(guarded, monkeypatch):
+    monkeypatch.setattr(guarded, "resolve_cwl_announcement_targets_sync", lambda *a: {
+        "groups": {"10": [dict(a, clan_tag="#C") for a in ACCOUNTS]}, "skipped_unlinked": 0,
+        "unlinked_names": [], "skipped_not_owner": 0, "missing_start_times": [],
+    })
+    result = await guarded.announce_cwl_rosters(1, "2026-10")
+    assert result["skipped_dm_guard"] == 2
+    assert result["dm_guard_skipped"] == EXPECTED
+
+
+async def test_remind_pending_records_dm_guard_skipped(guarded, monkeypatch):
+    from qapbot.web_bridge import remind_pending_cwl_players
+
+    monkeypatch.setattr(guarded, "resolve_cwl_pending_reminder_targets_sync", lambda *a: {
+        "groups": {"10": list(ACCOUNTS)}, "skipped_unlinked": 0, "skipped_optout": 0,
+    })
+    result = await remind_pending_cwl_players(1, "2026-10")
+    assert result["skipped_dm_guard"] == 2
+    assert result["dm_guard_skipped"] == EXPECTED

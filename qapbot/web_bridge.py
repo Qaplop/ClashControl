@@ -939,6 +939,7 @@ async def remind_pending_cwl_players(guild_id: int, season: str) -> Dict[str, An
     from qapbot.QBdiscocmdshelper_cwl import (
         _dm_guard_blocks,  # pyright: ignore[reportPrivateUsage]  # deliberately shared with QBdiscocmdshelper_cwl's own DM-sending paths
         _retract_enrollment_dms_for_tags,  # pyright: ignore[reportPrivateUsage]
+        dm_guard_skipped_entries,
         resolve_cwl_pending_reminder_targets_sync,
         send_cwl_reminder_dm_group,
     )
@@ -955,13 +956,14 @@ async def remind_pending_cwl_players(guild_id: int, season: str) -> Dict[str, An
     pool = await asyncio.to_thread(resolve_cwl_pending_reminder_targets_sync, event["id"])
     summary: Dict[str, Any] = {
         "ok": True, "contacted": 0, "contacted_users": 0,
-        "skipped_dm_guard": 0, "skipped_unlinked": pool["skipped_unlinked"],
+        "skipped_dm_guard": 0, "dm_guard_skipped": [], "skipped_unlinked": pool["skipped_unlinked"],
         "skipped_optout": pool["skipped_optout"],
         "blocked": [], "no_mutual_guild": [], "failed": [],
     }
     for discord_id, accounts in pool["groups"].items():
         if _dm_guard_blocks(discord_id):
             summary["skipped_dm_guard"] += len(accounts)
+            summary["dm_guard_skipped"].extend(dm_guard_skipped_entries(accounts))
             continue
 
         tags = [a["player_tag"] for a in accounts]

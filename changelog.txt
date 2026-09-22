@@ -1,6 +1,13 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-22 (2)
+- Fixed: test_sweep_leaves_an_in_window_incomplete_group_alone hardcoded season "2026-09" as
+  in-window, but the sweep checks the window against the real clock, so it started failing once
+  that window closed (2026-09-15). The test now uses a bonus-CWL key dated today, which is always
+  in-window, and asserts that precondition. Test-only, no build bump.
+  File: tests/integration/test_cwl_ended_sweep.py. 3275 tests pass.
+
 2026-09-22 (1)  Build 47.
 - Added: persistent CWL guest clans. STAY report: re-added guest clan "Akatsumi"
   (! ! AKATSUKI! !, #2CGGVVVJG), and "Notify New Pool Members" reached none of its players.

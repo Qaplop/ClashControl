@@ -242,10 +242,20 @@ async def test_sweep_leaves_an_in_window_incomplete_group_alone(db, monkeypatch)
     monkeypatch.setattr(CACHE, "db_manager", db)
     monkeypatch.setattr(H, "_cwl_ended_sweep_cursor", ("", ""), raising=False)
 
+    # The sweep evaluates the window against the REAL clock, so the season must be in-window
+    # relative to real "now" — a hardcoded "2026-09" silently stopped being in-window on
+    # 2026-09-15 and this test started failing. A bonus-CWL key dated today ("YYYY-MM-DD")
+    # opens its window today, so it stays in-window no matter when the suite runs, and the real
+    # cwl_season_window_closed() is still exercised (unlike patching it away).
+    from qapbot.constants import cwl_season_window_closed
+
+    season = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    assert cwl_season_window_closed(season) is False, f"precondition: {season} must be in-window"
+
     tags = [f"#C{i}" for i in range(4)]
-    await _add_group(db, "gRunning", "2026-09", tags)  # 2026-09 window not closed at real "now"
+    await _add_group(db, "gRunning", season, tags)
     for tag in tags[:2]:
-        await _add_ended_wars(db, f"#gRunning{tag.lstrip('#')}", "2026-09", 3)
+        await _add_ended_wars(db, f"#gRunning{tag.lstrip('#')}", season, 3)
 
     result = await H.sweep_cwl_ended_flags(batches=1, batch_size=10)
 

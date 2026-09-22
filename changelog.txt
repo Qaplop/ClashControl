@@ -1,6 +1,13 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-22 (10)  Build 54.
+- Fixed: Pylance reportArgumentType on post_leaderboard_to_discord(month=None) (QapBot.py and two
+  QBdiscordcmds.py call sites) introduced with the raid modes in build 52. The function already
+  handled None at runtime (keyed as "current"); its annotation now says Optional, replacing the
+  call-site type-ignore comments. No behavior change. Files: QBhelperfunctions.py, QapBot.py,
+  QBdiscordcmds.py. 3328 tests pass.
+
 2026-09-22 (9)  Build 53.
 - Added: one-time first-run backfill for Clan Capital raids (tracker #0115). A member clan with
   no raid data yet gets exactly ONE out-of-weekend poll: if the API still serves last weekend's

@@ -518,7 +518,7 @@ def calculate_leaderboard(clan_tag: str, month: Optional[int] = None, year: Opti
 async def post_leaderboard_to_discord(
     leaderboard_text: str,
     clan_tag: str,
-    month: Union[int, List[int], List[Tuple[int, int]]],
+    month: Optional[Union[int, List[int], List[Tuple[int, int]]]],
     year: Optional[int],
     channel: Union[discord.TextChannel, discord.Thread],
     mode: str = DEFAULT_MODE,
@@ -534,7 +534,9 @@ async def post_leaderboard_to_discord(
         clan_tag: Clash of Clans clan tag (normalized format: #ABCDEFGH)
         month: Month(s) for leaderboard - int (1-12), list of ints for ranges
             ([1,2,3,...]), or list of (month, year) pairs for periods crossing a
-            year boundary (in which case `year` is ignored/overwritten)
+            year boundary (in which case `year` is ignored/overwritten), or None for modes that
+            show the latest raid weekend rather than a period (currentraid/raidmissed without a
+            month, tracker #0115) — keyed as "current"
         year: Year for leaderboard (4-digit format); ignored when month is a list of pairs
         channel: Discord channel or thread where leaderboard will be posted
         mode: Leaderboard mode ("attack", "avgstars", "attackdefratio", "stars_cwl", etc.)

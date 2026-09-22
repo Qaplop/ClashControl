@@ -940,7 +940,7 @@ async def post_leaderboards_to_subscribed_channels() -> None:
                     # --- all other modes: text/leaderboard path ---
                     if subscription_type in ('currentraid', 'raidmissed') and sub_month is None and sub_year is None:
                         # No fixed period: these show the latest raid weekend (tracker #0115).
-                        month_range = None  # type: ignore[assignment]
+                        month_range = None
                     leaderboard_text = await asyncio.to_thread(generate_leaderboard_text, clan_tag, month=month_range, year=year, mode=subscription_type)
                     # Only auto-fallback when no explicit month/year is set. "recorded for" covers
                     # both "No wars recorded for" and the raid modes' "No raid weekends recorded for".

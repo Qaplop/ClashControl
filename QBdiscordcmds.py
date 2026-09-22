@@ -775,7 +775,7 @@ async def leaderboard(
         if per_tag_modes[i] in ('currentraid', 'raidmissed') and not explicit_time:
             # No month/year given: these two show the latest raid weekend, not "this month"
             # (tracker #0115) — month=None is how generate_leaderboard_text() is told so.
-            period_month = None  # type: ignore[assignment]
+            period_month = None
         if per_tag_modes[i] == 'currentraid':
             from qapbot.constants import is_capital_raid_window
             if is_capital_raid_window():
@@ -975,7 +975,7 @@ async def highlightme(interaction: discord.Interaction):
             month, year, month_range = resolve_subscription_period(sub)
             if mode in ('currentraid', 'raidmissed') and sub_month is None and sub_year is None:
                 # No fixed period: latest raid weekend, as the automatic poster does (tracker #0115).
-                month_range = None  # type: ignore[assignment]
+                month_range = None
 
             text = await asyncio.to_thread(
                 generate_leaderboard_text, clan_tag, month=month_range, year=year,

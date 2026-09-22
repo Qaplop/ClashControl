@@ -1,6 +1,11 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-22 (3)
+- Fixed: Activity "Configure Participating Clans" said "click Save above to persist" after adding
+  a guest clan, but the Save button sits below the Guests section. Now says "below".
+  File: activity/client/src/clanConfigTable.ts (client only, no bot build).
+
 2026-09-22 (2)
 - Fixed: test_sweep_leaves_an_in_window_incomplete_group_alone hardcoded season "2026-09" as
   in-window, but the sweep checks the window against the real clock, so it started failing once

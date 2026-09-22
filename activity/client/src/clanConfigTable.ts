@@ -409,8 +409,8 @@ export function renderClanConfigTable(
           updateSelectAllState()
           updateReadOnlyNoticeVisibility()
           guestsStatus.textContent = clanResult.already_shared_with
-            ? `Added ${clanResult.clan_name} — shared with ${clanResult.already_shared_with}. Click Save above to persist.`
-            : `Added ${clanResult.clan_name} — click Save above to persist.`
+            ? `Added ${clanResult.clan_name} — shared with ${clanResult.already_shared_with}. Click Save below to persist.`
+            : `Added ${clanResult.clan_name} — click Save below to persist.`
           guestsStatus.className = 'guests-status success'
           // Leaves the search box and every OTHER result in place (2026-08-24, tracker #0049,
           // live bug report: a multi-result search got wiped after adding just one guest, forcing

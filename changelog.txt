@@ -1,6 +1,16 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-22 (18)  Build 61.
+- Added: Spanish (es), Mandarin (zh) and Latin (la) translations, full key parity with en.json.
+  The guild language selector (/clan management -> Basic Configuration) and the personal
+  war-notification language selector now build their options from the translation files
+  (new i18n.get_language_display_name(), read from each file's _meta.language) instead of
+  hard-coded en/de lists, so a new translations/{code}.json becomes selectable on its own.
+  Committed in b8f5f86 without a build bump; first shipped as Build 61.
+  Files: qapbot/i18n.py, ui_clan_management.py, ui_common.py, ui_notifications.py,
+  QBdiscocmdshelper.py, translations, docs. 3361 tests pass.
+
 2026-09-22 (17)  Build 61.
 - Removed: the /magnus test command from entry (16) again (tracker #0116 was only a test).
   Command, registration, /help listing, README line, translation keys (all languages) and

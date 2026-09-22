@@ -202,9 +202,6 @@
       "player_not_found": "在部落冲突中找不到玩家 `{tag}`。"
     },
     "status": {},
-    "magnus": {
-      "hello": "👋 你好，世界！"
-    },
     "help": {
       "list_title": "QapBot 命令",
       "list_description": "使用 `/help command:命令名称` 获取某个具体命令的详细帮助。",
@@ -290,11 +287,6 @@
         "short": "检查机器人延迟",
         "title": "🏓 Ping 命令",
         "detailed": "检查机器人对 Discord 服务器的响应时间和延迟。\n\n**用法：**\n`/ping`\n\n**显示的信息：**\n• 机器人延迟（往返时间）\n• WebSocket 心跳延迟\n• 响应时间\n\n用于诊断连接问题或检查机器人的响应能力。"
-      },
-      "magnus": {
-        "short": "打个招呼",
-        "title": "👋 Magnus 命令",
-        "detailed": "回复一条简单的“你好，世界”消息，仅你自己可见。\n\n**用法：**\n`/magnus`"
       },
       "status": {
         "short": "显示机器人状态和统计信息",

@@ -202,9 +202,6 @@
       "player_not_found": "No se pudo encontrar al jugador `{tag}` en Clash of Clans."
     },
     "status": {},
-    "magnus": {
-      "hello": "👋 ¡Hola, Mundo!"
-    },
     "help": {
       "list_title": "Comandos de QapBot",
       "list_description": "Usa `/help command:NombreComando` para obtener ayuda detallada sobre un comando específico.",
@@ -290,11 +287,6 @@
         "short": "Comprobar la latencia del bot",
         "title": "🏓 Comando Ping",
         "detailed": "Comprueba el tiempo de respuesta y la latencia del bot con los servidores de Discord.\n\n**Uso:**\n`/ping`\n\n**Información Mostrada:**\n• Latencia del bot (tiempo de ida y vuelta)\n• Latencia del latido del WebSocket\n• Tiempo de respuesta\n\nÚtil para diagnosticar problemas de conexión o comprobar la capacidad de respuesta del bot."
-      },
-      "magnus": {
-        "short": "Decir hola mundo",
-        "title": "👋 Comando Magnus",
-        "detailed": "Responde con un sencillo mensaje de hola mundo, visible solo para ti.\n\n**Uso:**\n`/magnus`"
       },
       "status": {
         "short": "Mostrar el estado y las estadísticas del bot",

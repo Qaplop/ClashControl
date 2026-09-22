@@ -1,6 +1,11 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-22 (17)  Build 61.
+- Removed: the /magnus test command from entry (16) again (tracker #0116 was only a test).
+  Command, registration, /help listing, README line, translation keys (all languages) and
+  its test are gone. Files: QBdiscordcmds.py, QapBot.py, README.md, translations. 3361 tests pass.
+
 2026-09-22 (16)  Build 60.
 - Added (tracker #0116): /magnus replies to the invoking user with an ephemeral "Hello, World!"
   message (translated, DM-invokable); listed in /help under Bot Info.

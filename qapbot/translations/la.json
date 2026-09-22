@@ -202,9 +202,6 @@
       "player_not_found": "Lusor `{tag}` in Clash of Clans inveniri non potuit."
     },
     "status": {},
-    "magnus": {
-      "hello": "👋 Salve, Mundi!"
-    },
     "help": {
       "list_title": "Mandata QapBot",
       "list_description": "Utere `/help command:NomenMandati` ad auxilium detaliatum de mandato specifico obtinendum.",
@@ -290,11 +287,6 @@
         "short": "Verifica tarditatem automati",
         "title": "🏓 Mandatum Ping",
         "detailed": "Verifica tempus responsi et tarditatem automati ad servitores Discord.\n\n**Usus:**\n`/ping`\n\n**Informatio Ostensa:**\n• Tarditas automati (tempus itineris duplicis)\n• Tarditas pulsus WebSocket\n• Tempus responsi\n\nUtile ad quaestiones connexionis diagnoscendas vel responsivitatem automati verificandam."
-      },
-      "magnus": {
-        "short": "Dic salve mundo",
-        "title": "👋 Mandatum Magnus",
-        "detailed": "Respondet simplici nuntio salve-mundo, tantum tibi visibili.\n\n**Usus:**\n`/magnus`"
       },
       "status": {
         "short": "Ostende statum et statisticas automati",

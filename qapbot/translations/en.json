@@ -202,9 +202,6 @@
       "player_not_found": "Player `{tag}` could not be found in Clash of Clans."
     },
     "status": {},
-    "magnus": {
-      "hello": "👋 Hello, World!"
-    },
     "help": {
       "list_title": "QapBot Commands",
       "list_description": "Use `/help command:CommandName` for detailed help about a specific command.",
@@ -290,11 +287,6 @@
         "short": "Check bot latency",
         "title": "🏓 Ping Command",
         "detailed": "Check the bot's response time and latency to Discord servers.\n\n**Usage:**\n`/ping`\n\n**Information Displayed:**\n• Bot latency (round-trip time)\n• WebSocket heartbeat latency\n• Response time\n\nUseful for diagnosing connection issues or checking bot responsiveness."
-      },
-      "magnus": {
-        "short": "Say hello world",
-        "title": "👋 Magnus Command",
-        "detailed": "Replies with a simple hello-world message, visible only to you.\n\n**Usage:**\n`/magnus`"
       },
       "status": {
         "short": "Show bot status and statistics",

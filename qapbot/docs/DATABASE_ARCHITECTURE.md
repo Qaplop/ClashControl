@@ -375,6 +375,15 @@ The `get_clan_attack_history_sync()` method in `db_manager.py` aggregates `SUM(s
   union of `cwl_clan_coordinators` across every clan. NULL = not linked = never synced)
 - `guild_member_families` - Junction: guilds ↔ families
 - `guild_member_clans` - Junction: guilds ↔ clans
+- `guild_guest_clans` - Junction: guilds ↔ clans they invited as CWL guests (2026-09-22), with
+  `first_invited_season`/`last_invited_season`. One row per (guild, clan) — a clan invited by
+  several guilds has several rows. Written by `handle_post_clan_config` (web_bridge.py) on every
+  clan-config save; removed only via /clan management → Families → "Remove Guest Clan", which
+  refuses while the clan is on an upcoming or still-running season. Grants the member role (not
+  CoC in-game roles) and counts as tracked for `has_active_subscriptions`, but is NOT part of the
+  guild's CWL family (`resolve_guild_member_clan_tags()` excludes it). No FK — listed in
+  `CLAN_TAG_REFERENCING_TABLES` instead. Seeded once from existing seasons (bot_metadata key
+  `guild_guest_clans_backfill_v1`). Mirrored in `CACHE.guild_guest_clans`.
 - `guild_welcome_families` - Junction: guilds ↔ families selected (as a whole) for the welcome
   message's clan-link mode. Independent from `guild_member_families` (member-role granting).
 - `guild_welcome_clans` - Junction: guilds ↔ individually-selected clans for the welcome

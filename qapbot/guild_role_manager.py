@@ -809,7 +809,12 @@ async def _sync_roles_for_user_impl(
     # If the user already has the member role, the newbie role is still removed if present.
     # SIMPLE mode: any linked player in a member clan qualifies.
     # STRICT mode: player must be API-verified in a member clan.
+    # Persisted CWL guest clans (CACHE.guild_guest_clans) qualify for the MEMBER role only — they
+    # are deliberately absent from guild_member_clans above, so the CoC in-game Leader/Co-Leader
+    # roles (which gate CWL admin rights, see _resolve_admin_or_leader in web_bridge.py) are never
+    # handed to another clan's leadership.
     if role_system_enabled:
+        _member_role_clans: Set[str] = guild_member_clans | set(CACHE.get_guild_guest_clan_tags(guild_id))
         _member_role_id_str: Optional[str] = config.get("member_role_id")
         _newbie_role_id_str: Optional[str] = config.get("newbie_role_id")
         _newbie_disc_role: Optional[discord.Role] = None
@@ -832,7 +837,7 @@ async def _sync_roles_for_user_impl(
                         if not isinstance(_player, dict):
                             continue
                         _clan_tag = _player.get("current_clan_tag")  # type: ignore[union-attr]
-                        if _clan_tag and _clan_tag in guild_member_clans:
+                        if _clan_tag and _clan_tag in _member_role_clans:
                             if not member_role_strict or _player.get("verified", False):  # type: ignore[union-attr]
                                 _eligible = True
                                 break
@@ -917,6 +922,8 @@ async def sync_all_roles_for_guild(
     for _fid in config.get("member_families", []):
         _fdata = CACHE.clan_families.get(_fid, {})
         _guild_clans.update(_fdata.get("clans", []))
+    # Guest-clan members are expected here too — they're invited onto this server for CWL.
+    _guild_clans.update(set(CACHE.get_guild_guest_clan_tags(guild_id)))
 
     # Collect all Discord user IDs with registered accounts
     user_ids: List[int] = []

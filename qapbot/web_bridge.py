@@ -2521,6 +2521,29 @@ async def handle_post_clan_config(request: web.Request) -> web.Response:
     previously_known_tags = prepared["previously_known_tags"]
     clan_configs = prepared["clan_configs"]
 
+    # Persist this season's guest clans (2026-09-22, project owner's spec) so they keep member-role
+    # rights and member-list tracking after the season, and make sure a NEWLY invited guest clan has
+    # a member list younger than 24h before anything seeds a pool from it — whatever the event's
+    # status (the auto-assign path below only fetches once enrollment is open). Runs before the
+    # loops so their own ensure_cwl_clan_membership_tracked() calls find the data already fresh.
+    from qapbot.QBdiscocmdshelper_cwl import (
+        ensure_cwl_clan_membership_tracked,
+        register_cwl_guest_clans_for_event,
+        resolve_guild_member_clan_tags,
+    )
+
+    try:
+        await register_cwl_guest_clans_for_event(guild_id, event_id, season)
+        family_clan_tags = set(resolve_guild_member_clan_tags(guild_id))
+        newly_added_guest_tags = [
+            c["clan_tag"] for c in clan_configs
+            if c["clan_tag"] not in previously_known_tags and c["clan_tag"] not in family_clan_tags
+        ]
+        if newly_added_guest_tags:
+            await ensure_cwl_clan_membership_tracked(newly_added_guest_tags)
+    except Exception as e:
+        logging.warning(f"[WEB-BRIDGE] Saved clan-config but guest-clan persistence/member refresh failed: {e}")
+
     # Cross-guild shared-clan check (2026-08-15, project owner's spec) — the first of the two
     # trigger points (the other is start_cwl_enrollment). The frontend's Guests search already
     # highlighted an already-claimed clan and had the admin confirm adding it anyway (see

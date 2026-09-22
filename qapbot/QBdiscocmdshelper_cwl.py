@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 from zoneinfo import ZoneInfo
 
@@ -690,6 +690,107 @@ def get_cwl_guest_clan_tags_sync(db: Any, event_id: int, guild_id: int) -> Set[s
     members remain pooled."""
     family_tags = set(resolve_guild_member_clan_tags(guild_id))
     return {c["clan_tag"] for c in db.get_cwl_event_clans_sync(event_id) if c["clan_tag"] not in family_tags}
+
+
+# How long a season still counts as running after its (latest) CWL start: nominally 8 days —
+# 1 preparation day + 7 war days (COC_GAME_MECHANICS.md § CWL) — plus 1 day for maintenance delays.
+CWL_SEASON_RUNNING_WINDOW = timedelta(days=9)
+
+
+def is_cwl_event_active_or_upcoming(event: Dict[str, Any], now: Optional[datetime] = None) -> bool:
+    """Whether a cwl_events row is a season that hasn't finished yet — the guard for removing a
+    persisted guest clan (2026-09-22, project owner's spec: "guest clans should only be removable
+    for past cwl seasons").
+
+    There is no 'completed' event status (a finished season stays in 'war' forever, see
+    purge_expired_cwl_events), so this goes by the season key and the clock instead:
+      - cancelled → never active;
+      - a later month than now → upcoming;
+      - an earlier month → past;
+      - the current month → running until the latest configured cwl_start_at (or the season's
+        default start, the 1st at 08:00 UTC) plus CWL_SEASON_RUNNING_WINDOW.
+
+    Args:
+        event: A cwl_events row; `clan_cwl_start_ats` (as added by
+            get_cwl_events_containing_clan_sync) is used when present.
+        now: Reference time (tests); defaults to the current UTC time.
+    """
+    if event.get("status") == "cancelled":
+        return False
+    now = now or datetime.now(timezone.utc)
+    season = str(event["cwl_season"])[:7]
+    current_month = f"{now.year:04d}-{now.month:02d}"
+    if season != current_month:
+        return season > current_month
+    starts: List[datetime] = []
+    for raw in event.get("clan_cwl_start_ats") or []:
+        try:
+            starts.append(datetime.strptime(str(raw).rstrip("Z"), "%Y-%m-%dT%H:%M").replace(tzinfo=timezone.utc))
+        except ValueError:
+            continue
+    season_start = max(starts) if starts else datetime.strptime(
+        f"{season}-01T08:00", "%Y-%m-%dT%H:%M"
+    ).replace(tzinfo=timezone.utc)
+    return now < season_start + CWL_SEASON_RUNNING_WINDOW
+
+
+async def register_cwl_guest_clans_for_event(guild_id: int, event_id: int, season: str) -> List[str]:
+    """Persist every guest clan currently on event_id's roster into guild_guest_clans, so it keeps
+    member-role rights and member-list tracking after the season ends (2026-09-22, project owner's
+    spec). Idempotent — safe to call on every clan-config save. Returns the clan tags that were new
+    to this guild's guest list."""
+    db = CACHE.db_manager
+    if db is None:
+        return []
+    guest_tags = await asyncio.to_thread(get_cwl_guest_clan_tags_sync, db, event_id, guild_id)
+    return await CACHE.register_guild_guest_clans(guild_id, {tag: season for tag in guest_tags})
+
+
+def _blocking_cwl_seasons_for_guest_clan_sync(guild_id: int, clan_tag: str) -> List[str]:
+    """Seasons of this guild that still hold clan_tag and haven't finished (sorted, may be empty)."""
+    db = CACHE.db_manager
+    if db is None:
+        return []
+    events = db.get_cwl_events_containing_clan_sync(str(guild_id), clan_tag)
+    return sorted({e["cwl_season"] for e in events if is_cwl_event_active_or_upcoming(e)})
+
+
+def get_guild_guest_clans_overview_sync(guild_id: int) -> List[Dict[str, Any]]:
+    """The guild's persisted guest clans for the /clan management Families screen, sorted by name.
+
+    Each entry: {clan_tag, clan_name, first_invited_season, last_invited_season, blocking_seasons}
+    — blocking_seasons non-empty means the clan can't be removed yet. Plain sync (DB lookups per
+    guest clan); async callers wrap it in one asyncio.to_thread() hop."""
+    rows: List[Dict[str, Any]] = []
+    for clan_tag, entry in CACHE.guild_guest_clans.get(str(guild_id), {}).items():
+        rows.append({
+            "clan_tag": clan_tag,
+            "clan_name": CACHE.get_clan_name(clan_tag, clan_tag) or clan_tag,
+            "first_invited_season": entry.get("first_invited_season"),
+            "last_invited_season": entry.get("last_invited_season"),
+            "blocking_seasons": _blocking_cwl_seasons_for_guest_clan_sync(guild_id, clan_tag),
+        })
+    return sorted(rows, key=lambda r: str(r["clan_name"]).lower())
+
+
+async def remove_guild_guest_clan_checked(guild_id: int, clan_tag: str) -> Dict[str, Any]:
+    """Remove a persisted guest clan from a guild, refusing while any of the guild's seasons that
+    include the clan is upcoming or still running (is_cwl_event_active_or_upcoming).
+
+    Removal only ends the guest status (member-list tracking + member-role eligibility for new
+    grants); it never touches a season's roster, and — like every member-role path — it doesn't
+    revoke a member role already granted.
+
+    Returns:
+        {"ok": True} or {"ok": False, "error": "not_a_guest" | "season_active", "seasons": [...]}.
+    """
+    if clan_tag not in CACHE.get_guild_guest_clan_tags(guild_id):
+        return {"ok": False, "error": "not_a_guest", "seasons": []}
+    blocking = await asyncio.to_thread(_blocking_cwl_seasons_for_guest_clan_sync, guild_id, clan_tag)
+    if blocking:
+        return {"ok": False, "error": "season_active", "seasons": blocking}
+    await CACHE.remove_guild_guest_clan(guild_id, clan_tag)
+    return {"ok": True, "seasons": []}
 
 
 def split_cwl_pending_signups_by_link_sync(event_id: int) -> Tuple[int, int]:
@@ -1652,6 +1753,43 @@ def assign_cwl_player_sync(
     return None
 
 
+CWL_MEMBER_LIST_MAX_AGE = timedelta(hours=24)
+
+
+def _cwl_clan_member_list_is_fresh(clan_tag: str, now: Optional[datetime] = None) -> bool:
+    """True if clan_tag's member list in user_players was refreshed within CWL_MEMBER_LIST_MAX_AGE.
+
+    Two signals, either suffices:
+      1. coc_clan_cache.members_refreshed_at — set every time update_player_info_in_user_accounts()
+         completes for the clan (memory-only, empty after a restart);
+      2. the clan is tracked (has_active_subscriptions) and its last_checked_via_api is recent — a
+         CoC fetch of a tracked clan always runs that same member update (coc_cache.py's
+         _update_clan_metadata), so this survives a restart for family and guest clans alike.
+
+    Args:
+        clan_tag: The clan to check.
+        now: Reference time (tests); defaults to the current UTC time.
+    """
+    now = now or datetime.now(timezone.utc)
+    coc_clan_cache = getattr(CACHE, "coc_clan_cache", None)
+    refreshed = getattr(coc_clan_cache, "members_refreshed_at", {}).get(clan_tag) if coc_clan_cache else None
+    if isinstance(refreshed, datetime) and now - refreshed < CWL_MEMBER_LIST_MAX_AGE:
+        return True
+    clan_data = CACHE.clan_name_cache.get(clan_tag)
+    if not isinstance(clan_data, dict) or not clan_data.get("has_active_subscriptions"):
+        return False
+    last_checked = clan_data.get("last_checked_via_api")
+    if not isinstance(last_checked, str):
+        return False
+    try:
+        checked_at = datetime.fromisoformat(last_checked)
+    except ValueError:
+        return False
+    if checked_at.tzinfo is None:
+        checked_at = checked_at.replace(tzinfo=timezone.utc)
+    return now - checked_at < CWL_MEMBER_LIST_MAX_AGE
+
+
 async def ensure_cwl_clan_membership_tracked(clan_tags: Iterable[str]) -> None:
     """Make sure every clan in clan_tags actually has live membership data in user_players before
     anything tries to seed a CWL player pool from it (2026-08-19 fix, live bug report, project
@@ -1678,11 +1816,18 @@ async def ensure_cwl_clan_membership_tracked(clan_tags: Iterable[str]) -> None:
     find. Deliberately scoped to clans an admin has explicitly put on a CWL roster and only when
     they have no data at all, so it never reintroduces the 2026-08-14 blanket-tracking behavior.
 
-    Not a substitute for a subscription: the snapshot is refreshed only on the next call here
-    (guest-clan add / Start Enrollment), not by the poll cycle, since deliberately NOT flipping
-    has_active_subscriptions avoids permanently ratcheting track_war_updates on for a clan that's
-    only along for one season. A guest clan's roster barely moves inside a single CWL season, and
-    re-adding the clan re-syncs it.
+    OUTDATED (2026-09-22): Not a substitute for a subscription: the snapshot is refreshed only on
+    the next call here (guest-clan add / Start Enrollment), not by the poll cycle, since
+    deliberately NOT flipping has_active_subscriptions avoids permanently ratcheting
+    track_war_updates on for a clan that's only along for one season. A guest clan's roster barely
+    moves inside a single CWL season, and re-adding the clan re-syncs it.
+    Now (2026-09-22, project owner's spec): a guest clan is persisted in guild_guest_clans and DOES
+    count as tracked (update_all_clan_subscription_statuses step 1e), so the poll cycle keeps its
+    roster current like a family clan's. And "has members at all" is no longer enough to skip the
+    fetch: a clan is only considered current if its member list was refreshed within
+    CWL_MEMBER_LIST_MAX_AGE — the STAY report that prompted this re-added a guest clan whose
+    roster had last been read days earlier, and "re-adding re-syncs it" above was never true for
+    a clan that already had rows. See _cwl_clan_member_list_is_fresh().
 
     Best-effort throughout — a CoC API failure logs and leaves the clan seeded from whatever is
     already known rather than failing the admin's save/Start Enrollment."""
@@ -1695,7 +1840,7 @@ async def ensure_cwl_clan_membership_tracked(clan_tags: Iterable[str]) -> None:
 
     tracked = await asyncio.to_thread(db.get_current_clan_members_sync, tags)
     known_tags = {m["clan_tag"] for m in tracked}
-    missing = [t for t in tags if t not in known_tags]
+    missing = [t for t in tags if t not in known_tags or not _cwl_clan_member_list_is_fresh(t)]
     if not missing:
         return
 
@@ -1712,8 +1857,8 @@ async def ensure_cwl_clan_membership_tracked(clan_tags: Iterable[str]) -> None:
             clan_obj = await coc_clan_cache.get_clan(clan_tag)
             await coc_clan_cache.update_player_info_in_user_accounts(clan_obj, CACHE)
             logging.info(
-                f"[CWL-POOL-SEED] {clan_tag} had no tracked members (not subscribed by any guild) "
-                f"— populated user_players from a live CoC fetch so its members can enter the pool"
+                f"[CWL-POOL-SEED] {clan_tag} had no current member list (none tracked, or older "
+                f"than {CWL_MEMBER_LIST_MAX_AGE}) — refreshed user_players from a live CoC fetch"
             )
         except Exception as e:
             logging.warning(f"[CWL-POOL-SEED] Could not fetch members for untracked CWL clan {clan_tag}: {e}")

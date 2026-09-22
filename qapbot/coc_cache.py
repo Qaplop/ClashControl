@@ -149,6 +149,12 @@ class CoCClanCache:
         # "Start Enrollment" run (120-player DM blast, Stay family) raced the periodic loop on a
         # just-added clan with zero prior tracked members.
         self._update_locks: Dict[str, asyncio.Lock] = {}
+        # clan_tag -> when update_player_info_in_user_accounts() last completed for it, i.e. how
+        # old the clan's member list in user_players is. Read by ensure_cwl_clan_membership_tracked()
+        # (QBdiscocmdshelper_cwl.py) for its 24h freshness rule. Memory-only by design: after a
+        # restart a missing entry just costs one extra clan fetch on the next guest-clan add.
+        # Bounded by the number of tracked clans (only those reach that method).
+        self.members_refreshed_at: Dict[str, datetime] = {}
         self.cache_manager: Optional['CacheManager'] = None  # Set after CacheManager initialization
         # Note: Logging may not be configured yet during module import, so use try/except
         try:
@@ -702,6 +708,7 @@ class CoCClanCache:
         lock = self._update_locks.setdefault(clan_tag_str, asyncio.Lock())
         async with lock:
             await self._update_player_info_in_user_accounts_locked(clan_obj, cache_manager)
+            self.members_refreshed_at[clan_tag_str] = datetime.now(timezone.utc)
 
     async def _update_player_info_in_user_accounts_locked(self, clan_obj: 'coc.Clan', cache_manager: 'CacheManager') -> None:
         """

@@ -1,6 +1,27 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-22 (1)  Build 47.
+- Added: persistent CWL guest clans. STAY report: re-added guest clan "Akatsumi"
+  (! ! AKATSUKI! !, #2CGGVVVJG), and "Notify New Pool Members" reached none of its players.
+  Root cause was NOT missing data: the members were fetched on 2026-09-17, but 23/25 are
+  unlinked (UNASSIGNED pool) and the other 2 belong to one STAY admin who had already answered,
+  so nobody could get a DM.
+- New table guild_guest_clans (guild <-> invited clan, first/last season), seeded once from
+  existing seasons, mirrored in CACHE.guild_guest_clans, written on every clan-config save.
+  Persisted guest clans get the member role like family clans (not CoC Leader/Co-Leader roles)
+  and count as tracked, so the poll keeps their rosters current. They stay guests for all CWL logic.
+- Changed: ensure_cwl_clan_membership_tracked() now refetches a clan whose member list is older
+  than 24h, not only one with no members at all. A newly added guest clan gets this check at save
+  time, whatever the event status.
+- Added: /clan management -> Families lists guest clans, plus a "Remove Guest Clan" button
+  (select -> confirm). Refused while the clan is on an upcoming or still-running season
+  (latest cwl_start_at + 9 days).
+  Files: db_manager.py, cache_manager.py, coc_cache.py, QBdiscocmdshelper(_cwl).py,
+  guild_role_manager.py, ui_clan_management.py, web_bridge.py, en/de.json. 3274 tests pass
+  (tests/integration/test_cwl_ended_sweep.py::test_sweep_leaves_an_in_window_incomplete_group_alone
+  deselected: pre-existing, fails since its hardcoded 2026-09 window closed at real "now").
+
 2026-09-12 (6)  Build 46.
 - Bundled three tracker items into the #0113 measurement deploy, so one 40-60h PROD run
   yields data for six tickets instead of one. A separate deploy later would restart the

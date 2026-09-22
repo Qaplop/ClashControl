@@ -17,6 +17,7 @@ class _FakeCache:
         self.server_config: Dict[str, Dict[str, list[str]]] = {}
         self.leaderboard_messages: Dict[str, Dict[str, Any]] = {}
         self._channel_subs: Dict[str, list[Dict[str, Any]]] = {}
+        self.guild_guest_clans: Dict[str, Dict[str, Dict[str, Any]]] = {}
 
         self.persist_clan = AsyncMock()
         self.delete_leaderboard_message = AsyncMock(side_effect=self._delete_leaderboard_message)
@@ -31,6 +32,9 @@ class _FakeCache:
 
     def get_channel_subscriptions(self, channel_id: str) -> list[Dict[str, Any]]:
         return self._channel_subs.get(channel_id, [])
+
+    def get_guild_guest_clan_tags(self, guild_id: Any) -> set[str]:
+        return set(self.guild_guest_clans.get(str(guild_id), {}).keys())
 
 
 def _t_clan_name(key: str, **kwargs: Any) -> str:

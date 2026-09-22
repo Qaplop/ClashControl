@@ -51,7 +51,7 @@ import gc as _gc
 import types as _types_mod
 from collections import deque
 from datetime import datetime, timedelta, timezone as _dt_timezone
-from typing import Dict, Any, Iterable, Tuple, List, Literal, Optional, Set, cast, TYPE_CHECKING
+from typing import Dict, Any, Iterable, Tuple, List, Literal, Optional, Set, Union, cast, TYPE_CHECKING
 import discord
 import coc  # type: ignore[import-untyped]
 import re
@@ -373,6 +373,11 @@ class CacheManager:
         self.notification_state: Dict[str, Dict[str, Any]] = {}  # war_id -> {"notified_players": {player_tag: {...}}}
         # Server configuration for role management, welcome message, and war notifications (guild_id -> config)
         self.server_config: Dict[str, Dict[str, Any]] = {}  # guild_id -> {"role_system_enabled": bool, "newbie_role_id": str, "member_role_id": str, "member_clans": List[str], "member_families": List[str], "registration_channel_id": str, "registration_message_enabled": bool, "registration_message_id": str, "war_notification_channel_id": str, "channel_war_notifications_enabled": bool}
+        # Persisted CWL guest clans (guild_guest_clans table): guild_id -> clan_tag ->
+        # {"first_invited_season", "last_invited_season"}. A guest clan counts as tracked for
+        # member-list refreshes and grants the member role like a family clan does — but is NOT
+        # part of the guild's family for any CWL logic (resolve_guild_member_clan_tags excludes it).
+        self.guild_guest_clans: Dict[str, Dict[str, Dict[str, Any]]] = {}
         # Bot-wide (not per-guild) DM-testing allowlist — Discord user IDs who receive DMs
         # alongside CONFIG.server_admin wherever a feature is gated behind a
         # cwl_dm_restrict_to_admin-style live-testing guard. Managed via /admin's
@@ -871,7 +876,13 @@ class CacheManager:
                 fam_data = self.clan_families.get(fam_tag)
                 if fam_data and clan_tag in fam_data.get('clans', []):
                     return True
-        
+
+        # Persisted CWL guest clan of any guild — tracked like a member clan so its roster stays
+        # current for member-role eligibility and later seasons' player pools.
+        for guest_clans in getattr(self, 'guild_guest_clans', {}).values():
+            if clan_tag in guest_clans:
+                return True
+
         return False
 
     # TTL for CWL caches — prevents unbounded memory growth from
@@ -996,6 +1007,11 @@ class CacheManager:
             if family_tag in tracked_tags:
                 for member_tag in family_data.get('clans', []):
                     tracked_tags.add(member_tag)
+
+        # 1e. Persisted CWL guest clans (2026-09-22) — treated as member clans so the regular poll
+        # keeps their member list current (see guild_guest_clans' comment in __init__).
+        for guest_clans in getattr(self, 'guild_guest_clans', {}).values():
+            tracked_tags.update(guest_clans.keys())
 
         # --- Step 2: update in-memory cache, collect changes ---
         sub_changed: list[tuple[bool, str]] = []      # (new_status, clan_tag) for bulk DB write
@@ -2693,6 +2709,69 @@ class CacheManager:
             logging.error(f"[DB-WRITE-THROUGH] Failed to persist server config for guild {guild_id}: {e}")
             raise
 
+    # ─── Guild Guest Clan Write-Through Methods ───────────────────────
+
+    async def load_guild_guest_clans(self) -> None:
+        """Load persisted CWL guest clans (guild_guest_clans) into self.guild_guest_clans."""
+        if not self.db_manager:
+            raise RuntimeError("Database manager not initialized")
+        self.guild_guest_clans = await asyncio.to_thread(self.db_manager.get_all_guild_guest_clans_sync)
+        total = sum(len(clans) for clans in self.guild_guest_clans.values())
+        logging.info(f"[DB-READ] Loaded {total} CWL guest clan(s) across {len(self.guild_guest_clans)} guild(s)")
+
+    def get_guild_guest_clan_tags(self, guild_id: Union[int, str]) -> Set[str]:
+        """Clan tags guild_id has persisted as CWL guests (empty set if none)."""
+        return set(self.guild_guest_clans.get(str(guild_id), {}).keys())
+
+    async def register_guild_guest_clans(self, guild_id: Union[int, str], seasons_by_clan: Dict[str, str]) -> List[str]:
+        """Persist that guild_id invited each clan in seasons_by_clan (clan_tag -> cwl_season).
+
+        Write-through: DB first, then CACHE. Recomputes subscription statuses only when a clan is
+        new to this guild's guest list, since only then can tracking change.
+
+        Returns:
+            The clan tags that were newly added for this guild.
+        """
+        if not seasons_by_clan or not self.db_manager:
+            return []
+        guild_id_str = str(guild_id)
+        ok = await asyncio.to_thread(self.db_manager.upsert_guild_guest_clans_sync, guild_id_str, seasons_by_clan)
+        if not ok:
+            logging.error(f"[GUEST-CLANS] Could not persist guest clans {list(seasons_by_clan)} for guild {guild_id_str}")
+            return []
+        guild_guests = self.guild_guest_clans.setdefault(guild_id_str, {})
+        newly_added: List[str] = []
+        for clan_tag, season in seasons_by_clan.items():
+            entry = guild_guests.get(clan_tag)
+            if entry is None:
+                guild_guests[clan_tag] = {"first_invited_season": season, "last_invited_season": season}
+                newly_added.append(clan_tag)
+                continue
+            if not entry.get("first_invited_season") or season < entry["first_invited_season"]:
+                entry["first_invited_season"] = season
+            if not entry.get("last_invited_season") or season > entry["last_invited_season"]:
+                entry["last_invited_season"] = season
+        if newly_added:
+            logging.info(f"[GUEST-CLANS] Guild {guild_id_str} now has guest clan(s): {', '.join(newly_added)}")
+            await self.update_all_clan_subscription_statuses()
+        return newly_added
+
+    async def remove_guild_guest_clan(self, guild_id: Union[int, str], clan_tag: str) -> bool:
+        """Delete one persisted guest clan (DB + CACHE) and recompute tracking. No eligibility
+        check here — callers go through remove_guild_guest_clan_checked() (QBdiscocmdshelper_cwl)."""
+        if not self.db_manager:
+            return False
+        guild_id_str = str(guild_id)
+        deleted = await asyncio.to_thread(self.db_manager.delete_guild_guest_clan_sync, guild_id_str, clan_tag)
+        guild_guests = self.guild_guest_clans.get(guild_id_str, {})
+        removed_from_cache = guild_guests.pop(clan_tag, None) is not None
+        if not guild_guests:
+            self.guild_guest_clans.pop(guild_id_str, None)
+        if deleted or removed_from_cache:
+            logging.info(f"[GUEST-CLANS] Guild {guild_id_str} removed guest clan {clan_tag}")
+            await self.update_all_clan_subscription_statuses()
+        return deleted
+
     # ─── Notification State Write-Through Methods ─────────────────────
 
     async def persist_player_notification(self, war_id: str, player_tag: str) -> None:
@@ -2838,6 +2917,9 @@ class CacheManager:
         self._current_load_operation = "load_server_config"
         logging.info("Starting cache load_all() - loading server config...")
         await self.load_server_config()
+        self._current_load_operation = "load_guild_guest_clans"
+        logging.info("Starting cache load_all() - loading CWL guest clans...")
+        await self.load_guild_guest_clans()
         self._current_load_operation = "load_testers"
         logging.info("Starting cache load_all() - loading testers...")
         await self.load_testers()

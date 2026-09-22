@@ -96,6 +96,7 @@ CLAN_TAG_REFERENCING_TABLES: Tuple[Tuple[str, str, str, str], ...] = (
     ("main", "cwl_assignments", "assigned_clan_tag", ""),
     # Non-FK columns that conceptually depend on a real clan:
     ("main", "guild_clan_roles", "clan_tag", ""),
+    ("main", "guild_guest_clans", "clan_tag", ""),  # persisted CWL guest clans (member-role rights)
     ("main", "subscriptions", "clan_tag", ""),  # also stores family tags — matching a clan tag still counts
     ("main", "leaderboard_messages", "clan_tag", "AND mode != 'whois_player'"),
     ("main", "guild_config", "welcome_clan_tag", ""),  # legacy single-clan welcome config, still read for backward-compat
@@ -1828,6 +1829,10 @@ class WarHistoryDB:
         logging.info("[DB-SCHEMA] Verifying bot metadata table...")
         await self._create_bot_metadata_schema()
 
+        # Persisted CWL guest clans per guild (needs bot_metadata for its one-time backfill gate)
+        logging.info("[DB-SCHEMA] Verifying guild guest clans table...")
+        await self._create_guild_guest_clans_schema()
+
         # Bot-level tester list (DM-testing allowlist, global — not per-guild)
         logging.info("[DB-SCHEMA] Verifying bot testers table...")
         await self._create_bot_testers_schema()
@@ -3062,6 +3067,191 @@ class WarHistoryDB:
                 (key, value),
             )
             await self._conn.commit()
+
+    # bot_metadata key marking that guild_guest_clans was seeded once from existing cwl_events.
+    GUILD_GUEST_CLANS_BACKFILL_KEY = "guild_guest_clans_backfill_v1"
+
+    async def _create_guild_guest_clans_schema(self) -> None:
+        """Create guild_guest_clans (idempotent) and seed it once from existing CWL seasons.
+
+        One row per (guild, clan) pair: "this guild has invited this clan as a CWL guest at least
+        once" — a clan invited by several guilds gets one row per guild, which is why this is its
+        own table rather than a column on clans or cwl_event_clans (2026-09-22, project owner's
+        spec). The row outlives the season on purpose: a guest clan keeps member-role rights on the
+        inviting guild's server until an admin removes it via /clan management → Families. Hot DB
+        only, no history mirror — it's config, not time-series.
+
+        No FK on clan_tag (a guest clan whose CoC fetch failed must still be recordable); instead
+        it is listed in CLAN_TAG_REFERENCING_TABLES so the orphan purge never deletes its clans row.
+
+        The backfill runs once, gated on a bot_metadata marker rather than on "table was empty":
+        an admin removing every guest clan must not have them resurrected on the next restart.
+        """
+        await self._ensure_connection()
+        await self._conn.execute("""
+            CREATE TABLE IF NOT EXISTS guild_guest_clans (
+                id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+                guild_id             TEXT NOT NULL,
+                clan_tag             TEXT NOT NULL,
+                first_invited_season TEXT,
+                last_invited_season  TEXT,
+                created_at           TEXT NOT NULL DEFAULT (datetime('now')),
+                updated_at           TEXT NOT NULL DEFAULT (datetime('now')),
+                UNIQUE (guild_id, clan_tag)
+            )
+        """)
+        await self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_guild_guest_clans_clan_tag ON guild_guest_clans(clan_tag)"
+        )
+        await self._conn.commit()
+
+        if await self.get_bot_metadata(self.GUILD_GUEST_CLANS_BACKFILL_KEY):
+            return
+        # A guest clan = any clan on a (non-cancelled) season of that guild that is neither one of
+        # the guild's member_clans nor in one of its member_families — the SQL twin of
+        # get_cwl_guest_clan_tags_sync()'s family check.
+        cursor = await self._conn.execute("""
+            INSERT OR IGNORE INTO guild_guest_clans
+                (guild_id, clan_tag, first_invited_season, last_invited_season)
+            SELECT e.guild_id, ec.clan_tag, MIN(e.cwl_season), MAX(e.cwl_season)
+            FROM cwl_event_clans ec
+            JOIN cwl_events e ON e.id = ec.event_id
+            WHERE e.status != 'cancelled'
+              AND ec.clan_tag NOT IN (
+                  SELECT gmc.clan_tag FROM guild_member_clans gmc WHERE gmc.guild_id = e.guild_id
+              )
+              AND ec.clan_tag NOT IN (
+                  SELECT cfm.clan_tag
+                  FROM clan_family_members cfm
+                  JOIN guild_member_families gmf ON gmf.family_tag = cfm.family_tag
+                  WHERE gmf.guild_id = e.guild_id
+              )
+            GROUP BY e.guild_id, ec.clan_tag
+        """)
+        seeded = cursor.rowcount
+        await self._conn.commit()
+        await self.set_bot_metadata(self.GUILD_GUEST_CLANS_BACKFILL_KEY, "done")
+        logging.info(f"[DB-MIGRATE] guild_guest_clans seeded with {seeded} guest clan(s) from existing CWL seasons")
+
+    def get_all_guild_guest_clans_sync(self) -> Dict[str, Dict[str, Dict[str, Any]]]:
+        """Every persisted guest clan, as guild_id -> clan_tag -> row dict (CACHE load shape)."""
+        import sqlite3
+
+        if not self.db_path:
+            raise RuntimeError("Database not initialized. Call initialize() first.")
+
+        result: Dict[str, Dict[str, Dict[str, Any]]] = {}
+        with self._sync_conn() as conn:
+            try:
+                rows = conn.execute(
+                    "SELECT guild_id, clan_tag, first_invited_season, last_invited_season "
+                    "FROM guild_guest_clans"
+                ).fetchall()
+            except sqlite3.Error as e:
+                logging.error(f"[DB-QUERY-SYNC] get_all_guild_guest_clans_sync failed: {e}")
+                return result
+        for row in rows:
+            result.setdefault(row["guild_id"], {})[row["clan_tag"]] = {
+                "first_invited_season": row["first_invited_season"],
+                "last_invited_season": row["last_invited_season"],
+            }
+        return result
+
+    def upsert_guild_guest_clans_sync(self, guild_id: str, seasons_by_clan: Dict[str, str]) -> bool:
+        """Record that guild_id invited each clan in seasons_by_clan (clan_tag -> cwl_season).
+
+        Idempotent: an existing row only widens its first/last season window, so re-saving the
+        same season's clan config any number of times is a no-op."""
+        import sqlite3
+
+        if not self.db_path:
+            raise RuntimeError("Database not initialized. Call initialize() first.")
+        if not seasons_by_clan:
+            return True
+
+        with self._sync_conn() as conn:
+            try:
+                with self._sync_write_lock:
+                    conn.executemany(
+                        """
+                        INSERT INTO guild_guest_clans
+                            (guild_id, clan_tag, first_invited_season, last_invited_season)
+                        VALUES (?, ?, ?, ?)
+                        ON CONFLICT(guild_id, clan_tag) DO UPDATE SET
+                            first_invited_season = CASE
+                                WHEN guild_guest_clans.first_invited_season IS NULL
+                                  OR excluded.first_invited_season < guild_guest_clans.first_invited_season
+                                THEN excluded.first_invited_season
+                                ELSE guild_guest_clans.first_invited_season END,
+                            last_invited_season = CASE
+                                WHEN guild_guest_clans.last_invited_season IS NULL
+                                  OR excluded.last_invited_season > guild_guest_clans.last_invited_season
+                                THEN excluded.last_invited_season
+                                ELSE guild_guest_clans.last_invited_season END,
+                            updated_at = datetime('now')
+                        """,
+                        [(guild_id, tag, season, season) for tag, season in seasons_by_clan.items()],
+                    )
+                    if self._should_commit():
+                        conn.commit()
+                return True
+            except sqlite3.Error as e:
+                logging.error(f"[DB-WRITE-SYNC] upsert_guild_guest_clans_sync failed for guild {guild_id}: {e}")
+                conn.rollback()
+                return False
+
+    def delete_guild_guest_clan_sync(self, guild_id: str, clan_tag: str) -> bool:
+        """Remove one persisted guest clan from a guild. Returns True iff a row was deleted."""
+        import sqlite3
+
+        if not self.db_path:
+            raise RuntimeError("Database not initialized. Call initialize() first.")
+
+        with self._sync_conn() as conn:
+            try:
+                with self._sync_write_lock:
+                    cursor = conn.execute(
+                        "DELETE FROM guild_guest_clans WHERE guild_id = ? AND clan_tag = ?",
+                        (guild_id, clan_tag),
+                    )
+                    if self._should_commit():
+                        conn.commit()
+                return cursor.rowcount > 0
+            except sqlite3.Error as e:
+                logging.error(f"[DB-WRITE-SYNC] delete_guild_guest_clan_sync failed for guild {guild_id} clan {clan_tag}: {e}")
+                conn.rollback()
+                return False
+
+    def get_cwl_events_containing_clan_sync(self, guild_id: str, clan_tag: str) -> List[Dict[str, Any]]:
+        """This guild's cwl_events rows that have clan_tag on their roster (participating or not),
+        each with an extra `clan_cwl_start_ats` list — every cwl_start_at set on that event, which
+        is what decides whether the season is still running (see is_cwl_event_active_or_upcoming)."""
+        import sqlite3
+
+        if not self.db_path:
+            raise RuntimeError("Database not initialized. Call initialize() first.")
+
+        with self._sync_conn() as conn:
+            try:
+                events = conn.execute(
+                    "SELECT e.* FROM cwl_events e "
+                    "JOIN cwl_event_clans ec ON ec.event_id = e.id "
+                    "WHERE e.guild_id = ? AND ec.clan_tag = ? ORDER BY e.cwl_season DESC",
+                    (guild_id, clan_tag),
+                ).fetchall()
+                result: List[Dict[str, Any]] = []
+                for event in events:
+                    starts = conn.execute(
+                        "SELECT cwl_start_at FROM cwl_event_clans WHERE event_id = ? AND cwl_start_at IS NOT NULL",
+                        (event["id"],),
+                    ).fetchall()
+                    entry = dict(event)
+                    entry["clan_cwl_start_ats"] = [row["cwl_start_at"] for row in starts]
+                    result.append(entry)
+                return result
+            except sqlite3.Error as e:
+                logging.error(f"[DB-QUERY-SYNC] get_cwl_events_containing_clan_sync failed for guild {guild_id} clan {clan_tag}: {e}")
+                return []
 
     async def _create_bot_testers_schema(self) -> None:
         """Create the bot_testers table (idempotent) — bot-wide (not per-guild) list of Discord

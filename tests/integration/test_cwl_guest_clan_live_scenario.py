@@ -10,6 +10,7 @@ narrower test still passes.
 from __future__ import annotations
 
 import dataclasses
+from datetime import datetime, timezone
 import os
 from unittest.mock import AsyncMock
 
@@ -115,6 +116,10 @@ class _FakeCocClanCache:
         self.db = db
         self.members_by_clan = members_by_clan
         self.fetched: list = []
+        # Same field as the real coc_cache: clan_tag -> last member-list refresh. Since 2026-09-22
+        # ensure_cwl_clan_membership_tracked() refetches a clan whose list is older than 24h, so a
+        # test's "already tracked" clan must be marked as recently refreshed (the poll cycle's job).
+        self.members_refreshed_at: dict = {}
 
     async def get_clan(self, clan_tag):
         self.fetched.append(clan_tag)
@@ -168,6 +173,7 @@ async def test_untracked_guest_clan_members_still_enter_the_pool(db, monkeypatch
     ])
 
     fake_coc = _FakeCocClanCache(db, {"#GUEST": [("#G1", "Guest One"), ("#G2", "Guest Two")]})
+    fake_coc.members_refreshed_at["#QCREW"] = datetime.now(timezone.utc)  # polled recently
     monkeypatch.setattr(CACHE, "coc_clan_cache", fake_coc, raising=False)
     monkeypatch.setattr(CACHE, "coc_client", object(), raising=False)
     monkeypatch.setattr(CACHE, "send_user_dm_detailed", AsyncMock(return_value=(True, "sent")))

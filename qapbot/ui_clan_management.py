@@ -801,7 +801,20 @@ class ClanManagementView(discord.ui.View):
         )
         delete_family_button.callback = self._on_delete_family  # type: ignore[assignment]
         self.add_item(delete_family_button)  # type: ignore[arg-type]
-    
+
+        # Button 4: Remove a persisted CWL guest clan (2026-09-22) — disabled while there are none.
+        from qapbot.cache_manager import CACHE
+        has_guest_clans = bool(guild_id and CACHE.get_guild_guest_clan_tags(guild_id))
+        remove_guest_button = discord.ui.Button(
+            label=t('ui_components.family_management.button_remove_guest_clan', guild_id=guild_id),
+            style=discord.ButtonStyle.secondary,
+            custom_id="clan_mgmt_remove_guest_clan",
+            disabled=not has_guest_clans,
+            row=4
+        )
+        remove_guest_button.callback = self._on_remove_guest_clan  # type: ignore[assignment]
+        self.add_item(remove_guest_button)  # type: ignore[arg-type]
+
     def _add_basic_config_components(self):
         """Add basic configuration buttons for channels, language, and toggles."""
         from qapbot.i18n import t
@@ -1950,6 +1963,44 @@ class ClanManagementView(discord.ui.View):
             ephemeral=True
         )
     
+    async def _on_remove_guest_clan(self, interaction: discord.Interaction) -> None:
+        """Handle "Remove Guest Clan" — opens RemoveGuestClanView (select → confirm → result) as one
+        ephemeral message. Admin-only, like every other Families action."""
+        from qapbot.QBdiscocmdshelper_cwl import get_guild_guest_clans_overview_sync
+        from qapbot.i18n import t
+
+        if not await self._check_admin_permission(interaction):
+            return
+        if not interaction.guild:
+            await interaction.response.send_message("This command must be used in a guild.", ephemeral=True)
+            return
+
+        guild_id = interaction.guild.id
+        user_id = str(interaction.user.id)
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        guest_rows = await asyncio.to_thread(get_guild_guest_clans_overview_sync, guild_id)
+        if not guest_rows:
+            await interaction.followup.send(
+                t('ui_components.family_management.no_guest_clans', user_id=user_id, guild_id=guild_id),
+                ephemeral=True,
+            )
+            return
+        view = RemoveGuestClanView(clan_management_view=self, guild_id=guild_id, user_id=user_id, guest_rows=guest_rows)
+        await interaction.followup.send(view.select_content(), view=view, ephemeral=True)
+
+    async def refresh_families_message(self) -> None:
+        """Re-render this Families screen in place (after a guest clan was removed)."""
+        from qapbot.QBdiscocmdshelper import format_clan_management_message
+
+        if not self.sent_message or not self.sent_message.guild:
+            return
+        embed, _, _, _ = await format_clan_management_message(self.clan_tag, self.sent_message.guild, mode="families")
+        self.clear_items()
+        self._add_mode_select()  # type: ignore[attr-defined]
+        self._add_family_management_buttons()
+        self._add_refresh_button()  # type: ignore[attr-defined]
+        await self.sent_message.edit(embed=embed, view=self)
+
     async def _show_delete_family_confirmation(self, interaction: discord.Interaction, family_id: str, family_data: Dict[str, Any]) -> None:
         """Show confirmation dialog with affected guilds and subscriptions."""
         from qapbot.cache_manager import CACHE
@@ -4943,6 +4994,127 @@ class CwlLineupRemovalConfirmView(discord.ui.View):
             await interaction.delete_original_response()
         except discord.NotFound:
             pass
+
+
+class RemoveGuestClanView(discord.ui.View):
+    """Families screen's "Remove Guest Clan" flow (2026-09-22, project owner's spec): pick a
+    persisted CWL guest clan → confirm → result, all in ONE ephemeral message (Cardinal Rule 7).
+
+    A clan still on an upcoming or running season is shown with 🔒 and refused on selection; the
+    confirm step re-checks through remove_guild_guest_clan_checked(), since a season can be created
+    between opening this view and clicking Remove."""
+
+    def __init__(
+        self,
+        clan_management_view: ClanManagementView,
+        guild_id: int,
+        user_id: str,
+        guest_rows: List[Dict[str, Any]],
+        timeout: int = 180,
+    ):
+        super().__init__(timeout=timeout)
+        self.clan_management_view = clan_management_view
+        self.guild_id = guild_id
+        self.user_id = user_id
+        self.rows: Dict[str, Dict[str, Any]] = {row["clan_tag"]: row for row in guest_rows}
+        self.selected_tag: Optional[str] = None
+        self._busy = False
+        self._show_select()
+
+    def _t(self, key: str, **kwargs: Any) -> str:
+        return t(f'ui_components.family_management.{key}', user_id=self.user_id, guild_id=self.guild_id, **kwargs)
+
+    def select_content(self) -> str:
+        return self._t('remove_guest_select_message')
+
+    def _show_select(self) -> None:
+        self.clear_items()
+        options: List[discord.SelectOption] = []
+        for row in list(self.rows.values())[:25]:  # Discord select limit
+            if row["blocking_seasons"]:
+                description = self._t('remove_guest_option_locked', seasons=", ".join(row["blocking_seasons"]))
+            else:
+                description = self._t('remove_guest_option_desc', season=row["last_invited_season"] or "?")
+            options.append(discord.SelectOption(
+                label=str(row["clan_name"])[:100],
+                value=row["clan_tag"],
+                description=f"{row['clan_tag']} · {description}"[:100],
+                emoji="🔒" if row["blocking_seasons"] else None,
+            ))
+        select: discord.ui.Select[Any] = discord.ui.Select(
+            placeholder=self._t('remove_guest_select_placeholder'),
+            options=options,
+            min_values=1,
+            max_values=1,
+        )
+        select.callback = self._on_select  # type: ignore[assignment]
+        self.add_item(select)
+
+    def _blocked_text(self, row: Dict[str, Any], seasons: List[str]) -> str:
+        return self._t('remove_guest_blocked', clan_name=row["clan_name"], seasons=", ".join(seasons))
+
+    async def _on_select(self, interaction: discord.Interaction) -> None:
+        clan_tag = interaction.data["values"][0]  # type: ignore[index]
+        row = self.rows.get(clan_tag)
+        if row is None:
+            await interaction.response.edit_message(content=self.select_content(), view=self)
+            return
+        if row["blocking_seasons"]:
+            await interaction.response.edit_message(
+                content=f"{self._blocked_text(row, row['blocking_seasons'])}\n\n{self.select_content()}",
+                view=self,
+            )
+            return
+        self.selected_tag = clan_tag
+        self.clear_items()
+        confirm_button: discord.ui.Button[Any] = discord.ui.Button(
+            label=self._t('remove_guest_button_confirm'), style=discord.ButtonStyle.danger,
+        )
+        confirm_button.callback = self._on_confirm  # type: ignore[assignment]
+        self.add_item(confirm_button)
+        cancel_button: discord.ui.Button[Any] = discord.ui.Button(
+            label=self._t('remove_guest_button_cancel'), style=discord.ButtonStyle.secondary,
+        )
+        cancel_button.callback = self._on_cancel  # type: ignore[assignment]
+        self.add_item(cancel_button)
+        await interaction.response.edit_message(
+            content=self._t('remove_guest_confirm', clan_name=row["clan_name"], clan_tag=clan_tag),
+            view=self,
+        )
+
+    async def _on_confirm(self, interaction: discord.Interaction) -> None:
+        # Double-click guard (Cardinal Rule 7): flag first, before any await.
+        if self._busy or self.selected_tag is None:
+            if not interaction.response.is_done():
+                await interaction.response.defer()
+            return
+        self._busy = True
+        for child in self.children:
+            child.disabled = True  # type: ignore[attr-defined]
+        await interaction.response.edit_message(view=self)
+
+        from qapbot.QBdiscocmdshelper_cwl import remove_guild_guest_clan_checked
+
+        clan_tag = self.selected_tag
+        row = self.rows[clan_tag]
+        result = await remove_guild_guest_clan_checked(self.guild_id, clan_tag)
+        if result["ok"]:
+            content = self._t('remove_guest_done', clan_name=row["clan_name"], clan_tag=clan_tag)
+        elif result["error"] == "season_active":
+            content = self._blocked_text(row, result["seasons"])
+        else:
+            content = self._t('remove_guest_not_found', clan_name=row["clan_name"], clan_tag=clan_tag)
+        self.stop()
+        await interaction.edit_original_response(content=content, view=None)
+        if result["ok"]:
+            try:
+                await self.clan_management_view.refresh_families_message()
+            except Exception as e:
+                logging.warning(f"[GUEST-CLANS] Removed {clan_tag} but could not refresh the Families screen: {e}")
+
+    async def _on_cancel(self, interaction: discord.Interaction) -> None:
+        self.stop()
+        await interaction.response.edit_message(content=self._t('remove_guest_cancelled'), view=None)
 
 
 class CreateFamilyModal(discord.ui.Modal, title="Create Clan Family"):

@@ -1362,7 +1362,9 @@ def is_player_in_member_clans(player_clan_tag: Optional[str], guild_id: int) -> 
     Checks if player's current clan is in:
     1. The guild's member_clans list (individual clans)
     2. Any of the guild's member_families (clan families)
-    
+    3. The guild's persisted CWL guest clans (CACHE.guild_guest_clans, 2026-09-22) — a clan the
+       guild invited to its CWL keeps member-role rights on its server until an admin removes it
+
     Args:
         player_clan_tag: Current clan tag of the player (None if no clan)
         guild_id: Discord guild ID
@@ -1392,7 +1394,11 @@ def is_player_in_member_clans(player_clan_tag: Optional[str], guild_id: int) -> 
         family_clans = family_data.get("clans", [])
         if player_clan_tag in family_clans:
             return True
-    
+
+    # Check persisted CWL guest clans
+    if player_clan_tag in CACHE.get_guild_guest_clan_tags(guild_id_str):
+        return True
+
     return False
 
 
@@ -4882,7 +4888,34 @@ async def _format_clan_management_families(guild: discord.Guild) -> Tuple[discor
                 value=f"\n{clans_display}",
                 inline=False
             )
-    
+
+    # Persisted CWL guest clans (2026-09-22) — invited to this guild's CWL, so their members get the
+    # member role here. Removable via the "Remove Guest Clan" button once their seasons are over.
+    from qapbot.QBdiscocmdshelper_cwl import get_guild_guest_clans_overview_sync
+    guest_rows = await asyncio.to_thread(get_guild_guest_clans_overview_sync, guild_id_int)
+    if guest_rows:
+        guest_lines = [t('ui_components.family_management.guest_clans_intro', guild_id=guild_id_int)]
+        for row in guest_rows:
+            line = t(
+                'ui_components.family_management.guest_clan_line', guild_id=guild_id_int,
+                clan_name=row["clan_name"], clan_tag=row["clan_tag"],
+                season=row["last_invited_season"] or "?",
+            )
+            guest_lines.append(f"{line} 🔒" if row["blocking_seasons"] else line)
+        # Discord caps a field value at 1024 chars — cut on a line boundary and say how many are hidden.
+        shown: List[str] = []
+        for i, line in enumerate(guest_lines):
+            more = t('ui_components.family_management.and_more', guild_id=guild_id_int, count=len(guest_lines) - i)
+            if len("\n".join(shown + [line])) + len(more) + 1 > 1024:
+                shown.append(more)
+                break
+            shown.append(line)
+        embed.add_field(
+            name=f"⠀\n🤝 {t('ui_components.family_management.guest_clans_header', guild_id=guild_id_int, count=len(guest_rows))}",
+            value="\n".join(shown),
+            inline=False
+        )
+
     return embed, None, [], []
 
 

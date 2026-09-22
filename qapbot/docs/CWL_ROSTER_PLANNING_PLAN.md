@@ -327,6 +327,24 @@ a full board column with its whole live roster; a guest player is a plain `cwl_s
 guild triggers the cross-guild sharing flow above rather than creating a second independent
 record.
 
+**Guest clans persist past their season** (2026-09-22, `plans/implemented/cwl-guest-clan-persistence.md`).
+Every save of this screen records the season's guest clans in `guild_guest_clans` (see
+DATABASE_ARCHITECTURE.md). A persisted guest clan is then treated like a member clan for two
+things only: its members get the guild's **member role** (never the CoC Leader/Co-Leader roles,
+which gate CWL admin rights), and it counts as tracked, so the poll cycle keeps its roster current.
+For all CWL logic (family columns, `is_guest` badges, auto-assign guards) it stays a guest. A newly
+added guest clan gets an immediate CoC fetch unless its member list is younger than 24h
+(`ensure_cwl_clan_membership_tracked()` / `_cwl_clan_member_list_is_fresh()`). Admins remove old
+guest clans under /clan management → Families → "Remove Guest Clan", which is refused while the
+clan is on any non-cancelled season that is upcoming or still running (`is_cwl_event_active_or_upcoming()`:
+latest `cwl_start_at` + 9 days). Removing a guest clan from a *season* (the Activity's Remove button)
+leaves the persisted status alone.
+
+Note for "why did nobody get a DM": the enrollment DM can only reach a player whose CoC account is
+linked to a Discord user. A guest clan whose players never registered with QapBot shows up in the
+pool as "Not Linked" and "Notify New Pool Members" contacts nobody. Member-role rights for guest
+clans are what give those players a reason to join the server and link.
+
 **Coordinators** are managed per clan via a Discord select (`CWL_COORDINATOR_LIMIT`-capped),
 independent of season status.
 

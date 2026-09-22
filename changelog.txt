@@ -1,6 +1,13 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-22 (6)  Build 50.
+- Added: in DEV mode, Start Enrollment sends a second ephemeral after its summary listing every
+  player the DM guard skipped, grouped by current clan (clans A-Z, "No current clan" last),
+  split into several messages when over Discord's 2000-char limit. PROD is unchanged (count
+  only). _send_cwl_enrollment_dm_batch now also returns who it skipped (dm_guard_skipped).
+  Files: QBdiscocmdshelper_cwl.py, ui_cwl_roster.py, en/de.json (+ tests). 3283 tests pass.
+
 2026-09-22 (5)  Build 49.
 - Changed: CWL Guests search no longer assumes clan and player tags can't collide (Supercell
   doesn't document it). A tag known as a clan is only ruled out as a player when it is NOT also a

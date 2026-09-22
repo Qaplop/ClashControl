@@ -2047,6 +2047,24 @@ class CwlStartEnrollmentConfirmView(discord.ui.View):
             await interaction.edit_original_response(content=content, view=follow_up_view)
         except discord.NotFound:
             pass
+        # DEV only (2026-09-22, project owner's request): a second ephemeral naming every player
+        # the DM guard held back, per clan — the summary above only gives the count. A separate
+        # message on purpose: it can run to several messages, and the summary keeps its button.
+        from qapbot.config import CONFIG
+
+        if summary["ok"] and CONFIG.is_dev_mode and summary.get("dm_guard_skipped"):
+            from qapbot.QBdiscocmdshelper_cwl import format_cwl_dm_guard_skipped_report
+
+            report = await asyncio.to_thread(
+                format_cwl_dm_guard_skipped_report,
+                summary["dm_guard_skipped"], self.guild_id, str(interaction.user.id),
+            )
+            for chunk in report:
+                try:
+                    await interaction.followup.send(chunk, ephemeral=True)
+                except discord.HTTPException as e:
+                    logging.warning(f"[CWL-ENROLLMENT] DEV DM-guard report could not be sent: {e}")
+                    break
         if summary["ok"]:
             # Cross-guild shared-clan notifications (2026-08-15) — one of the two trigger points
             # (the other is handle_post_clan_config's guest-clan add, web_bridge.py). Best-effort,

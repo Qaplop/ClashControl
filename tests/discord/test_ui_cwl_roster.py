@@ -2505,6 +2505,46 @@ async def test_start_enrollment_confirm_view_confirm_starts_enrollment_and_refre
 
 @pytest.mark.discord
 @pytest.mark.asyncio
+@pytest.mark.parametrize("is_dev_mode", [True, False])
+async def test_start_enrollment_sends_dm_guard_report_only_in_dev(mock_interaction, monkeypatch, is_dev_mode):
+    """2026-09-22, project owner's request: in DEV mode, a second ephemeral lists every player the
+    DM guard held back (per clan); PROD shows only the count in the summary."""
+    import dataclasses
+
+    from qapbot import QBdiscocmdshelper_cwl as cwl
+    from qapbot import config as config_module
+    from qapbot.ui_cwl_roster import CwlStartEnrollmentConfirmView
+
+    monkeypatch.setattr(config_module, "CONFIG", dataclasses.replace(config_module.CONFIG, is_dev_mode=is_dev_mode))
+    summary = {
+        "ok": True, "seeded": 2, "assigned": 0, "contacted": 0, "skipped_optout": 0,
+        "skipped_unlinked": 0, "skipped_dm_guard": 2, "blocked": [], "no_mutual_guild": [],
+        "failed": [], "shared_clans": [],
+        "dm_guard_skipped": [{"player_tag": "#P1", "player_name": "One"}, {"player_tag": "#P2", "player_name": "Two"}],
+    }
+    monkeypatch.setattr(cwl, "start_cwl_enrollment", AsyncMock(return_value=summary))
+    report = MagicMock(return_value=["report part 1", "report part 2"])
+    monkeypatch.setattr(cwl, "format_cwl_dm_guard_skipped_report", report)
+
+    parent = MagicMock()
+    parent.refresh_cwl_view = AsyncMock()
+    view = CwlStartEnrollmentConfirmView(parent_view=parent, guild_id=9007, season="2026-10")
+    mock_interaction.edit_original_response = AsyncMock()
+    mock_interaction.followup.send = AsyncMock()
+
+    await view._on_confirm(mock_interaction)
+
+    if is_dev_mode:
+        assert [c.args[0] for c in mock_interaction.followup.send.await_args_list] == ["report part 1", "report part 2"]
+        assert all(c.kwargs.get("ephemeral") for c in mock_interaction.followup.send.await_args_list)
+        assert report.call_args.args[0] == summary["dm_guard_skipped"]
+    else:
+        mock_interaction.followup.send.assert_not_awaited()
+        report.assert_not_called()
+
+
+@pytest.mark.discord
+@pytest.mark.asyncio
 async def test_open_enrollment_view_button_launches_activity(mock_interaction):
     from qapbot.cache_manager import CACHE
     from qapbot.ui_cwl_roster import CwlOpenEnrollmentView

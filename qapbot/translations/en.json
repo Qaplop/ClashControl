@@ -1027,6 +1027,8 @@
       "button_confirm_start_enrollment": "Yes, Start Enrollment",
       "start_enrollment_confirm_body": "⚠️ Start enrollment for season **{season}**? This copies last season's roster as a template and sends every resolved member a confirm/opt-out DM. This cannot be undone.",
       "start_enrollment_processing": "⏳ Starting enrollment — sending DMs, this can take a few seconds…",
+      "dm_guard_report_header": "🛡️ DEV mode — players skipped by the DM guard ({count}), by current clan:",
+      "dm_guard_report_no_clan": "No current clan",
       "start_enrollment_summary": "✅ Enrollment started.\nSeeded: {seeded}\nPre-assigned from last month's CWL: {assigned}\nContacted: {contacted}\nSkipped (opted out): {skipped_optout}\nSkipped (no linked account): {skipped_unlinked}\nSkipped (DM guard): {skipped_dm_guard}{dm_issues}",
       "start_enrollment_dm_blocked_line": "\n⚠️ Blocked (DMs disabled or bot blocked, not retried): {names}",
       "start_enrollment_dm_no_mutual_guild_line": "\n⚠️ Left the server (no mutual server with the bot, not retried) — consider removing from the pool: {names}",

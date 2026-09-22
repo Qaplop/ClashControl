@@ -2753,7 +2753,7 @@ async def _start_cwl_enrollment_locked(guild_id: int, season: str) -> Dict[str, 
     """
     summary: Dict[str, Any] = {
         "ok": False, "error": None, "seeded": 0, "contacted": 0, "assigned": 0,
-        "skipped_optout": 0, "skipped_unlinked": 0, "skipped_dm_guard": 0,
+        "skipped_optout": 0, "skipped_unlinked": 0, "skipped_dm_guard": 0, "dm_guard_skipped": [],
         # rule h (2026-08-18) — a candidate already DMed for this season by ANY guild is counted
         # here instead of "contacted"; their signup row is still seeded with their real global
         # status (see the bulk lookup above signups_to_create), just never re-DMed.
@@ -3057,6 +3057,7 @@ async def _start_cwl_enrollment_locked(guild_id: int, season: str) -> Dict[str, 
     dm_result = await _send_cwl_enrollment_dm_batch(event["id"], guild_id, season, dm_targets)
     summary["contacted"] += dm_result["contacted"]
     summary["skipped_dm_guard"] += dm_result["skipped_dm_guard"]
+    summary["dm_guard_skipped"] = dm_result["dm_guard_skipped"]
     summary["skipped_already_dm_globally"] += dm_result["skipped_already_dm_globally"]
     # Same "no linked Discord account" bucket the pool resolution above already reports —
     # this is just the same condition caught a moment later, right before the send (see
@@ -3297,6 +3298,69 @@ def _dm_guard_blocks(discord_id: str) -> bool:
     return bool(CONFIG.cwl_dm_restrict_to_admin and not (is_admin or is_prod_tester))
 
 
+DISCORD_MESSAGE_LIMIT = 2000
+
+
+def format_cwl_dm_guard_skipped_report(
+    skipped: List[Dict[str, Any]], guild_id: int, user_id: Optional[str] = None,
+) -> List[str]:
+    """DEV-mode report of the players the DM guard held back, grouped by their CURRENT clan
+    (2026-09-22, project owner's request) — the Start Enrollment summary only gives a count.
+
+    Clans sorted by name, players by name; players with no known current clan (e.g. an
+    individually invited guest who left their clan) go in a last "no current clan" group. Split
+    into as many messages as needed to stay under Discord's 2000-character limit, never mid-line.
+    Plain sync (one indexed DB lookup) — async callers wrap it in asyncio.to_thread().
+
+    Args:
+        skipped: {player_tag, player_name} dicts, as _send_cwl_enrollment_dm_batch returns them.
+        guild_id: For i18n.
+        user_id: The admin who will see it (ephemeral), for i18n.
+
+    Returns:
+        Message texts to send in order; empty list when nobody was skipped.
+    """
+    from qapbot.i18n import t
+
+    if not skipped:
+        return []
+    db = CACHE.db_manager
+    tags = [entry["player_tag"] for entry in skipped]
+    clan_by_tag = db.get_current_clan_tags_for_players_sync(tags) if db is not None else {}
+
+    groups: Dict[Optional[str], List[Dict[str, Any]]] = {}
+    for entry in skipped:
+        groups.setdefault(clan_by_tag.get(entry["player_tag"]), []).append(entry)
+
+    def _name(entry: Dict[str, Any]) -> str:
+        return str(entry.get("player_name") or entry["player_tag"])
+
+    no_clan_label = t('cwl.management.dm_guard_report_no_clan', user_id=user_id, guild_id=guild_id)
+    ordered_clans = sorted(
+        (tag for tag in groups if tag is not None),
+        key=lambda tag: str(CACHE.get_clan_name(tag, tag) or tag).lower(),
+    )
+    lines: List[str] = [t('cwl.management.dm_guard_report_header', user_id=user_id, guild_id=guild_id, count=len(skipped))]
+    for clan_tag in ordered_clans + ([None] if None in groups else []):
+        members = sorted(groups[clan_tag], key=lambda e: _name(e).lower())
+        heading = no_clan_label if clan_tag is None else f"{CACHE.get_clan_name(clan_tag, clan_tag)} ({clan_tag})"
+        lines.append(f"\n**{heading}** — {len(members)}")
+        lines.extend(f"• {_name(e)} ({e['player_tag']})" for e in members)
+
+    messages: List[str] = []
+    current = ""
+    for line in lines:
+        candidate = f"{current}\n{line}" if current else line
+        if len(candidate) > DISCORD_MESSAGE_LIMIT and current:
+            messages.append(current)
+            current = line.lstrip("\n")
+        else:
+            current = candidate
+    if current:
+        messages.append(current)
+    return messages
+
+
 async def _send_cwl_enrollment_dm_batch(
     event_id: int, guild_id: int, season: str, dm_targets: List[Dict[str, Any]],
 ) -> Dict[str, Any]:
@@ -3328,6 +3392,9 @@ async def _send_cwl_enrollment_dm_batch(
     result: Dict[str, Any] = {
         "contacted": 0, "skipped_dm_guard": 0, "skipped_already_dm_globally": 0, "skipped_unlinked": 0,
         "blocked": [], "no_mutual_guild": [], "failed": [],
+        # Who the DM guard held back ({player_tag, player_name}) — for the DEV-mode per-clan
+        # report after Start Enrollment (format_cwl_dm_guard_skipped_report). 2026-09-22.
+        "dm_guard_skipped": [],
     }
     db = CACHE.db_manager
     already_dm_by_tag = await asyncio.to_thread(
@@ -3351,6 +3418,9 @@ async def _send_cwl_enrollment_dm_batch(
             continue
         if _dm_guard_blocks(str(participant["discord_id"])):
             result["skipped_dm_guard"] += 1
+            result["dm_guard_skipped"].append(
+                {"player_tag": participant["player_tag"], "player_name": participant.get("player_name")}
+            )
             continue
         to_dm.append(participant)
 

@@ -14,6 +14,9 @@ Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but
   Files: qapbot/db_manager.py, QBdiscocmdshelper_cwl.py, ui_cwl_roster.py, web_bridge.py,
   activity/client (signupStatus/types/enrollmentBoard/playerPrefs + 2 icons), translations (5
   languages), docs (+ tests). 3402 tests pass.
+  Activity deployed (both halves): DEV https://e7898e2b.cwl-clan-config-dev.pages.dev +
+  cwl-clan-config-server-dev, PROD https://a201d8d5.cwl-clan-config-prod.pages.dev +
+  cwl-clan-config-server-prod. The bot itself still needs its own deploy/restart.
 
 2026-09-22 (20)  Build 62.
 - Fixed: the roster-update DM of a player added during Preparation asked them to confirm, but

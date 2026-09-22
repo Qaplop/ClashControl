@@ -3488,6 +3488,42 @@ async def test_guest_search_tag_of_clan_already_in_table_is_not_offered_as_playe
 
 @pytest.mark.discord
 @pytest.mark.asyncio
+async def test_guest_search_tag_known_as_both_clan_and_player_still_offers_the_player(
+    db, bridge_config, client, monkeypatch
+):
+    """Supercell doesn't document whether a clan and a player can share a tag, so we assume they
+    can (2026-09-22, project owner's spec): a tag that is a known clan is only ruled out as a
+    player when it is NOT also a known player in our DB. Here the tag is a clan already in the
+    table AND a player in user_players (not in player_name_search, so the prefix search misses it)
+    — the player must still come back, as a real hit with its stored name."""
+    from qapbot.cache_manager import CACHE
+
+    await _setup_api_fallback_guild(db, "854", monkeypatch)
+    await _seed_guild_and_clans(db, "854", {"#2CGGVVVJG": "AKATSUKI"})
+    CACHE.clan_name_cache = {"#2CGGVVVJG": {"name": "AKATSUKI"}}
+    event_id = db.create_cwl_event_sync("854", "2026-10", "discordid1")
+    db.set_cwl_event_clans_sync(event_id, [{"clan_tag": "#2CGGVVVJG", "participating": True}])
+    await db.conn.execute("INSERT OR IGNORE INTO users (discord_id, display_name) VALUES ('UNASSIGNED', 'UNASSIGNED')")
+    await db.conn.execute(
+        "INSERT INTO user_players (discord_id, player_tag, player_name) VALUES ('UNASSIGNED', '#2CGGVVVJG', 'Twin')"
+    )
+    await db.conn.commit()
+    monkeypatch.setattr(CACHE.coc_clan_cache, "get_clan", AsyncMock())
+    monkeypatch.setattr(CACHE, "get_player", AsyncMock(return_value=None))
+
+    resp = await client.get(
+        "/api/cwl/guest-search?guild_id=854&discord_user_id=42&q=%232CGGVVVJG",
+        headers={"X-Bridge-Secret": "test-secret"},
+    )
+    assert resp.status == 200
+    results = (await resp.json())["results"]
+    assert [(r["type"], r["player_tag"], r["player_name"]) for r in results] == [("player", "#2CGGVVVJG", "Twin")]
+    # A known player is a real hit — no CoC API fallback needed.
+    CACHE.coc_clan_cache.get_clan.assert_not_awaited()
+
+
+@pytest.mark.discord
+@pytest.mark.asyncio
 async def test_guest_search_unknown_tag_absent_from_coc_api_keeps_raw_placeholder(
     db, bridge_config, client, monkeypatch
 ):

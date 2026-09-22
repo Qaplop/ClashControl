@@ -1187,15 +1187,27 @@ def _search_cwl_guests_sync(guild_id: int, query: str) -> List[Dict[str, Any]]:
         # "the DB found something", which is what gates the CoC API fallback
         # (_resolve_guest_tag_via_coc_api); the marker never reaches the frontend. Added
         # regardless of the cap above (a single entry — the final [:12] slice below re-caps it).
-        # Never for a tag the bot knows as a CLAN (2026-09-22, live report: searching an
-        # already-added guest clan's tag offered "#2CGGVVVJG (#2CGGVVVJG) — PLAYER, not linked").
-        # The clan itself is excluded from clan hits once it's in the lineup, and the CoC API
-        # fallback then returns None for it, which by design keeps this placeholder — so without
-        # this check the clan's own tag survives as a fake, addable player.
-        if len(upper_query) >= 5 and upper_query not in player_hits and upper_query not in CACHE.clan_name_cache:
-            player_hits[upper_query] = {
-                "player_tag": upper_query, "player_name": upper_query, "unverified": True
-            }
+        #
+        # Clan-vs-player tag collisions (2026-09-22, live report: searching an already-added guest
+        # clan's tag offered "#2CGGVVVJG (#2CGGVVVJG) — PLAYER, not linked"; project owner's spec
+        # on the fix): Supercell doesn't document whether a clan and a player can share a tag, so
+        # assume they can. Resolution order for an exact tag the prefix search didn't return:
+        #   1. a known PLAYER in our DB (exact lookup — the prefix search is capped at 12 rows and
+        #      unordered, so it can miss an exact match) → a real player hit, even if the same tag
+        #      is also a known clan;
+        #   2. otherwise a known CLAN → no placeholder. The clan itself is excluded from clan hits
+        #      once it's in the lineup and the CoC API fallback returns None for it, which by design
+        #      keeps whatever placeholder exists — so the clan's own tag would survive as a fake,
+        #      addable player;
+        #   3. otherwise → the unverified placeholder, as before.
+        if len(upper_query) >= 5 and upper_query not in player_hits:
+            known_player_name = db.get_known_player_name_sync(upper_query)
+            if known_player_name is not None:
+                player_hits[upper_query] = {"player_tag": upper_query, "player_name": known_player_name}
+            elif upper_query not in CACHE.clan_name_cache:
+                player_hits[upper_query] = {
+                    "player_tag": upper_query, "player_name": upper_query, "unverified": True
+                }
     else:
         for match in CACHE.search_player_names(query, limit=25):
             player_hits[match["player_tag"]] = {"player_tag": match["player_tag"], "player_name": match["player_name"]}

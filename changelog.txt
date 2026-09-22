@@ -1,6 +1,14 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-22 (5)  Build 49.
+- Changed: CWL Guests search no longer assumes clan and player tags can't collide (Supercell
+  doesn't document it). A tag known as a clan is only ruled out as a player when it is NOT also a
+  known player in our DB, checked with a new exact lookup (get_known_player_name_sync:
+  user_players + player_name_search) instead of the capped, unordered prefix search, which could
+  miss an exact match. A known player is returned as a real hit, even if the same tag is a clan.
+  Files: qapbot/web_bridge.py, qapbot/db_manager.py (+ test). 3277 tests pass.
+
 2026-09-22 (4)  Build 48.
 - Fixed: CWL Guests search offered an already-added guest clan's own tag as an addable PLAYER
   ("#2CGGVVVJG (#2CGGVVVJG) — not linked"). The clan is excluded from clan hits once it's in the

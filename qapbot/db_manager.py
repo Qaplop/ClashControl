@@ -8289,6 +8289,33 @@ class WarHistoryDB:
         huge fraction of the table."""
         return self._search_player_names_fts_sync(query, hard_cap)
 
+    def get_known_player_name_sync(self, player_tag: str) -> Optional[str]:
+        """Exact lookup: player_tag's name if it exists as a PLAYER anywhere this bot records
+        players (user_players, player_name_search), else None. A player with no stored name
+        returns the tag itself, so "known" is always `is not None`.
+
+        Exists for the CWL guest search (2026-09-22): Supercell doesn't document whether a clan
+        and a player can share a tag, so a tag known as a clan may only be ruled out as a player
+        when it is NOT a known player too — an exact check, never the capped/unordered prefix
+        search, which can drop an exact match when more than 12 tags share the prefix."""
+        import sqlite3
+
+        if not self.db_path:
+            raise RuntimeError("Database not initialized. Call initialize() first.")
+        with self._sync_conn() as conn:
+            try:
+                row = conn.execute(
+                    "SELECT player_name AS name FROM user_players WHERE player_tag = ? "
+                    "UNION ALL SELECT name FROM player_name_search WHERE player_tag = ? LIMIT 1",
+                    (player_tag, player_tag),
+                ).fetchone()
+            except sqlite3.Error as e:
+                logging.error(f"[DB-QUERY-SYNC] get_known_player_name_sync failed for {player_tag}: {e}")
+                return None
+        if row is None:
+            return None
+        return row["name"] or player_tag
+
     def search_player_tags_by_prefix_sync(self, prefix: str, limit: int = 12) -> List[Dict[str, str]]:
         """Tag-PREFIX search over player_name_search (2026-08-17, Step 11) — unconditionally
         backs the CWL guest search's `#` tag mode (web_bridge.py's _search_cwl_guests_sync)

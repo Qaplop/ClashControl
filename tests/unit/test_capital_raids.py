@@ -338,6 +338,35 @@ def test_render_cells_mode_alignment_and_highlight():
     assert len(header) == sum(w for _, w in MODE_REGISTRY["raid"]["columns"]) + len(MODE_REGISTRY["raid"]["columns"]) - 1
 
 
+@pytest.mark.parametrize("mode", ["raid", "raidmissed"])
+async def test_long_raid_table_splits_on_its_header(monkeypatch, caplog, mode):
+    """Regression (2026-09-22 DEV log): the splitter only recognized a header containing
+    'Stars'/'Attacks', so a >2000-char raid board fell back to a blind half-split with a WARNING."""
+    stats = {f"#P{i}": {"PlayerID": f"#P{i}", "Player": f"Player{i:02d}", "Loot": 20000 + i, "Attacks": 6,
+                        "Medals": 1465, "Medals_final": True, "Weekends": 1, "Missed": 1} for i in range(80)}
+    text = render_leaderboard("#C", "The Marines", " for 09/2026", "", stats, mode, style="discord")
+    sent: List[str] = []
+
+    class _Channel:
+        async def send(self, content: str) -> Any:
+            sent.append(content)
+            return SimpleNamespace(id=len(sent))
+
+    async def _retry(op: Any, _name: str) -> Any:
+        return await op()
+
+    monkeypatch.setattr(qh, "discord_retry", _retry)
+    caplog.set_level("WARNING")
+    await qh._split_and_post_leaderboard_helper(_Channel(), text)  # type: ignore[arg-type]
+    assert "Could not find player table header" not in caplog.text
+    assert len(sent) >= 2 and all(len(m) <= 2000 for m in sent)
+    first_lines = sent[0].split("\n")
+    assert any(l.startswith("Player ") for l in first_lines) and any(set(l.strip()) <= {"-", " "} and l.strip() for l in first_lines)
+    import re
+    posted = re.findall(r"Player\d{2}\b", "\n".join(sent))
+    assert sorted(posted) == sorted(p["Player"] for p in stats.values())   # every row exactly once
+
+
 def test_raid_modes_have_no_cwl_variant():
     for mode in ("raid", "currentraid", "raidmissed"):
         assert apply_cwl_mode_suffix(mode, True) == mode

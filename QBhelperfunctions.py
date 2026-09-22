@@ -5286,8 +5286,19 @@ async def _split_and_post_leaderboard_helper(channel: Union[discord.TextChannel,
     table_lines: list[str] = []
     found_table_start = False
     
+    def _is_table_header(idx: int) -> bool:
+        """The column-header row: render_leaderboard() always emits it as a line starting with
+        "Player" directly followed by its dash separator — true for every mode, war or raid
+        (the raid tables have Loot/Atk/Missed instead of Stars/Attacks, tracker #0115). The
+        original keyword check stays as a fallback."""
+        line = lines[idx]
+        nxt = lines[idx + 1].strip() if idx + 1 < len(lines) else ""
+        if line.startswith("Player") and nxt and set(nxt) <= {"-", " "}:
+            return True
+        return 'Player' in line and 'Stars' in line and 'Attacks' in line
+
     for _i, line in enumerate(lines):
-        if not found_table_start and 'Player' in line and 'Stars' in line and 'Attacks' in line:
+        if not found_table_start and _is_table_header(_i):
             found_table_start = True
             table_lines.append(line)  # type: ignore[misc]  # Include header with table
         elif found_table_start:
@@ -5300,7 +5311,7 @@ async def _split_and_post_leaderboard_helper(channel: Union[discord.TextChannel,
         # Log first few lines to help diagnose why header wasn't found
         first_lines_sample = '\n'.join(lines[:5]) if len(lines) >= 5 else '\n'.join(lines)
         logging.warning(
-            f"Could not find player table header (looking for line with 'Player', 'Stars', 'Attacks'), using simple split. "
+            f"Could not find player table header (a 'Player ...' line followed by a dash separator), using simple split. "
             f"Total lines: {len(lines)}. First 5 lines:\n{first_lines_sample}"
         )
         mid_point = len(lines) // 2

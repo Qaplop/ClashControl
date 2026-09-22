@@ -1,6 +1,14 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-22 (11)  Build 55.
+- Fixed: raid leaderboards over 2000 chars were split blindly in half (with a WARNING "Could not
+  find player table header") because _split_and_post_leaderboard_helper() only recognized a
+  header row containing 'Stars' and 'Attacks'. It now recognizes the header structurally (a
+  "Player ..." line followed by render_leaderboard()'s dash separator), which fits every mode;
+  the keyword check remains as fallback. File: QBhelperfunctions.py (+ regression test).
+  3330 tests pass.
+
 2026-09-22 (10)  Build 54.
 - Fixed: Pylance reportArgumentType on post_leaderboard_to_discord(month=None) (QapBot.py and two
   QBdiscordcmds.py call sites) introduced with the raid modes in build 52. The function already

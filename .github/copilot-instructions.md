@@ -59,23 +59,29 @@ Token budget note (cl100k_base): keep this file ~≤3000 tokens.
   - Ephemeral/DM: pass both `user_id=str(interaction.user.id)` and `guild_id`.
   - Public: pass `guild_id`.
 - DON'T: Hardcode English in UI/commands.
-- DO: **Add every new key to BOTH `qapbot/translations/en.json` and `de.json` in the same edit,
-  and verify key parity before committing** — the two files must always hold an identical key set.
-  A key missing from one language surfaces to that guild as a raw key string or a `KeyError`, and
-  nothing in the test suite catches it. Verify with:
+- DO: **Add every new key to EVERY file in `qapbot/translations/` in the same edit, and verify key
+  parity before committing** — as of 2026-09-22 that is `en`, `de`, `es`, `zh`, `la`, and they must
+  always hold an identical key set. A key missing from one language surfaces to that guild as a raw
+  key string or a `KeyError`, and nothing in the test suite catches it. (English is the per-key
+  fallback, so a gap degrades rather than crashes — but it still ships a half-translated screen.)
+  Verify with:
   ```bash
   python -c "
-  import json
-  en=json.load(open('qapbot/translations/en.json',encoding='utf-8')); de=json.load(open('qapbot/translations/de.json',encoding='utf-8'))
+  import glob, json, os
   def fl(d,p=''):
       o=set()
       for k,v in d.items():
           q=f'{p}.{k}' if p else k
           o |= fl(v,q) if isinstance(v,dict) else {q}
       return o
-  a,b=fl(en),fl(de); print('en-only:',a-b); print('de-only:',b-a)"
+  sets={os.path.basename(f): fl(json.load(open(f,encoding='utf-8'))) for f in glob.glob('qapbot/translations/*.json')}
+  ref=sets['en.json']
+  for name,keys in sets.items(): print(name, len(keys), 'diff:', ref ^ keys)"
   ```
-  Both lines must print an empty set.
+  Every line must print `diff: set()`.
+- DO: Edit these files as TEXT (insert the new key next to a related one), never by
+  `json.load` → `json.dump`: the files carry hand-formatting (escaped emoji in `en.json`, two keys
+  sharing a line) that a re-dump silently rewrites into a huge, unreviewable diff.
 - DO: When a *change* (not an addition) alters an English string's meaning, port it to German in the
   same pass. Wording-only tweaks the project owner asks for in one language stay in that language;
   a factual correction must land in both, or the two languages start telling users different things.

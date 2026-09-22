@@ -1576,6 +1576,22 @@ async def handle_get_cwl_player_prefs(request: web.Request) -> web.Response:
     return web.json_response(payload)
 
 
+async def _refresh_cached_cwl_prefs(discord_id: str) -> None:
+    """Copy the user's just-written CWL preference columns from the DB into their CACHE player
+    dicts (2026-09-22). set_cwl_preferences_sync() writes the DB only; without this, CACHE kept
+    the old values, and although _replace_user_players_rows() now lets an existing DB row win, an
+    account later moved to another discord_id would carry the stale CACHE copy with it."""
+    db = CACHE.db_manager
+    user = CACHE.user_accounts.get(discord_id)
+    if db is None or not user:
+        return
+    prefs_by_tag = await asyncio.to_thread(db.get_user_player_cwl_prefs_sync, discord_id)
+    for player in user.get("players", []):
+        prefs = prefs_by_tag.get(player.get("player_tag"))
+        if prefs:
+            player.update(prefs)
+
+
 async def handle_post_cwl_player_prefs(request: web.Request) -> web.Response:
     """POST /api/cwl/player-prefs — plans/cwl-personal-hub.md Phase 5c. Applies one or more
     preference changes, each mapping to one set_cwl_preferences_sync() call, then returns the
@@ -1628,6 +1644,7 @@ async def handle_post_cwl_player_prefs(request: web.Request) -> web.Response:
                 db.set_cwl_preferences_sync(str(discord_user_id), change.get("player_tag"), **kwargs)
 
     await asyncio.to_thread(_apply_changes_sync)
+    await _refresh_cached_cwl_prefs(str(discord_user_id))
 
     payload = await asyncio.to_thread(_build_player_prefs_payload_sync, guild_id, discord_user_id)
     return web.json_response(payload)

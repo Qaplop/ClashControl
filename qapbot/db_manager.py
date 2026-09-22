@@ -141,6 +141,18 @@ _ENSURE_CLANS_CHUNK = 400
 PLAYER_NAME_FTS_ROWID_SCHEME_KEY = "player_name_fts_rowid_scheme"
 PLAYER_NAME_FTS_ROWID_SCHEME_VALUE = "player_name_search_rowid_v2"
 
+# Every CWL preference column of user_players (plans/cwl-personal-hub.md Phase 0 and later). The
+# single list get_user() loads and _replace_user_players_rows() preserves — a column missing here
+# is silently reset on every save_user() (2026-09-22: cwl_permanent_optin and
+# cwl_optout_send_dm_anyway were). tests/unit/test_user_players_cwl_prefs_roundtrip.py fails if a
+# cwl_* column exists in the table but not in this tuple.
+USER_PLAYER_CWL_PREF_COLUMNS: Tuple[str, ...] = (
+    "cwl_permanent_optout",
+    "cwl_permanent_optin",
+    "cwl_optout_send_dm_anyway",
+    "cwl_default_preferred_league_rank",
+)
+
 
 def _create_history_schema_sync(conn: Any, build_expensive_indexes: bool = True) -> None:
     """Create the 4 history.* time-series tables on a plain ``sqlite3`` connection (idempotent).
@@ -5546,6 +5558,29 @@ class WarHistoryDB:
             })
         return players
 
+    def get_user_player_cwl_prefs_sync(self, discord_id: str) -> Dict[str, Dict[str, Any]]:
+        """player_tag -> {every USER_PLAYER_CWL_PREF_COLUMNS column} for one discord_id, in the same
+        value shape get_user() puts into the CACHE player dict (bools, league rank as-is). Used to
+        re-sync CACHE after set_cwl_preferences_sync() (web_bridge._refresh_cached_cwl_prefs)."""
+        if not self.db_path:
+            raise RuntimeError("Database not initialized. Call initialize() first.")
+        cols = ", ".join(USER_PLAYER_CWL_PREF_COLUMNS)
+        with self._sync_conn() as conn:
+            try:
+                rows = conn.execute(
+                    f"SELECT player_tag, {cols} FROM user_players WHERE discord_id = ?", (discord_id,)
+                ).fetchall()
+            except sqlite3.Error as e:
+                logging.error(f"[DB-QUERY-SYNC] get_user_player_cwl_prefs_sync failed: {e}")
+                return {}
+        return {
+            row["player_tag"]: {
+                col: row[col] if col == "cwl_default_preferred_league_rank" else bool(row[col])
+                for col in USER_PLAYER_CWL_PREF_COLUMNS
+            }
+            for row in rows
+        }
+
     def get_player_links_sync(self, player_tags: List[str]) -> Dict[str, Dict[str, Any]]:
         """player_tag -> {discord_id, player_name, verified, cwl_permanent_optout,
         cwl_permanent_optin, cwl_optout_send_dm_anyway, preferred_league_rank} for whichever of
@@ -10487,8 +10522,15 @@ class WarHistoryDB:
                 # _replace_user_players_rows() that silently reset every CWL preference on every
                 # OTHER linked account of the same discord_id back to its default, since this dict
                 # is the only source _replace_user_players_rows() writes from.
-                "cwl_permanent_optout": bool(p_row["cwl_permanent_optout"]),
-                "cwl_default_preferred_league_rank": p_row["cwl_default_preferred_league_rank"],
+                # 2026-09-22: every column of USER_PLAYER_CWL_PREF_COLUMNS, not a hand-picked
+                # subset — cwl_permanent_optin / cwl_optout_send_dm_anyway were missing here.
+                **{
+                    col: (
+                        p_row[col] if col == "cwl_default_preferred_league_rank"
+                        else bool(p_row[col])
+                    )
+                    for col in USER_PLAYER_CWL_PREF_COLUMNS
+                },
             }
             for p_row in players_rows
         ]
@@ -10579,6 +10621,22 @@ class WarHistoryDB:
             null_clan_tags: True for the FK-recovery retry — a referenced clan row doesn't
                 exist, so current_clan_tag is cleared for every player instead of failing again.
         """
+        # CWL preferences are owned by the DB, not by the CACHE dict (2026-09-22, found while
+        # planning tracker #0114): set_cwl_preferences_sync() writes them straight to user_players
+        # without touching CACHE, so a player dict here can hold a stale value — and before this,
+        # the INSERT below didn't even list cwl_permanent_optin / cwl_optout_send_dm_anyway, so
+        # every save_user() reset them to 0. Read the current values first and let an existing row
+        # win; the dict's value is only used for a tag that is new under this discord_id (e.g. an
+        # account moved here from the UNASSIGNED pool), where it is the only source there is.
+        pref_cols = ", ".join(USER_PLAYER_CWL_PREF_COLUMNS)
+        existing_cursor = await self._conn.execute(
+            f"SELECT player_tag, {pref_cols} FROM user_players WHERE discord_id = ?", (discord_id,)
+        )
+        existing_prefs: Dict[str, Dict[str, Any]] = {
+            r["player_tag"]: {col: r[col] for col in USER_PLAYER_CWL_PREF_COLUMNS}
+            for r in await existing_cursor.fetchall()
+        }
+
         await self._conn.execute("DELETE FROM user_players WHERE discord_id = ?", (discord_id,))
 
         # Defense-in-depth de-dup by player_tag (2026-08-21 incident fix). The UNIQUE(discord_id,
@@ -10612,11 +10670,26 @@ class WarHistoryDB:
         # Atomicity is unchanged — the caller wraps this in BEGIN and rolls the whole thing back
         # on failure, so a batch that fails on one row behaves exactly as the per-row loop did
         # (including the "FOREIGN KEY" retry with null_clan_tags=True).
-        await self._conn.executemany("""
+        def _pref_values(player: Dict[str, Any]) -> Tuple[Any, ...]:
+            existing = existing_prefs.get(player["player_tag"])
+            if existing is not None:
+                return tuple(existing[col] for col in USER_PLAYER_CWL_PREF_COLUMNS)
+            # CWL preferences (plans/cwl-personal-hub.md Phase 0) — see get_user()'s matching
+            # comment: sourced from the incoming dict rather than defaulted, so an account moved
+            # under this discord_id keeps its preferences.
+            return tuple(
+                player.get(col) if col == "cwl_default_preferred_league_rank"
+                else (1 if player.get(col, False) else 0)
+                for col in USER_PLAYER_CWL_PREF_COLUMNS
+            )
+
+        insert_cols = ", ".join(USER_PLAYER_CWL_PREF_COLUMNS)
+        placeholders = ", ".join("?" for _ in range(7 + len(USER_PLAYER_CWL_PREF_COLUMNS)))
+        await self._conn.executemany(f"""
             INSERT INTO user_players
             (discord_id, player_tag, player_name, verified, th_level, current_clan_tag, is_primary,
-             cwl_permanent_optout, cwl_default_preferred_league_rank)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+             {insert_cols})
+            VALUES ({placeholders})
         """, [
             (
                 discord_id,
@@ -10626,12 +10699,7 @@ class WarHistoryDB:
                 player.get("th_level"),
                 None if null_clan_tags else player.get("current_clan_tag"),
                 1 if player.get("is_primary", False) else 0,
-                # CWL preferences (plans/cwl-personal-hub.md Phase 0) — see get_user()'s matching
-                # comment above: this INSERT is the other half of the same round-trip, and must
-                # source these from the incoming player dict rather than defaulting them, or a
-                # save_user() call for one player silently zeroes every OTHER player's preferences.
-                1 if player.get("cwl_permanent_optout", False) else 0,
-                player.get("cwl_default_preferred_league_rank"),
+                *_pref_values(player),
             )
             for player in deduped_players
         ])

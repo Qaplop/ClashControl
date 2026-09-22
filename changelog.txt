@@ -1,6 +1,14 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-22 (12)  Build 56.
+- Added: /link clan and /link player post an in-game profile link publicly as
+  "**Name**: https://link.clashofclans.com/...". Clans resolve like /analyse (autocomplete, tag or
+  name substring; an untracked tag is only looked up, never added to tracking); players resolve
+  like /whois (#TAG, or name search with an ephemeral picker for several matches). /whois's
+  search moved into the shared _search_player_name_matches(). /help + README updated.
+  Files: QBdiscordcmds.py, QapBot.py, translations en/de (+ tests). 3342 tests pass.
+
 2026-09-22 (11)  Build 55.
 - Fixed: raid leaderboards over 2000 chars were split blindly in half (with a WARNING "Could not
   find player table header") because _split_and_post_leaderboard_helper() only recognized a

@@ -1087,6 +1087,8 @@ def _get_help_command_dm_status() -> Dict[str, bool]:
         "admin": admin.guild_only,
         "list": list.guild_only,
         "whois": whois_slash.guild_only,
+        "link clan": link_clan.guild_only,
+        "link player": link_player.guild_only,
         "ping": ping.guild_only,
         "status": status.guild_only,
         "help": help.guild_only,
@@ -1121,7 +1123,8 @@ async def help(interaction: discord.Interaction, command: Optional[str] = None):
     # trips static-analysis "constant redefinition" warnings for a completely legal reassignment.
     available_commands = [
         "subscribe", "unsubscribe", "subscriptions", "leaderboard", "highlightme", "analyse cwl_league_group",
-        "analyse cwl_opponent", "clan management", "cwl preferences", "admin", "list", "whois", "ping", "status", "help"
+        "analyse cwl_opponent", "clan management", "cwl preferences", "admin", "list", "whois", "link clan", "link player",
+        "ping", "status", "help"
     ]
     if CONFIG.tracker_enabled:
         available_commands += ["bug", "feature"]
@@ -1204,7 +1207,7 @@ async def help(interaction: discord.Interaction, command: Optional[str] = None):
     # Organize commands by category (reorganized per user request)
     categories = {
         t('commands.help.category_leaderboards', user_id=user_id, guild_id=guild_id): ["subscribe", "unsubscribe", "subscriptions", "leaderboard", "highlightme"],
-        t('commands.help.category_clan_player_info', user_id=user_id, guild_id=guild_id): ["analyse cwl_league_group", "analyse cwl_opponent", "whois", "cwl preferences"],
+        t('commands.help.category_clan_player_info', user_id=user_id, guild_id=guild_id): ["analyse cwl_league_group", "analyse cwl_opponent", "whois", "link clan", "link player", "cwl preferences"],
         t('commands.help.category_administration', user_id=user_id, guild_id=guild_id): ["clan management", "admin", "list"],
         t('commands.help.category_bot_info', user_id=user_id, guild_id=guild_id): ["ping", "status", "help"],
     }
@@ -1235,6 +1238,8 @@ async def help(interaction: discord.Interaction, command: Optional[str] = None):
                 cmd_key = "cwl"
             elif cmd in ("analyse cwl_league_group", "analyse cwl_opponent"):
                 cmd_key = "analyse"
+            elif cmd in ("link clan", "link player"):
+                cmd_key = "link"
             
             # Use clickable command mention if ID is available, otherwise use code formatting
             if cmd_key in command_ids:
@@ -1255,7 +1260,8 @@ async def help_command_autocomplete(interaction: discord.Interaction, current: s
     invoked from a DM (see _get_help_command_dm_status())."""
     commands_list = [
         "subscribe", "unsubscribe", "subscriptions", "leaderboard", "highlightme", "analyse cwl_league_group",
-        "analyse cwl_opponent", "clan management", "cwl preferences", "admin", "list", "whois", "ping", "status", "help"
+        "analyse cwl_opponent", "clan management", "cwl preferences", "admin", "list", "whois", "link clan", "link player",
+        "ping", "status", "help"
     ]
     if interaction.guild is None:
         dm_status = _get_help_command_dm_status()
@@ -5160,6 +5166,39 @@ def _build_guild_player_name_matches(guild_id: Optional[int], needle_lower: str)
     return matches
 
 
+async def _search_player_name_matches(
+    guild_id: Optional[int], needle_lower: str
+) -> Tuple[List[Dict[str, str]], int]:
+    """Player name search shared by /whois and /link player: the guild-first in-memory pass
+    (_build_guild_player_name_matches), then the capped global FTS5 fallback for everyone else.
+
+    Args:
+        guild_id: Invoking guild, or None in a DM (then only the global fallback runs).
+        needle_lower: Lowercased name substring to search for.
+
+    Returns:
+        (matches, total): at most 25 ``{"player_tag", "player_name"}`` dicts (Discord's select
+        limit), guild members first, plus the uncapped-by-25 total so callers can say
+        "showing first 25".
+    """
+    guild_matches = _build_guild_player_name_matches(guild_id, needle_lower)
+    guild_tags_matched = {m["player_tag"] for m in guild_matches}
+
+    # Global fallback only above the FTS5 trigram floor (3 chars) — below that, the
+    # guild pass above (no floor of its own) may already have answered; skip silently
+    # rather than issuing a query guaranteed to find nothing (Pitfall 26 doesn't apply
+    # to skipping a call, only to making one unwrapped).
+    global_matches: List[Dict[str, str]] = []
+    if len(needle_lower) >= 3 and CACHE.db_manager is not None:
+        global_raw: List[Dict[str, str]] = await asyncio.to_thread(
+            CACHE.db_manager.search_player_names_full_sync, needle_lower
+        )
+        global_matches = [m for m in global_raw if m["player_tag"] not in guild_tags_matched]
+
+    all_matches = guild_matches + global_matches
+    return all_matches[:25], len(all_matches)
+
+
 @app_commands.command(name="whois", description=dev_mode+"Show CoC accounts for a Discord user, or war history for a player.")
 @app_commands.describe(
     user="The Discord user to look up",
@@ -5196,22 +5235,7 @@ async def whois_slash(
             # the old single uncapped scan over CACHE.player_name_index followed by a separate
             # sort-by-tag_to_clan reorder step.
             needle = player_stripped.lower()
-            guild_matches = _build_guild_player_name_matches(interaction.guild_id, needle)
-            guild_tags_matched = {m["player_tag"] for m in guild_matches}
-
-            # Global fallback only above the FTS5 trigram floor (3 chars) — below that, the
-            # guild pass above (no floor of its own) may already have answered; skip silently
-            # rather than issuing a query guaranteed to find nothing (Pitfall 26 doesn't apply
-            # to skipping a call, only to making one unwrapped).
-            global_matches: List[Dict[str, str]] = []
-            if len(needle) >= 3 and CACHE.db_manager is not None:
-                global_raw: List[Dict[str, str]] = await asyncio.to_thread(
-                    CACHE.db_manager.search_player_names_full_sync, needle
-                )
-                global_matches = [m for m in global_raw if m["player_tag"] not in guild_tags_matched]
-
-            all_matches = guild_matches + global_matches
-            matches = all_matches[:25]
+            matches, total_matches = await _search_player_name_matches(interaction.guild_id, needle)
             if not matches:
                 # "Too short" only when the guild pass (which has no length floor of its own)
                 # also found nothing — a guild admin searching "Al" for their own 3-member
@@ -5246,7 +5270,7 @@ async def whois_slash(
                     placeholder=t('commands.whois.player_select_placeholder', guild_id=interaction.guild_id),
                 )
                 msg = t('commands.whois.player_select_prompt', guild_id=interaction.guild_id).format(name=player_stripped)
-                if len(all_matches) > 25:
+                if total_matches > 25:
                     msg = f"{msg}\n{t('commands.whois.player_select_too_many', guild_id=interaction.guild_id)}"
                 view.message = await interaction.followup.send(msg, view=view, ephemeral=True)
     elif user:
@@ -5257,6 +5281,177 @@ async def whois_slash(
             t('commands.whois.player_report_no_args', guild_id=interaction.guild_id),
             ephemeral=True,
         )
+
+
+# =============================================================================
+# /link command group — post a CoC in-game deep link to a clan or player profile
+# =============================================================================
+
+link_group = app_commands.Group(name="link", description=dev_mode+"Post an in-game link to a clan or player profile.")
+
+
+def _format_profile_link(name: str, url: str) -> str:
+    """Render the public /link result line: ``**Name**: <deep link>``."""
+    return f"**{discord.utils.escape_markdown(name)}**: {url}"
+
+
+async def _link_send_private(
+    interaction: discord.Interaction, content: str, view: Optional[discord.ui.View] = None
+) -> Optional[discord.Message]:
+    """Send an error or a disambiguation dropdown ephemerally after /link's PUBLIC defer.
+
+    /link defers publicly so its result is a normal channel message, but errors and pickers
+    shouldn't be. The first followup after a defer always inherits the defer's visibility, so
+    the public "thinking" placeholder is deleted first — the next followup is then a fresh
+    message that honours ``ephemeral=True``.
+    """
+    try:
+        await interaction.delete_original_response()
+    except (discord.NotFound, discord.HTTPException):
+        pass
+    if view is not None:
+        return await interaction.followup.send(content, view=view, ephemeral=True, wait=True)
+    return await interaction.followup.send(content, ephemeral=True, wait=True)
+
+
+@link_group.command(name="clan", description=dev_mode+"Post an in-game link to a clan's profile.")
+@app_commands.describe(clan="Clan tag or name (substring) to link")
+# DM-invokable — no guild dependency beyond display language and autocomplete scope.
+async def link_clan(interaction: discord.Interaction, clan: str) -> None:
+    """Slash command: /link clan — resolve a clan by tag or name substring (same resolution as
+    /analyse) and post ``**Clan Name**: https://link.clashofclans.com/...`` publicly.
+
+    Unlike /analyse, a tag that isn't tracked yet is only looked up (to get its name), never
+    added to tracking via validate_and_add_clan_to_cache() — posting a link must not have the
+    side effect of making the bot track a clan.
+    """
+    if not await _safe_defer(interaction, thinking=True, ephemeral=False):
+        return
+    _log_cmd(interaction, "link clan", clan=clan)
+    guild_id = interaction.guild_id
+    user_id = str(interaction.user.id)
+
+    _count, resolved = _get_clan_tag(clan) if clan and clan.strip() else (0, None)
+    clan_name: Optional[str]
+    if resolved:
+        clan_tag = resolved
+        clan_name = CACHE.get_clan_name(clan_tag, None)
+    else:
+        normalized = normalize_clan_tag(clan or "")
+        if not normalized:
+            await _link_send_private(
+                interaction, t('commands.errors.invalid_clan_tag_or_name', user_id=user_id, guild_id=guild_id)
+            )
+            return
+        clan_tag = normalized
+        try:
+            clan_obj = await CACHE.coc_clan_cache.get_clan(clan_tag)
+            clan_name = getattr(clan_obj, "name", None)
+        except Exception as exc:
+            logging.info(f"[LINK] clan lookup failed for {clan_tag}: {exc}")
+            await _link_send_private(
+                interaction, t('commands.link.clan_not_found', user_id=user_id, guild_id=guild_id, tag=clan_tag)
+            )
+            return
+
+    await interaction.followup.send(_format_profile_link(clan_name or clan_tag, coc_clan_profile_url(clan_tag)))
+    _log_cmd_done(interaction, "link clan")
+
+
+@link_clan.autocomplete('clan')
+async def link_clan_autocomplete(interaction: discord.Interaction, current: str):
+    """Autocomplete: suggests tracked clans for the guild (also accepts any typed tag). In a DM,
+    offers the union of clans from every guild the caller is linked to."""
+    if interaction.guild_id:
+        return await get_clan_family_autocomplete_choices(current, guild_id=str(interaction.guild_id), mode="guild_first")
+    from qapbot.QBdiscocmdshelper import get_dm_caller_matched_guild_ids
+    guild_ids = [str(g) for g in get_dm_caller_matched_guild_ids(str(interaction.user.id))]
+    return await get_clan_family_autocomplete_choices(current, guild_ids=guild_ids, mode="guild_first")
+
+
+async def _link_player_select_callback(
+    interaction: discord.Interaction,
+    selected_tag: str,
+    *,
+    names: Dict[str, str],
+    _view: Any = None,
+) -> None:
+    """Callback when the user picks a player from /link player's disambiguation dropdown:
+    removes the ephemeral dropdown and posts the link publicly."""
+    if not await _safe_defer(interaction, thinking=True, ephemeral=False):
+        return
+    if _view is not None and getattr(_view, 'message', None) is not None:
+        try:
+            await _view.message.delete()
+        except (discord.NotFound, discord.HTTPException):
+            pass
+    name = names.get(selected_tag) or selected_tag
+    await interaction.followup.send(_format_profile_link(name, coc_player_profile_url(selected_tag)))
+    _log_cmd_done(interaction, "link player")
+
+
+@link_group.command(name="player", description=dev_mode+"Post an in-game link to a player's profile.")
+@app_commands.describe(player="Player tag (e.g. #ABC123) or name substring to search")
+# DM-invokable — same search as /whois player:, which is DM-invokable too.
+async def link_player(interaction: discord.Interaction, player: str) -> None:
+    """Slash command: /link player — resolve a player by #TAG or name substring (same two-step
+    search as /whois, via _search_player_name_matches) and post
+    ``**Player Name**: https://link.clashofclans.com/...`` publicly. Several name matches → an
+    ephemeral dropdown to pick from, exactly like /whois.
+    """
+    if not await _safe_defer(interaction, thinking=True, ephemeral=False):
+        return
+    _log_cmd(interaction, "link player", player=player)
+    guild_id = interaction.guild_id
+    user_id = str(interaction.user.id)
+    player_stripped = (player or "").strip()
+
+    if player_stripped.startswith('#'):
+        # Explicit tag (Pitfall 18: only an explicit '#' is treated as a tag). Player tags share
+        # the clan-tag format, so normalize_clan_tag() validates/normalizes them too.
+        player_tag = normalize_clan_tag(player_stripped)
+        player_obj = await CACHE.get_player(player_tag) if player_tag else None
+        if player_obj is None:
+            await _link_send_private(
+                interaction, t('commands.link.player_not_found', user_id=user_id, guild_id=guild_id, tag=player_stripped)
+            )
+            return
+        await interaction.followup.send(
+            _format_profile_link(getattr(player_obj, "name", None) or player_tag, coc_player_profile_url(player_tag))  # type: ignore[arg-type]
+        )
+        _log_cmd_done(interaction, "link player")
+        return
+
+    needle = player_stripped.lower()
+    matches, total_matches = await _search_player_name_matches(guild_id, needle) if needle else ([], 0)
+    if not matches:
+        key = 'commands.whois.player_search_too_short' if len(needle) < 3 else 'commands.whois.player_not_found'
+        await _link_send_private(interaction, t(key, user_id=user_id, guild_id=guild_id).format(name=player_stripped))
+        return
+    if len(matches) == 1:
+        only = matches[0]
+        await interaction.followup.send(
+            _format_profile_link(only["player_name"], coc_player_profile_url(only["player_tag"]))
+        )
+        _log_cmd_done(interaction, "link player")
+        return
+
+    from qapbot.ui_common import GenericSelectView
+    options = [
+        discord.SelectOption(label=m["player_name"][:100], value=m["player_tag"], description=m["player_tag"])
+        for m in matches
+    ]
+    view = GenericSelectView(
+        options=options,
+        callback_fn=_link_player_select_callback,
+        placeholder=t('commands.whois.player_select_placeholder', user_id=user_id, guild_id=guild_id),
+        callback_kwargs={"names": {m["player_tag"]: m["player_name"] for m in matches}},
+    )
+    view.callback_kwargs['_view'] = view
+    msg = t('commands.whois.player_select_prompt', user_id=user_id, guild_id=guild_id).format(name=player_stripped)
+    if total_matches > 25:
+        msg = f"{msg}\n{t('commands.whois.player_select_too_many', user_id=user_id, guild_id=guild_id)}"
+    view.message = await _link_send_private(interaction, msg, view=view)
 
 
 # ============================================================================

@@ -194,6 +194,10 @@
       "chart_option_activity": "Saisonverlauf Aktivität",
       "chart_option_activity_desc": "CK/CWL - monatliche Aktivität (Angriffe vs. Maximum)"
     },
+    "link": {
+      "clan_not_found": "Clan `{tag}` wurde in Clash of Clans nicht gefunden.",
+      "player_not_found": "Spieler `{tag}` wurde in Clash of Clans nicht gefunden."
+    },
     "status": {},
     "help": {
       "list_title": "QapBot Befehle",
@@ -265,6 +269,16 @@
         "short": "CoC-Konten für einen Discord-Nutzer oder Kriegsverlauf für einen Spieler",
         "title": "🔍 Whois-Befehl",
         "detailed": "Schlage die Clash-of-Clans-Konten eines Discord-Nutzers nach, oder zeige einen umfassenden Kriegsleistungsbericht für einen beliebigen CoC-Spieler an.\n\n**Verwendung:**\n`/whois user:<@Nutzer>` — registrierte CoC-Konten eines Discord-Nutzers\n`/whois player:<#TAG>` — Kriegsverlaufsbericht für einen spezifischen Spieler-Tag\n`/whois player:<Name>` — Suche nach Spielernamen (Groß-/Kleinschreibung egal, Teilstring); bei mehreren Treffern Auswahl per Liste\n\n**Kontextmenü:**\nRechtsklick auf Nutzer → Apps → **whois**\nRechtsklick auf Nachricht → Apps → **whois** (schaut den Autor der Nachricht nach)\n\n**Nutzer-Suche (angezeigte Informationen):**\n• Alle registrierten CoC-Spielerkonten (sortiert nach Rathausstufe)\n• Rathausstufe mit Symbol\n• Heldenstufen (Barbarenkönig, Bogenschkönigin, Großer Schamane, Königliche Meisterschütze, Minion-Prinz)\n• Clanrolle und Clanname\n• Verifizierungsstatus (✅ verifiziert / nicht verifiziert)\n• Hauptkonto-Kennzeichnung\n\n**Spielerbericht (angezeigte Informationen):**\n• Letzter bekannter Clan (Name und Tag)\n• Gesamte Kriege (KK / KKL), Sieg-/Niederlage-Bilanz\n• Genutzte vs. verpasste Angriffe, Zuverlässigkeit %\n• Durchschnittliche Sterne pro Angriff, ø Zerstörung %\n• Vollständige Sternverteilung (0★ / 1★ / 2★ / 3★)\n• Aktueller Trend (letzte 10 KK-Kriege vs. gesamt)\n• KKL-Zusammenfassung (Saisons, Kriege, ø Sterne)\n• Zeitleiste der letzten 10 Kriege\n\n**Beispiele:**\n`/whois user:@Nutzer` - CoC-Konten eines bestimmten Nutzers nachschlagen\n`/whois player:#ABC123` - Kriegsverlaufsbericht für einen CoC-Spieler-Tag\n`/whois player:Max` - Alle Spieler mit dem Namen Max suchen und auswählen"
+      },
+      "link clan": {
+        "short": "Spiel-Link zum Profil eines Clans posten",
+        "title": "🔗 Link-Clan-Befehl",
+        "detailed": "Postet einen Clash-of-Clans-Link, der das Profil eines Clans direkt im Spiel öffnet.\n\n**Verwendung:**\n`/link clan clan:<Tag oder Name>` — Clan aus der Liste wählen, oder einen Tag (z.B. `#ABC123`) bzw. einen Teil des Clan-Namens eingeben\n\n**Ausgabe:**\n`Clan-Name: https://link.clashofclans.com/...` wird im Kanal gepostet\n\n**Beispiele:**\n`/link clan clan:#L2J0C0PY`\n`/link clan clan:QCrew`"
+      },
+      "link player": {
+        "short": "Spiel-Link zum Profil eines Spielers posten",
+        "title": "🔗 Link-Spieler-Befehl",
+        "detailed": "Postet einen Clash-of-Clans-Link, der das Profil eines Spielers direkt im Spiel öffnet.\n\n**Verwendung:**\n`/link player player:<#TAG>` — ein bestimmter Spieler-Tag\n`/link player player:<Name>` — Suche nach Spielername (Teilstring, Groß-/Kleinschreibung egal); bei mehreren Treffern aus einer Liste auswählen\n\n**Ausgabe:**\n`Spielername: https://link.clashofclans.com/...` wird im Kanal gepostet\n\n**Beispiele:**\n`/link player player:#ABC123`\n`/link player player:John`"
       },
       "ping": {
         "short": "Bot-Latenz prüfen",

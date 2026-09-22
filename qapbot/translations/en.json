@@ -194,6 +194,10 @@
       "chart_option_activity": "Season Trend Activity",
       "chart_option_activity_desc": "CW/CWL \u2013 monthly activity (attacks vs. monthly max)"
     },
+    "link": {
+      "clan_not_found": "Clan `{tag}` could not be found in Clash of Clans.",
+      "player_not_found": "Player `{tag}` could not be found in Clash of Clans."
+    },
     "status": {},
     "help": {
       "list_title": "QapBot Commands",
@@ -265,6 +269,16 @@
         "short": "Look up CoC accounts for a Discord user, or war history for a player",
         "title": "🔍 Whois Command",
         "detailed": "Look up the Clash of Clans accounts registered to a Discord user, or show a full war performance report for any CoC player.\n\n**Usage:**\n`/whois user:<@user>` — registered CoC accounts for a Discord user\n`/whois player:<#TAG>` — war history report for a specific player tag\n`/whois player:<name>` — search by player name (case-insensitive substring); select from a list if multiple match\n\n**Context Menu:**\nRight-click any user → Apps → **whois**\nRight-click any message → Apps → **whois** (looks up the message author)\n\n**User lookup (Information Displayed):**\n• All registered CoC player accounts (sorted by Town Hall level)\n• Town Hall level with icon\n• Hero levels (Barbarian King, Archer Queen, Grand Warden, Royal Champion, Minion Prince)\n• Clan role and clan name\n• Verification status (✅ verified / unverified)\n• Primary account indicator\n\n**Player report (Information Displayed):**\n• Last known clan (name and tag)\n• Total wars (CW / CWL), win/loss record\n• Attacks used vs. missed, reliability %\n• Average stars per attack, avg destruction %\n• Full star distribution (0★ / 1★ / 2★ / 3★)\n• Recent trend (last 10 CW wars vs. overall)\n• CWL summary (seasons, wars, avg stars)\n• Timeline of the last 10 wars\n\n**Examples:**\n`/whois user:@SomeUser` - Look up a specific user's CoC accounts\n`/whois player:#ABC123` - War history report for a CoC player tag\n`/whois player:John` - Search for all players named John and pick one"
+      },
+      "link clan": {
+        "short": "Post an in-game link to a clan's profile",
+        "title": "🔗 Link Clan Command",
+        "detailed": "Post a Clash of Clans in-game link that opens a clan's profile directly in the game.\n\n**Usage:**\n`/link clan clan:<tag or name>` — pick a clan from the list, or type a tag (e.g. `#ABC123`) or part of a clan name\n\n**Output:**\n`Clan Name: https://link.clashofclans.com/...` posted in the channel\n\n**Examples:**\n`/link clan clan:#L2J0C0PY`\n`/link clan clan:QCrew`"
+      },
+      "link player": {
+        "short": "Post an in-game link to a player's profile",
+        "title": "🔗 Link Player Command",
+        "detailed": "Post a Clash of Clans in-game link that opens a player's profile directly in the game.\n\n**Usage:**\n`/link player player:<#TAG>` — a specific player tag\n`/link player player:<name>` — search by player name (case-insensitive substring); select from a list if multiple match\n\n**Output:**\n`Player Name: https://link.clashofclans.com/...` posted in the channel\n\n**Examples:**\n`/link player player:#ABC123`\n`/link player player:John`"
       },
       "ping": {
         "short": "Check bot latency",

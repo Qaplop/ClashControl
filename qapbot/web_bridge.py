@@ -798,6 +798,18 @@ def _build_enrollment_payload_sync(guild_id: int) -> Dict[str, Any]:
 
     players = sorted(players_by_tag.values(), key=lambda p: (p["player_name"] or p["player_tag"]).lower())
 
+    # Tracker #0114: may the board's right-click menu offer "Bench" for this card? Per player,
+    # not per board — on a standard-sign-up guild the option still belongs to a player who is on
+    # an extended-sign-up server elsewhere (that is where their Bench status comes from). Statuses
+    # themselves are never rewritten here: every board shows what the player really answered.
+    from qapbot.QBdiscocmdshelper_cwl import cwl_bench_enabled_for, is_cwl_extended_signup
+
+    extended_signup = is_cwl_extended_signup(guild_id)
+    for player in players:
+        player["bench_enabled"] = (
+            True if extended_signup else cwl_bench_enabled_for(player.get("discord_id"), guild_id)
+        )
+
     from qapbot.QBdiscocmdshelper_cwl import (
         count_cwl_pending_roster_updates,
         count_cwl_pool_members_missing_dm,
@@ -836,6 +848,9 @@ def _build_enrollment_payload_sync(guild_id: int) -> Dict[str, Any]:
         # counts the season overview shows and the Hub buttons are gated on.
         "pool_missing_dm_count": pool_missing_dm_count,
         "pending_reminder_count": pending_reminder_count,
+        # Tracker #0114: 'standard' | 'extended'. Drives the legend rows, the context-menu entry
+        # and the column split; per-player overrides ride on each player's own bench_enabled.
+        "signup_mode": "extended" if extended_signup else "standard",
     }
 
 
@@ -1487,7 +1502,10 @@ def _build_player_prefs_payload_sync(guild_id: int, discord_user_id: int) -> Dic
 
     db = CACHE.db_manager
     if db is None:
-        return {"season": None, "event_status": None, "accounts": [], "season_rows": []}
+        return {
+            "season": None, "event_status": None, "accounts": [], "season_rows": [],
+            "bench_enabled": False,
+        }
 
     players = db.get_all_players_for_discord_ids_sync([str(discord_user_id)])
     # Ordered by display name (case-insensitive), not "primary account first" — the primary flag
@@ -1497,11 +1515,22 @@ def _build_player_prefs_payload_sync(guild_id: int, discord_user_id: int) -> Dic
     # that contract for a purely cosmetic ordering nicety.
     players.sort(key=lambda p: (p["player_name"] or p["player_tag"]).lower())
 
+    # Tracker #0114: may this viewer be offered the Bench status and the "always bench"
+    # preference? Player-based, so someone on an extended-sign-up server keeps the option in every
+    # guild's Hub — the same rule their sign-up DMs follow.
+    from qapbot.QBdiscocmdshelper_cwl import cwl_bench_enabled_for
+
+    bench_enabled = cwl_bench_enabled_for(str(discord_user_id), guild_id)
+
     accounts: List[Dict[str, Any]] = []
     for p in players:
-        # Data model's defensive precedence: if both flags are somehow 1, opt-out wins.
+        # Data model's defensive precedence: if several flags are somehow 1, opt-out wins, then
+        # bench (the more reserved intent) ahead of opt-in — same order resolve_seeded_cwl_signup_
+        # status uses for the statuses they seed.
         if p["cwl_permanent_optout"]:
             mode = "optout"
+        elif p.get("cwl_permanent_bench"):
+            mode = "bench"
         elif p["cwl_permanent_optin"]:
             mode = "optin"
         else:
@@ -1517,7 +1546,10 @@ def _build_player_prefs_payload_sync(guild_id: int, discord_user_id: int) -> Dic
 
     event = get_current_cwl_event_sync(guild_id)
     if event is None:
-        return {"season": None, "event_status": None, "accounts": accounts, "season_rows": []}
+        return {
+            "season": None, "event_status": None, "accounts": accounts, "season_rows": [],
+            "bench_enabled": bench_enabled,
+        }
 
     signups_by_tag = {s["player_tag"]: s for s in db.get_cwl_signups_for_event_sync(event["id"])}
     assignments_by_tag = {a["player_tag"]: a for a in db.get_cwl_assignments_sync(event["id"])}
@@ -1555,6 +1587,8 @@ def _build_player_prefs_payload_sync(guild_id: int, discord_user_id: int) -> Dic
         "event_status": event["status"],
         "accounts": accounts,
         "season_rows": season_rows,
+        # Tracker #0114: drives the Hub's Bench button and "always bench" option.
+        "bench_enabled": bench_enabled,
     }
 
 
@@ -1630,6 +1664,15 @@ async def handle_post_cwl_player_prefs(request: web.Request) -> web.Response:
         if tag is not None and tag not in owned_tags:
             return web.json_response({"error": "not your account"}, status=403)
 
+    # Tracker #0114: "always bench" is only settable by someone the Bench status may be offered
+    # to at all. An account that ALREADY carries it keeps it — the Hub still renders that option
+    # for such an account so its owner can change it, and this must not refuse turning it off.
+    if any(change.get("mode") == "bench" for change in changes):
+        from qapbot.QBdiscocmdshelper_cwl import cwl_bench_enabled_for
+
+        if not cwl_bench_enabled_for(str(discord_user_id), guild_id):
+            return web.json_response({"error": "bench is not enabled for you"}, status=400)
+
     def _apply_changes_sync() -> None:
         for change in changes:
             kwargs: Dict[str, Any] = {}
@@ -1689,8 +1732,14 @@ async def handle_post_cwl_player_prefs_status(request: web.Request) -> web.Respo
         action = str(body["action"])
     except (KeyError, ValueError, TypeError):
         return web.json_response({"error": "invalid request body"}, status=400)
-    if action not in ("confirm", "optout"):
+    if action not in ("confirm", "optout", "passive"):
         return web.json_response({"error": f"unsupported action '{action}'"}, status=400)
+    # Tracker #0114: same player-based rule the Hub renders its Bench button under.
+    if action == "passive":
+        from qapbot.QBdiscocmdshelper_cwl import cwl_bench_enabled_for
+
+        if not cwl_bench_enabled_for(str(discord_user_id), guild_id):
+            return web.json_response({"error": "bench is not enabled for you"}, status=400)
 
     from qapbot.QBdiscocmdshelper_cwl import get_current_cwl_event_sync
     from qapbot.ui_cwl_roster import _apply_cwl_signup_response, rerender_cwl_dm_after_response  # pyright: ignore[reportPrivateUsage]  # deliberately shared, see comment above
@@ -1919,6 +1968,12 @@ async def handle_get_cwl_player_stats(request: web.Request) -> web.Response:
 # member never actually expressed; the three statuses below remain the complete admin-settable set.
 ADMIN_SETTABLE_ENROLLMENT_STATUSES: Tuple[str, ...] = ("confirmed", "declined", "pending")
 
+# Tracker #0114: 'passive' joins that set for a player who may be offered the Bench status at all
+# (cwl_bench_enabled_for — this guild runs extended sign-up, or the player is on a server that
+# does). 'auto_passive' stays out for the same reason 'auto_confirmed' does: it means "a standing
+# preference seeded this", which an admin must not assert on the player's behalf.
+ADMIN_SETTABLE_BENCH_STATUS = "passive"
+
 
 async def handle_post_cwl_enrollment_status(request: web.Request) -> web.Response:
     """Admin override of one player's enrollment status from the Manage Enrollment board's
@@ -1952,7 +2007,10 @@ async def handle_post_cwl_enrollment_status(request: web.Request) -> web.Respons
         return web.json_response({"error": "invalid request body"}, status=400)
 
     if status not in ADMIN_SETTABLE_ENROLLMENT_STATUSES:
-        return web.json_response({"error": f"unsupported status '{status}'"}, status=400)
+        # Tracker #0114: the Bench status is settable only where it may be offered at all. The
+        # check needs the player's owner, so it runs after the ownership lookup below.
+        if status != ADMIN_SETTABLE_BENCH_STATUS:
+            return web.json_response({"error": f"unsupported status '{status}'"}, status=400)
 
     # Same gate as POST /api/cwl/enrollment/assign, the board's other write action — the board is
     # itself opened behind _check_cwl_admin_or_leader_permission (ui_cwl_roster.py), so an
@@ -2035,6 +2093,19 @@ async def handle_post_cwl_enrollment_status(request: web.Request) -> web.Respons
             "dm_message_id": global_row.get("dm_sent_via_message_id"),
             "dm_recipient_id": global_row.get("dmed_discord_id"),
         }
+
+    # Tracker #0114: Bench is settable only for a player it may be offered to — this guild runs
+    # extended sign-up, or the account's owner is on a server that does. Checked before the write
+    # (the client only shows the entry under the same rule; this is the server-side half).
+    if status == ADMIN_SETTABLE_BENCH_STATUS:
+        from qapbot.QBdiscocmdshelper_cwl import cwl_bench_enabled_for
+
+        owner_links = await asyncio.to_thread(db.get_player_links_sync, [player_tag])
+        owner_id = (owner_links.get(player_tag) or {}).get("discord_id")
+        if not cwl_bench_enabled_for(owner_id, guild_id):
+            return web.json_response(
+                {"error": "extended sign-up (bench) is not enabled for this player"}, status=400
+            )
 
     context = await asyncio.to_thread(_apply_status_sync)
 

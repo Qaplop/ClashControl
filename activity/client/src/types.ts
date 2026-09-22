@@ -90,7 +90,7 @@ export type EnrollmentPlayer = {
   // purely so any pre-existing DB row still carrying it renders without crashing; the board
   // treats it the same as null/unknown rather than giving it its own icon — see
   // enrollmentBoard.ts's isVisibleStatus().
-  signup_status: 'pending' | 'confirmed' | 'declined' | 'auto_confirmed' | 'withdrawn' | null
+  signup_status: 'pending' | 'confirmed' | 'declined' | 'auto_confirmed' | 'passive' | 'auto_passive' | 'withdrawn' | null
   assigned_clan_tag: string | null
   th_level: number | null
   th_icon_url: string | null
@@ -135,6 +135,11 @@ export type EnrollmentPlayer = {
   // having received anything. This is the one field the board actually needs to tell "sent,
   // awaiting response" apart from "never invited yet" (enrollmentBoard.ts's icon logic).
   dm_sent: boolean
+  /** Tracker #0114: may this card's right-click menu offer "Bench"? True when the guild runs
+   * extended sign-up, or when this player's owner is on a server that does (the option follows
+   * the player, the same rule their sign-up DM buttons follow). Never gates what is DISPLAYED —
+   * a Bench status always shows as Bench, on every board. */
+  bench_enabled?: boolean
 }
 
 export type EnrollmentPayload = {
@@ -157,6 +162,9 @@ export type EnrollmentPayload = {
   // fresh page load (or a refetch triggered by the wait loop itself) always has a correct
   // known_version to hand the next GET /api/cwl/enrollment/wait call.
   version: number
+  /** Tracker #0114: 'extended' if this guild offers the Bench sign-up status. Drives the legend
+   * rows, the context-menu entry and the clan-column active/bench split. */
+  signup_mode?: 'standard' | 'extended'
 }
 
 /** GET /api/cwl/enrollment/wait's response shape (2026-08-17, Step 8) — the long-poll backing
@@ -206,7 +214,10 @@ export type GuestSearchResponse = { results: GuestSearchResult[]; stale?: boolea
  * `null` isn't settable (it means "no row yet", not a choice) and `withdrawn` is legacy-only.
  * Must stay in sync with ADMIN_SETTABLE_ENROLLMENT_STATUSES in qapbot/web_bridge.py, which
  * rejects anything else with a 400. */
-export type AdminSettableStatus = 'confirmed' | 'declined' | 'pending'
+/** Tracker #0114: 'passive' (Bench) is offered per card, gated on EnrollmentPlayer.bench_enabled
+ * — never 'auto_passive', which means "a standing preference seeded this" and is no more
+ * admin-settable than 'auto_confirmed'. */
+export type AdminSettableStatus = 'confirmed' | 'declined' | 'pending' | 'passive'
 
 /** POST /api/cwl/enrollment/status's response shape. `dm` is null for confirmed/declined (those
  * deliberately never touch the player's DM — see the bridge handler's docstring on why that is
@@ -233,7 +244,7 @@ export type PlayerPrefsAccount = {
   /** 'none' = ask each season (the pre-existing default), 'optin' = always play,
    * 'optout' = never play. Mutually exclusive by construction — see set_cwl_preferences_sync's
    * own docstring (db_manager.py) for why a single UPDATE enforces this server-side too. */
-  mode: 'none' | 'optin' | 'optout'
+  mode: 'none' | 'optin' | 'optout' | 'bench'
   /** Only meaningful while mode === 'optout' — whether the invitation DM still goes out despite
    * the standing decline, so the member can override it for one season. */
   send_dm_anyway: boolean
@@ -246,7 +257,7 @@ export type PlayerPrefsSeasonRow = {
   player_tag: string
   player_name: string | null
   /** Same status vocabulary as EnrollmentPlayer.signup_status, including 'auto_confirmed'. */
-  signup_status: 'pending' | 'confirmed' | 'declined' | 'auto_confirmed' | 'withdrawn' | null
+  signup_status: 'pending' | 'confirmed' | 'declined' | 'auto_confirmed' | 'passive' | 'auto_passive' | 'withdrawn' | null
   assigned_clan_tag: string | null
   assigned_clan_name: string | null
   assigned_clan_tier: string | null
@@ -263,6 +274,10 @@ export type PlayerPrefsPayload = {
   event_status: string | null
   accounts: PlayerPrefsAccount[]
   season_rows: PlayerPrefsSeasonRow[]
+  /** Tracker #0114: may THIS viewer use the Bench status and the "always bench" preference?
+   * Player-based (see EnrollmentPlayer.bench_enabled), so it stays available on a standard
+   * server for someone who is on an extended one. */
+  bench_enabled?: boolean
 }
 
 /** One change in a POST /api/cwl/player-prefs request — player_tag: null means "apply to every
@@ -271,7 +286,7 @@ export type PlayerPrefsPayload = {
  * preference when rank_provided is true, never an accidental no-op. */
 export type PlayerPrefsChange = {
   player_tag: string | null
-  mode?: 'none' | 'optin' | 'optout'
+  mode?: 'none' | 'optin' | 'optout' | 'bench'
   send_dm_anyway?: boolean
   league_rank?: string | null
   rank_provided?: boolean
@@ -281,7 +296,7 @@ export type PlayerPrefsChange = {
  * status from block II. Deliberately the same 'action' vocabulary as the DM button's own
  * custom_id (cwl:signup:confirm|optout), not 'status', because the whole contract of this
  * endpoint is "do exactly what that button does". */
-export type PlayerPrefsStatusAction = 'confirm' | 'optout'
+export type PlayerPrefsStatusAction = 'confirm' | 'optout' | 'passive'
 
 /** POST /api/cwl/player-prefs/status's response shape on success — the freshly rebuilt
  * PlayerPrefsPayload, same "no optimistic update" discipline as the preferences POST. On

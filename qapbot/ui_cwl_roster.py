@@ -136,6 +136,65 @@ def add_cwl_settings_components(view: discord.ui.View, guild_id: int) -> None:
     coordinator_role_button.callback = _make_cwl_settings_coordinator_role_callback(view)  # type: ignore[assignment]
     view.add_item(coordinator_role_button)  # type: ignore[arg-type]
 
+    # Tracker #0114: extended sign-up adds the "Ersatzbank"/Bench status (play for the season
+    # rewards or as a backup, without attacking) to this guild's DMs and screens. Standard is the
+    # default and today's behaviour; same activate/deactivate button shape as the toggles above.
+    extended_signup = (guild_config.get("cwl_signup_mode") or "standard") == "extended"
+    signup_mode_button: discord.ui.Button[Any] = discord.ui.Button(
+        label=(
+            t('cwl.settings.button_disable_extended_signup', guild_id=guild_id)
+            if extended_signup
+            else t('cwl.settings.button_enable_extended_signup', guild_id=guild_id)
+        ),
+        style=discord.ButtonStyle.danger if extended_signup else discord.ButtonStyle.success,
+        custom_id="cwl_settings_toggle_signup_mode",
+        row=4,
+    )
+    signup_mode_button.callback = _make_cwl_settings_toggle_signup_mode_callback(view)  # type: ignore[assignment]
+    view.add_item(signup_mode_button)  # type: ignore[arg-type]
+
+
+def _make_cwl_settings_toggle_signup_mode_callback(view: discord.ui.View):
+    """Tracker #0114: flip cwl_signup_mode between 'standard' and 'extended'.
+
+    Switching ON also upgrades every still-unanswered enrollment DM this guild's members hold, so
+    a guild that enables this after the DM blast doesn't have to re-send anything
+    (upgrade_pending_cwl_dms_for_bench, QBdiscocmdshelper_cwl.py — Phase 3).
+    """
+    async def callback(interaction: discord.Interaction) -> None:
+        if not await _check_cwl_admin_permission(interaction):
+            return
+        await interaction.response.defer(thinking=False, ephemeral=False)
+        if not interaction.guild:
+            return
+        guild_id_str = str(interaction.guild.id)
+        config = CACHE.server_config.setdefault(guild_id_str, {})
+        now_extended = (config.get("cwl_signup_mode") or "standard") != "extended"
+        config["cwl_signup_mode"] = "extended" if now_extended else "standard"
+        await CACHE.persist_server_config(guild_id_str)
+
+        await refresh_cwl_management_hub_message(interaction.guild.id)
+        from qapbot.ui_clan_management import push_refresh_to_open_cwl_settings_session
+        await push_refresh_to_open_cwl_settings_session(interaction.guild.id, "cwl_settings")
+        # Any open Manage Teams board re-renders with the new mode (legend, context menu).
+        from qapbot.web_bridge import bump_enrollment_version
+        await bump_enrollment_version(interaction.guild.id)
+        await _refresh_parent(view, interaction, "cwl_settings")
+
+        if now_extended:
+            from qapbot.i18n import t
+            from qapbot.QBdiscocmdshelper_cwl import upgrade_pending_cwl_dms_for_bench
+
+            upgraded = await upgrade_pending_cwl_dms_for_bench(interaction.guild.id)
+            if upgraded:
+                await interaction.followup.send(
+                    t('cwl.settings.extended_signup_dms_upgraded',
+                      guild_id=interaction.guild.id, user_id=str(interaction.user.id), count=upgraded),
+                    ephemeral=True,
+                )
+
+    return callback
+
 
 def _make_cwl_settings_coordinator_role_callback(view: discord.ui.View):
     async def callback(interaction: discord.Interaction) -> None:
@@ -2992,16 +3051,24 @@ class CwlOpenEnrollmentView(discord.ui.View):
 # Template-copy DM confirm/opt-out buttons (Phase 2) — DynamicItem, restart-safe
 # ---------------------------------------------------------------------------
 
-CWL_SIGNUP_RESPONSE_TEMPLATE = r'^cwl:signup:(?P<action>confirm|optout):(?P<event_id>\d+):(?P<player_tag>#[A-Z0-9]{1,15})$'
+CWL_SIGNUP_RESPONSE_TEMPLATE = r'^cwl:signup:(?P<action>confirm|passive|optout):(?P<event_id>\d+):(?P<player_tag>#[A-Z0-9]{1,15})$'
 
 
-def build_cwl_signup_response_view(event_id: int, player_tag: str, guild_id: Optional[int] = None) -> discord.ui.View:
+def build_cwl_signup_response_view(
+    event_id: int, player_tag: str, guild_id: Optional[int] = None, bench: bool = False,
+) -> discord.ui.View:
     """Build the confirm/opt-out button pair for one template-copy DM. timeout=None since these
     must keep working for as long as the sign-up window is open, independent of any single bot
     session — CwlSignupResponseButton is a DynamicItem precisely so a bot restart between send
-    and click doesn't silently break it (registered once via add_dynamic_items(), QapBot.py)."""
+    and click doesn't silently break it (registered once via add_dynamic_items(), QapBot.py).
+
+    `bench` (tracker #0114) adds the Ersatzbank/Bench button between the two. Callers decide it
+    with cwl_bench_enabled_for(recipient, sending_guild) — a player-based rule, since one player
+    gets exactly one enrollment DM per season whichever guild sends it."""
     view = discord.ui.View(timeout=None)
     view.add_item(CwlSignupResponseButton("confirm", event_id, player_tag, guild_id))
+    if bench:
+        view.add_item(CwlSignupResponseButton("passive", event_id, player_tag, guild_id))
     view.add_item(CwlSignupResponseButton("optout", event_id, player_tag, guild_id))
     return view
 
@@ -3062,8 +3129,14 @@ async def _apply_cwl_signup_response(
     if not answer_allowed:
         return {"code": "signup_closed", "guild_id": guild_id, "player_name": signup.get("player_name")}
 
-    new_status = "confirmed" if action == "confirm" else "declined"
-    source = "template_confirm" if action == "confirm" else "template_optout"
+    # Tracker #0114: 'passive' is always accepted when it arrives — the bot itself put that button
+    # in the DM, and the status is shown truthfully on every screen (a guild that doesn't use
+    # extended sign-up simply never offers it). Refusing it later, e.g. because the sending guild
+    # switched back to standard meanwhile, would break a button the player can still see.
+    new_status, source = {
+        "confirm": ("confirmed", "template_confirm"),
+        "passive": ("passive", "template_passive"),
+    }.get(action, ("declined", "template_optout"))
     responded_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%MZ")
     # to_thread()-wrapped (Pitfall 26) — this is hit by every member responding to a CWL signup
     # template, so an unwrapped write here is a high-traffic instance of the whole-bot-freeze risk.
@@ -3162,10 +3235,23 @@ async def rerender_cwl_dm_after_response(
         guild_id = int(event["guild_id"]) if event is not None else None
 
     if remaining:
-        content = t('cwl.reminder.dm_buttons_intro', user_id=discord_id, guild_id=guild_id, season=season)
-        view: Optional[discord.ui.View] = build_cwl_reminder_response_view(event_id, remaining, guild_id)
+        # Tracker #0114: recomputed here, not carried over from the original send — a re-render
+        # that dropped the Bench button would silently take the option away mid-conversation.
+        from qapbot.QBdiscocmdshelper_cwl import cwl_bench_enabled_for
+
+        bench = cwl_bench_enabled_for(discord_id, guild_id)
+        content = t(
+            'cwl.reminder.dm_buttons_intro_bench' if bench else 'cwl.reminder.dm_buttons_intro',
+            user_id=discord_id, guild_id=guild_id, season=season,
+        )
+        view: Optional[discord.ui.View] = build_cwl_reminder_response_view(
+            event_id, remaining, guild_id, bench=bench
+        )
     else:
-        response_key = 'cwl.template.confirmed_msg' if action == "confirm" else 'cwl.template.declined_msg'
+        response_key = {
+            "confirm": 'cwl.template.confirmed_msg',
+            "passive": 'cwl.template.bench_msg',
+        }.get(action, 'cwl.template.declined_msg')
         content = t(response_key, user_id=discord_id, guild_id=guild_id, player_name=player_name)
         view = None
 
@@ -3207,8 +3293,12 @@ class CwlSignupResponseButton(
 
         from qapbot.i18n import t
 
-        label_key = 'cwl.template.confirm_button' if action == "confirm" else 'cwl.template.optout_button'
-        style = discord.ButtonStyle.success if action == "confirm" else discord.ButtonStyle.secondary
+        label_key, style = {
+            "confirm": ('cwl.template.confirm_button', discord.ButtonStyle.success),
+            # Tracker #0114: primary (blurple) — a real third choice, not a variant of either
+            # neighbour, and visually distinct from the green confirm and the grey opt-out.
+            "passive": ('cwl.template.bench_button', discord.ButtonStyle.primary),
+        }.get(action, ('cwl.template.optout_button', discord.ButtonStyle.secondary))
         super().__init__(
             discord.ui.Button(
                 label=t(label_key, guild_id=guild_id),
@@ -3254,11 +3344,12 @@ class CwlSignupResponseButton(
 # CwlSignupResponseButton above)
 # ---------------------------------------------------------------------------
 
-CWL_REMINDER_RESPONSE_TEMPLATE = r'^cwl:remind:(?P<action>confirm|optout):(?P<event_id>\d+):(?P<player_tag>#[A-Z0-9]{1,15})$'
+CWL_REMINDER_RESPONSE_TEMPLATE = r'^cwl:remind:(?P<action>confirm|passive|optout):(?P<event_id>\d+):(?P<player_tag>#[A-Z0-9]{1,15})$'
 
 
 def build_cwl_reminder_response_view(
-    event_id: int, accounts: List[Dict[str, Any]], guild_id: Optional[int] = None
+    event_id: int, accounts: List[Dict[str, Any]], guild_id: Optional[int] = None,
+    bench: bool = False,
 ) -> discord.ui.View:
     """Tracker #0038's combined-message reminder view — one row per account (accounts must
     already be ≤5, Discord's 5-action-row cap; send_cwl_reminder_dm_group, QBdiscocmdshelper_cwl.
@@ -3272,6 +3363,12 @@ def build_cwl_reminder_response_view(
         view.add_item(CwlReminderResponseButton(
             "confirm", event_id, account["player_tag"], account.get("player_name"), row, guild_id
         ))
+        # Tracker #0114: three buttons per account still fit one action row (Discord's cap is 5);
+        # the 5-accounts-per-message cap this view's callers enforce is the row limit, unchanged.
+        if bench:
+            view.add_item(CwlReminderResponseButton(
+                "passive", event_id, account["player_tag"], account.get("player_name"), row, guild_id
+            ))
         view.add_item(CwlReminderResponseButton(
             "optout", event_id, account["player_tag"], account.get("player_name"), row, guild_id
         ))
@@ -3304,11 +3401,10 @@ class CwlReminderResponseButton(
 
         from qapbot.i18n import t
 
-        label_key = (
-            'cwl.reminder.confirm_button_labeled' if action == "confirm"
-            else 'cwl.reminder.optout_button_labeled'
-        )
-        style = discord.ButtonStyle.success if action == "confirm" else discord.ButtonStyle.secondary
+        label_key, style = {
+            "confirm": ('cwl.reminder.confirm_button_labeled', discord.ButtonStyle.success),
+            "passive": ('cwl.reminder.bench_button_labeled', discord.ButtonStyle.primary),
+        }.get(action, ('cwl.reminder.optout_button_labeled', discord.ButtonStyle.secondary))
         super().__init__(
             discord.ui.Button(
                 label=t(label_key, guild_id=guild_id, player_name=player_name or player_tag),

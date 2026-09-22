@@ -424,6 +424,15 @@ async def format_clan_management_cwl_settings(
             f"{t('cwl.settings.coordinator_role_per_clan_description', guild_id=guild_id_int)}"
         )
 
+    # Tracker #0114: sign-up mode readout — standard (confirm/decline) vs extended, which adds the
+    # Ersatzbank/Bench status. Same "state + one-line description" shape as the blocks above.
+    extended_signup = (guild_config.get("cwl_signup_mode") or "standard") == "extended"
+    signup_mode_block = (
+        f"⠀\n**{t('cwl.settings.signup_mode_block_title', guild_id=guild_id_int)}**\n"
+        f"{t('cwl.settings.signup_mode_status', guild_id=guild_id_int, status=('🟢 ' + t('cwl.settings.signup_mode_extended', guild_id=guild_id_int)) if extended_signup else ('🔴 ' + t('cwl.settings.signup_mode_standard', guild_id=guild_id_int)))}\n"
+        f"{t('cwl.settings.signup_mode_description', guild_id=guild_id_int)}"
+    )
+
     embed = discord.Embed(
         title=t('cwl.settings.title', guild_id=guild_id_int),
         description=t('cwl.settings.description', guild_id=guild_id_int, guild_name=guild.name),
@@ -434,6 +443,7 @@ async def format_clan_management_cwl_settings(
     embed.add_field(name="", value=retention_block, inline=False)
     embed.add_field(name="", value=enrollment_pool_block, inline=False)
     embed.add_field(name="", value=coordinator_role_block, inline=False)
+    embed.add_field(name="", value=signup_mode_block, inline=False)
 
     return embed, None, [], []
 
@@ -573,6 +583,18 @@ async def format_clan_management_cwl_management(
     # is a superset that also includes members who've never been seeded into cwl_signups at all.
     # The label itself no longer spells this scope out (project owner's preference, #0073) — this
     # comment is the only remaining record of the distinction; no data/logic change either time.
+    # Tracker #0114: the two Bench counts sit between the confirmed and declined lines. On an
+    # extended-sign-up guild they always show (0 included, like every other line); on a standard
+    # one only when a Bench player is actually there — a player can carry that status in from
+    # another guild, and hiding a count of real players would be worse than an unexpected line,
+    # while a permanent "Ersatzbank: 0" on a guild that doesn't use the feature is just noise.
+    extended_signup = is_cwl_extended_signup(guild_id_int)
+    count_statuses = ["auto_confirmed", "confirmed"]
+    for bench_status in CWL_BENCH_STATUSES:
+        if extended_signup or signup_counts.get(bench_status, 0):
+            count_statuses.append(bench_status)
+    count_statuses.append("declined")
+
     signup_lines = [
         f"{t('cwl.management.signup_status_unlinked', guild_id=guild_id_int)}: {pending_unlinked}",
         f"{t('cwl.management.signup_status_pending', guild_id=guild_id_int)}: {pending_linked}",
@@ -581,7 +603,7 @@ async def format_clan_management_cwl_management(
         # auto_confirmed before confirmed (plans/cwl-personal-hub.md Phase 4a) — a standing
         # opt-in preference seeded this row and the invitation DM was still sent, so it reads as
         # "not yet a real confirmation" and belongs ahead of the genuine confirmed count.
-        for status in ("auto_confirmed", "confirmed", "declined")
+        for status in count_statuses
     ]
     # Same resolution + gating count_cwl_pool_members_missing_dm() drives for the "Notify New
     # Pool Members" button below — shown here only when that button would actually do something
@@ -967,7 +989,9 @@ def resolve_cwl_pool_tags_missing_dm_sync(guild_id: int, event_id: int, season: 
         return set()
 
     dm_status = db.get_cwl_player_season_dm_status_bulk_sync(tags_with_discord, season)
-    settled_statuses = {"confirmed", "declined", "auto_confirmed"}
+    # Tracker #0114: CWL_SETTLED_STATUSES also covers the two Bench statuses — a player who
+    # answered "bench" has answered, and must not be re-invited as if they never replied.
+    settled_statuses = CWL_SETTLED_STATUSES
     status_by_tag = {
         signup["player_tag"]: signup["status"]
         for signup in db.get_cwl_signups_for_event_sync(event_id)
@@ -1279,6 +1303,7 @@ def _seed_status_from_global_sync(db: Any, player_tag: str, cwl_season: str) -> 
     link = db.get_player_links_sync([player_tag]).get(player_tag) or {}
     status, _source = resolve_seeded_cwl_signup_status(
         existing_global, bool(link.get("cwl_permanent_optout")), bool(link.get("cwl_permanent_optin")),
+        bool(link.get("cwl_permanent_bench")),
     )
     return status
 
@@ -2704,8 +2729,193 @@ def _seed_prior_cwl_assignments_sync(
         )
 
 
+# ---------------------------------------------------------------------------
+# Tracker #0114 — "Ersatzbank"/Bench sign-up status
+# ---------------------------------------------------------------------------
+
+# The two Bench statuses: a real answer, and the one a standing "always bench" preference seeds
+# (the same pairing 'confirmed'/'auto_confirmed' already has).
+CWL_BENCH_STATUSES: Tuple[str, ...] = ("passive", "auto_passive")
+
+# Every status that means "this player has answered" — nothing here counts as pending, so none of
+# these get re-invited or reminded.
+CWL_SETTLED_STATUSES: Set[str] = {"confirmed", "declined", "auto_confirmed", *CWL_BENCH_STATUSES}
+
+
+def is_cwl_extended_signup(guild_id: int) -> bool:
+    """True when this guild runs extended sign-up (guild_config.cwl_signup_mode == 'extended'),
+    i.e. its own screens and DMs offer the Bench status. Standard is the default."""
+    config = CACHE.server_config.get(str(guild_id), {})
+    return (config.get("cwl_signup_mode") or "standard") == "extended"
+
+
+def cwl_bench_enabled_for(discord_id: Optional[Any], guild_id: Optional[int]) -> bool:
+    """May THIS person be offered the Bench status right now?
+
+    True when `guild_id` runs extended sign-up, OR the Discord user is a member of any guild that
+    does (tracker #0114, project owner's decision: "it's more player related than server related.
+    so overriding a server setting is ok in this case"). A player on an extended server therefore
+    gets the Bench button in every sign-up DM, whichever guild happens to send it — a player only
+    ever receives ONE enrollment DM per season, sent by whichever guild's event got there first,
+    so a server-only rule would silently deny the option depending on who sent it.
+
+    Purely in-memory: CACHE.server_config for the modes, the gateway member cache for membership
+    (the same source guild_role_manager's coordinator sync uses). No API call, no DB read.
+
+    Args:
+        discord_id: the player's Discord user id, or None for an account with no linked user.
+        guild_id: the guild acting (sending the DM, rendering the screen), or None.
+
+    Returns:
+        True if the Bench option may be shown to/accepted from this person.
+    """
+    if guild_id is not None and is_cwl_extended_signup(guild_id):
+        return True
+    if discord_id is None:
+        return False
+    try:
+        user_id = int(discord_id)
+    except (TypeError, ValueError):
+        return False
+
+    import QBcore
+
+    bot = getattr(QBcore, "bot", None)
+    if bot is None:
+        return False
+    for other_guild_id, config in CACHE.server_config.items():
+        if (config.get("cwl_signup_mode") or "standard") != "extended":
+            continue
+        if guild_id is not None and str(guild_id) == str(other_guild_id):
+            continue  # already answered above
+        try:
+            guild = bot.get_guild(int(other_guild_id))
+        except (TypeError, ValueError):
+            continue
+        if guild is not None and guild.get_member(user_id) is not None:
+            return True
+    return False
+
+
+async def upgrade_pending_cwl_dms_for_bench(guild_id: int) -> int:
+    """Add the Bench button to every still-unanswered sign-up DM this guild's switch to extended
+    sign-up just made eligible (tracker #0114, project owner's request: "the DMs that are not
+    answered yet should be updated automatically").
+
+    Scope — a DM qualifies when its recipient is now Bench-enabled (cwl_bench_enabled_for), which
+    covers both the DMs this guild sent and those another guild sent to one of this guild's
+    members, since the Bench rule is player-based. Already-answered DMs are left alone: their
+    buttons are gone and their owner has decided.
+
+    Per message (one reminder/roster-update DM can cover up to 5 accounts) the still-pending
+    accounts are re-derived from the DB, exactly as rerender_cwl_dm_after_response() does, and the
+    view is rebuilt from that. The explanation is APPENDED to the existing text rather than
+    replacing it: a roster-update DM also carries "where and when you play", which a wholesale
+    re-render would throw away. Re-running is harmless — the appended block is recognised and the
+    view is rebuilt from live state either way.
+
+    Only for an event still taking answers (Phase 0b: signup_open, or announced/war for someone
+    who never answered). Never raises: a DM that was deleted, blocked or is otherwise unreachable
+    is logged and skipped (Pitfall 13), since this runs as a background task behind a settings
+    toggle that has already been applied.
+
+    Args:
+        guild_id: the guild that just switched to extended sign-up.
+
+    Returns:
+        How many DM messages were actually updated.
+    """
+    import discord
+
+    from qapbot.i18n import t
+    from qapbot.ui_cwl_roster import build_cwl_reminder_response_view
+
+    db = CACHE.db_manager
+    if db is None:
+        return 0
+
+    event = await asyncio.to_thread(get_current_cwl_event_sync, guild_id)
+    if event is None or event["status"] not in ("signup_open", "announced", "war"):
+        return 0
+    season = event["cwl_season"]
+
+    rows = await asyncio.to_thread(db.get_cwl_pending_dm_rows_for_season_sync, season)
+    by_message: Dict[str, List[Dict[str, Any]]] = {}
+    for row in rows:
+        # Evaluated from the DM's OWN sending guild, never from the guild that just switched:
+        # passing the switching guild would make the first clause of cwl_bench_enabled_for ("this
+        # guild is extended") true for every recipient on earth, including someone who was DMed by
+        # an unrelated guild and isn't even a member here. Via the sending guild the answer is the
+        # real one: that guild already offered Bench, or the recipient is a member of some
+        # extended guild — which is exactly what the switch may have just changed.
+        try:
+            sending_guild_id = int(row["dm_sent_via_guild_id"]) if row["dm_sent_via_guild_id"] else None
+        except (TypeError, ValueError):
+            sending_guild_id = None
+        if not cwl_bench_enabled_for(row["dmed_discord_id"], sending_guild_id):
+            continue
+        by_message.setdefault(row["dm_sent_via_message_id"], []).append(row)
+    if not by_message:
+        return 0
+
+    import QBcore
+
+    bot = getattr(QBcore, "bot", None)
+    if bot is None:
+        return 0
+
+    upgraded = 0
+    for message_id, message_rows in by_message.items():
+        first = message_rows[0]
+        discord_id = str(first["dmed_discord_id"])
+        channel_id = first["dm_sent_via_channel_id"]
+        event_id = first["dm_sent_via_event_id"]
+        try:
+            channel = bot.get_channel(int(channel_id)) if channel_id else None
+            if channel is None:
+                user = await bot.fetch_user(int(discord_id))
+                channel = user.dm_channel or await user.create_dm()
+            message = await channel.fetch_message(int(message_id))
+
+            accounts = [
+                {"player_tag": r["player_tag"], "player_name": r["player_name"]}
+                for r in message_rows
+            ]
+            explanation = t('cwl.template.bench_explanation', user_id=discord_id, guild_id=guild_id)
+            content = message.content or ""
+            if explanation in content:
+                # Already carries the Bench option (an earlier run, or it was sent that way
+                # because the sending guild was extended all along) — nothing to do, and it must
+                # not be counted as upgraded in what the admin is told.
+                continue
+            content = f"{content}\n\n{explanation}".strip()
+            await message.edit(
+                content=content,
+                view=build_cwl_reminder_response_view(int(event_id), accounts, guild_id, bench=True),
+            )
+            upgraded += 1
+        except (discord.NotFound, discord.Forbidden) as e:
+            logging.info(
+                f"[CWL-BENCH-UPGRADE] Skipping DM {message_id} for user {discord_id}: {e}"
+            )
+        except Exception as e:  # pragma: no cover - defensive, never fail the toggle
+            logging.warning(
+                f"[CWL-BENCH-UPGRADE] Could not upgrade DM {message_id} for user {discord_id}: {e}"
+            )
+        # Paced: this edits one Discord message per iteration and runs behind a settings toggle,
+        # so there is no reason to race the rate limiter.
+        await asyncio.sleep(0.5)
+
+    if upgraded:
+        logging.info(
+            f"[CWL-BENCH-UPGRADE] Guild {guild_id}: added the bench option to {upgraded} unanswered DM(s)"
+        )
+    return upgraded
+
+
 def resolve_seeded_cwl_signup_status(
     existing_global: Optional[Dict[str, Any]], permanent_optout: bool, permanent_optin: bool,
+    permanent_bench: bool = False,
 ) -> Tuple[str, str]:
     """(status, source) for a freshly-seeded cwl_signups row — the single definition of
     plans/cwl-personal-hub.md Phase 4b's precedence, so it can never be written twice and drift
@@ -2722,9 +2932,14 @@ def resolve_seeded_cwl_signup_status(
          override their own auto-decline) is a separate decision made by the DM-targeting layer
          (resolve_cwl_pool_dm_targets_sync's cwl_optout_send_dm_anyway check) — this function only
          ever decides the seeded row's status, never whether to DM.
-      3. permanent_optin -> ('auto_confirmed', 'auto_optin'). Always DMed regardless (no
+      3. permanent_bench -> ('auto_passive', 'auto_bench') (tracker #0114). Between opt-out and
+         opt-in deliberately: all three are mutually exclusive by construction
+         (set_cwl_preferences_sync writes them in one statement), so this ordering only decides
+         what happens to a row where an older write left two flags set — and there the more
+         reserved intent should win. Always DMed, like opt-in.
+      4. permanent_optin -> ('auto_confirmed', 'auto_optin'). Always DMed regardless (no
          send-DM-anyway gate on this branch), so the member can still switch to confirmed/declined.
-      4. otherwise -> ('pending', 'template_confirm') — unchanged from before this feature.
+      5. otherwise -> ('pending', 'template_confirm') — unchanged from before this feature.
 
     'source' is audit-only (Cardinal Rule 24) — nothing may branch on it; both callers write it
     straight through to cwl_signups.source for a later "why is this row declined?" answer.
@@ -2733,6 +2948,8 @@ def resolve_seeded_cwl_signup_status(
         return existing_global["status"], "template_confirm"
     if permanent_optout:
         return "declined", "auto_optout"
+    if permanent_bench:
+        return "auto_passive", "auto_bench"
     if permanent_optin:
         return "auto_confirmed", "auto_optin"
     return "pending", "template_confirm"
@@ -2940,6 +3157,7 @@ async def _start_cwl_enrollment_locked(guild_id: int, season: str) -> Dict[str, 
         existing_global = global_status_by_tag.get(participant["player_tag"])
         status, source = resolve_seeded_cwl_signup_status(
             existing_global, participant["cwl_permanent_optout"], participant["cwl_permanent_optin"],
+            bool(participant.get("cwl_permanent_bench")),
         )
         if (
             status == "pending" and source == "template_confirm"
@@ -3522,6 +3740,7 @@ async def _send_cwl_enrollment_dm_batch(
                     global_status_by_tag.get(p["player_tag"]),
                     bool(link.get("cwl_permanent_optout")),
                     bool(link.get("cwl_permanent_optin")),
+                    bool(link.get("cwl_permanent_bench")),
                 )
                 missing_signups.append({
                     "player_tag": p["player_tag"],
@@ -3576,14 +3795,18 @@ async def send_cwl_signup_template_dm(
     from qapbot.ui_cwl_roster import build_cwl_signup_response_view
 
     discord_id = participant["discord_id"]
+    # Tracker #0114: the Bench option follows the PLAYER, not the sending guild — a player gets
+    # exactly one enrollment DM per season, sent by whichever guild's event got there first, so a
+    # guild-only rule would hand out the option by luck of who sent it.
+    bench = cwl_bench_enabled_for(discord_id, guild_id)
     message = t(
-        'cwl.template.dm_body',
+        'cwl.template.dm_body_bench' if bench else 'cwl.template.dm_body',
         guild_id=guild_id,
         user_id=discord_id,
         season=season,
         player_name=participant["player_name"] or participant["player_tag"],
     )
-    view = build_cwl_signup_response_view(event_id, participant["player_tag"], guild_id)
+    view = build_cwl_signup_response_view(event_id, participant["player_tag"], guild_id, bench=bench)
     sent_message_ref: List[Any] = []
     sent, outcome = await CACHE.send_user_dm_detailed(
         str(discord_id), message, view=view, sent_message_out=sent_message_ref
@@ -3632,8 +3855,12 @@ async def send_cwl_reminder_dm_group(
     for start in range(0, len(accounts), 5):
         chunk = accounts[start:start + 5]
         chunk_names = [a["player_name"] or a["player_tag"] for a in chunk]
-        content = t('cwl.reminder.dm_buttons_intro', user_id=discord_id, guild_id=guild_id, season=season)
-        view = build_cwl_reminder_response_view(event_id, chunk, guild_id)
+        bench = cwl_bench_enabled_for(discord_id, guild_id)
+        content = t(
+            'cwl.reminder.dm_buttons_intro_bench' if bench else 'cwl.reminder.dm_buttons_intro',
+            user_id=discord_id, guild_id=guild_id, season=season,
+        )
+        view = build_cwl_reminder_response_view(event_id, chunk, guild_id, bench=bench)
         sent_message_ref: List[Any] = []
         chunk_sent, chunk_outcome = await CACHE.send_user_dm_detailed(
             discord_id, content, view=view, sent_message_out=sent_message_ref
@@ -3913,8 +4140,13 @@ def resolve_cwl_announcement_targets_sync(
     player_tags = list(placements.keys())
     links = db.get_player_links_sync(player_tags)
     current_clans = db.get_current_clan_tags_for_players_sync(player_tags)
+    status_by_tag: Dict[str, str] = {}
     for signup in db.get_cwl_signups_for_event_sync(event_id):
         names_by_tag.setdefault(signup["player_tag"], signup["player_name"])
+        # Tracker #0114: carried so the announcement can mark a bench player's line — they asked
+        # not to attack regularly, and being told "you play for X" without that acknowledged reads
+        # as if nobody registered their answer.
+        status_by_tag[signup["player_tag"]] = signup["status"]
 
     groups: Dict[str, List[Dict[str, Any]]] = {}
     for tag, (clan_tag, shared_clan_id, notified, notified_clan_tag) in placements.items():
@@ -3936,6 +4168,7 @@ def resolve_cwl_announcement_targets_sync(
         groups.setdefault(str(link["discord_id"]), []).append({
             "player_tag": tag,
             "player_name": player_name,
+            "signup_status": status_by_tag.get(tag),
             "clan_tag": clan_tag,
             "clan_name": CACHE.get_clan_name(clan_tag, clan_tag) or clan_tag,
             "cwl_start_at": participating[clan_tag].get("cwl_start_at"),
@@ -4195,8 +4428,14 @@ async def send_cwl_roster_updates(guild_id: int, season: str) -> Dict[str, Any]:
             # Discord's 5-action-row cap at 2 buttons per account; a member with more linked
             # accounts than that is vanishingly rare, and the overflow still gets the roster
             # information — just not their buttons, and "Notify New Pool Members" covers them.
-            view = build_cwl_reminder_response_view(event["id"], never_asked[:5], guild_id)
-            lines.append(t('cwl.update.dm_confirm_prompt', user_id=discord_id, guild_id=guild_id))
+            bench = cwl_bench_enabled_for(discord_id, guild_id)
+            view = build_cwl_reminder_response_view(
+                event["id"], never_asked[:5], guild_id, bench=bench
+            )
+            lines.append(t(
+                'cwl.update.dm_confirm_prompt_bench' if bench else 'cwl.update.dm_confirm_prompt',
+                user_id=discord_id, guild_id=guild_id,
+            ))
 
         sent_message_ref: List[Any] = []
         sent, outcome = await _send_cwl_dm_chunks(
@@ -4287,13 +4526,17 @@ def _build_cwl_roster_account_lines(
     for account in accounts:
         start_full = cwl_start_at_discord_timestamp(account["cwl_start_at"], "F") or "?"
         start_rel = cwl_start_at_discord_timestamp(account["cwl_start_at"], "R") or "?"
+        bench_suffix = (
+            " " + t('cwl.start.dm_line_bench_suffix', user_id=discord_id, guild_id=guild_id)
+            if account.get("signup_status") in CWL_BENCH_STATUSES else ""
+        )
         if account["in_clan"]:
             lines.append(t(
                 'cwl.start.dm_line_green',
                 user_id=discord_id, guild_id=guild_id,
                 player_name=account["player_name"], clan_name=account["clan_name"],
                 start_full=start_full, start_rel=start_rel,
-            ))
+            ) + bench_suffix)
         else:
             lines.append(t(
                 'cwl.start.dm_line_amber',
@@ -4305,7 +4548,7 @@ def _build_cwl_roster_account_lines(
                 ),
                 start_full=start_full, start_rel=start_rel,
                 clan_url=coc_clan_profile_url(account["clan_tag"]),
-            ))
+            ) + bench_suffix)
     return lines
 
 

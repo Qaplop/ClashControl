@@ -1021,6 +1021,8 @@
       "button_configure_channels": "Configura Canales",
       "button_configure_retention": "Configura Retentionem Datorum",
       "button_configure_coordinator_role": "Configura Ordinem Coordinatoris",
+      "button_enable_extended_signup": "Inscriptionem ampliatam activare (subsellium)",
+      "button_disable_extended_signup": "Inscriptionem ampliatam deactivare (subsellium)",
       "button_activate_hub": "Activa Nuntium Centri Moderationis CWL",
       "button_deactivate_hub": "Inactiva Nuntium Centri Moderationis CWL",
       "button_activate_player_hub": "Activa Nuntium Centri Optionum CWL Lusoris",
@@ -1032,6 +1034,12 @@
       "coordinator_role_not_set": "Non nexus",
       "coordinator_role_value": "Ordo: {role}",
       "coordinator_role_description": "Omnes ut coordinator CWL pro quavis gente configurati hunc ordinem automatice tenent.",
+      "signup_mode_block_title": "Modus inscriptionis CWL",
+      "signup_mode_status": "Modus: {status}",
+      "signup_mode_standard": "Usitatus (confirmare / renuntiare)",
+      "signup_mode_extended": "Ampliatus (confirmare / subsellium / renuntiare)",
+      "signup_mode_description": "Modus ampliatus permittit lusoribus se in subsellium inscribere: in indice propter praemia temporis vel ut subsidium, sine impetibus assiduis.",
+      "extended_signup_dms_upgraded": "🪑 {count} nuntii inscriptionis nondum responsi optione subsellii aucti sunt.",
       "coordinator_role_per_clan_value": "Unus ordo per gentem — {linked} ex {total} gentibus nexis",
       "coordinator_role_per_clan_description": "Coordinatores CWL cuiusque gentis ordinem illius gentis automatice tenent; qui plures gentes coordinat quemque eorum tenet.",
       "button_enable_include_all_accounts": "Include Omnes Rationes Nexas",
@@ -1172,6 +1180,7 @@
       "mode_none": "Roga me omni tempore",
       "mode_optin": "Semper ludere",
       "mode_optout": "Numquam ludere",
+      "mode_bench": "Semper subsellium",
       "no_preference": "Nulla praeferentia",
       "unassigned": "Non assignatus",
       "apply_to_all": "Applica ad omnes rationes meas",
@@ -1183,9 +1192,16 @@
       "status_confirmed": "Confirmatus",
       "status_declined": "Recusatus",
       "status_auto_confirmed": "Automatice Confirmatus",
+      "status_passive": "Subsellium",
+      "status_auto_passive": "Subsellium automaticum",
       "status_tooltip_auto_confirmed": "Automatice confirmatus secundum praeferentiam tuam CWL permanentem — nondum confirmatio manualis.",
+      "status_tooltip_auto_passive": "Automatice in subsellium positus propter optionem tuam \"semper subsellium\" — nondum responsum manuale.",
       "button_im_in": "Adsum",
       "button_im_out": "Absum",
+      "button_bench": "🪑 Subsellium",
+      "bench_tooltip_default": "In indice esse propter praemia temporis vel ut subsidium, sine impetibus assiduis.",
+      "bench_tooltip_already_bench": "Haec ratio iam in subsellio est.",
+      "bench_tooltip_auto_bench": "Optio tua perpetua hanc rationem in subsellium posuit — preme ut responsum verum confirmes.",
       "confirm_tooltip_auto_confirmed": "Iam per praeferentiam tuam permanentem ades — hoc premendo id revera confirmas, quod duci gentis tuae claritatem maiorem quam confirmatio automatica dat.",
       "confirm_tooltip_default": "Confirma te hoc tempore hac ratione CWL lusurum esse.",
       "confirm_tooltip_already_confirmed": "Iam confirmavisti — nihil amplius agendum.",
@@ -1205,9 +1221,13 @@
     "template": {
       "confirm_button": "Confirma",
       "optout_button": "Recusa",
+      "bench_button": "🪑 Subsellium",
+      "bench_explanation": "✅ **Confirmare** — ludis et impetum facis.\n🪑 **Subsellium** — in indice esse vis (propter praemia temporis vel ut subsidium), sed impetus assiduos facere non cogitas.\n❌ **Renuntiare** — hoc tempore non.",
       "dm_body": "📋 Inscriptio pro tempore CWL **{season}**!\nVisne hoc CWL cum **{player_name}** ludere?",
+      "dm_body_bench": "📋 Inscriptio ad tempus CWL **{season}**!\nVisne hoc CWL cum **{player_name}** ludere?\n\n✅ **Confirmare** — ludis et impetum facis.\n🪑 **Subsellium** — in indice esse vis (propter praemia temporis vel ut subsidium), sed impetus assiduos facere non cogitas.\n❌ **Renuntiare** — hoc tempore non.",
       "confirmed_msg": "✅ Gratias — **{player_name}** confirmatus est pro fonte ordinis CWL huius temporis.",
       "declined_msg": "👍 Intellexi — **{player_name}** ex fonte ordinis CWL huius temporis recusavit.",
+      "bench_msg": "🪑 Intellectum — **{player_name}** hoc tempore CWL in subsellio est: in indice, sed sine officio impetus.",
       "no_longer_valid": "⚠️ Haec inscriptio non amplius valida est (tempus fortasse deletum est).",
       "not_your_signup": "⚠️ Haec inscriptio ad aliam rationem pertinet.",
       "signup_closed": "⚠️ Inscriptio pro hoc tempore non amplius aperta est.",
@@ -1224,11 +1244,13 @@
       "dm_intro": "📣 Salve **{display_name}**, ordo CWL pro tempore **{season}** constitutus est — hic est ubi ludis ({count} rationes):",
       "dm_line_green": "\n✅ **{player_name}** — iam in **{clan_name}** es. CWL tua incipit {start_full} ({start_rel}). Nihil agendum, tantum mane.",
       "dm_line_amber": "\n⚠️ **{player_name}** — nunc in **{current_clan_name}** es et ad **{clan_name}** *multo ante* {start_full} ({start_rel}) moveri debes.\n➡️ <{clan_url}>",
-      "dm_unknown_clan": "nulla gens"
+      "dm_unknown_clan": "nulla gens",
+      "dm_line_bench_suffix": "(🪑 Subsellium — in indice es, impetus tibi liberum est.)"
     },
     "update": {
       "dm_intro": "📋 Salve **{display_name}**, ordo tuus CWL pro tempore **{season}** mutatus est ({count} renovationes):",
       "dm_confirm_prompt": "\n\nQuaeso infra confirma an hoc CWL ludere velis — dux tuus responsum tuum exspectat.",
+      "dm_confirm_prompt_bench": "\nQuaeso infra confirma utrum hoc CWL ludere velis — praefectus tuus responsum tuum exspectat.\n\n✅ **Confirmare** — ludis et impetum facis.\n🪑 **Subsellium** — in indice (praemia temporis vel subsidium), sine impetibus assiduis.\n❌ **Renuntiare** — hoc tempore non.",
       "dm_line_dropped": "\n➖ **{player_name}** — non amplius in ordine CWL pro **{clan_name}** es. Dux tuus adhuc te alibi ponere potest antequam incipit. Ducem gentis tuae contacta si hoc clarificatione indiget.",
       "dm_line_moved_prefix": "\n🔄 **{player_name}** — mutatus ex **{old_clan_name}**:"
     },
@@ -1245,8 +1267,10 @@
     "reminder": {
       "dm_intro_body": "👋 Salve **{display_name}**,\n\nadhuc responsum tuum pro tempore CWL **{season}** exspectamus — nunc **{count}** inscriptiones pendentes in fonte ordinis CWL habes de quibus nihil a te audivimus.\n\nQuaeso in proximo nuntio quam primum confirma vel recusa — ibi par separatum bullarum Confirma/Recusa pro quaque ratione tua invenies. Responsum celere nos multum in consilio ordinis huius temporis adiuvat.",
       "dm_buttons_intro": "📋 Quaeso omnibus inscriptionibus CWL adhuc pendentibus pro tempore **{season}** infra responde:",
+      "dm_buttons_intro_bench": "📋 Quaeso responde infra ad singulas inscriptiones CWL temporis **{season}** nondum expletas:\n\n✅ **Confirmare** — ludis et impetum facis.\n🪑 **Subsellium** — in indice (praemia temporis vel subsidium), sine impetibus assiduis.\n❌ **Renuntiare** — hoc tempore non.",
       "confirm_button_labeled": "✅ {player_name}",
-      "optout_button_labeled": "❌ {player_name}"
+      "optout_button_labeled": "❌ {player_name}",
+      "bench_button_labeled": "🪑 {player_name}"
     }
   }
 }

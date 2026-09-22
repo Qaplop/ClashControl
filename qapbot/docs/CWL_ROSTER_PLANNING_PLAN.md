@@ -61,9 +61,15 @@ UNIQUE (event_id, player_tag)
 - `dmed_discord_id` — who this event's enrollment DM went to. A **historical fact**, not an
   ownership field — never read as "who owns this account" (an account can be re-linked after the
   DM was sent). Live ownership always comes from `user_players` via `get_player_links_sync()`.
-- `status` — `pending | confirmed | declined | auto_confirmed` (`withdrawn` is legacy, no longer
-  written). `auto_confirmed` is seeded by a standing opt-in preference (§9 of
-  `cwl-personal-hub.md`) and is distinguished from a genuine response everywhere it's read.
+- `status` — `pending | confirmed | declined | auto_confirmed | passive | auto_passive`
+  (`withdrawn` is legacy, no longer written). `auto_confirmed` is seeded by a standing opt-in
+  preference (§9 of `cwl-personal-hub.md`) and is distinguished from a genuine response everywhere
+  it's read. `passive`/`auto_passive` are tracker #0114's "Ersatzbank"/Bench pair — the player is
+  on the roster for the season rewards or as a backup without attacking regularly; `auto_passive`
+  is its standing-preference twin (`user_players.cwl_permanent_bench`). Whether the option may be
+  OFFERED is decided per person by `cwl_bench_enabled_for()` (guild_config.cwl_signup_mode is
+  'extended', or the player is on a server where it is); the status itself is never rewritten per
+  guild — every screen shows the real answer.
 - `origin_shared_clan_id` — tags a local row created when a foreign shared-clan member is
   cross-assigned into one of this guild's own private clans, so it can be purged if the real
   owning guild later reassigns that player (see §7's cross-guild section).
@@ -405,6 +411,44 @@ renders with a ❓ icon (tracker #0078's fix, 2026-08-30).
 `plans/implemented/cwl-personal-hub.md`) plus the DM buttons — there is no standalone `/cwl
 signup`/`/cwl withdraw` slash command; an earlier design specified them but the player-facing
 surface was redesigned around the Hub before they were built.
+
+### 6.1 Extended sign-up — the "Ersatzbank"/Bench status (tracker #0114)
+
+`guild_config.cwl_signup_mode` is `'standard'` (confirm / opt out, the default for every guild) or
+`'extended'`, toggled on the CWL Settings screen. Extended adds a third answer, **Ersatzbank /
+Bench**: on the roster for the season rewards or as a backup, without attacking regularly. It is a
+real answer (`passive`), with a standing-preference twin (`auto_passive`, seeded from
+`user_players.cwl_permanent_bench`, offered as "Immer Ersatzbank" in the Player Hub) exactly as
+`auto_confirmed` twins `confirmed`.
+
+**Who may be offered it is player-based, not guild-based** — `cwl_bench_enabled_for(discord_id,
+guild_id)`: true when that guild is extended, or when the Discord user is a member of ANY extended
+guild. A player receives exactly one sign-up DM per season, sent by whichever guild's event gets
+there first, so a guild-only rule would hand out the option by luck of the sender. The same helper
+gates the Player Hub's Bench button, the board's per-card context-menu entry, and every
+server-side write (admin override, Hub status, preference mode).
+
+**The status is never rewritten per guild.** A Bench player shows the 🪑 icon on every board,
+including a standard-sign-up guild's — that is the project owner's rule ("show the player's real
+status"). What a standard guild does hide is the *chrome*: legend rows, the Hub's count lines and
+the clan-column active/bench split appear there only when such a player is actually present, and
+always on an extended guild. With no extended guild anywhere, no Bench status can exist and every
+screen is exactly as before.
+
+Bench counts as **answered** (`CWL_SETTLED_STATUSES`), so those players are never re-invited or
+reminded. Auto-assignment is unchanged and status-agnostic. The clan column header splits its fill
+count (`12 + 3🪑 / 15`) so an admin sees how many real attackers a roster has, and the roster
+announcement marks a bench player's line.
+
+**Switching a guild to extended mid-enrollment upgrades the DMs it already sent**
+(`upgrade_pending_cwl_dms_for_bench()`): every still-unanswered DM whose recipient is now
+bench-enabled — including DMs another guild sent to one of this guild's members — is edited in
+place, the Bench explanation appended to its existing text (a roster-update DM keeps its "where and
+when you play" part) and its buttons rebuilt from the accounts of that message that are still
+pending. Idempotent, paced, and tolerant of a deleted or blocked DM. Switching back never touches
+sent DMs: a leftover Bench button records a real, displayable status.
+
+---
 
 **DM guard**: `CONFIG.cwl_dm_restrict_to_admin` (`_dm_guard_blocks()`) — hardcoded `False` on
 PROD, defaults `True` on DEV with a PROD-tester allowlist. Every CWL bulk-DM sender in the

@@ -70,6 +70,14 @@ function isOptedOut(player: EnrollmentPlayer): boolean {
   return player.cwl_permanent_optout || player.signup_status === 'declined'
 }
 
+// Tracker #0114 — "Ersatzbank"/Bench: wants to be on the roster (season rewards, or as a backup)
+// without attacking regularly. Deliberately NOT part of isOptedOut(): a bench player is on the
+// roster and sorts like any other participant; they just don't count towards a clan's ACTIVE
+// attacker count (see the column header's split below).
+function isBenchStatus(status: EnrollmentPlayer['signup_status']): boolean {
+  return status === 'passive' || status === 'auto_passive'
+}
+
 // Whether a player's REAL status (confirmed/declined/auto_confirmed/pending) should actually be
 // shown, as opposed to "Not Invited Yet" (2026-08-29, project owner's clarification). 'pending'
 // is the one status that specifically means "sent, awaiting response" — a cwl_signups row gets
@@ -583,6 +591,13 @@ export function renderEnrollmentBoard(
         label: 'Set enrollment status',
         submenu: [
           { label: 'Confirmed', onSelect: () => setStatus('confirmed', 'Confirming') },
+          // Tracker #0114 — Bench ("Ersatzbank"): on the roster for the season rewards or as a
+          // backup, without attacking regularly. Offered per card rather than per board: the
+          // option follows the player, so it also shows on a standard-sign-up board for someone
+          // who is on an extended-sign-up server (bench_enabled, set by the bridge).
+          ...(player.bench_enabled
+            ? [{ label: 'Bench', onSelect: () => setStatus('passive', 'Benching') }]
+            : []),
           { label: 'Declined', onSelect: () => setStatus('declined', 'Declining') },
           // The "(sends DM again!)" suffix is the project owner's own wording from the feature
           // request — this action destroys the player's existing DM, so the menu says so up front
@@ -746,6 +761,12 @@ export function renderEnrollmentBoard(
   header.textContent = `Season ${payload.season} — ${formatEventStatus(payload.event_status)}`
   titleRow.appendChild(header)
 
+  // Tracker #0114: an extended-sign-up guild always explains the Bench icons; a standard one
+  // only once such a player is actually on this board (their status can come from another
+  // server they are on).
+  const benchLegendVisible =
+    payload.signup_mode === 'extended' || payload.players.some((p) => isBenchStatus(p.signup_status))
+
   const legend = document.createElement('div')
   legend.className = 'legend'
   const legendLabel = document.createElement('span')
@@ -760,6 +781,21 @@ export function renderEnrollmentBoard(
       STATUS_ICON.auto_confirmed, STATUS_LABEL.auto_confirmed,
       'Standing opt-in seeded this — the invitation DM was still sent.',
     ),
+    // Tracker #0114: always on an extended-sign-up guild, and on a standard one only when such a
+    // player is actually on the board — the legend explains the icons in front of the admin, and
+    // a Bench status can arrive from a player's other server.
+    ...(benchLegendVisible
+      ? [
+          buildLegendItem(
+            STATUS_ICON.passive, STATUS_LABEL.passive,
+            'Wants to be on the roster for the season rewards or as a backup, without attacking regularly.',
+          ),
+          buildLegendItem(
+            STATUS_ICON.auto_passive, STATUS_LABEL.auto_passive,
+            'Standing "always bench" preference seeded this — the invitation DM was still sent.',
+          ),
+        ]
+      : []),
     buildLegendItem(
       unlinkedIconUrl, UNLINKED_LABEL,
       "No Discord account is linked to this player, so they can't receive or respond to the enrollment DM.",
@@ -1260,7 +1296,17 @@ export function renderEnrollmentBoard(
     nameLine.appendChild(nameSpan)
     const countSpan = document.createElement('span')
     countSpan.className = 'column-count'
-    countSpan.textContent = rosterSize !== null ? `(${players.length}/${rosterSize})` : `(${players.length})`
+    // Tracker #0114: with bench players on the roster, the plain fill count would overstate how
+    // many attackers a clan actually has — the whole point of the status. Split it as
+    // "active + bench", shown only for a column that really holds a bench player (an
+    // extended-sign-up guild with none looks exactly as before).
+    const benchCount = players.filter((p) => isBenchStatus(p.signup_status)).length
+    const activeCount = players.length - benchCount
+    const filled = benchCount > 0 ? `${activeCount} + ${benchCount}🪑` : `${players.length}`
+    countSpan.textContent = rosterSize !== null ? `(${filled}/${rosterSize})` : `(${filled})`
+    if (benchCount > 0) {
+      countSpan.title = `${activeCount} attacking, ${benchCount} on the bench`
+    }
     // Roster-filled indicator (live-testing feedback, 2026-08-15) — green once the column has
     // reached or passed its target roster_size, amber while still short. Unassigned has no
     // rosterSize (no target to measure against), so it stays the plain default color.

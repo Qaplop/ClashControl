@@ -1021,6 +1021,8 @@
       "button_configure_channels": "配置频道",
       "button_configure_retention": "配置数据保留",
       "button_configure_coordinator_role": "配置协调员身份组",
+      "button_enable_extended_signup": "启用扩展报名（替补）",
+      "button_disable_extended_signup": "停用扩展报名（替补）",
       "button_activate_hub": "激活部落战联赛管理中心消息",
       "button_deactivate_hub": "停用部落战联赛管理中心消息",
       "button_activate_player_hub": "激活玩家部落战联赛设置中心消息",
@@ -1032,6 +1034,12 @@
       "coordinator_role_not_set": "未关联",
       "coordinator_role_value": "身份组：{role}",
       "coordinator_role_description": "任何一个部落的部落战联赛协调员都会自动拥有此身份组。",
+      "signup_mode_block_title": "联赛报名模式",
+      "signup_mode_status": "模式：{status}",
+      "signup_mode_standard": "标准（确认 / 退出）",
+      "signup_mode_extended": "扩展（确认 / 替补 / 退出）",
+      "signup_mode_description": "扩展模式允许玩家报名为替补：留在名单中以获得赛季奖励或作为候补，而无需经常进攻。",
+      "extended_signup_dms_upgraded": "🪑 已为 {count} 条未回复的报名私信添加替补选项。",
       "coordinator_role_per_clan_value": "每个部落一个身份组 — 已关联 {linked}/{total} 个部落",
       "coordinator_role_per_clan_description": "每个部落的部落战联赛协调员会自动拥有该部落的身份组；同时协调多个部落的人会拥有每一个对应的身份组。",
       "button_enable_include_all_accounts": "纳入所有已绑定账号",
@@ -1172,6 +1180,7 @@
       "mode_none": "每个赛季都询问我",
       "mode_optin": "始终参加",
       "mode_optout": "从不参加",
+      "mode_bench": "始终替补",
       "no_preference": "无偏好",
       "unassigned": "未分配",
       "apply_to_all": "应用于我的所有账号",
@@ -1183,9 +1192,16 @@
       "status_confirmed": "已确认",
       "status_declined": "已拒绝",
       "status_auto_confirmed": "自动确认",
+      "status_passive": "替补",
+      "status_auto_passive": "自动替补",
       "status_tooltip_auto_confirmed": "根据你的常设部落战联赛偏好自动确认 — 尚非手动确认。",
+      "status_tooltip_auto_passive": "根据你的“始终替补”偏好自动设置为替补 — 尚未手动答复。",
       "button_im_in": "我参加",
       "button_im_out": "我不参加",
+      "button_bench": "🪑 替补",
+      "bench_tooltip_default": "留在名单中以获得赛季奖励或作为候补，而无需经常进攻。",
+      "bench_tooltip_already_bench": "该账号已在替补名单中。",
+      "bench_tooltip_auto_bench": "你的长期偏好已将该账号设为替补 — 点击以确认为正式答复。",
       "confirm_tooltip_auto_confirmed": "你已经通过常设偏好被纳入 — 点击此按钮进行真正的确认，比自动确认能给你的部落领袖更明确的信息。",
       "confirm_tooltip_default": "确认你本赛季将使用此账号参加部落战联赛。",
       "confirm_tooltip_already_confirmed": "你已经确认过了 — 无需其他操作。",
@@ -1205,9 +1221,13 @@
     "template": {
       "confirm_button": "确认",
       "optout_button": "退出",
+      "bench_button": "🪑 替补",
+      "bench_explanation": "✅ **确认** — 你参加并进攻。\n🪑 **替补** — 你希望留在名单中（为了赛季奖励或作为候补），但不打算经常进攻。\n❌ **退出** — 本赛季不参加。",
       "dm_body": "📋 部落战联赛赛季 **{season}** 报名开始！\n你想用 **{player_name}** 参加本次部落战联赛吗？",
+      "dm_body_bench": "📋 联赛赛季 **{season}** 报名！\n你想用 **{player_name}** 参加本次联赛吗？\n\n✅ **确认** — 你参加并进攻。\n🪑 **替补** — 你希望留在名单中（为了赛季奖励或作为候补），但不打算经常进攻。\n❌ **退出** — 本赛季不参加。",
       "confirmed_msg": "✅ 谢谢 — **{player_name}** 已确认加入本赛季的部落战联赛阵容报名池。",
       "declined_msg": "👍 收到 — **{player_name}** 已退出本赛季的部落战联赛阵容报名池。",
+      "bench_msg": "🪑 明白了 — **{player_name}** 本赛季联赛担任替补：在名单中，但无需进攻。",
       "no_longer_valid": "⚠️ 此报名已不再有效（该赛季可能已被删除）。",
       "not_your_signup": "⚠️ 此报名属于另一个账号。",
       "signup_closed": "⚠️ 此赛季的报名已不再开放。",
@@ -1224,11 +1244,13 @@
       "dm_intro": "📣 你好，**{display_name}**，赛季 **{season}** 的部落战联赛阵容已确定 — 以下是你的参赛安排（共 {count} 个账号）：",
       "dm_line_green": "\n✅ **{player_name}** — 你已经在 **{clan_name}** 中。你的部落战联赛将于 {start_full}（{start_rel}）开始。无需操作，留在原地即可。",
       "dm_line_amber": "\n⚠️ **{player_name}** — 你目前在 **{current_clan_name}**，需要在 {start_full}（{start_rel}）*之前尽早*转移到 **{clan_name}**。\n➡️ <{clan_url}>",
-      "dm_unknown_clan": "无部落"
+      "dm_unknown_clan": "无部落",
+      "dm_line_bench_suffix": "（🪑 替补 — 你在名单中，是否进攻由你决定。）"
     },
     "update": {
       "dm_intro": "📋 你好，**{display_name}**，你在赛季 **{season}** 的部落战联赛阵容已发生变化（共 {count} 处更新）：",
       "dm_confirm_prompt": "\n\n请在下方确认你是否想参加本次部落战联赛 — 你的领袖正在等待你的回复。",
+      "dm_confirm_prompt_bench": "\n请在下方确认你是否参加本次联赛 — 你的管理层正在等待答复。\n\n✅ **确认** — 你参加并进攻。\n🪑 **替补** — 留在名单中（赛季奖励或候补），无需经常进攻。\n❌ **退出** — 本赛季不参加。",
       "dm_line_dropped": "\n➖ **{player_name}** — 你已不再在 **{clan_name}** 的部落战联赛阵容中。你的领袖可能仍会在开始前将你安排到其他位置。如需澄清，请联系你的部落领袖。",
       "dm_line_moved_prefix": "\n🔄 **{player_name}** — 已从 **{old_clan_name}** 变更："
     },
@@ -1245,8 +1267,10 @@
     "reminder": {
       "dm_intro_body": "👋 你好，**{display_name}**，\n\n我们仍在等待你对部落战联赛赛季 **{season}** 的回复——你目前在部落战联赛阵容报名池中有 **{count}** 项待处理报名，我们尚未收到你的回复。\n\n请尽快在下一条消息中确认或退出——你会在那里找到每个账号各自独立的一对确认/退出按钮。快速回复对我们本赛季的阵容规划很有帮助。",
       "dm_buttons_intro": "📋 请在下方回复你在赛季 **{season}** 中每一项仍待处理的部落战联赛报名：",
+      "dm_buttons_intro_bench": "📋 请在下方回复你在赛季 **{season}** 中尚未答复的联赛报名：\n\n✅ **确认** — 你参加并进攻。\n🪑 **替补** — 留在名单中（赛季奖励或候补），无需经常进攻。\n❌ **退出** — 本赛季不参加。",
       "confirm_button_labeled": "✅ {player_name}",
-      "optout_button_labeled": "❌ {player_name}"
+      "optout_button_labeled": "❌ {player_name}",
+      "bench_button_labeled": "🪑 {player_name}"
     }
   }
 }

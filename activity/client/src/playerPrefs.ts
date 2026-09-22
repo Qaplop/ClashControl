@@ -24,7 +24,7 @@ const CWL_LEAGUE_RANKS: string[] = [
   'Unranked',
 ]
 
-type PrefsMode = 'none' | 'optin' | 'optout'
+type PrefsMode = 'none' | 'optin' | 'optout' | 'bench'
 
 // POST /api/cwl/player-prefs/status's four possible failure codes (qapbot/web_bridge.py's
 // _PLAYER_PREFS_STATUS_ERROR_HTTP_STATUS) — each one is also a real cwl.template.* key, reused
@@ -53,12 +53,15 @@ function buildLeagueSelect(current: string | null, t: Translator): HTMLSelectEle
   return select
 }
 
-function buildModeSelect(current: PrefsMode, t: Translator): HTMLSelectElement {
+function buildModeSelect(current: PrefsMode, t: Translator, benchEnabled: boolean): HTMLSelectElement {
   const select = document.createElement('select')
   select.title = t('col_participation_tooltip')
   const options: [PrefsMode, string][] = [
     ['none', t('mode_none')],
     ['optin', t('mode_optin')],
+    // Tracker #0114: also listed for an account that ALREADY has it (set on another server), so
+    // the select can never show a wrong value or silently overwrite the preference on save.
+    ...((benchEnabled || current === 'bench' ? [['bench', t('mode_bench')]] : []) as [PrefsMode, string][]),
     ['optout', t('mode_optout')],
   ]
   for (const [value, label] of options) {
@@ -195,7 +198,7 @@ function renderBlockOne(
   applyRow.appendChild(applyLeagueCell)
 
   const applyModeCell = document.createElement('td')
-  const applyModeSelect = buildModeSelect('none', t)
+  const applyModeSelect = buildModeSelect('none', t, payload.bench_enabled === true)
   applyModeCell.appendChild(applyModeSelect)
   applyRow.appendChild(applyModeCell)
 
@@ -263,7 +266,7 @@ function renderBlockOne(
     row.appendChild(leagueCell)
 
     const modeCell = document.createElement('td')
-    const modeSelect = buildModeSelect(account.mode, t)
+    const modeSelect = buildModeSelect(account.mode, t, payload.bench_enabled === true)
     modeCell.appendChild(modeSelect)
     row.appendChild(modeCell)
 
@@ -392,7 +395,10 @@ function renderBlockTwo(
 
   for (const row of payload.season_rows) {
     const rowActionable = enrollmentOpen || (answersStillAccepted && row.signup_status === 'pending')
-    tbody.appendChild(buildSeasonRow(row, accountNames.get(row.player_tag) ?? null, t, rowActionable, onStatusChange, rerender, blockStatus))
+    tbody.appendChild(buildSeasonRow(
+      row, accountNames.get(row.player_tag) ?? null, t, rowActionable, onStatusChange, rerender,
+      blockStatus, payload.bench_enabled === true,
+    ))
   }
 
   table.appendChild(tbody)
@@ -422,6 +428,7 @@ function buildSeasonRow(
   onStatusChange: (playerTag: string, action: PlayerPrefsStatusAction) => Promise<PlayerPrefsPayload>,
   rerender: (fresh: PlayerPrefsPayload) => void,
   blockStatus: HTMLElement,
+  benchEnabled: boolean,
 ): HTMLTableRowElement {
   const tr = document.createElement('tr')
 
@@ -441,10 +448,12 @@ function buildSeasonRow(
     // 'auto_confirmed' is the one status whose label alone doesn't say enough — see the "I'm in"
     // button's own confirm_tooltip_auto_confirmed for the same nuance from the action side.
     if (row.signup_status === 'auto_confirmed') icon.title = t('status_tooltip_auto_confirmed')
+    if (row.signup_status === 'auto_passive') icon.title = t('status_tooltip_auto_passive')
     statusInner.appendChild(icon)
     const label = document.createElement('span')
     label.textContent = statusLabel(row.signup_status, t)
     if (row.signup_status === 'auto_confirmed') label.title = t('status_tooltip_auto_confirmed')
+    if (row.signup_status === 'auto_passive') label.title = t('status_tooltip_auto_passive')
     statusInner.appendChild(label)
   }
 
@@ -485,9 +494,11 @@ function buildSeasonRow(
       imOutButton.title = t('optout_tooltip_default')
     }
 
+    let benchButtonRef: HTMLButtonElement | null = null
     const fireStatusChange = async (action: PlayerPrefsStatusAction): Promise<void> => {
       imInButton.disabled = true
       imOutButton.disabled = true
+      if (benchButtonRef) benchButtonRef.disabled = true
       blockStatus.textContent = ''
       blockStatus.className = 'block-status'
       try {
@@ -500,6 +511,7 @@ function buildSeasonRow(
         blockStatus.className = 'block-status error'
         imInButton.disabled = currentStatus === 'confirmed'
         imOutButton.disabled = currentStatus === 'declined'
+        if (benchButtonRef) benchButtonRef.disabled = currentStatus === 'passive'
       }
     }
 
@@ -507,6 +519,29 @@ function buildSeasonRow(
     imOutButton.addEventListener('click', () => void fireStatusChange('optout'))
 
     statusInner.appendChild(imInButton)
+    // Tracker #0114 — Bench ("Ersatzbank"), between the two: on the roster for the season rewards
+    // or as a backup, without attacking regularly. Shown when this viewer may use the status at
+    // all (benchEnabled — their own servers decide, not just the one they opened the Hub from).
+    // auto_passive stays clickable, like auto_confirmed: a standing preference seeded it, and a
+    // deliberate click turns it into a real answer.
+    if (benchEnabled) {
+      const benchButton = document.createElement('button')
+      benchButton.textContent = t('button_bench')
+      benchButton.className = 'status-action-button'
+      benchButton.disabled = notInvited || currentStatus === 'passive'
+      if (notInvited) {
+        benchButton.title = t('status_action_tooltip_not_invited')
+      } else if (currentStatus === 'passive') {
+        benchButton.title = t('bench_tooltip_already_bench')
+      } else if (currentStatus === 'auto_passive') {
+        benchButton.title = t('bench_tooltip_auto_bench')
+      } else {
+        benchButton.title = t('bench_tooltip_default')
+      }
+      benchButton.addEventListener('click', () => void fireStatusChange('passive'))
+      benchButtonRef = benchButton
+      statusInner.appendChild(benchButton)
+    }
     statusInner.appendChild(imOutButton)
   }
 

@@ -149,6 +149,7 @@ PLAYER_NAME_FTS_ROWID_SCHEME_VALUE = "player_name_search_rowid_v2"
 USER_PLAYER_CWL_PREF_COLUMNS: Tuple[str, ...] = (
     "cwl_permanent_optout",
     "cwl_permanent_optin",
+    "cwl_permanent_bench",
     "cwl_optout_send_dm_anyway",
     "cwl_default_preferred_league_rank",
 )
@@ -2279,6 +2280,7 @@ class WarHistoryDB:
                 cwl_default_preferred_league_rank TEXT,
                 cwl_permanent_optin INTEGER NOT NULL DEFAULT 0,
                 cwl_optout_send_dm_anyway INTEGER NOT NULL DEFAULT 0,
+                cwl_permanent_bench INTEGER NOT NULL DEFAULT 0,
                 FOREIGN KEY (discord_id) REFERENCES users(discord_id) ON DELETE CASCADE,
                 FOREIGN KEY (current_clan_tag) REFERENCES clans(clan_tag) ON DELETE SET NULL,
                 UNIQUE (discord_id, player_tag)
@@ -2351,6 +2353,7 @@ class WarHistoryDB:
                 cwl_enrollment_include_all_linked_accounts BOOLEAN NOT NULL DEFAULT 0,
                 cwl_coordinator_role_id TEXT,
                 cwl_coordinator_role_mode TEXT NOT NULL DEFAULT 'single',
+                cwl_signup_mode TEXT NOT NULL DEFAULT 'standard',
                 timezone_name TEXT NOT NULL DEFAULT 'UTC',
                 channel_raid_notifications_enabled BOOLEAN NOT NULL DEFAULT 0,
                 raid_notification_threshold_hours REAL NOT NULL DEFAULT 24,
@@ -2929,6 +2932,9 @@ class WarHistoryDB:
         # pair above ("always play" and "send the invitation DM anyway despite opting out").
         await self._add_column_if_missing("user_players", "cwl_permanent_optin", "INTEGER NOT NULL DEFAULT 0")
         await self._add_column_if_missing("user_players", "cwl_optout_send_dm_anyway", "INTEGER NOT NULL DEFAULT 0")
+        # Tracker #0114: "always bench" — the standing counterpart of the confirm/opt-out pair
+        # above, seeding 'auto_passive' the way cwl_permanent_optin seeds 'auto_confirmed'.
+        await self._add_column_if_missing("user_players", "cwl_permanent_bench", "INTEGER NOT NULL DEFAULT 0")
         # cwl_hub_* -> cwl_player_hub_* (2026-08-23, plans/cwl-personal-hub.md "Naming convention"
         # — these four columns were unused since the day they were added, under a name that
         # collided with the ADMIN hub's custom_ids; retired in favor of a name that says which
@@ -2957,6 +2963,9 @@ class WarHistoryDB:
         # Tracker #0092: 'single' (one role for every clan's coordinators, the #0086 behaviour) or
         # 'per_clan' (cwl_clan_coordinator_roles). Default keeps existing guilds unchanged.
         await self._add_column_if_missing("guild_config", "cwl_coordinator_role_mode", "TEXT NOT NULL DEFAULT 'single'")
+        # Tracker #0114: 'standard' (confirm/decline only) or 'extended' (adds the Bench status).
+        # Default keeps every existing guild on today's behaviour.
+        await self._add_column_if_missing("guild_config", "cwl_signup_mode", "TEXT NOT NULL DEFAULT 'standard'")
         await self._add_column_if_missing("guild_config", "timezone_name", "TEXT NOT NULL DEFAULT 'UTC'")
         await self._add_column_if_missing("cwl_event_clans", "participating", "INTEGER NOT NULL DEFAULT 1")
         # One-shot dedup for the 30-minutes-before roster status report to a clan's CWL
@@ -5116,6 +5125,40 @@ class WarHistoryDB:
                 )
                 return []
 
+    def get_cwl_pending_dm_rows_for_season_sync(self, cwl_season: str) -> List[Dict[str, Any]]:
+        """Every still-unanswered, actually-sent invitation/reminder DM of one season, across all
+        guilds — `status = 'pending'` and `dm_sent = 1` with a recorded message.
+
+        Tracker #0114's "upgrade the DMs when a guild switches on extended sign-up"
+        (upgrade_pending_cwl_dms_for_bench, QBdiscocmdshelper_cwl.py). Deliberately NOT
+        guild-scoped: a player's one DM per season may have been sent by a different guild than
+        the one switching, and that player still gets the new option (the Bench rule is
+        player-based). The caller filters by who is actually affected.
+        """
+        import sqlite3
+
+        if not self.db_path:
+            raise RuntimeError("Database not initialized. Call initialize() first.")
+
+        with self._sync_conn() as conn:
+            try:
+                rows = conn.execute(
+                    """
+                    SELECT player_tag, player_name, dmed_discord_id, status,
+                           dm_sent_via_message_id, dm_sent_via_channel_id, dm_sent_via_event_id,
+                           dm_sent_via_guild_id
+                    FROM cwl_player_season_status
+                    WHERE cwl_season = ? AND status = 'pending' AND dm_sent = 1
+                      AND dm_sent_via_message_id IS NOT NULL
+                      AND dmed_discord_id IS NOT NULL
+                    """,
+                    (cwl_season,),
+                ).fetchall()
+            except sqlite3.Error as e:
+                logging.error(f"[DB-QUERY-SYNC] get_cwl_pending_dm_rows_for_season_sync failed: {e}")
+                return []
+        return [dict(row) for row in rows]
+
     def get_cwl_player_season_status_rows_by_dm_message_sync(
         self, message_id: str, cwl_season: str
     ) -> List[Dict[str, Any]]:
@@ -5454,7 +5497,7 @@ class WarHistoryDB:
                     """
                     SELECT player_tag, player_name, current_clan_tag, discord_id, verified,
                            cwl_permanent_optout, cwl_default_preferred_league_rank, th_level,
-                           cwl_permanent_optin, cwl_optout_send_dm_anyway
+                           cwl_permanent_optin, cwl_optout_send_dm_anyway, cwl_permanent_bench
                     FROM user_players
                     WHERE current_clan_tag IN ({placeholders})
                     ORDER BY verified DESC, (discord_id = 'UNASSIGNED') ASC
@@ -5491,6 +5534,7 @@ class WarHistoryDB:
                 "preferred_league_rank": row["cwl_default_preferred_league_rank"],
                 "th_level": row["th_level"],
                 "cwl_permanent_optin": bool(row["cwl_permanent_optin"]),
+                "cwl_permanent_bench": bool(row["cwl_permanent_bench"]),
                 "cwl_optout_send_dm_anyway": bool(row["cwl_optout_send_dm_anyway"]),
             })
         return members
@@ -5525,7 +5569,7 @@ class WarHistoryDB:
                     f"""
                     SELECT player_tag, player_name, current_clan_tag, discord_id, verified,
                            cwl_permanent_optout, cwl_default_preferred_league_rank, th_level,
-                           cwl_permanent_optin, cwl_optout_send_dm_anyway
+                           cwl_permanent_optin, cwl_optout_send_dm_anyway, cwl_permanent_bench
                     FROM user_players
                     WHERE discord_id IN ({placeholders})
                     ORDER BY verified DESC, (discord_id = 'UNASSIGNED') ASC
@@ -5554,6 +5598,7 @@ class WarHistoryDB:
                 "preferred_league_rank": row["cwl_default_preferred_league_rank"],
                 "th_level": row["th_level"],
                 "cwl_permanent_optin": bool(row["cwl_permanent_optin"]),
+                "cwl_permanent_bench": bool(row["cwl_permanent_bench"]),
                 "cwl_optout_send_dm_anyway": bool(row["cwl_optout_send_dm_anyway"]),
             })
         return players
@@ -5613,7 +5658,7 @@ class WarHistoryDB:
                     conn,
                     """
                     SELECT player_tag, player_name, discord_id, verified, cwl_permanent_optout,
-                           cwl_permanent_optin, cwl_optout_send_dm_anyway,
+                           cwl_permanent_optin, cwl_optout_send_dm_anyway, cwl_permanent_bench,
                            cwl_default_preferred_league_rank
                     FROM user_players
                     WHERE player_tag IN ({placeholders})
@@ -5641,6 +5686,7 @@ class WarHistoryDB:
                 "verified": bool(row["verified"]),
                 "cwl_permanent_optout": bool(row["cwl_permanent_optout"]),
                 "cwl_permanent_optin": bool(row["cwl_permanent_optin"]),
+                "cwl_permanent_bench": bool(row["cwl_permanent_bench"]),
                 "cwl_optout_send_dm_anyway": bool(row["cwl_optout_send_dm_anyway"]),
                 "preferred_league_rank": row["cwl_default_preferred_league_rank"],
             }
@@ -5669,14 +5715,15 @@ class WarHistoryDB:
             discord_id: whose preferences to change.
             player_tag: a single linked account, or None to apply to EVERY account currently
                 linked to this discord_id (the "apply to all my accounts" bulk control).
-            mode: 'optin' | 'optout' | 'none' (clear both), or None to leave the two boolean
-                columns untouched. Writes cwl_permanent_optout AND cwl_permanent_optin in the
-                SAME UPDATE statement, which is what makes the two structurally unable to both
-                read 1 afterward — there is no intermediate state a concurrent reader could ever
-                observe where both are set:
-                    'optin'  -> cwl_permanent_optout=0, cwl_permanent_optin=1
-                    'optout' -> cwl_permanent_optout=1, cwl_permanent_optin=0
-                    'none'   -> cwl_permanent_optout=0, cwl_permanent_optin=0
+            mode: 'optin' | 'optout' | 'bench' | 'none' (clear all), or None to leave the three
+                boolean columns untouched. Writes cwl_permanent_optout AND cwl_permanent_optin AND
+                cwl_permanent_bench (tracker #0114) in the SAME UPDATE statement, which is what
+                makes them structurally unable to both read 1 afterward — there is no intermediate
+                state a concurrent reader could ever observe where two are set:
+                    'optin'  -> optout=0, optin=1, bench=0
+                    'optout' -> optout=1, optin=0, bench=0
+                    'bench'  -> optout=0, optin=0, bench=1
+                    'none'   -> optout=0, optin=0, bench=0
                 Any mode OTHER than 'optout' also forces cwl_optout_send_dm_anyway=0 in the same
                 statement — that flag is only meaningful while opted out, so it can never survive
                 as a stale leftover on an account that no longer is, regardless of what the caller
@@ -5702,20 +5749,23 @@ class WarHistoryDB:
 
         if not self.db_path:
             raise RuntimeError("Database not initialized. Call initialize() first.")
-        if mode is not None and mode not in ("optin", "optout", "none"):
+        if mode is not None and mode not in ("optin", "optout", "bench", "none"):
             raise ValueError(f"set_cwl_preferences_sync: invalid mode {mode!r}")
 
         set_clauses: List[str] = []
         params: List[Any] = []
 
         if mode is not None:
-            optout_val, optin_val = {
-                "optin": (0, 1),
-                "optout": (1, 0),
-                "none": (0, 0),
+            optout_val, optin_val, bench_val = {
+                "optin": (0, 1, 0),
+                "optout": (1, 0, 0),
+                "bench": (0, 0, 1),
+                "none": (0, 0, 0),
             }[mode]
-            set_clauses += ["cwl_permanent_optout = ?", "cwl_permanent_optin = ?"]
-            params += [optout_val, optin_val]
+            set_clauses += [
+                "cwl_permanent_optout = ?", "cwl_permanent_optin = ?", "cwl_permanent_bench = ?",
+            ]
+            params += [optout_val, optin_val, bench_val]
             if mode != "optout":
                 # Leaving opt-out (or clearing to no preference) — the DM-anyway flag has no
                 # meaning without it, so it is force-cleared here rather than left stale.
@@ -10950,6 +11000,7 @@ class WarHistoryDB:
             "cwl_enrollment_include_all_linked_accounts": bool(row["cwl_enrollment_include_all_linked_accounts"]) if row["cwl_enrollment_include_all_linked_accounts"] is not None else False,
             "cwl_coordinator_role_id": row["cwl_coordinator_role_id"],
             "cwl_coordinator_role_mode": row["cwl_coordinator_role_mode"] or "single",
+            "cwl_signup_mode": row["cwl_signup_mode"] or "standard",
             "cwl_clan_coordinator_roles": cwl_clan_coordinator_roles,
             "timezone_name": row["timezone_name"] if row["timezone_name"] is not None else "UTC",
             # Clan Capital raid channel reminders (tracker #0115)
@@ -11001,10 +11052,10 @@ class WarHistoryDB:
                  cwl_management_channel_id, cwl_management_message_id, cwl_management_message_enabled,
                  cwl_management_message_last_bump_iso, cwl_retention_months, cwl_selected_season,
                  cwl_enrollment_include_all_linked_accounts, cwl_coordinator_role_id,
-                 cwl_coordinator_role_mode, timezone_name,
+                 cwl_coordinator_role_mode, cwl_signup_mode, timezone_name,
                  channel_raid_notifications_enabled, raid_notification_threshold_hours,
                  raid_notification_scope, raid_notification_channel_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(guild_id) DO UPDATE SET
                     language = excluded.language,
                     newbie_role_id = excluded.newbie_role_id,
@@ -11040,6 +11091,7 @@ class WarHistoryDB:
                     cwl_enrollment_include_all_linked_accounts = excluded.cwl_enrollment_include_all_linked_accounts,
                     cwl_coordinator_role_id = excluded.cwl_coordinator_role_id,
                     cwl_coordinator_role_mode = excluded.cwl_coordinator_role_mode,
+                    cwl_signup_mode = excluded.cwl_signup_mode,
                     timezone_name = excluded.timezone_name,
                     channel_raid_notifications_enabled = excluded.channel_raid_notifications_enabled,
                     raid_notification_threshold_hours = excluded.raid_notification_threshold_hours,
@@ -11081,6 +11133,7 @@ class WarHistoryDB:
                 1 if config.get("cwl_enrollment_include_all_linked_accounts", False) else 0,
                 config.get("cwl_coordinator_role_id"),
                 config.get("cwl_coordinator_role_mode") or "single",
+                config.get("cwl_signup_mode") or "standard",
                 config.get("timezone_name", "UTC"),
                 1 if config.get("channel_raid_notifications_enabled", False) else 0,
                 config.get("raid_notification_threshold_hours", 24),

@@ -250,8 +250,8 @@ def test_clan_management_view_cwl_settings_mode_constructs_without_row_conflict(
     )
 
     # mode select + refresh + channel/hub-toggle/player-hub-toggle/retention/
-    # include-all-accounts-toggle/coordinator-role buttons
-    assert len(view.children) == 8
+    # include-all-accounts-toggle/coordinator-role/signup-mode (tracker #0114) buttons
+    assert len(view.children) == 9
 
 
 @pytest.mark.discord

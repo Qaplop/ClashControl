@@ -14,6 +14,8 @@ import gcheckIconUrl from './assets/gcheck.svg'
 import pendingIconUrl from './assets/pending.svg'
 import redxIconUrl from './assets/redx.svg'
 import autoConfirmedIconUrl from './assets/autoconfirmed.svg'
+import benchIconUrl from './assets/bench.svg'
+import autoBenchIconUrl from './assets/autobench.svg'
 import type { Translator } from './i18n'
 
 // The statuses a member's own DM response can produce, plus 'auto_confirmed' — seeded
@@ -21,13 +23,18 @@ import type { Translator } from './i18n'
 // action or a member's own click (a real DM response always overwrites it with
 // 'confirmed'/'declined'). Anything else (no signup row yet, or a legacy 'withdrawn' value) has
 // no icon/label here at all.
-export type VisibleStatus = 'pending' | 'confirmed' | 'declined' | 'auto_confirmed'
+export type VisibleStatus = 'pending' | 'confirmed' | 'declined' | 'auto_confirmed' | 'passive' | 'auto_passive'
 
 export const STATUS_ICON: Record<VisibleStatus, string> = {
   pending: pendingIconUrl,
   confirmed: gcheckIconUrl,
   declined: redxIconUrl,
   auto_confirmed: autoConfirmedIconUrl,
+  // Tracker #0114 — "Ersatzbank"/Bench: on the roster for the season rewards or as a backup,
+  // without attacking regularly. auto_passive is its standing-preference twin, exactly as
+  // auto_confirmed is confirmed's.
+  passive: benchIconUrl,
+  auto_passive: autoBenchIconUrl,
 }
 
 /** Plain English defaults — used directly by enrollmentBoard.ts (Phase 6e: not converted to
@@ -37,6 +44,8 @@ export const STATUS_LABEL: Record<VisibleStatus, string> = {
   confirmed: 'Confirmed',
   declined: 'Declined',
   auto_confirmed: 'Auto-Confirmed',
+  passive: 'Bench',
+  auto_passive: 'Auto-Bench',
 }
 
 const STATUS_LABEL_KEY: Record<VisibleStatus, string> = {
@@ -44,6 +53,8 @@ const STATUS_LABEL_KEY: Record<VisibleStatus, string> = {
   confirmed: 'status_confirmed',
   declined: 'status_declined',
   auto_confirmed: 'status_auto_confirmed',
+  passive: 'status_passive',
+  auto_passive: 'status_auto_passive',
 }
 
 /** Localized label for one status. Pass a Translator (playerPrefs.ts, from cwl.activity.*) to
@@ -54,5 +65,8 @@ export function statusLabel(status: VisibleStatus, t?: Translator): string {
 }
 
 export function isVisibleStatus(status: string | null | undefined): status is VisibleStatus {
-  return status === 'pending' || status === 'confirmed' || status === 'declined' || status === 'auto_confirmed'
+  return (
+    status === 'pending' || status === 'confirmed' || status === 'declined' ||
+    status === 'auto_confirmed' || status === 'passive' || status === 'auto_passive'
+  )
 }

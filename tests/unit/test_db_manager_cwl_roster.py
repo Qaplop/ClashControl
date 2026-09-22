@@ -1042,7 +1042,7 @@ class TestGetAllPlayersForDiscordIds:
             "player_tag": "#P1", "player_name": "Player", "clan_tag": "#OUT_OF_FAMILY_CLAN",
             "discord_id": "d1", "verified": True, "cwl_permanent_optout": False,
             "preferred_league_rank": None, "th_level": None,
-            "cwl_permanent_optin": False, "cwl_optout_send_dm_anyway": False,
+            "cwl_permanent_optin": False, "cwl_permanent_bench": False, "cwl_optout_send_dm_anyway": False,
         }]
 
     @pytest.mark.integration
@@ -1104,7 +1104,7 @@ class TestGetPlayerLinks:
         assert links["#P1"] == {
             "player_name": "Player", "discord_id": "d1", "verified": True,
             "cwl_permanent_optout": False,
-            "cwl_permanent_optin": False, "cwl_optout_send_dm_anyway": False,
+            "cwl_permanent_optin": False, "cwl_permanent_bench": False, "cwl_optout_send_dm_anyway": False,
             "preferred_league_rank": None,
         }
 
@@ -1204,7 +1204,7 @@ class TestChunkedInQuery:
         assert links[tags[0]] == {
         "player_name": "Player0", "discord_id": "d0", "verified": True,
         "cwl_permanent_optout": False,
-        "cwl_permanent_optin": False, "cwl_optout_send_dm_anyway": False,
+        "cwl_permanent_optin": False, "cwl_permanent_bench": False, "cwl_optout_send_dm_anyway": False,
         "preferred_league_rank": None,
     }
         assert tags[1] not in links
@@ -1453,11 +1453,12 @@ class TestUserPlayersCwlPreferenceSurvival:
 
 
 async def _read_prefs(db: "WarHistoryDB", discord_id: str, player_tag: str) -> dict:
-    """Raw read of the four preference columns for one row, bypassing the higher-level read
+    """Raw read of the preference columns for one row, bypassing the higher-level read
     methods under test elsewhere in this file — used so set_cwl_preferences_sync's own tests
     don't depend on get_player_links_sync also being correct."""
     cursor = await db._conn.execute(
-        "SELECT cwl_permanent_optout, cwl_permanent_optin, cwl_optout_send_dm_anyway, "
+        "SELECT cwl_permanent_optout, cwl_permanent_optin, cwl_permanent_bench, "
+        "cwl_optout_send_dm_anyway, "
         "cwl_default_preferred_league_rank FROM user_players WHERE discord_id = ? AND player_tag = ?",
         (discord_id, player_tag),
     )
@@ -1465,6 +1466,7 @@ async def _read_prefs(db: "WarHistoryDB", discord_id: str, player_tag: str) -> d
     return {
         "cwl_permanent_optout": bool(row["cwl_permanent_optout"]),
         "cwl_permanent_optin": bool(row["cwl_permanent_optin"]),
+        "cwl_permanent_bench": bool(row["cwl_permanent_bench"]),
         "cwl_optout_send_dm_anyway": bool(row["cwl_optout_send_dm_anyway"]),
         "cwl_default_preferred_league_rank": row["cwl_default_preferred_league_rank"],
     }

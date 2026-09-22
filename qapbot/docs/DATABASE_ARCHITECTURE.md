@@ -360,6 +360,14 @@ The `get_clan_attack_history_sync()` method in `db_manager.py` aggregates `SUM(s
 - `clan_family_members` - Junction: families ↔ clans
 - `users` - User accounts with notification settings
 - `user_players` - Junction: users ↔ player accounts
+  CWL preference columns (`cwl_permanent_optout`, `cwl_permanent_optin`, `cwl_permanent_bench`,
+  `cwl_optout_send_dm_anyway`, `cwl_default_preferred_league_rank`) are listed once in
+  `db_manager.USER_PLAYER_CWL_PREF_COLUMNS`. That list is what `get_user()` loads and what
+  `_replace_user_players_rows()` preserves across its DELETE+re-INSERT; a column missing from it
+  is silently reset by every `save_user()` (2026-09-22 bug: opt-in and send-DM-anyway were).
+  These columns are owned by the DB — `set_cwl_preferences_sync()` writes them directly, so the
+  save keeps the existing row's values and uses the CACHE dict only for a tag new under that
+  discord_id. Guarded by `tests/unit/test_user_players_cwl_prefs_roundtrip.py`.
 - `user_buddies` - Per-user "Save-your-Buddy" links: stores a user's buddy player tags
   so buddy war reminders / notifications can be delivered.
 - `guild_config` - Discord server configuration

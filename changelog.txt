@@ -1,6 +1,39 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-22 (21)  Build 62.
+- Added (tracker #0114): "Ersatzbank"/Bench CWL sign-up status — on the roster for the season
+  rewards or as a backup, without attacking regularly. New per-guild switch in CWL Settings
+  (guild_config.cwl_signup_mode: standard, the unchanged default, or extended), a standing
+  "Immer Ersatzbank" preference (user_players.cwl_permanent_bench, seeds auto_passive), a third
+  DM button with an explanation, board icons/legend/context menu, an active+bench split in the
+  clan column headers and a marker in the roster announcement. Who may be offered it is
+  player-based (cwl_bench_enabled_for): a player on any extended server keeps the option in every
+  guild's DMs and Player Hub. Statuses are never rewritten per guild — every screen shows the
+  real answer. Switching a guild to extended also upgrades its unanswered DMs in place.
+  Files: qapbot/db_manager.py, QBdiscocmdshelper_cwl.py, ui_cwl_roster.py, web_bridge.py,
+  activity/client (signupStatus/types/enrollmentBoard/playerPrefs + 2 icons), translations (5
+  languages), docs (+ tests). 3402 tests pass.
+
+2026-09-22 (20)  Build 62.
+- Fixed: the roster-update DM of a player added during Preparation asked them to confirm, but
+  every click answered "sign-up isn't open for this season anymore" — the guard refused any
+  answer once the event left signup_open. Answers from an account that never answered are now
+  accepted in announced/war (a settled answer still stays final), the Player Hub mirrors that
+  rule, and that DM finally records its message/channel id, so it can also be retracted,
+  re-rendered or upgraded. Files: qapbot/ui_cwl_roster.py, QBdiscocmdshelper_cwl.py,
+  activity/client/src/playerPrefs.ts, translations (+ tests). 3402 tests pass.
+
+2026-09-22 (19)  Build 62.
+- Fixed: CWL preferences were reset by the CACHE user save. save_user() rewrites a user's
+  user_players rows but carried only opt-out and league rank, so "always in" and "send DM anyway"
+  went back to 0 on every save; and since the Player Hub writes preferences straight to the DB
+  without updating CACHE, even opt-out could be overwritten by a stale CACHE value. The save now
+  keeps the DB's existing preference values (CACHE's only for an account new under that Discord
+  ID), get_user() loads all of them, and the Hub refreshes CACHE after a write. One shared column
+  list (USER_PLAYER_CWL_PREF_COLUMNS) plus a structural test keep a future column from being
+  forgotten. Files: qapbot/db_manager.py, qapbot/web_bridge.py (+ tests). 3402 tests pass.
+
 2026-09-22 (18)  Build 61.
 - Added: Spanish (es), Mandarin (zh) and Latin (la) translations, full key parity with en.json.
   The guild language selector (/clan management -> Basic Configuration) and the personal

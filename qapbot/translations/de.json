@@ -1022,6 +1022,8 @@
       "button_configure_channels": "Kanäle konfigurieren",
       "button_configure_retention": "Datenaufbewahrung konfigurieren",
       "button_configure_coordinator_role": "Koordinatoren-Rolle konfigurieren",
+      "button_enable_extended_signup": "Erweiterte Anmeldung aktivieren (Ersatzbank)",
+      "button_disable_extended_signup": "Erweiterte Anmeldung deaktivieren (Ersatzbank)",
       "button_activate_hub": "CWL-Verwaltungs-Hub-Nachricht aktivieren",
       "button_deactivate_hub": "CWL-Verwaltungs-Hub-Nachricht deaktivieren",
       "button_activate_player_hub": "Persönlichen CWL-Einstellungs-Hub aktivieren",
@@ -1033,6 +1035,12 @@
       "coordinator_role_not_set": "Nicht verknüpft",
       "coordinator_role_value": "Rolle: {role}",
       "coordinator_role_description": "Wer für irgendeinen Clan als CWL-Koordinator eingetragen ist, hat automatisch diese Rolle.",
+      "signup_mode_block_title": "CWL-Anmeldemodus",
+      "signup_mode_status": "Modus: {status}",
+      "signup_mode_standard": "Standard (Bestätigen / Abmelden)",
+      "signup_mode_extended": "Erweitert (Bestätigen / Ersatzbank / Abmelden)",
+      "signup_mode_description": "Im erweiterten Modus können sich Spieler für die Ersatzbank anmelden: im Kader für die Saison-Belohnung oder als Ersatz, ohne regelmäßig anzugreifen.",
+      "extended_signup_dms_upgraded": "🪑 {count} unbeantwortete Anmelde-DM(s) wurden um die Ersatzbank-Option ergänzt.",
       "coordinator_role_per_clan_value": "Eine Rolle pro Clan — {linked} von {total} Clan(s) verknüpft",
       "coordinator_role_per_clan_description": "Die CWL-Koordinatoren eines Clans haben automatisch dessen Rolle; wer mehrere Clans koordiniert, hat jede dieser Rollen.",
       "button_enable_include_all_accounts": "Alle verknüpften Accounts einbeziehen",
@@ -1173,6 +1181,7 @@
       "mode_none": "Jede Saison neu fragen",
       "mode_optin": "Immer mitspielen",
       "mode_optout": "Nie mitspielen",
+      "mode_bench": "Immer Ersatzbank",
       "no_preference": "Keine Präferenz",
       "unassigned": "Nicht zugewiesen",
       "apply_to_all": "Auf alle meine Accounts anwenden",
@@ -1184,9 +1193,16 @@
       "status_confirmed": "Bestätigt",
       "status_declined": "Abgelehnt",
       "status_auto_confirmed": "Automatisch bestätigt",
+      "status_passive": "Ersatzbank",
+      "status_auto_passive": "Ersatzbank (automatisch)",
       "status_tooltip_auto_confirmed": "Automatisch bestätigt anhand deiner festen CWL-Voreinstellung — noch keine manuelle Bestätigung.",
+      "status_tooltip_auto_passive": "Automatisch auf Ersatzbank gesetzt aufgrund deiner Einstellung \"Immer Ersatzbank\" — noch keine manuelle Antwort.",
       "button_im_in": "Ich bin dabei",
       "button_im_out": "Ich bin raus",
+      "button_bench": "🪑 Ersatzbank",
+      "bench_tooltip_default": "Im Kader sein für die Saison-Belohnung oder als Ersatz, ohne regelmäßig anzugreifen.",
+      "bench_tooltip_already_bench": "Dieser Account sitzt bereits auf der Ersatzbank.",
+      "bench_tooltip_auto_bench": "Deine Dauer-Einstellung hat diesen Account auf die Ersatzbank gesetzt — klicke, um das als echte Antwort zu bestätigen.",
       "confirm_tooltip_auto_confirmed": "Du bist durch deine dauerhafte Einstellung bereits dabei — ein Klick bestätigt das verbindlich, was deinem Clanleiter mehr Klarheit gibt als eine automatische Bestätigung.",
       "confirm_tooltip_default": "Bestätige, dass du mit diesem Account in dieser Saison bei der CWL mitspielst.",
       "confirm_tooltip_already_confirmed": "Du hast bereits bestätigt — nichts weiter zu tun.",
@@ -1206,9 +1222,13 @@
     "template": {
       "confirm_button": "Bestätigen",
       "optout_button": "Abmelden",
+      "bench_button": "🪑 Ersatzbank",
+      "bench_explanation": "✅ **Bestätigen** — du spielst mit und greifst an.\n🪑 **Ersatzbank** — du möchtest im Kader sein (für die Saison-Belohnung oder als Ersatz), willst aber nicht regelmäßig angreifen.\n❌ **Abmelden** — diese Saison nicht.",
       "dm_body": "📋 Anmeldung zur CWL Saison **{season}**!\nMöchtest du mit **{player_name}** an dieser CWL teilnehmen?",
+      "dm_body_bench": "📋 Anmeldung zur CWL Saison **{season}**!\nMöchtest du mit **{player_name}** an dieser CWL teilnehmen?\n\n✅ **Bestätigen** — du spielst mit und greifst an.\n🪑 **Ersatzbank** — du möchtest im Kader sein (für die Saison-Belohnung oder als Ersatz), willst aber nicht regelmäßig angreifen.\n❌ **Abmelden** — diese Saison nicht.",
       "confirmed_msg": "✅ Danke — **{player_name}** ist für den CWL-Kader-Pool dieser Saison bestätigt.",
       "declined_msg": "👍 Verstanden — **{player_name}** hat sich für den CWL-Kader-Pool dieser Saison abgemeldet.",
+      "bench_msg": "🪑 Alles klar — **{player_name}** sitzt diese CWL-Saison auf der Ersatzbank: im Kader, aber ohne Angriffspflicht.",
       "no_longer_valid": "⚠️ Diese Anmeldung ist nicht mehr gültig (die Saison wurde möglicherweise gelöscht).",
       "not_your_signup": "⚠️ Diese Anmeldung gehört zu einem anderen Account.",
       "signup_closed": "⚠️ Die Anmeldung ist für diese Saison nicht mehr offen.",
@@ -1225,11 +1245,13 @@
       "dm_intro": "\ud83d\udce3 Hallo **{display_name}**, die CWL-Aufstellung f\u00fcr Saison **{season}** steht \u2014 hier spielst du ({count} Account(s)):",
       "dm_line_green": "\n\u2705 **{player_name}** \u2014 du bist bereits in **{clan_name}**. Deine CWL startet {start_full} ({start_rel}). Du musst nichts tun, bleib einfach dort.",
       "dm_line_amber": "\n\u26a0\ufe0f **{player_name}** \u2014 du bist aktuell in **{current_clan_name}** und musst *rechtzeitig vor* {start_full} ({start_rel}) zu **{clan_name}** wechseln.\n\u27a1\ufe0f <{clan_url}>",
-      "dm_unknown_clan": "keinem Clan"
+      "dm_unknown_clan": "keinem Clan",
+      "dm_line_bench_suffix": "(🪑 Ersatzbank — du bist im Kader, Angreifen ist dir überlassen.)"
     },
     "update": {
       "dm_intro": "\ud83d\udccb Hallo **{display_name}**, deine CWL-Aufstellung f\u00fcr Saison **{season}** hat sich ge\u00e4ndert ({count} \u00c4nderung(en)):",
       "dm_confirm_prompt": "\n\nBitte best\u00e4tige unten, ob du diese CWL spielen m\u00f6chtest \u2014 deine Leitung wartet auf deine Antwort.",
+      "dm_confirm_prompt_bench": "\nBitte bestätige unten, ob du diese CWL mitspielen willst — deine Leitung wartet auf deine Antwort.\n\n✅ **Bestätigen** — du spielst mit und greifst an.\n🪑 **Ersatzbank** — im Kader (Saison-Belohnung oder als Ersatz), ohne regelmäßig anzugreifen.\n❌ **Abmelden** — diese Saison nicht.",
       "dm_line_dropped": "\n\u2796 **{player_name}** \u2014 du bist nicht mehr in der CWL-Aufstellung von **{clan_name}**. Deine Leitung kann dich vor dem Start noch anderweitig einteilen. Wende dich bei R\u00fcckfragen an deine Clanleitung.",
       "dm_line_moved_prefix": "\n\ud83d\udd04 **{player_name}** \u2014 ge\u00e4ndert von **{old_clan_name}**:"
     },
@@ -1246,8 +1268,10 @@
     "reminder": {
       "dm_intro_body": "👋 Hallo **{display_name}**,\n\nfür die CWL-Saison **{season}** warten wir noch auf deine Rückmeldung — du hast aktuell **{count}** offene Anmeldung(en) im CWL-Kader-Pool, auf die wir bisher keine Antwort von dir erhalten haben.\n\nBitte bestätige oder melde dich in der nächsten Nachricht so schnell wie möglich ab — dort findest du für jeden deiner Accounts eigene Bestätigen-/Abmelden-Buttons. Deine schnelle Rückmeldung hilft uns sehr bei der Kaderplanung dieser Saison.",
       "dm_buttons_intro": "📋 Bitte beantworte jede deiner noch offenen CWL-Anmeldungen für Saison **{season}** unten:",
+      "dm_buttons_intro_bench": "📋 Bitte beantworte jede deiner noch offenen CWL-Anmeldungen für Saison **{season}** unten:\n\n✅ **Bestätigen** — du spielst mit und greifst an.\n🪑 **Ersatzbank** — im Kader (Saison-Belohnung oder als Ersatz), ohne regelmäßig anzugreifen.\n❌ **Abmelden** — diese Saison nicht.",
       "confirm_button_labeled": "✅ {player_name}",
-      "optout_button_labeled": "❌ {player_name}"
+      "optout_button_labeled": "❌ {player_name}",
+      "bench_button_labeled": "🪑 {player_name}"
     }
   }
 }

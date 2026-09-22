@@ -5984,7 +5984,11 @@ async def test_player_prefs_get_no_linked_accounts_returns_empty(db, bridge_conf
     )
     assert resp.status == 200
     body = await resp.json()
-    assert body == {"season": None, "event_status": None, "accounts": [], "season_rows": []}
+    # bench_enabled (tracker #0114): false here — no guild in this test runs extended sign-up.
+    assert body == {
+        "season": None, "event_status": None, "accounts": [], "season_rows": [],
+        "bench_enabled": False,
+    }
 
 
 @pytest.mark.discord
@@ -6271,3 +6275,140 @@ async def test_player_prefs_status_no_event_returns_409(db, bridge_config, clien
     assert resp.status == 409
     body = await resp.json()
     assert body["error"] == "no_longer_valid"
+
+
+# ---------------------------------------------------------------------------
+# Tracker #0114 — the Bench status across the bridge's write endpoints
+# ---------------------------------------------------------------------------
+
+@pytest.mark.discord
+@pytest.mark.asyncio
+async def test_admin_may_set_bench_on_an_extended_signup_guild(db, bridge_config, client, monkeypatch):
+    from qapbot.cache_manager import CACHE
+
+    event_id = await _seed_status_event(db, "860")
+    CACHE.server_config["860"]["cwl_signup_mode"] = "extended"
+    db.upsert_cwl_signup_sync(event_id, "#P1", "PlayerOne", "70", None, "template_confirm", "pending")
+
+    import QBcore
+    monkeypatch.setattr(QBcore, "bot", _fake_admin_bot(860, 42, is_admin=True))
+    monkeypatch.setattr("qapbot.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
+
+    resp = await client.post(
+        "/api/cwl/enrollment/status",
+        json={"guild_id": 860, "discord_user_id": 42, "player_tag": "#P1", "status": "passive"},
+        headers={"X-Bridge-Secret": "test-secret"},
+    )
+
+    assert resp.status == 200
+    # The real status is stored and propagated — never rewritten per guild.
+    assert db.get_cwl_signup_sync(event_id, "#P1")["status"] == "passive"
+    assert db.get_cwl_player_season_status_sync("#P1", "2026-09")["status"] == "passive"
+
+
+@pytest.mark.discord
+@pytest.mark.asyncio
+async def test_admin_may_not_set_bench_where_it_is_not_enabled(db, bridge_config, client, monkeypatch):
+    """Standard sign-up guild, and the player isn't on any extended one either."""
+    from qapbot.cache_manager import CACHE
+
+    event_id = await _seed_status_event(db, "861")
+    CACHE.server_config["861"]["cwl_signup_mode"] = "standard"
+    # No OTHER guild may run extended sign-up here: the shared fake bot resolves every guild id
+    # and reports every user as a member, so a leftover extended guild from another test would
+    # (correctly, per the player-based rule) make this player bench-enabled.
+    for other_guild_id, config in CACHE.server_config.items():
+        if other_guild_id != "861":
+            config.pop("cwl_signup_mode", None)
+    db.upsert_cwl_signup_sync(event_id, "#P1", "PlayerOne", "70", None, "template_confirm", "pending")
+
+    import QBcore
+    monkeypatch.setattr(QBcore, "bot", _fake_admin_bot(861, 42, is_admin=True))
+    monkeypatch.setattr("qapbot.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
+
+    resp = await client.post(
+        "/api/cwl/enrollment/status",
+        json={"guild_id": 861, "discord_user_id": 42, "player_tag": "#P1", "status": "passive"},
+        headers={"X-Bridge-Secret": "test-secret"},
+    )
+
+    assert resp.status == 400
+    assert db.get_cwl_signup_sync(event_id, "#P1")["status"] == "pending"
+
+
+@pytest.mark.discord
+@pytest.mark.asyncio
+async def test_auto_passive_is_never_admin_settable(db, bridge_config, client, monkeypatch):
+    """Like auto_confirmed: it means "a standing preference seeded this", which an admin must not
+    assert on the player's behalf."""
+    from qapbot.cache_manager import CACHE
+
+    event_id = await _seed_status_event(db, "862")
+    CACHE.server_config["862"]["cwl_signup_mode"] = "extended"
+    db.upsert_cwl_signup_sync(event_id, "#P1", "PlayerOne", "70", None, "template_confirm", "pending")
+
+    import QBcore
+    monkeypatch.setattr(QBcore, "bot", _fake_admin_bot(862, 42, is_admin=True))
+
+    resp = await client.post(
+        "/api/cwl/enrollment/status",
+        json={"guild_id": 862, "discord_user_id": 42, "player_tag": "#P1", "status": "auto_passive"},
+        headers={"X-Bridge-Secret": "test-secret"},
+    )
+
+    assert resp.status == 400
+
+
+@pytest.mark.discord
+@pytest.mark.asyncio
+async def test_enrollment_payload_carries_signup_mode_and_per_player_bench_flag(
+    db, bridge_config, client, monkeypatch,
+):
+    from qapbot.cache_manager import CACHE
+
+    event_id = await _seed_status_event(db, "863")
+    CACHE.server_config["863"]["cwl_signup_mode"] = "extended"
+    db.upsert_cwl_signup_sync(event_id, "#P1", "PlayerOne", "70", None, "template_confirm", "passive")
+
+    import QBcore
+    monkeypatch.setattr(QBcore, "bot", _fake_admin_bot(863, 42, is_admin=True))
+
+    resp = await client.get(
+        "/api/cwl/enrollment",
+        params={"guild_id": "863", "discord_user_id": "42"},
+        headers={"X-Bridge-Secret": "test-secret"},
+    )
+
+    assert resp.status == 200
+    body = await resp.json()
+    assert body["signup_mode"] == "extended"
+    player = next(p for p in body["players"] if p["player_tag"] == "#P1")
+    # The status is passed through as it really is, and the card may offer Bench.
+    assert player["signup_status"] == "passive"
+    assert player["bench_enabled"] is True
+
+
+@pytest.mark.discord
+@pytest.mark.asyncio
+async def test_standard_guild_sees_the_real_bench_status_too(db, bridge_config, client, monkeypatch):
+    """Project owner's decision: show the player's real status everywhere — a Bench player keeps
+    the Bench icon on a standard-sign-up board rather than being disguised as confirmed."""
+    from qapbot.cache_manager import CACHE
+
+    event_id = await _seed_status_event(db, "864")
+    CACHE.server_config["864"]["cwl_signup_mode"] = "standard"
+    db.upsert_cwl_signup_sync(event_id, "#P1", "PlayerOne", "70", None, "template_passive", "passive")
+
+    import QBcore
+    monkeypatch.setattr(QBcore, "bot", _fake_admin_bot(864, 42, is_admin=True))
+
+    resp = await client.get(
+        "/api/cwl/enrollment",
+        params={"guild_id": "864", "discord_user_id": "42"},
+        headers={"X-Bridge-Secret": "test-secret"},
+    )
+
+    body = await resp.json()
+    player = next(p for p in body["players"] if p["player_tag"] == "#P1")
+    assert body["signup_mode"] == "standard"
+    assert player["signup_status"] == "passive"

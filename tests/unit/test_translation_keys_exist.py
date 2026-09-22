@@ -14,28 +14,12 @@ import glob
 import json
 import re
 
-# Keys that were already missing before this test existed (verified 2026-09-22). They render as a
-# raw key path wherever they are actually reached, so this is a list of real bugs, not of
-# exceptions — shrink it, never grow it. A NEW missing key fails the test instead of landing here.
-KNOWN_MISSING_KEYS = {
-    "clan_management_errors.added_to_tracking",
-    "clan_management_errors.already_tracked",
-    "clan_management_errors.clan_not_found",
-    "clan_management_errors.fetch_failed",
-    "clan_management_errors.no_members",
-    "clan_management_errors.no_players",
-    "playerregistration.invalid_player_tag_format",
-    "ui_components.errors.clan_already_added",
-    "ui_components.errors.clan_not_found",
-    "ui_components.errors.family_already_added",
-    "ui_components.import_cancelled",
-    "ui_components.import_data.field_changes_summary",
-    "ui_components.import_data.field_discord_matching",
-    "ui_components.modal_label_coc_api_token",
-    "ui_components.modal_label_player_tag",
-    "ui_components.modal_placeholder_api_token",
-    "ui_components.modal_placeholder_player_tag",
-}
+# Deliberately EMPTY. It held the 17 keys this test first uncovered (2026-09-22); 13 were added
+# in all five languages, and the other four belonged to two _translate_inputs() helpers that
+# nothing ever called — those were deleted and their modals now translate inline through the
+# ui_components.modals.* keys every other modal already uses. Keep it empty: an entry here is a
+# string the user sees as a raw key path, so it is a bug being tolerated, never an exception.
+KNOWN_MISSING_KEYS: set[str] = set()
 
 _T_CALL = re.compile(r"""\bt\(\s*(['"])([A-Za-z0-9_.]+)\1""")
 

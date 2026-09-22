@@ -14,6 +14,7 @@
   },
   "playerregistration": {
     "welcome_title": "欢迎来到 {server_name}",
+    "invalid_player_tag_format": "❌ 这看起来不是有效的玩家标签。标签的格式如：`#2PP0JCCL`。",
     "welcome_body": "在这里你可以将你的部落冲突玩家账号与该 Discord 服务器关联，从而获得特定部落身份组和战争通知。\n\n点击下方的“绑定账号”按钮开始。",
     "button_link_account": "🔗 绑定账号",
     "button_war_notifications": "⚙️ 战争通知",
@@ -100,6 +101,14 @@
     "verification_failed": "❌ 无法验证 {player_name}（{player_tag}）的所有权。请检查：\n• 玩家标签是否正确\n• API 令牌是否有效并由该账号生成\n• 你是否有权访问该账号",
     "restored_to_account": "✅ 已将 {player_name}（{player_tag}）从未分配池中恢复到你的账号（{status}）。",
     "coc_api_lookup_failed": "在部落冲突中找不到玩家 {player_tag}。请确认该标签是否正确。"
+  },
+  "clan_management_errors": {
+    "already_tracked": "ℹ️ **{clan_name}**（{clan_tag}）已在追踪中。",
+    "added_to_tracking": "✅ 已将 **{clan_name}**（{clan_tag}）加入追踪。",
+    "clan_not_found": "❌ 未找到标签为 `{clan_tag}` 的部落。请检查标签后重试。",
+    "fetch_failed": "❌ 无法加载部落数据，请稍后再试。",
+    "no_players": "未找到该部落的已注册玩家。",
+    "no_members": "该部落目前没有成员。"
   },
   "welcome_message": {
     "greeting": "欢迎 {user_mention} 加入 **{server_name}**！🎉\n\n很高兴你能来到这里！\n你是本服务器的第 {member_count} 位成员。",
@@ -398,6 +407,7 @@
   "notifications": {},
   "errors": {},
   "ui_components": {
+    "import_cancelled": "导入已取消 — 未作任何更改。",
     "player_selection": {
       "multiple_matches": "有多名玩家匹配。请选择：",
       "verified_desc": "已验证",
@@ -409,7 +419,8 @@
       "placeholder_api_token_ownership": "输入你在部落冲突中的 API 令牌",
       "placeholder_family_name": "输入此部落家族的名称...",
       "placeholder_new_family_name": "输入此部落家族的新名称...",
-      "placeholder_clan_search": "输入部落名称或标签（例如 'Dark' 或 '#2C9UR9GJY'）"
+      "placeholder_clan_search": "输入部落名称或标签（例如 'Dark' 或 '#2C9UR9GJY'）",
+      "placeholder_player_tag": "#玩家标签"
     },
     "bot_setup": {
       "header": "🛠️ **机器人设置 — 问题跟踪**\n\n🐞💡 错误与功能报告  →  {bug_channel}\n🧪 手动测试用例  →  {test_channel}\n✅ 已实现（完成）  →  {implemented_channel}\n🏁 测试完成  →  {done_testing_channel}\n\n跟踪状态：{status}",
@@ -899,6 +910,9 @@
     "errors": {
       "mode_switch_failed": "❌ 切换模式失败：{error}",
       "clan_load_failed": "❌ 加载部落失败：{error}",
+      "clan_already_added": "ℹ️ 该部落已经是本服务器的部落之一。",
+      "family_already_added": "ℹ️ 该家族已经是本服务器的家族之一。",
+      "clan_not_found": "❌ 未找到与该输入匹配的部落或家族。请输入部落标签、家族，或部落名称的一部分。",
       "all_players_linked": "✅ 该部落中的所有玩家均已绑定！",
       "no_linked_players": "❌ 该部落中没有可解绑的已绑定玩家。",
       "unlink_player_not_found": "❌ 找不到该玩家的绑定 — 可能已经发生变化。请刷新后重试。",
@@ -994,6 +1008,8 @@
       "field_upgraded": "⬆️ 状态已提升",
       "field_skipped": "⏭️ 已跳过",
       "field_source_info": "📊 来源信息",
+      "field_discord_matching": "Discord 匹配",
+      "field_changes_summary": "变更",
       "failed_title": "❌ 导入失败",
       "parse_failed_title": "❌ 解析失败"
     }

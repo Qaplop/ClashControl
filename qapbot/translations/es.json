@@ -14,6 +14,7 @@
   },
   "playerregistration": {
     "welcome_title": "Bienvenido a {server_name}",
+    "invalid_player_tag_format": "❌ Eso no parece una etiqueta de jugador válida. Una etiqueta es así: `#2PP0JCCL`.",
     "welcome_body": "Aquí puedes registrar tus cuentas de jugador de Clash of Clans en este servidor de Discord para obtener acceso a roles específicos del clan y notificaciones de guerra.\n\nHaz clic en el botón \"Vincular Cuenta\" de abajo para empezar.",
     "button_link_account": "🔗 Vincular Cuentas",
     "button_war_notifications": "⚙️ Notificaciones de Guerra",
@@ -100,6 +101,14 @@
     "verification_failed": "❌ No se pudo verificar la propiedad de {player_name} ({player_tag}). Comprueba que:\n• El tag del jugador sea correcto\n• El token de API sea válido y generado desde esta cuenta\n• Tengas permiso para acceder a esta cuenta",
     "restored_to_account": "✅ Se restauró {player_name} ({player_tag}) a tu cuenta desde el fondo sin asignar ({status}).",
     "coc_api_lookup_failed": "No se pudo encontrar al jugador {player_tag} en Clash of Clans. Verifica que el tag sea correcto."
+  },
+  "clan_management_errors": {
+    "already_tracked": "ℹ️ **{clan_name}** ({clan_tag}) ya está en seguimiento.",
+    "added_to_tracking": "✅ **{clan_name}** ({clan_tag}) se añadió al seguimiento.",
+    "clan_not_found": "❌ No se encontró ningún clan para `{clan_tag}`. Comprueba la etiqueta e inténtalo de nuevo.",
+    "fetch_failed": "❌ No se pudieron cargar los datos del clan. Inténtalo de nuevo en un momento.",
+    "no_players": "No se encontraron jugadores registrados para este clan.",
+    "no_members": "Este clan no tiene miembros por el momento."
   },
   "welcome_message": {
     "greeting": "¡Bienvenido/a {user_mention} a **{server_name}**! 🎉\n\n¡Nos alegra tenerte aquí!\nEres el miembro número {member_count} de este servidor.",
@@ -398,6 +407,7 @@
   "notifications": {},
   "errors": {},
   "ui_components": {
+    "import_cancelled": "Importación cancelada: no se cambió nada.",
     "player_selection": {
       "multiple_matches": "Varios jugadores coinciden. Selecciona uno:",
       "verified_desc": "Verificado",
@@ -409,7 +419,8 @@
       "placeholder_api_token_ownership": "Introduce tu token de API de Clash of Clans",
       "placeholder_family_name": "Introduce un nombre para esta familia de clanes...",
       "placeholder_new_family_name": "Introduce un nuevo nombre para esta familia de clanes...",
-      "placeholder_clan_search": "Introduce el nombre o tag del clan (p. ej., 'Dark' o '#2C9UR9GJY')"
+      "placeholder_clan_search": "Introduce el nombre o tag del clan (p. ej., 'Dark' o '#2C9UR9GJY')",
+      "placeholder_player_tag": "#ETIQUETAJUGADOR"
     },
     "bot_setup": {
       "header": "🛠️ **Configuración del Bot — Seguimiento de Incidencias**\n\n🐞💡 Reportes de errores y funciones  →  {bug_channel}\n🧪 Casos de prueba manuales  →  {test_channel}\n✅ Implementado (hecho)  →  {implemented_channel}\n🏁 Pruebas terminadas  →  {done_testing_channel}\n\nEstado del seguimiento: {status}",
@@ -899,6 +910,9 @@
     "errors": {
       "mode_switch_failed": "❌ No se pudo cambiar de modo: {error}",
       "clan_load_failed": "❌ No se pudo cargar el clan: {error}",
+      "clan_already_added": "ℹ️ Este clan ya es uno de los clanes de este servidor.",
+      "family_already_added": "ℹ️ Esta familia ya es una de las familias de este servidor.",
+      "clan_not_found": "❌ No se encontró ningún clan ni familia para esa entrada. Introduce una etiqueta de clan, una familia o parte de un nombre de clan.",
       "all_players_linked": "✅ ¡Todos los jugadores de este clan ya están vinculados!",
       "no_linked_players": "❌ No hay jugadores vinculados en este clan para desvincular.",
       "unlink_player_not_found": "❌ No se pudo encontrar la vinculación de este jugador — puede que ya haya cambiado. Actualiza e inténtalo de nuevo.",
@@ -994,6 +1008,8 @@
       "field_upgraded": "⬆️ Estado Mejorado",
       "field_skipped": "⏭️ Omitidos",
       "field_source_info": "📊 Información de Origen",
+      "field_discord_matching": "Coincidencias de Discord",
+      "field_changes_summary": "Cambios",
       "failed_title": "❌ Importación Fallida",
       "parse_failed_title": "❌ Análisis Fallido"
     }

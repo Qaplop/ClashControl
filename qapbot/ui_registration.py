@@ -759,12 +759,6 @@ class VerifyAccountModal(discord.ui.Modal, title="Verify Account"):
         placeholder="Your API token"
     )
     
-    def _translate_inputs(self, guild_id: Optional[int] = None):
-        """Translate TextInput labels and placeholders."""
-        from qapbot.i18n import t
-        self.coc_api_token.label = t('ui_components.modal_label_coc_api_token', guild_id=guild_id)
-        self.coc_api_token.placeholder = t('ui_components.modal_placeholder_api_token', guild_id=guild_id)
-    
     def __init__(self, player_data: Dict[str, str], action_view_interaction: Optional[discord.Interaction] = None, guild_id: Optional[int] = None, parent_view: Optional['AccountManagementView'] = None):
         """
         Initialize verification modal.
@@ -788,8 +782,10 @@ class VerifyAccountModal(discord.ui.Modal, title="Verify Account"):
         title = t('playerregistration.verify_player', guild_id=guild_id, player_name=player_name, player_tag=player_tag)
         super().__init__(title=title[:45])  # Discord modal title hard limit
 
-        # Translate TextInput placeholder after instantiation
-        # (Label remains in English due to discord.py Modal lifecycle requirements)
+        # Translate TextInput placeholder after instantiation.
+        # The LABEL stays English on purpose: discord.py 2.7 deprecates TextInput.label in favour
+        # of discord.ui.Label, so translating it would ship a deprecated API (verified 2026-09-22
+        # — it warns). Migrating these modals to Label is its own job; see backlog.txt.
         self.coc_api_token.placeholder = t('ui_components.modals.placeholder_api_token', guild_id=guild_id)
 
         self.guild_id = guild_id
@@ -2023,8 +2019,10 @@ class ApiTokenEntryModal(discord.ui.Modal, title="Enter API Token"):
         # Title is already set in class definition above
         super().__init__()
         
-        # Translate TextInput placeholder after instantiation
-        # (Label remains in English due to discord.py Modal lifecycle requirements)
+        # Translate TextInput placeholder after instantiation.
+        # The LABEL stays English on purpose: discord.py 2.7 deprecates TextInput.label in favour
+        # of discord.ui.Label, so translating it would ship a deprecated API (verified 2026-09-22
+        # — it warns). Migrating these modals to Label is its own job; see backlog.txt.
         self.coc_api_token.placeholder = t('ui_components.modals.placeholder_api_token', guild_id=guild_id)
         
         self.player_tag = player_tag

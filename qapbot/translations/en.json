@@ -14,6 +14,7 @@
   },
   "playerregistration": {
     "welcome_title": "Welcome to {server_name}",
+    "invalid_player_tag_format": "❌ That doesn't look like a valid player tag. A tag looks like `#2PP0JCCL`.",
     "welcome_body": "Here you can register your Clash of Clans player accounts with this Discord server to get access to clan-specific roles and war notifications.\n\nClick the \"Link Account\" button below to start the process.",
     "button_link_account": "🔗 Link Accounts",
     "button_war_notifications": "⚙️ War Notifications",
@@ -100,6 +101,14 @@
     "verification_failed": "❌ Could not verify ownership of {player_name} ({player_tag}). Please check that:\n• The player tag is correct\n• The API token is valid and generated from this account\n• You have permission to access this account",
     "restored_to_account": "✅ Restored {player_name} ({player_tag}) to your account from unassigned pool ({status}).",
     "coc_api_lookup_failed": "Could not find player {player_tag} in Clash of Clans. Please verify the tag is correct."
+  },
+  "clan_management_errors": {
+    "already_tracked": "ℹ️ **{clan_name}** ({clan_tag}) is already being tracked.",
+    "added_to_tracking": "✅ **{clan_name}** ({clan_tag}) was added to tracking.",
+    "clan_not_found": "❌ No clan found for `{clan_tag}`. Please check the tag and try again.",
+    "fetch_failed": "❌ The clan data could not be loaded. Please try again in a moment.",
+    "no_players": "No registered players were found for this clan.",
+    "no_members": "This clan currently has no members."
   },
   "welcome_message": {
     "greeting": "Welcome {user_mention} to **{server_name}**! 🎉\n\nWe're happy to have you here!\nYou are member {member_count} on this server.",
@@ -398,6 +407,7 @@
   "notifications": {},
   "errors": {},
   "ui_components": {
+    "import_cancelled": "Import cancelled — nothing was changed.",
     "player_selection": {
       "multiple_matches": "Multiple players matched. Please select:",
       "verified_desc": "Verified",
@@ -409,7 +419,8 @@
       "placeholder_api_token_ownership": "Enter your API token from Clash of Clans",
       "placeholder_family_name": "Enter a name for this clan family...",
       "placeholder_new_family_name": "Enter a new name for this clan family...",
-      "placeholder_clan_search": "Enter clan name or tag (e.g., 'Dark' or '#2C9UR9GJY')"
+      "placeholder_clan_search": "Enter clan name or tag (e.g., 'Dark' or '#2C9UR9GJY')",
+      "placeholder_player_tag": "#PLAYERTAG"
     },
     "bot_setup": {
       "header": "🛠️ **Bot Setup — Issue Tracker**\n\n🐞💡 Bug & feature reports  →  {bug_channel}\n🧪 Manual test cases  →  {test_channel}\n✅ Implemented (done)  →  {implemented_channel}\n🏁 Done testing  →  {done_testing_channel}\n\nTracker status: {status}",
@@ -900,6 +911,9 @@
     "errors": {
       "mode_switch_failed": "❌ Failed to switch mode: {error}",
       "clan_load_failed": "❌ Failed to load clan: {error}",
+      "clan_already_added": "ℹ️ This clan is already one of this server's clans.",
+      "family_already_added": "ℹ️ This family is already one of this server's families.",
+      "clan_not_found": "❌ No clan or family was found for that entry. Enter a clan tag, a family, or part of a clan name.",
       "all_players_linked": "✅ All players in this clan are already linked!",
       "no_linked_players": "❌ There are no linked players in this clan to unlink.",
       "unlink_player_not_found": "❌ Could not find this player's link — it may have already changed. Please refresh and try again.",
@@ -995,6 +1009,8 @@
       "field_upgraded": "⬆️ Upgraded Status",
       "field_skipped": "⏭️ Skipped",
       "field_source_info": "📊 Source Information",
+      "field_discord_matching": "Discord Matching",
+      "field_changes_summary": "Changes",
       "failed_title": "❌ Import Failed",
       "parse_failed_title": "❌ Parse Failed"
     }

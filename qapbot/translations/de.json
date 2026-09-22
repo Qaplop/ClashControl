@@ -14,6 +14,7 @@
   },
   "playerregistration": {
     "welcome_title": "Willkommen bei {server_name}",
+    "invalid_player_tag_format": "❌ Das sieht nicht nach einem gültigen Spieler-Tag aus. Ein Tag sieht so aus: `#2PP0JCCL`.",
     "welcome_body": "Hier kannst du deine Clash of Clans Spielerkonten mit diesem Discord-Server registrieren, um Zugang zu clan-spezifischen Rollen und Erinnerungen für CK/CWL Angriffe zu erhalten.\n\nKlicke auf den Button \"Konten verknüpfen\" unten, um den Vorgang zu starten.",
     "button_link_account": "🔗 Konten verknüpfen",
     "button_war_notifications": "⚙️ CK/CWL Erinnerungen",
@@ -100,6 +101,14 @@
     "verification_failed": "❌ Eigentümerschaft von {player_name} ({player_tag}) konnte nicht verifiziert werden. Bitte überprüfe:\n• Der Spieler-Tag ist korrekt\n• Das API-Token ist gültig und wurde von diesem Konto generiert\n• Du hast die Berechtigung, auf dieses Konto zuzugreifen",
     "restored_to_account": "✅ {player_name} ({player_tag}) wurde aus dem nicht zugewiesenen Pool zu deinem Konto wiederhergestellt ({status}).",
     "coc_api_lookup_failed": "Spieler {player_tag} konnte in Clash of Clans nicht gefunden werden. Bitte überprüfe, ob der Tag korrekt ist."
+  },
+  "clan_management_errors": {
+    "already_tracked": "ℹ️ **{clan_name}** ({clan_tag}) wird bereits verfolgt.",
+    "added_to_tracking": "✅ **{clan_name}** ({clan_tag}) wurde zur Verfolgung hinzugefügt.",
+    "clan_not_found": "❌ Kein Clan zu `{clan_tag}` gefunden. Bitte prüfe das Tag und versuche es erneut.",
+    "fetch_failed": "❌ Die Clan-Daten konnten nicht geladen werden. Bitte versuche es gleich noch einmal.",
+    "no_players": "Für diesen Clan wurden keine registrierten Spieler gefunden.",
+    "no_members": "Dieser Clan hat aktuell keine Mitglieder."
   },
   "welcome_message": {
     "greeting": "Willkommen {user_mention} bei **{server_name}**! 🎉\n\nWir freuen uns, dich hier zu haben!\nDu bist Mitglied Nummer {member_count} auf diesem Server.",
@@ -398,6 +407,7 @@
   "notifications": {},
   "errors": {},
   "ui_components": {
+    "import_cancelled": "Import abgebrochen — es wurde nichts geändert.",
     "player_selection": {
       "multiple_matches": "Mehrere Spieler gefunden. Bitte wählen:",
       "verified_desc": "Verifiziert",
@@ -409,7 +419,8 @@
       "placeholder_api_token_ownership": "Gib dein API-Token aus Clash of Clans ein",
       "placeholder_family_name": "Gib einen Namen für diese Clan-Familie ein...",
       "placeholder_new_family_name": "Gib einen neuen Namen für diese Clan-Familie ein...",
-      "placeholder_clan_search": "Gib Clan-Namen oder Tag ein (z.B. 'Dark' oder '#2C9UR9GJY')"
+      "placeholder_clan_search": "Gib Clan-Namen oder Tag ein (z.B. 'Dark' oder '#2C9UR9GJY')",
+      "placeholder_player_tag": "#SPIELERTAG"
     },
     "bot_setup": {
       "header": "🛠️ **Bot-Einrichtung — Fehler-/Feature-Tracker**\n\n🐞💡 Fehlermeldungen & Feature-Wünsche  →  {bug_channel}\n🧪 Manuelle Testfälle   →  {test_channel}\n✅ Implementiert (erledigt)  →  {implemented_channel}\n🏁 Testen abgeschlossen  →  {done_testing_channel}\n\nTracker-Status: {status}",
@@ -900,6 +911,9 @@
     "errors": {
       "mode_switch_failed": "❌ Fehler beim Wechseln des Modus: {error}",
       "clan_load_failed": "❌ Fehler beim Laden des Clans: {error}",
+      "clan_already_added": "ℹ️ Dieser Clan gehört bereits zu den Clans dieses Servers.",
+      "family_already_added": "ℹ️ Diese Familie gehört bereits zu den Familien dieses Servers.",
+      "clan_not_found": "❌ Zu dieser Eingabe wurde kein Clan und keine Familie gefunden. Gib ein Clan-Tag, eine Familie oder einen Teil eines Clan-Namens ein.",
       "all_players_linked": "✅ Alle Spieler in diesem Clan sind bereits verknüpft!",
       "no_linked_players": "❌ Es gibt keine verknüpften Spieler in diesem Clan zum Entkoppeln.",
       "unlink_player_not_found": "❌ Die Verknüpfung dieses Spielers konnte nicht gefunden werden - sie hat sich möglicherweise bereits geändert. Bitte aktualisiere und versuche es erneut.",
@@ -995,6 +1009,8 @@
       "field_upgraded": "⬆️ Aufgewerteter Status",
       "field_skipped": "⏭️ Übersprungen",
       "field_source_info": "📊 Quellinformationen",
+      "field_discord_matching": "Discord-Zuordnung",
+      "field_changes_summary": "Änderungen",
       "failed_title": "❌ Import fehlgeschlagen",
       "parse_failed_title": "❌ Parsen fehlgeschlagen"
     }

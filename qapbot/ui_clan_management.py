@@ -32,12 +32,6 @@ class ManualPlayerTagModal(discord.ui.Modal, title="Enter Player Tag"):
         placeholder="#PLAYERTAG"
     )
     
-    def _translate_inputs(self, guild_id: Optional[int] = None):
-        """Translate TextInput labels and placeholders."""
-        from qapbot.i18n import t
-        self.player_tag_input.label = t('ui_components.modal_label_player_tag', guild_id=guild_id)
-        self.player_tag_input.placeholder = t('ui_components.modal_placeholder_player_tag', guild_id=guild_id)
-    
     def __init__(self, link_view: 'ClanManagementLinkAccountView'):  # type: ignore[name-defined]
         """
         Initialize manual player tag modal.
@@ -47,6 +41,17 @@ class ManualPlayerTagModal(discord.ui.Modal, title="Enter Player Tag"):
         """
         super().__init__()
         self.link_view = link_view
+        # 2026-09-22: this modal carried a _translate_inputs() helper that nothing ever called
+        # (and whose keys existed nowhere), so nothing here was ever translated — Cardinal Rule 6.
+        # Translated inline instead, the way every other modal here already does it
+        # (ui_components.modals.*). Safe per instance: discord.py's Modal._init_children()
+        # deepcopies each class-level TextInput onto the instance, so this never mutates the
+        # shared class attribute. The LABEL stays English on purpose — discord.py 2.7 deprecates
+        # TextInput.label in favour of discord.ui.Label; see backlog.txt.
+        from qapbot.i18n import t
+
+        guild_id = getattr(getattr(link_view, "guild", None), "id", None)
+        self.player_tag_input.placeholder = t('ui_components.modals.placeholder_player_tag', guild_id=guild_id)
     
     async def on_submit(self, interaction: discord.Interaction):
         """Handle modal submission - fetch player info and update view."""

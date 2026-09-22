@@ -1,6 +1,22 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-22 (24)  Build 65.
+- Fixed: the 17 translation keys the new guard test found, all of which rendered as a raw key
+  path to the user. 13 got real strings in all five languages — the six clan_management_errors.*
+  ones (new section: clan tracked/added/not found, fetch failed, no players, no members),
+  playerregistration.invalid_player_tag_format, three ui_components.errors.* (clan/family
+  already added, clan not found), two import_data field titles and ui_components.import_cancelled.
+- Removed: two `_translate_inputs()` helpers (ui_clan_management.py, ui_registration.py) that
+  nothing ever called and whose four keys existed nowhere. The player-tag modal now translates
+  its placeholder inline through ui_components.modals.*, like every other modal already did.
+  Modal LABELS deliberately stay English: discord.py 2.7 deprecates TextInput.label in favour of
+  discord.ui.Label, so translating them would ship a deprecated API — noted in backlog.txt.
+- KNOWN_MISSING_KEYS in tests/unit/test_translation_keys_exist.py is now empty, so any new
+  missing key fails the suite.
+  Files: qapbot/translations/*.json (5), ui_clan_management.py, ui_registration.py, backlog.txt,
+  tests. 3413 tests pass.
+
 2026-09-22 (23)  Build 64.
 - Fixed: the season overview printed "cwl.management.signup_status_passive" and
   "…_auto_passive" as raw key paths — tracker #0114 added those two count lines but never the

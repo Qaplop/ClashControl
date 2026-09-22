@@ -14,6 +14,7 @@
   },
   "playerregistration": {
     "welcome_title": "Salve in {server_name}",
+    "invalid_player_tag_format": "❌ Hoc titulus lusoris validus non videtur. Titulus talis est: `#2PP0JCCL`.",
     "welcome_body": "Hic rationes tuas lusoris Clash of Clans cum hoc servitore Discord iungere potes, ut ordines proprios gentis et nuntiationes belli accipias.\n\nPremito bullam \"Iungere Rationem\" infra ut incipias.",
     "button_link_account": "🔗 Iungere Rationes",
     "button_war_notifications": "⚙️ Nuntiationes Belli",
@@ -100,6 +101,14 @@
     "verification_failed": "❌ Possessio {player_name} ({player_tag}) verificari non potuit. Quaeso verifica:\n• Notam lusoris rectam esse\n• Signum API validum esse et ex hac ratione generatum\n• Te ius habere ad hanc rationem accedendi",
     "restored_to_account": "✅ {player_name} ({player_tag}) restitutus est rationi tuae ex fonte non assignato ({status}).",
     "coc_api_lookup_failed": "Lusor {player_tag} in Clash of Clans inveniri non potuit. Quaeso verifica an nota recta sit."
+  },
+  "clan_management_errors": {
+    "already_tracked": "ℹ️ **{clan_name}** ({clan_tag}) iam observatur.",
+    "added_to_tracking": "✅ **{clan_name}** ({clan_tag}) observationi addita est.",
+    "clan_not_found": "❌ Nulla gens pro `{clan_tag}` inventa est. Titulum inspice et iterum conare.",
+    "fetch_failed": "❌ Data gentis legi non potuerunt. Paulo post iterum conare.",
+    "no_players": "Nulli lusores inscripti huius gentis inventi sunt.",
+    "no_members": "Haec gens nunc nullos socios habet."
   },
   "welcome_message": {
     "greeting": "Salve {user_mention} in **{server_name}**! 🎉\n\nLaeti sumus te hic habere!\nSodalis numero {member_count} in hoc servitore es.",
@@ -398,6 +407,7 @@
   "notifications": {},
   "errors": {},
   "ui_components": {
+    "import_cancelled": "Importatio omissa — nihil mutatum est.",
     "player_selection": {
       "multiple_matches": "Plures lusores congruerunt. Quaeso elige:",
       "verified_desc": "Verificatus",
@@ -409,7 +419,8 @@
       "placeholder_api_token_ownership": "Insere signum tuum API ex Clash of Clans",
       "placeholder_family_name": "Insere nomen pro hac familia gentium...",
       "placeholder_new_family_name": "Insere novum nomen pro hac familia gentium...",
-      "placeholder_clan_search": "Insere nomen vel notam gentis (e.g., 'Dark' vel '#2C9UR9GJY')"
+      "placeholder_clan_search": "Insere nomen vel notam gentis (e.g., 'Dark' vel '#2C9UR9GJY')",
+      "placeholder_player_tag": "#TITULUSLUSORIS"
     },
     "bot_setup": {
       "header": "🛠️ **Institutio Automati — Notatio Rerum**\n\n🐞💡 Renuntiationes errorum et munerum  →  {bug_channel}\n🧪 Casus probationis manuales  →  {test_channel}\n✅ Effecta (facta)  →  {implemented_channel}\n🏁 Probatio finita  →  {done_testing_channel}\n\nStatus notationis: {status}",
@@ -899,6 +910,9 @@
     "errors": {
       "mode_switch_failed": "❌ Modus mutari non potuit: {error}",
       "clan_load_failed": "❌ Gens onerari non potuit: {error}",
+      "clan_already_added": "ℹ️ Haec gens iam inter gentes huius servitoris est.",
+      "family_already_added": "ℹ️ Haec familia iam inter familias huius servitoris est.",
+      "clan_not_found": "❌ Nulla gens nullave familia pro hac inscriptione inventa est. Titulum gentis, familiam vel partem nominis gentis insere.",
       "all_players_linked": "✅ Omnes lusores in hac gente iam iuncti sunt!",
       "no_linked_players": "❌ Nulli lusores iuncti in hac gente ad disiungendum.",
       "unlink_player_not_found": "❌ Iunctio huius lusoris inveniri non potuit — fieri potest ut iam mutata sit. Quaeso renova et rursus conare.",
@@ -994,6 +1008,8 @@
       "field_upgraded": "⬆️ Status Provectus",
       "field_skipped": "⏭️ Praeteriti",
       "field_source_info": "📊 Informatio Fontis",
+      "field_discord_matching": "Comparatio Discord",
+      "field_changes_summary": "Mutationes",
       "failed_title": "❌ Importatio Defecit",
       "parse_failed_title": "❌ Analysis Defecit"
     }

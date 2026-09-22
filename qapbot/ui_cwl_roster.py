@@ -58,7 +58,7 @@ def add_cwl_settings_components(view: discord.ui.View, guild_id: int) -> None:
         label=t('cwl.settings.button_configure_channels', guild_id=guild_id),
         style=discord.ButtonStyle.secondary,
         custom_id="cwl_settings_channels",
-        row=1,
+        row=2,
     )
     channel_button.callback = _make_cwl_settings_channels_callback(view)  # type: ignore[assignment]
     view.add_item(channel_button)  # type: ignore[arg-type]
@@ -75,7 +75,7 @@ def add_cwl_settings_components(view: discord.ui.View, guild_id: int) -> None:
         ),
         style=discord.ButtonStyle.danger if hub_enabled else discord.ButtonStyle.success,
         custom_id="cwl_settings_toggle_hub",
-        row=1,
+        row=2,
     )
     toggle_button.callback = _make_cwl_settings_toggle_callback(view)  # type: ignore[assignment]
     view.add_item(toggle_button)  # type: ignore[arg-type]
@@ -91,7 +91,7 @@ def add_cwl_settings_components(view: discord.ui.View, guild_id: int) -> None:
         ),
         style=discord.ButtonStyle.danger if player_hub_enabled else discord.ButtonStyle.success,
         custom_id="cwl_settings_toggle_player_hub",
-        row=1,
+        row=2,
     )
     player_hub_toggle_button.callback = _make_cwl_settings_toggle_player_hub_callback(view)  # type: ignore[assignment]
     view.add_item(player_hub_toggle_button)  # type: ignore[arg-type]
@@ -3597,7 +3597,7 @@ async def refresh_cwl_management_hub_message(guild_id: int, mode: Optional[str] 
 
     view = CwlManagementHubView()
     view.clear_items()
-    view._add_toggle_buttons(resolved_mode)  # pyright: ignore[reportPrivateUsage]
+    view._add_toggle_buttons(resolved_mode, guild_id)  # pyright: ignore[reportPrivateUsage]
     if resolved_mode == "cwl_settings":
         add_cwl_settings_components(view, guild_id)
     else:
@@ -3795,13 +3795,19 @@ class CwlManagementHubView(discord.ui.View):
     benefit. Verified by reading Step 8b directly, not inferred.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, guild_id: Optional[int] = None) -> None:
+        """guild_id only localizes this view's labels for the guild the message is rendered for
+        (2026-09-22: they were hardcoded English / passed guild_id=None, so a German server got
+        English buttons). Not stored — the startup add_view() registration builds this view once,
+        generically, and every click resolves its own guild from the interaction."""
         super().__init__(timeout=None)
-        self._add_toggle_buttons("cwl_management")
+        self._add_toggle_buttons("cwl_management", guild_id)
 
-    def _add_toggle_buttons(self, active_mode: str) -> None:
+    def _add_toggle_buttons(self, active_mode: str, guild_id: Optional[int] = None) -> None:
+        from qapbot.i18n import t
+
         settings_button: discord.ui.Button[Any] = discord.ui.Button(
-            label="Settings",
+            label=t('cwl.management.button_hub_settings', guild_id=guild_id),
             style=discord.ButtonStyle.primary if active_mode == "cwl_settings" else discord.ButtonStyle.secondary,
             custom_id="cwl_admin_hub_mode_settings",
             row=0,
@@ -3810,7 +3816,7 @@ class CwlManagementHubView(discord.ui.View):
         self.add_item(settings_button)
 
         management_button: discord.ui.Button[Any] = discord.ui.Button(
-            label="Season Management",
+            label=t('cwl.management.button_hub_season_management', guild_id=guild_id),
             style=discord.ButtonStyle.primary if active_mode == "cwl_management" else discord.ButtonStyle.secondary,
             custom_id="cwl_admin_hub_mode_management",
             row=0,
@@ -3823,10 +3829,8 @@ class CwlManagementHubView(discord.ui.View):
         # ClanManagementView.refresh_cwl_view() / the web bridge / CwlLineupRemovalConfirmView),
         # but this covers whatever edge case doesn't — or simply "I don't trust it, show me the
         # current state" — same role ClanManagementView._add_refresh_button() plays there.
-        from qapbot.i18n import t
-
         refresh_button: discord.ui.Button[Any] = discord.ui.Button(
-            label=t('ui_components.clan_management.button_refresh', guild_id=None),
+            label=t('ui_components.clan_management.button_refresh', guild_id=guild_id),
             style=discord.ButtonStyle.secondary,
             custom_id="cwl_admin_hub_refresh",
             row=0,
@@ -3838,7 +3842,7 @@ class CwlManagementHubView(discord.ui.View):
         # message — this is documentation, not a mode of the Hub, so it shouldn't replace whatever
         # screen (Settings/Season Management) the admin currently has open.
         help_button: discord.ui.Button[Any] = discord.ui.Button(
-            label=t('cwl.management.button_help', guild_id=None),
+            label=t('cwl.management.button_help', guild_id=guild_id),
             style=discord.ButtonStyle.secondary,
             custom_id="cwl_admin_hub_help",
             row=0,
@@ -3865,7 +3869,7 @@ class CwlManagementHubView(discord.ui.View):
         if not interaction.guild:
             return
         self.clear_items()
-        self._add_toggle_buttons(mode)
+        self._add_toggle_buttons(mode, interaction.guild.id)
         if mode == "cwl_settings":
             add_cwl_settings_components(self, interaction.guild.id)
         else:
@@ -3926,7 +3930,7 @@ async def build_cwl_player_hub_content_and_view(channel: Any, guild_id_int: int)
         description=t('cwl.player_hub.description', guild_id=guild_id_int),
         color=discord.Color.gold(),
     )
-    view = CwlPlayerHubView()
+    view = CwlPlayerHubView(guild_id=guild_id_int)
     return "", view, embed
 
 
@@ -3943,12 +3947,18 @@ class CwlPlayerHubView(discord.ui.View):
     that and has no override; this view mirrors it.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, guild_id: Optional[int] = None) -> None:
+        """guild_id is only ever used to localize the button's label for the guild this message
+        is being rendered for (2026-09-22: the label was hardcoded to guild_id=None, so a German
+        server got an English button). It is deliberately NOT stored: the startup add_view()
+        registration constructs this view once, generically, for restart-safe dispatch — where
+        the label is irrelevant and 'which guild' is always resolved per click from the
+        interaction, never from constructor state."""
         super().__init__(timeout=None)
         from qapbot.i18n import t
 
         button: discord.ui.Button[Any] = discord.ui.Button(
-            label=t('cwl.player_hub.button_preferences', guild_id=None),
+            label=t('cwl.player_hub.button_preferences', guild_id=guild_id),
             style=discord.ButtonStyle.primary,
             custom_id="cwl_player_hub_open_prefs",
         )

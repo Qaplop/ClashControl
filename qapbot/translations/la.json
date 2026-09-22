@@ -1146,6 +1146,8 @@
       "announce_rosters_error_nobody_to_notify": "⚠️ Nemo ad annuntiandum — nullus lusor adhuc genti participanti assignatus est.",
       "announce_rosters_error_missing_start_times": "⚠️ Hae gentes adhuc nullum tempus initii CWL habent, ergo nihil annuntiatum est: **{clans}**\nId per gentem in \"Configura Gentes Participantes\" constitue, deinde rursus conare.",
       "button_help": "❓ Auxilium",
+      "button_hub_settings": "Optiones",
+      "button_hub_season_management": "Administratio temporis",
       "help_overview_title": "🏆 Cursus CWL — Conspectus",
       "help_overview_description": "**1️⃣ Institutio** — Configura gentes participantes (magnitudo ordinis, tempus initii CWL) et optionaliter Coordinatores CWL permanentes assigna. Adde vel elige tempus, deinde Incipe Inscriptionem cum paratus es.\n\n**2️⃣ Inscriptio** — Sodales nuntium privatum ad confirmandum/recusandum accipiunt. Assigna lusores confirmatos ordini cuiusque gentis (Modera Turmas). Nuntia tarde intrantibus et mone sodales pendentes ut necesse est.\n\n**3️⃣ Praeparatio** — Incipe Praeparationem omni lusori assignato gentem, ligam, et tempus initii per nuntium privatum dicit. Ordines nondum clausi sunt — mutationes ultimi momenti adhuc possibiles sunt (utere Mitte Renovationes Ordinis ut quemvis cuius gens mutata est certiorem facias) usque dum bellum gentis revera incipit, quo tempore ordo illius gentis clauditur.\n\n**4️⃣ Bellum** — Bella intra ludum secundum rationem temporis cuiusque gentis geruntur; nulla actio hic necessaria. Dele Tempus permanenter clauditur simul atque bellum cuiusvis gentis incepit, etiam postquam omnia finita sunt — tantum ad Institutionem proximi temporis progredere.",
       "help_details_title": "🏆 Cursus CWL — Details",

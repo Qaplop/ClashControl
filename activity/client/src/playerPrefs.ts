@@ -53,6 +53,13 @@ function buildLeagueSelect(current: string | null, t: Translator): HTMLSelectEle
   return select
 }
 
+// Tracker #0114: the "send the invitation DM anyway" checkbox applies to every mode that
+// SUPPRESSES that DM — "never play" and, since the bench status exists, "always bench" too. Both
+// answer for the player in advance, so neither is asked again unless they tick this.
+function dmAnywayApplies(mode: PrefsMode): boolean {
+  return mode === 'optout' || mode === 'bench'
+}
+
 function buildModeSelect(current: PrefsMode, t: Translator, benchEnabled: boolean): HTMLSelectElement {
   const select = document.createElement('select')
   select.title = t('col_participation_tooltip')
@@ -208,13 +215,13 @@ function renderBlockOne(
   const applyDmCheckbox = document.createElement('input')
   applyDmCheckbox.type = 'checkbox'
   applyDmCheckbox.title = t('col_dm_anyway_tooltip')
-  applyDmCheckbox.disabled = applyModeSelect.value !== 'optout'
+  applyDmCheckbox.disabled = !dmAnywayApplies(applyModeSelect.value as PrefsMode)
   const applyButton = document.createElement('button')
   applyButton.textContent = t('apply')
   applyButton.className = 'status-action-button'
   applyButton.title = t('apply_tooltip')
   applyModeSelect.addEventListener('change', () => {
-    applyDmCheckbox.disabled = applyModeSelect.value !== 'optout'
+    applyDmCheckbox.disabled = !dmAnywayApplies(applyModeSelect.value as PrefsMode)
     if (applyDmCheckbox.disabled) applyDmCheckbox.checked = false
   })
   applyDmInner.appendChild(applyDmCheckbox)
@@ -277,7 +284,7 @@ function renderBlockOne(
     dmCheckbox.type = 'checkbox'
     dmCheckbox.title = t('col_dm_anyway_tooltip')
     dmCheckbox.checked = account.send_dm_anyway
-    dmCheckbox.disabled = account.mode !== 'optout'
+    dmCheckbox.disabled = !dmAnywayApplies(account.mode)
     dmInner.appendChild(dmCheckbox)
     dmCell.appendChild(dmInner)
     row.appendChild(dmCell)
@@ -308,14 +315,14 @@ function renderBlockOne(
         rowStatus.textContent = t('save_failed')
         rowStatus.className = 'block-status error'
         controls.forEach((c) => (c.disabled = false))
-        dmCheckbox.disabled = modeSelect.value !== 'optout'
+        dmCheckbox.disabled = !dmAnywayApplies(modeSelect.value as PrefsMode)
       }
     }
 
     leagueSelect.addEventListener('change', () => void saveThisRow())
     dmCheckbox.addEventListener('change', () => void saveThisRow())
     modeSelect.addEventListener('change', () => {
-      dmCheckbox.disabled = modeSelect.value !== 'optout'
+      dmCheckbox.disabled = !dmAnywayApplies(modeSelect.value as PrefsMode)
       if (dmCheckbox.disabled) dmCheckbox.checked = false
       void saveThisRow()
     })

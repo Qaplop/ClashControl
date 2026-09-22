@@ -419,7 +419,9 @@ surface was redesigned around the Hub before they were built.
 Bench**: on the roster for the season rewards or as a backup, without attacking regularly. It is a
 real answer (`passive`), with a standing-preference twin (`auto_passive`, seeded from
 `user_players.cwl_permanent_bench`, offered as "Immer Ersatzbank" in the Player Hub) exactly as
-`auto_confirmed` twins `confirmed`.
+`auto_confirmed` twins `confirmed`. That preference suppresses the season invitation DM the same
+way a permanent opt-out does — it already answers for the player — and the same
+`cwl_optout_send_dm_anyway` checkbox brings the DM back for either of them.
 
 **Who may be offered it is player-based, not guild-based** — `cwl_bench_enabled_for(discord_id,
 guild_id)`: true when that guild is extended, or when the Discord user is a member of ANY extended

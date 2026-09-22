@@ -797,3 +797,46 @@ async def test_coordinator_of_a_sitting_out_clan_gets_no_access(db):
     CACHE.server_config[guild_id]["cwl_clan_coordinators"] = {"#CLAN2": ["coord-2"]}
 
     assert is_cwl_coordinator_for_current_season(int(guild_id), "coord-2") is False  # type: ignore[arg-type]  # readable placeholder id; function compares via str()
+
+
+# ---------------------------------------------------------------------------
+# A finished season (2026-09-22, project owner's request): the last phase reads as done, not as
+# "we are here right now" — there is no 'completed' event status, so it is derived from the clock.
+# ---------------------------------------------------------------------------
+
+def test_finished_season_marks_the_war_step_as_done():
+    from qapbot.QBdiscocmdshelper_cwl import render_cwl_step_indicator, resolve_cwl_phase
+
+    clans = [{"participating": 1, "locked_at": "2026-01-02T08:00Z", "cwl_start_at": "2026-01-02T08:00"}]
+    info = resolve_cwl_phase({"status": "war", "cwl_season": "2026-01"}, clans)
+
+    assert info["finished"] is True
+    rendered = render_cwl_step_indicator(info, 1)
+    assert rendered is not None
+    assert "🔵" not in rendered
+    assert "✅ War" in rendered
+
+
+def test_running_season_still_shows_the_current_phase_in_blue():
+    from datetime import datetime, timezone
+
+    from qapbot.QBdiscocmdshelper_cwl import render_cwl_step_indicator, resolve_cwl_phase
+
+    now = datetime.now(timezone.utc)
+    season = f"{now.year:04d}-{now.month:02d}"
+    clans = [{
+        "participating": 1, "locked_at": now.strftime("%Y-%m-%dT%H:%MZ"),
+        "cwl_start_at": now.strftime("%Y-%m-%dT%H:%M"),
+    }]
+    info = resolve_cwl_phase({"status": "war", "cwl_season": season}, clans)
+
+    assert info["finished"] is False
+    rendered = render_cwl_step_indicator(info, 1)
+    assert rendered is not None and "🔵 **War" in rendered
+
+
+def test_phase_without_a_season_key_is_never_reported_finished():
+    """Callers that build a minimal dict for the phase mapping alone must not be dated."""
+    from qapbot.QBdiscocmdshelper_cwl import resolve_cwl_phase
+
+    assert resolve_cwl_phase({"status": "war"}, [{"participating": 1, "locked_at": "x"}])["finished"] is False

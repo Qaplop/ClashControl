@@ -238,3 +238,140 @@ def test_roster_announcement_marks_a_bench_player(monkeypatch):
 
     assert "🪑" not in plain
     assert bench.startswith(plain) and "🪑" in bench
+
+
+def test_settings_buttons_sit_below_the_view_selector():
+    """Project owner, 2026-09-22: the CWL Settings screen had three buttons on the free row 1,
+    i.e. ABOVE the mode selector, with the rest below it. Every button must now be below."""
+    from qapbot.cache_manager import CACHE
+    from qapbot.ui_clan_management import ClanManagementView
+
+    CACHE.server_config["9842"] = {}
+    guild = MagicMock()
+    guild.id = 9842
+    view = ClanManagementView(
+        clan_tag="#CLAN1", guild_clans=["#CLAN1"], unlinked_players=[],
+        sent_message=MagicMock(guild=guild), mode="cwl_settings", timeout=300,
+    )
+
+    import discord
+
+    selector = next(c for c in view.children if isinstance(c, discord.ui.Select))
+    buttons = [c for c in view.children if isinstance(c, discord.ui.Button)]
+    refresh = [b for b in buttons if (b.custom_id or "") == "clan_mgmt_refresh"]
+
+    assert selector.row == 1
+    # Everything except the view-level refresh control sits below the selector.
+    assert all(b.row > selector.row for b in buttons if b not in refresh)
+
+
+def test_signup_mode_status_uses_green_and_blue_never_red():
+    """Both modes are active states, so a red dot would read as 'switched off' (project owner,
+    2026-09-22). Green = standard (the default), blue = extended, matching the bench icon."""
+    import asyncio
+
+    from qapbot.cache_manager import CACHE
+    from qapbot.QBdiscocmdshelper_cwl import format_clan_management_cwl_settings
+
+    guild = MagicMock()
+    guild.id = 9843
+    guild.name = "The QCrew"
+    guild.get_role = MagicMock(return_value=None)
+    guild.get_channel = MagicMock(return_value=None)
+
+    async def _render() -> str:
+        embed, _, _, _ = await format_clan_management_cwl_settings(guild)
+        return "\n".join(f.value or "" for f in embed.fields)
+
+    CACHE.server_config["9843"] = {}
+    standard = asyncio.run(_render())
+    CACHE.server_config["9843"] = {"cwl_signup_mode": "extended"}
+    extended = asyncio.run(_render())
+
+    assert "🟢 Standard" in standard and "🔴" not in standard.split("CWL Sign-up Mode")[-1]
+    assert "🔵 Extended" in extended
+
+
+def test_hub_buttons_follow_the_guild_language():
+    """The anchored hubs' buttons were hardcoded English / built with guild_id=None, so a German
+    server saw English labels on an otherwise German message."""
+    from qapbot.cache_manager import CACHE
+    from qapbot.ui_cwl_roster import CwlManagementHubView, CwlPlayerHubView
+
+    CACHE.server_config["9844"] = {"language": "de"}
+
+    player_hub = CwlPlayerHubView(guild_id=9844)
+    assert player_hub.children[0].label == "Deine CWL-Einstellungen"
+
+    admin_hub = CwlManagementHubView(guild_id=9844)
+    labels = [c.label for c in admin_hub.children]
+    assert "Einstellungen" in labels and "Saisonverwaltung" in labels
+
+    # The generic startup registration (no guild) still builds, falling back to English.
+    assert CwlPlayerHubView().children[0].label == "Your CWL Preferences"
+
+
+# ---------------------------------------------------------------------------
+# "Always bench" suppresses the invitation DM, like a permanent opt-out
+# (project owner, 2026-09-22) — the same "send it anyway" checkbox brings it back.
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+async def prefs_db(tmp_path):
+    from qapbot.db_manager import WarHistoryDB
+
+    manager = WarHistoryDB()
+    await manager.initialize(str(tmp_path / "prefs.db"))
+    try:
+        yield manager
+    finally:
+        await manager.close()
+
+
+@pytest.mark.asyncio
+async def test_dm_anyway_flag_survives_the_bench_mode(prefs_db):
+    await prefs_db.save_user("311", {
+        "display_name": "T", "notification_settings": {},
+        "players": [{"player_tag": "#B1", "player_name": "B"}], "user_language": "en",
+    })
+
+    prefs_db.set_cwl_preferences_sync("311", "#B1", mode="bench", send_dm_anyway=True)
+    prefs = prefs_db.get_user_player_cwl_prefs_sync("311")["#B1"]
+    assert prefs["cwl_permanent_bench"] is True
+    assert prefs["cwl_optout_send_dm_anyway"] is True
+
+    # Any mode that no longer suppresses the DM clears the flag rather than leaving it stale.
+    prefs_db.set_cwl_preferences_sync("311", "#B1", mode="optin")
+    prefs = prefs_db.get_user_player_cwl_prefs_sync("311")["#B1"]
+    assert prefs["cwl_optout_send_dm_anyway"] is False
+
+
+def test_bench_player_is_not_dmed_unless_they_asked_for_it(monkeypatch):
+    from qapbot.cache_manager import CACHE
+    from qapbot.QBdiscocmdshelper_cwl import resolve_cwl_pool_dm_targets_sync
+
+    def _members(dm_anyway: bool):
+        return [{
+            "player_tag": "#B1", "player_name": "Bench", "discord_id": "55", "clan_tag": "#C1",
+            "cwl_permanent_optout": False, "cwl_permanent_bench": True,
+            "cwl_optout_send_dm_anyway": dm_anyway,
+        }]
+
+    db = MagicMock()
+    db.get_cwl_event_clans_sync = MagicMock(return_value=[])
+    db.get_cwl_signups_for_event_sync = MagicMock(return_value=[])
+    db.get_player_links_sync = MagicMock(return_value={})
+    monkeypatch.setattr(CACHE, "db_manager", db)
+
+    quiet = resolve_cwl_pool_dm_targets_sync(1, 7, "2026-10", preloaded_members=_members(False))
+    assert quiet["targets"] == []
+    assert quiet["skipped_bench"] == 1
+    assert quiet["skipped_optout"] == 0
+    # Still seeded, so the board shows them — as Auto-Bench, not as declined.
+    assert len(quiet["standing_no_dm"]) == 1
+    assert quiet["standing_no_dm"][0]["permanent_bench"] is True
+    assert quiet["standing_no_dm"][0]["permanent_optout"] is False
+
+    asked = resolve_cwl_pool_dm_targets_sync(1, 7, "2026-10", preloaded_members=_members(True))
+    assert [t["player_tag"] for t in asked["targets"]] == ["#B1"]
+    assert asked["skipped_bench"] == 0

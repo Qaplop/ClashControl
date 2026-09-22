@@ -5724,10 +5724,12 @@ class WarHistoryDB:
                     'optout' -> optout=1, optin=0, bench=0
                     'bench'  -> optout=0, optin=0, bench=1
                     'none'   -> optout=0, optin=0, bench=0
-                Any mode OTHER than 'optout' also forces cwl_optout_send_dm_anyway=0 in the same
-                statement — that flag is only meaningful while opted out, so it can never survive
-                as a stale leftover on an account that no longer is, regardless of what the caller
-                passed for send_dm_anyway.
+                Any mode other than 'optout' or 'bench' also forces cwl_optout_send_dm_anyway=0
+                in the same statement — that flag is only meaningful while a standing preference
+                suppresses the invitation DM, so it can never survive as a stale leftover on an
+                account whose preference no longer does, regardless of what the caller passed for
+                send_dm_anyway. 'bench' joined 'optout' there in tracker #0114: both answer for
+                the player in advance, so both stop the DM unless this flag asks for it.
             send_dm_anyway: explicit value for cwl_optout_send_dm_anyway. Ignored (forced to 0
                 instead) when mode resolves the account out of opt-out this same call; applied as
                 given when mode == 'optout'; applied standalone (mode is None this call, e.g. a
@@ -5766,9 +5768,10 @@ class WarHistoryDB:
                 "cwl_permanent_optout = ?", "cwl_permanent_optin = ?", "cwl_permanent_bench = ?",
             ]
             params += [optout_val, optin_val, bench_val]
-            if mode != "optout":
-                # Leaving opt-out (or clearing to no preference) — the DM-anyway flag has no
-                # meaning without it, so it is force-cleared here rather than left stale.
+            if mode not in ("optout", "bench"):
+                # Leaving the DM-suppressing preferences (or clearing to no preference) — the
+                # DM-anyway flag has no meaning without one, so it is force-cleared here rather
+                # than left stale.
                 set_clauses.append("cwl_optout_send_dm_anyway = ?")
                 params.append(0)
             elif send_dm_anyway is not None:

@@ -331,13 +331,13 @@ class TestDmTargetingUsesLiveOwner:
 
 class TestDmTargetingHonoursCwlPreferences:
     """plans/cwl-personal-hub.md Phase 4c: resolve_cwl_pool_dm_targets_sync's opt-out handling
-    gains a second flag (cwl_optout_send_dm_anyway) and a second output list (optout_no_dm), on
+    gains a second flag (cwl_optout_send_dm_anyway) and a second output list (standing_no_dm, "a standing preference already answered"), on
     top of its pre-existing cwl_permanent_optout skip. Covers both pool sources that can carry
     the flags — the live `members` scan (source 1) and the get_player_links_sync fallback for
     tags `members` structurally can't see (guest/shared-clan sources 2/3)."""
 
     @pytest.mark.asyncio
-    async def test_optout_without_dm_anyway_is_skipped_and_recorded_in_optout_no_dm(self, db, monkeypatch):
+    async def test_optout_without_dm_anyway_is_skipped_and_recorded_in_standing_no_dm(self, db, monkeypatch):
         from qapbot.cache_manager import CACHE
         import qapbot.QBdiscocmdshelper_cwl as cwl
 
@@ -355,7 +355,7 @@ class TestDmTargetingHonoursCwlPreferences:
 
         assert [t["player_tag"] for t in result["targets"]] == []
         assert result["skipped_optout"] == 1
-        assert [e["player_tag"] for e in result["optout_no_dm"]] == ["#OUT"]
+        assert [e["player_tag"] for e in result["standing_no_dm"]] == ["#OUT"]
 
     @pytest.mark.asyncio
     async def test_optout_with_dm_anyway_is_still_a_dm_target(self, db, monkeypatch):
@@ -377,7 +377,7 @@ class TestDmTargetingHonoursCwlPreferences:
         assert [t["player_tag"] for t in result["targets"]] == ["#OUTBUTDM"]
         assert result["skipped_optout"] == 0
         # Still recorded — a 'declined' row is owed regardless of whether the DM goes out.
-        assert [e["player_tag"] for e in result["optout_no_dm"]] == ["#OUTBUTDM"]
+        assert [e["player_tag"] for e in result["standing_no_dm"]] == ["#OUTBUTDM"]
 
     @pytest.mark.asyncio
     async def test_optin_member_is_a_plain_dm_target_no_special_handling(self, db, monkeypatch):
@@ -398,7 +398,7 @@ class TestDmTargetingHonoursCwlPreferences:
 
         assert [t["player_tag"] for t in result["targets"]] == ["#IN"]
         assert result["skipped_optout"] == 0
-        assert result["optout_no_dm"] == []
+        assert result["standing_no_dm"] == []
 
     @pytest.mark.asyncio
     async def test_optout_reached_only_via_the_link_fallback_source_is_still_skipped(self, db, monkeypatch):
@@ -421,7 +421,7 @@ class TestDmTargetingHonoursCwlPreferences:
 
         assert [t["player_tag"] for t in result["targets"]] == []
         assert result["skipped_optout"] == 1
-        assert [e["player_tag"] for e in result["optout_no_dm"]] == ["#GUESTOUT"]
+        assert [e["player_tag"] for e in result["standing_no_dm"]] == ["#GUESTOUT"]
 
 
 class TestDmBatchSeedsSignupRows:

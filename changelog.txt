@@ -1,6 +1,24 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-22 (22)  Build 63.
+- Changed (tracker #0114 follow-ups, all from live review):
+  * CWL Settings: the view selector now sits directly under Refresh, with every button below it
+    — three buttons used to sit on the free row above it. The selector moves up on the screens
+    that have no clan/season dropdown; nothing else moves.
+  * The sign-up mode readout uses 🟢 Standard / 🔵 Erweitert instead of a red dot: both are
+    active states, so red read as "switched off".
+  * A finished season's last phase shows ✅ instead of the blue "you are here" dot. There is no
+    'completed' status, so it is derived from the season window (is_cwl_event_active_or_upcoming).
+  * Both anchored hubs' buttons follow the guild language; they were hardcoded English or built
+    with guild_id=None, so a German server saw "Your CWL Preferences"/"Settings".
+  * "Immer Ersatzbank" now suppresses the season invitation DM like "Nie mitspielen" does (it
+    already answers for the player), and the "Einladungs-DM trotzdem senden" checkbox applies to
+    both. Those players are still seeded as Auto-Ersatzbank, never as declined.
+  Files: qapbot/ui_clan_management.py, ui_cwl_roster.py, QBdiscocmdshelper_cwl.py, db_manager.py,
+  QapBot.py, activity/client/src/playerPrefs.ts, translations (5 languages), docs (+ tests).
+  3410 tests pass.
+
 2026-09-22 (21)  Build 62.
 - Added (tracker #0114): "Ersatzbank"/Bench CWL sign-up status — on the roster for the season
   rewards or as a backup, without attacking regularly. New per-guild switch in CWL Settings

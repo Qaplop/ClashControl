@@ -492,13 +492,22 @@ class ClanManagementView(discord.ui.View):
             )
         ]
         
+        # Row 2 normally, because row 1 belongs to another select: the clan picker on every
+        # clan-scoped mode, or the season picker on cwl_management. On the modes that have
+        # neither, row 1 is free and the selector takes it, so the screen's own buttons always
+        # sit BELOW the view selector rather than straddling it (project owner's request,
+        # 2026-09-22 — the CWL Settings screen had three buttons on that free row 1, above the
+        # selector). An empty action row isn't rendered, so on those modes this changes nothing
+        # visually except that the buttons move below.
+        mode_select_row = 1 if self.mode in ("roles", "families", "config", "cwl_settings") else 2
+
         mode_select = discord.ui.Select(
             placeholder=t('ui_components.clan_management.mode_placeholder', guild_id=guild_id),
             min_values=1,
             max_values=1,
             options=mode_options,  # type: ignore[arg-type]
             custom_id="clan_mgmt_mode_select",
-            row=2  # Third row
+            row=mode_select_row
         )
         mode_select.callback = self._on_mode_select  # type: ignore[assignment]
         self.add_item(mode_select)  # type: ignore[arg-type]

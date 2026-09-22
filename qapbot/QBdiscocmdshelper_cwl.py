@@ -429,7 +429,11 @@ async def format_clan_management_cwl_settings(
     extended_signup = (guild_config.get("cwl_signup_mode") or "standard") == "extended"
     signup_mode_block = (
         f"⠀\n**{t('cwl.settings.signup_mode_block_title', guild_id=guild_id_int)}**\n"
-        f"{t('cwl.settings.signup_mode_status', guild_id=guild_id_int, status=('🟢 ' + t('cwl.settings.signup_mode_extended', guild_id=guild_id_int)) if extended_signup else ('🔴 ' + t('cwl.settings.signup_mode_standard', guild_id=guild_id_int)))}\n"
+        # Both modes are legitimate, active states — unlike the enabled/disabled blocks above, so
+        # no 🔴 here (project owner, 2026-09-22: "red would be misleading since both are active
+        # statuses"). Green for standard (the default), blue for extended, matching the bench
+        # icon's own blue.
+        f"{t('cwl.settings.signup_mode_status', guild_id=guild_id_int, status=('🔵 ' + t('cwl.settings.signup_mode_extended', guild_id=guild_id_int)) if extended_signup else ('🟢 ' + t('cwl.settings.signup_mode_standard', guild_id=guild_id_int)))}\n"
         f"{t('cwl.settings.signup_mode_description', guild_id=guild_id_int)}"
     )
 
@@ -2936,7 +2940,8 @@ def resolve_seeded_cwl_signup_status(
          opt-in deliberately: all three are mutually exclusive by construction
          (set_cwl_preferences_sync writes them in one statement), so this ordering only decides
          what happens to a row where an older write left two flags set — and there the more
-         reserved intent should win. Always DMed, like opt-in.
+         reserved intent should win. Like opt-out, this preference SUPPRESSES the invitation DM
+         (it already answers for the player); cwl_optout_send_dm_anyway brings it back.
       4. permanent_optin -> ('auto_confirmed', 'auto_optin'). Always DMed regardless (no
          send-DM-anyway gate on this branch), so the member can still switch to confirmed/declined.
       5. otherwise -> ('pending', 'template_confirm') — unchanged from before this feature.
@@ -3201,18 +3206,21 @@ async def _start_cwl_enrollment_locked(guild_id: int, season: str) -> Dict[str, 
     # it. Filtered against the primary loop's own tags (not just left to bulk_create's ON
     # CONFLICT DO NOTHING) so summary["seeded"] below counts each real row exactly once — a
     # source-1 participant already seeded above must not be double-counted here even though the
-    # resolver correctly reports it in optout_no_dm too (it makes no source distinction).
+    # resolver correctly reports it in standing_no_dm too (it makes no source distinction).
     already_seeded_tags = {s["player_tag"] for s in signups_to_create}
-    optout_no_dm = [e for e in pool["optout_no_dm"] if e["player_tag"] not in already_seeded_tags]
-    if optout_no_dm:
-        optout_no_dm_status_by_tag = await asyncio.to_thread(
+    standing_no_dm = [e for e in pool["standing_no_dm"] if e["player_tag"] not in already_seeded_tags]
+    if standing_no_dm:
+        standing_no_dm_status_by_tag = await asyncio.to_thread(
             db.get_cwl_player_season_status_bulk_sync,
-            [entry["player_tag"] for entry in optout_no_dm], season,
+            [entry["player_tag"] for entry in standing_no_dm], season,
         )
         extra_signups: List[Dict[str, Any]] = []
-        for entry in optout_no_dm:
+        for entry in standing_no_dm:
+            # Flags come from the entry itself (tracker #0114) — the list now holds bench players
+            # too, whose seeded status is 'auto_passive', not 'declined'.
             status, source = resolve_seeded_cwl_signup_status(
-                optout_no_dm_status_by_tag.get(entry["player_tag"]), True, False,
+                standing_no_dm_status_by_tag.get(entry["player_tag"]),
+                bool(entry.get("permanent_optout")), False, bool(entry.get("permanent_bench")),
             )
             extra_signups.append({
                 "player_tag": entry["player_tag"],
@@ -3379,13 +3387,13 @@ def resolve_cwl_pool_dm_targets_sync(
       3. cross-guild shared clans' rosters (cwl_shared_clan_players), whose players may have no
          local row of either kind.
 
-    Returns {"targets", "skipped_optout", "skipped_unlinked", "optout_no_dm"} — targets are the
+    Returns {"targets", "skipped_optout", "skipped_unlinked", "standing_no_dm"} — targets are the
     {player_tag, player_name, discord_id} dicts _send_cwl_enrollment_dm_batch() consumes, and
     skipped_optout/skipped_unlinked are the two counts the Start Enrollment summary reports.
     cwl_permanent_optout is honoured for every source, not just source 1 (its per-account "never
     DM me about CWL" semantics don't care how the player got pooled) — UNLESS
     cwl_optout_send_dm_anyway is also set, in which case the invitation DM is still sent so the
-    member can override their own auto-decline (plans/cwl-personal-hub.md Phase 4c). optout_no_dm
+    member can override their own auto-decline (plans/cwl-personal-hub.md Phase 4c). standing_no_dm
     is the same-shaped list of every entry that WAS skipped for opt-out (with or without the DM
     override) — Phase 4b-bis's callers seed a 'declined' cwl_signups row for each of these,
     because this resolver is the only place that ever sees an opted-out guest/shared-clan player
@@ -3398,7 +3406,8 @@ def resolve_cwl_pool_dm_targets_sync(
     """
     db = CACHE.db_manager
     result: Dict[str, Any] = {
-        "targets": [], "skipped_optout": 0, "skipped_unlinked": 0, "optout_no_dm": [],
+        "targets": [], "skipped_optout": 0, "skipped_bench": 0, "skipped_unlinked": 0,
+        "standing_no_dm": [],
     }
     if db is None:
         return result
@@ -3410,6 +3419,10 @@ def resolve_cwl_pool_dm_targets_sync(
 
     pool: Dict[str, Dict[str, Any]] = {}
     optout_by_tag: Dict[str, bool] = {}
+    # Tracker #0114: "always bench" suppresses the invitation DM exactly like "never play" does
+    # (project owner, 2026-09-22) — it is a standing answer, so there is nothing left to ask. The
+    # same cwl_optout_send_dm_anyway checkbox brings the DM back for either preference.
+    bench_by_tag: Dict[str, bool] = {}
     dm_anyway_by_tag: Dict[str, bool] = {}
 
     def _merge(
@@ -3450,6 +3463,7 @@ def resolve_cwl_pool_dm_targets_sync(
 
     for member in members:
         optout_by_tag[member["player_tag"]] = bool(member["cwl_permanent_optout"])
+        bench_by_tag[member["player_tag"]] = bool(member.get("cwl_permanent_bench"))
         dm_anyway_by_tag[member["player_tag"]] = bool(member.get("cwl_optout_send_dm_anyway"))
         _merge(member["player_tag"], member["player_name"], member["discord_id"])
 
@@ -3475,21 +3489,31 @@ def resolve_cwl_pool_dm_targets_sync(
     unknown_tags = [tag for tag in pool if tag not in optout_by_tag]
     for tag, link in (db.get_player_links_sync(unknown_tags) if unknown_tags else {}).items():
         optout_by_tag[tag] = link["cwl_permanent_optout"]
+        bench_by_tag[tag] = bool(link.get("cwl_permanent_bench"))
         dm_anyway_by_tag[tag] = bool(link.get("cwl_optout_send_dm_anyway"))
         _merge(tag, link["player_name"], link["discord_id"], authoritative_discord_id=True)
 
     for entry in pool.values():
         tag = entry["player_tag"]
-        if optout_by_tag.get(tag):
-            # Recorded regardless of what happens below — a 'declined' row is owed to EVERY
-            # opted-out pool entry (Phase 4b-bis), whether it goes on to get DMed via
-            # send_dm_anyway or not; harmlessly redundant (ON CONFLICT DO NOTHING) for an entry
-            # some other seed path already covers, and the ONLY source of a row at all for one
-            # that doesn't (a guest/shared-clan entry skipped from DM entirely).
-            result["optout_no_dm"].append(entry)
-        if optout_by_tag.get(tag) and not dm_anyway_by_tag.get(tag):
-            # narrows from "opted out" to "opted out and didn't ask for the DM anyway" (Phase 4c)
-            result["skipped_optout"] += 1
+        opted_out = bool(optout_by_tag.get(tag))
+        benched = bool(bench_by_tag.get(tag))
+        if opted_out or benched:
+            # Recorded regardless of what happens below — a seeded row is owed to EVERY pool entry
+            # whose standing preference already answers for them (Phase 4b-bis: 'declined' for an
+            # opt-out, tracker #0114: 'auto_passive' for a bench), whether it goes on to get DMed
+            # via send_dm_anyway or not; harmlessly redundant (ON CONFLICT DO NOTHING) for an
+            # entry some other seed path already covers, and the ONLY source of a row at all for
+            # one that doesn't (a guest/shared-clan entry skipped from DM entirely). The flags
+            # ride along so the caller seeds the RIGHT status without re-reading preferences.
+            result["standing_no_dm"].append({
+                **entry, "permanent_optout": opted_out, "permanent_bench": benched,
+            })
+        if (opted_out or benched) and not dm_anyway_by_tag.get(tag):
+            # narrows from "has a standing answer" to "…and didn't ask for the DM anyway" (Phase 4c)
+            if opted_out:
+                result["skipped_optout"] += 1
+            else:
+                result["skipped_bench"] += 1
         elif entry["discord_id"]:
             result["targets"].append(entry)
         else:
@@ -3994,9 +4018,15 @@ def resolve_cwl_phase(
         war          -> 4 War
         cancelled    -> phase 0, rendered as no indicator at all
 
-    Returns {"phase", "key", "clans_started", "clans_total"}."""
+    `finished` (2026-09-22, project owner's request) marks a season that is simply over. There is
+    no 'completed' event status — a finished season sits in 'war' forever — so it is derived from
+    the clock by is_cwl_event_active_or_upcoming(): the last phase then renders as done (a
+    checkmark) instead of as the current one (a blue dot), which otherwise claimed a CWL from
+    months ago was still running.
+
+    Returns {"phase", "key", "clans_started", "clans_total", "finished"}."""
     if event is None or event.get("status") == "cancelled":
-        return {"phase": 0, "key": None, "clans_started": 0, "clans_total": 0}
+        return {"phase": 0, "key": None, "clans_started": 0, "clans_total": 0, "finished": False}
 
     participating = [c for c in (clans or []) if c.get("participating", 1)]
     started = sum(1 for c in participating if c.get("locked_at"))
@@ -4010,9 +4040,19 @@ def resolve_cwl_phase(
         phase = CWL_PHASE_ENROLLMENT
     else:
         phase = CWL_PHASE_SETUP
+    # The clan start times live on the clan rows here; is_cwl_event_active_or_upcoming() reads
+    # them from the event under the key get_cwl_events_containing_clan_sync() uses, so hand them
+    # over in that shape rather than duplicating the season-window arithmetic.
+    # A row without a season key can't be dated (it never comes from the DB — only from callers
+    # that build a minimal dict for the phase mapping alone), so it is never reported finished.
+    finished = bool(event.get("cwl_season")) and not is_cwl_event_active_or_upcoming({
+        **event,
+        "clan_cwl_start_ats": [c["cwl_start_at"] for c in participating if c.get("cwl_start_at")],
+    })
     return {
         "phase": phase, "key": _CWL_PHASE_KEYS[phase],
         "clans_started": started, "clans_total": len(participating),
+        "finished": finished,
     }
 
 
@@ -4023,7 +4063,8 @@ def render_cwl_step_indicator(phase_info: Dict[str, Any], guild_id: int) -> Opti
 
     A web-style stepper with connector lines can't be reproduced in a Discord embed, so this uses
     the same three-state vocabulary a stepper conveys visually — done / current / upcoming — as
-    ✅ / 🔵+bold / ⚪, joined by connectors. Deliberately NOT a code block: those don't render
+    ✅ / 🔵+bold / ⚪, joined by connectors. Once the season is over every step reads ✅, including
+    the last one: a blue dot means "we are here right now", which a finished season no longer is. Deliberately NOT a code block: those don't render
     emoji at a useful size and would lose the bold on the current step.
 
     The War step carries its clan count ("War (2/8 started)") rather than reading as a flat
@@ -4045,7 +4086,7 @@ def render_cwl_step_indicator(phase_info: Dict[str, Any], guild_id: int) -> Opti
                 'cwl.phase.step_war_progress', guild_id=guild_id,
                 label=label, started=phase_info["clans_started"], total=phase_info["clans_total"],
             )
-        if step < current:
+        if step < current or (phase_info.get("finished") and step == current):
             parts.append(f"✅ {label}")
         elif step == current:
             parts.append(f"🔵 **{label}**")

@@ -897,16 +897,19 @@ async def notify_new_cwl_pool_members(guild_id: int, season: str) -> Dict[str, A
     # precedence Start Enrollment does, so the two callers can never disagree about the result for
     # the same member with the same preferences — harmlessly redundant (ON CONFLICT DO NOTHING)
     # for an entry some other seed path already covered.
-    optout_no_dm = pool["optout_no_dm"]
-    if optout_no_dm:
-        optout_no_dm_status_by_tag = await asyncio.to_thread(
+    standing_no_dm = pool["standing_no_dm"]
+    if standing_no_dm:
+        standing_no_dm_status_by_tag = await asyncio.to_thread(
             db.get_cwl_player_season_status_bulk_sync,
-            [entry["player_tag"] for entry in optout_no_dm], season,
+            [entry["player_tag"] for entry in standing_no_dm], season,
         )
         extra_signups: List[Dict[str, Any]] = []
-        for entry in optout_no_dm:
+        for entry in standing_no_dm:
+            # Flags come from the entry itself (tracker #0114) — the list now holds bench players
+            # too, whose seeded status is 'auto_passive', not 'declined'.
             status, source = resolve_seeded_cwl_signup_status(
-                optout_no_dm_status_by_tag.get(entry["player_tag"]), True, False,
+                standing_no_dm_status_by_tag.get(entry["player_tag"]),
+                bool(entry.get("permanent_optout")), False, bool(entry.get("permanent_bench")),
             )
             extra_signups.append({
                 "player_tag": entry["player_tag"],

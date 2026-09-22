@@ -1147,6 +1147,8 @@
       "announce_rosters_error_nobody_to_notify": "\u26a0\ufe0f Nobody to announce to \u2014 no player is assigned to a participating clan yet.",
       "announce_rosters_error_missing_start_times": "\u26a0\ufe0f These clans still have no CWL start time, so nothing was announced: **{clans}**\nSet it per clan in \"Configure Participating Clans\", then try again.",
       "button_help": "\u2753 Help",
+      "button_hub_settings": "Settings",
+      "button_hub_season_management": "Season Management",
       "help_overview_title": "\ud83c\udfc6 CWL Workflow \u2014 Overview",
       "help_overview_description": "**1\ufe0f\u20e3 Setup** \u2014 Configure participating clans (roster size, CWL start time) and optionally assign standing CWL Coordinators. Add or select a season, then Start Enrollment when ready.\n\n**2\ufe0f\u20e3 Enrollment** \u2014 Members get a sign-up DM to confirm/decline. Assign confirmed players to each clan's roster (Manage Teams). Notify late joiners and remind pending members as needed.\n\n**3\ufe0f\u20e3 Preparation** \u2014 Start Preparation DMs every assigned player their clan, tier and start time. Rosters aren't locked yet \u2014 last-minute changes are still possible (use Send Roster Updates to notify anyone whose clan changed) right up until a clan's war actually starts, which is when that clan's roster locks.\n\n**4\ufe0f\u20e3 War** \u2014 Wars run in-game on each clan's own schedule; no action needed here. Delete Season is blocked for good once any clan's war has started, even after everything wraps up \u2014 just move on to Setup for the next season.",
       "help_details_title": "\ud83c\udfc6 CWL Workflow \u2014 Details",

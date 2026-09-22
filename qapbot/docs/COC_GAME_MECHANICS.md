@@ -176,3 +176,34 @@ Do NOT use markdown links inside this file (plain text paths only per project st
   regardless of warlog setting.
 - Private warlog clans are counted separately in /status:
   "Private War Logs: N (still tracked for CWL)"
+
+## Clan Capital Raid Weekends
+
+Verified 2026-09-22 against a live `GET /clans/{tag}/capitalraidseasons` response and confirmed
+by the project owner in-game. Implementation plan: `../../plans/implemented/tracker-0115-capital-raid-leaderboards.md`
+(implemented 2026-09-22, build 52).
+
+- **Clock:** one season per week, Fri 07:00 UTC → Mon 07:00 UTC (`startTime`/`endTime`).
+  Participation is voluntary; a clan leader has to start the raid in-game during that window.
+- **Eligibility:** only players who were in the clan **before the season started** can raid
+  for it. Anyone joining after Fri 07:00 can't participate that weekend and must never be
+  counted as having missed it.
+- **Attacks:** 5 per player, plus 1 bonus attack after knocking out an enemy district (5 or 6
+  max). A player appears in `members[]` **only after their first attack**. There are no
+  entries for non-attackers, so "who hasn't attacked" can only be derived as
+  (eligible roster) − `members[]`, and "missed" only once the season has ended.
+- **Per-player data only on the newest season:** `members[]` and per-attack `attackLog`
+  detail are present on `items[0]` only. Older seasons carry clan totals only. An ended
+  season's player data is therefore only fetchable until the next season replaces it as
+  `items[0]` (at the latest the next Fri 07:00). No history backfill is possible.
+- **`bonusAttackLimit`** is the bonus attack the player has **earned** (0 until their first
+  district knockout, then 1), confirmed from a live response showing 0 for 1-attack players.
+  A player's attack limit is `attackLimit + bonusAttackLimit`.
+- **Medals:** a player's raid medals = `offensiveReward × attacks + defensiveReward`
+  (sample: 209 × 6 + 211 = 1,465, matching the in-game reward screen).
+- **Pagination:** `limit=1` returns just the newest season. `paging.cursors.after`/`before`
+  are opaque, position-based cursors, only one of which may be passed per request.
+- **coc.py:** `Client.get_raid_log()` wraps the endpoint, but `RaidLogEntry` objects are
+  reference cycles (see `PERFORMANCE_TUNING.md` GC policy). Prefer
+  `coc_client.http.get_clan_raid_log(tag, limit=1)`, which returns the raw dict (don't mutate
+  it: it's coc.py's cached object).

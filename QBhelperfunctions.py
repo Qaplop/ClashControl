@@ -39,7 +39,7 @@ from collections import defaultdict
 import hashlib
 from qapbot.cache_manager import CACHE
 from qapbot.config import CONFIG
-from qapbot.formatting import MODE_REGISTRY, DEFAULT_MODE  # type: ignore[attr-defined]
+from qapbot.formatting import MODE_REGISTRY, DEFAULT_MODE, RAID_MODES  # type: ignore[attr-defined]
 from qapbot.constants import (
     DISCORD_MESSAGE_MAX_LENGTH,
     PASSIVE_CLAN_REFRESH_INTERVAL_DAYS,
@@ -585,8 +585,9 @@ async def post_leaderboard_to_discord(
     assert year is not None
     # Compose mode string
     # "currentwar" and "cwlinfo" use just their name (no month/year) since they reflect
-    # live state rather than a historical period.
-    if mode in ("currentwar", "cwlinfo"):
+    # live state rather than a historical period. "currentraid" likewise always shows the
+    # latest raid weekend (tracker #0115).
+    if mode in ("currentwar", "cwlinfo", "currentraid"):
         mode_str = mode
     elif cwl_only:
         if cwl_season:
@@ -4726,6 +4727,193 @@ def get_recent_cwl_player_stats(player_tag: str, num_months: int = 3, *, now: Op
     }
 
 
+def _normalize_leaderboard_periods(
+    month: Optional[Union[int, List[int], List[Tuple[int, int]]]], year: Optional[int],
+) -> List[Tuple[int, int]]:
+    """Normalize generate_leaderboard_text()'s `month`/`year` arguments into an ordered list of
+    (month, year) pairs, even for a single month. Accepting (month, year) pairs directly —
+    rather than just a list of months sharing one `year` — lets a period cross a year boundary,
+    e.g. a "last 2 months" request made in January (Dec of last year + Jan this year).
+    month=None means the current month."""
+    if isinstance(month, list) and month and isinstance(month[0], tuple):
+        return list(month)  # type: ignore[arg-type]
+    if isinstance(month, int):
+        return [(month, year or datetime.now().year)]
+    if isinstance(month, list):
+        yy = year or datetime.now().year
+        return [(m, yy) for m in month]  # type: ignore[misc]
+    return [(datetime.now().month, year or datetime.now().year)]
+
+
+def calculate_raid_leaderboard(
+    clan_tag: str,
+    *,
+    periods: Optional[List[Tuple[int, int]]] = None,
+    season_start: Optional[str] = None,
+    scope: str = "own",
+    member_player_tags: Optional[Set[str]] = None,
+) -> Dict[str, Dict[str, Any]]:
+    """Aggregate Clan Capital raid rows per player for a clan or family (tracker #0115, plan §4.2).
+
+    Exactly one of *periods* (list of (month, year); a weekend belongs to the month of its
+    Friday) or *season_start* (one season key) selects the time window. scope="all" with a
+    roster filters by player tags instead of clans, same semantics as the war leaderboards.
+
+    Returns every player with a row — attackers AND eligible non-attackers — keyed by tag:
+        Player, PlayerID, Loot, Attacks (ongoing + ended seasons), Medals (ended seasons only,
+        offensive_reward * attacks + defensive_reward), Medals_final (any ended season counted),
+        Missed (ended seasons with 0 attacks), Weekends_attacked, Weekends_eligible (ended
+        seasons with a row), Pending (0 attacks in an ongoing season — "not attacked yet").
+    Callers filter per mode (raid/currentraid: Attacks > 0; raidmissed: Missed > 0).
+    """
+    db = CACHE.db_manager
+    if db is None:
+        return {}
+    clan_tags = CACHE.clan_families[clan_tag].get("clans", []) if clan_tag in CACHE.clan_families else [clan_tag]
+    use_players = scope == "all" and bool(member_player_tags)
+    rows = db.get_capital_raid_rows_sync(
+        clan_tags=None if use_players else list(clan_tags),
+        player_tags=sorted(member_player_tags) if use_players and member_player_tags else None,
+        season_starts=[season_start] if season_start else None,
+        month_prefixes=None if season_start else [f"{y:04d}-{m:02d}" for m, y in (periods or [])],
+    )
+    stats: Dict[str, Dict[str, Any]] = {}
+    attacked: Dict[str, Set[str]] = defaultdict(set)
+    eligible_ended: Dict[str, Set[str]] = defaultdict(set)
+    for r in rows:  # ordered by season_start ASC, so the last name seen is the newest
+        tag = r["player_tag"]
+        p = stats.setdefault(tag, {
+            "PlayerID": tag, "Player": r["player_name"] or tag, "Loot": 0, "Attacks": 0, "Medals": 0,
+            "Medals_final": False, "Missed": 0, "Pending": False,
+        })
+        p["Player"] = r["player_name"] or p["Player"]
+        attacks = int(r["attacks"] or 0)
+        ended = r["state"] == "ended"
+        if attacks > 0:
+            p["Loot"] += int(r["capital_resources_looted"] or 0)
+            p["Attacks"] += attacks
+            attacked[tag].add(r["season_start"])
+            if ended:
+                p["Medals"] += int(r["offensive_reward"] or 0) * attacks + int(r["defensive_reward"] or 0)
+                p["Medals_final"] = True
+        elif ended:
+            p["Missed"] += 1
+        else:
+            p["Pending"] = True
+        if ended:
+            eligible_ended[tag].add(r["season_start"])
+    for tag, p in stats.items():
+        p["Weekends_attacked"] = len(attacked[tag])
+        p["Weekends_eligible"] = len(eligible_ended[tag])
+    return stats
+
+
+def _format_raid_season_label(season_start: str) -> str:
+    """" for raid weekend 18-21 Sep 2026" for a season key."""
+    start = _iso_to_dt(season_start)
+    end = start + timedelta(hours=72)
+    return f" for raid weekend {start:%d}-{end:%d %b %Y}" if start.month == end.month else \
+        f" for raid weekend {start:%d %b}-{end:%d %b %Y}"
+
+
+def _generate_raid_leaderboard_text(
+    clan_tag: str,
+    clan_name: str,
+    mode: str,
+    month: Optional[Union[int, List[int], List[Tuple[int, int]]]],
+    year: Optional[int],
+    *,
+    style: str,
+    scope: str,
+    member_player_tags: Optional[Set[str]],
+    highlight_player_ids: Optional[Set[str]],
+) -> str:
+    """Text for the raid / currentraid / raidmissed leaderboard modes (tracker #0115, plan §4).
+
+    - raid: loot per player over a period (month=None -> current month).
+    - currentraid: the latest ongoing-or-ended season, clan totals line, and while ongoing a
+      "Not attacked yet" footer (eligible players only).
+    - raidmissed: month=None -> the latest ended season (the penalty list); otherwise missed
+      weekends summed per player over the period, most first.
+    """
+    from qapbot.constants import RAID_BASE_ATTACK_LIMIT
+
+    db = CACHE.db_manager
+    title = {"raid": "Capital Raid Leaderboard", "currentraid": "Current Raid Weekend",
+             "raidmissed": "Missed Raid Weekends"}[mode]
+    if db is None:
+        return f"⭐ {clan_name} — {title}: raid data unavailable."
+    clan_tags = CACHE.clan_families[clan_tag].get("clans", []) if clan_tag in CACHE.clan_families else [clan_tag]
+
+    season_start: Optional[str] = None
+    periods: Optional[List[Tuple[int, int]]] = None
+    if mode == "currentraid" or (mode == "raidmissed" and month is None):
+        states = ("ongoing", "ended") if mode == "currentraid" else ("ended",)
+        season_start = db.get_latest_capital_raid_season_sync(list(clan_tags), states)
+        if not season_start:
+            return f"⭐ {clan_name} — {title}: No raid weekends recorded yet."
+        period_label = _format_raid_season_label(season_start)
+    else:
+        periods = _normalize_leaderboard_periods(month, year)
+        period_label = f" for {_format_periods_label(periods)}"
+
+    stats = calculate_raid_leaderboard(
+        clan_tag, periods=periods, season_start=season_start, scope=scope, member_player_tags=member_player_tags,
+    )
+    if not stats:
+        return f"⭐ {clan_name} — {title}: No raid weekends recorded{period_label}."
+
+    if mode == "raidmissed":
+        shown = {t: dict(p, Weekends=p["Weekends_eligible"]) for t, p in stats.items() if p["Missed"] > 0}
+    else:
+        shown = {t: dict(p, Weekends=p["Weekends_attacked"]) for t, p in stats.items() if p["Attacks"] > 0}
+
+    # Season-level context: clan totals (currentraid) and late-snapshot notes (plan §2.1).
+    info_lines: List[str] = []
+    note_lines: List[str] = []
+    seasons_in_view = sorted({season_start} if season_start else set())
+    if not seasons_in_view and mode == "raidmissed":
+        seasons_in_view = sorted({
+            r["season_start"] for r in db.get_capital_raid_rows_sync(
+                clan_tags=list(clan_tags), month_prefixes=[f"{y:04d}-{m:02d}" for m, y in (periods or [])],
+                states=("ended",),
+            )
+        })
+    season_rows = db.get_capital_raid_season_rows_sync(list(clan_tags), seasons_in_view) if seasons_in_view else []
+    for s in season_rows:
+        late_h = (_iso_to_dt(s["roster_snapshot_at"]) - _iso_to_dt(s["season_start"])).total_seconds() / 3600
+        if late_h * 60 > RAID_LATE_SNAPSHOT_MINUTES and mode in ("currentraid", "raidmissed"):
+            note_lines.append(
+                f"⚠️ {CACHE.get_clan_name(s['clan_tag'], s['clan_tag'])}: roster snapshot for {s['season_start'][:10]} "
+                f"taken {late_h:.1f} h after raid start — players who joined in that window may be listed incorrectly."
+            )
+    if mode == "currentraid" and season_rows:
+        s = season_rows[0]
+        line = (f"State: {s['state']} · Loot {s['capital_total_loot']:,} · Attacks {s['total_attacks']} · "
+                f"Raids {s['raids_completed']} · Districts {s['enemy_districts_destroyed']}")
+        if s["state"] == "ended":
+            full_medals = s["offensive_reward"] * (RAID_BASE_ATTACK_LIMIT + 1) + s["defensive_reward"]
+            line += f" · Medals ({RAID_BASE_ATTACK_LIMIT + 1} atk) {full_medals:,}"
+        info_lines.append(line)
+
+    if mode == "raidmissed" and not shown:
+        return f"⭐ {clan_name} — {title}{period_label}: nobody missed a raid weekend. 🎉" + \
+            ("\n" + "\n".join(note_lines) if note_lines else "")
+
+    text = render_leaderboard(
+        clan_tag, clan_name or "Unknown", period_label, "\n".join(info_lines), shown, mode,
+        style=style, highlight_player_ids=highlight_player_ids,
+    )
+    if mode == "currentraid" and season_rows and season_rows[0]["state"] == "ongoing":
+        pending = sorted((p["Player"] for p in stats.values() if p["Pending"]), key=str.lower)
+        text += f"\n\nNot attacked yet ({len(pending)}): " + (
+            ", ".join(normalize_player_name(n) for n in pending) if pending else "-"
+        )
+    if note_lines:
+        text += "\n\n" + "\n".join(note_lines)
+    return text
+
+
 def generate_leaderboard_text(
     clan_tag: str,
     month: Optional[Union[int, List[int], List[Tuple[int, int]]]] = None,
@@ -4801,24 +4989,18 @@ def generate_leaderboard_text(
 
     logging.debug(f"generate_leaderboard_text() called with: clan_tag={clan_tag}, clan_name={clan_name}, mode={mode}, month={month}, year={year}, type(month)={type(month)}")
 
+    # Clan Capital raid modes (tracker #0115) read their own tables — separate path.
+    if mode in RAID_MODES:
+        return _generate_raid_leaderboard_text(
+            clan_tag, clan_name, mode, month, year, style=style, scope=scope,
+            member_player_tags=member_player_tags, highlight_player_ids=highlight_player_ids,
+        )
+
     # --- Unified month handling ---
-    # Always build an ordered list of (month, year) pairs to aggregate, even for a
-    # single month. Accepting (month, year) pairs directly — rather than just a
-    # list of months sharing one `year` — lets a period cross a year boundary,
-    # e.g. a "last 2 months" request made in January (Dec of last year + Jan this year).
-    if isinstance(month, list) and month and isinstance(month[0], tuple):
-        periods: Optional[List[Tuple[int, int]]] = list(month)  # type: ignore[assignment]
-    elif isinstance(month, int):
-        periods = [(month, year or datetime.now().year)]
-    elif isinstance(month, list):
-        yy = year or datetime.now().year
-        periods = [(m, yy) for m in month]  # type: ignore[misc]
-    else:
-        # If month is None and not currentwar mode, default to current month
-        if mode != "currentwar":
-            periods = [(datetime.now().month, year or datetime.now().year)]
-        else:
-            periods = None
+    # If month is None and not currentwar mode, default to current month
+    periods: Optional[List[Tuple[int, int]]] = (
+        _normalize_leaderboard_periods(month, year) if (month is not None or mode != "currentwar") else None
+    )
 
     aggregated: Dict[str, Dict[str, Any]] = {}
     if periods is None:
@@ -4972,8 +5154,8 @@ async def delete_leaderboard_messages_for_context(clan_tag: str, channel_id: str
     from qapbot.QBdiscocmdshelper import _delete_messages_by_filter  # type: ignore[misc,attr-defined]
     
     # Compose mode string
-    # "currentwar" and "cwlinfo" use just their name (no month/year suffix).
-    if mode in ("currentwar", "cwlinfo"):
+    # "currentwar", "cwlinfo" and "currentraid" use just their name (no month/year suffix).
+    if mode in ("currentwar", "cwlinfo", "currentraid"):
         mode_str = mode
     elif cwl_only:
         mode_str = f"{mode}_cwl_{month}_{year}"
@@ -8104,6 +8286,162 @@ async def update_clan_war_info_and_stats(clan_tag: str) -> bool:
     
     # Phase 2: Process war data (sync file operations)
     return process_clan_war_data(clan_tag, war_data)
+
+
+# ─── Clan Capital raid weekends (tracker #0115) ─────────────────────────────
+# Design: plans/tracker-0115-capital-raid-leaderboards.md §2-§3; game rules:
+# qapbot/docs/COC_GAME_MECHANICS.md § Clan Capital Raid Weekends.
+
+# A roster snapshot taken later than this after season start may include players who joined
+# after the start (and so could not raid) — flagged in the output (plan §2.1).
+RAID_LATE_SNAPSHOT_MINUTES = 30
+
+_RAID_API_TOTAL_FIELDS: Dict[str, str] = {
+    "capital_total_loot": "capitalTotalLoot",
+    "raids_completed": "raidsCompleted",
+    "total_attacks": "totalAttacks",
+    "enemy_districts_destroyed": "enemyDistrictsDestroyed",
+    "offensive_reward": "offensiveReward",
+    "defensive_reward": "defensiveReward",
+}
+
+
+def raid_notification_key(clan_tag: str, season_start: str) -> str:
+    """notification_state war_key for a raid season. The "raid:" prefix keeps it from ever
+    colliding with a war key ("<clan>_<opponent>" style)."""
+    return f"raid:{clan_tag}:{season_start}"
+
+
+def _iso_to_dt(iso: str) -> datetime:
+    """Parse a raid season key ("2026-09-18T07:00:00Z") into an aware UTC datetime."""
+    return datetime.strptime(iso, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=_tz.utc)
+
+
+async def update_capital_raid_for_clan(clan_tag: str, now: Optional[datetime] = None) -> Dict[str, int]:
+    """Bring one member clan's raid data up to date (plan §3).
+
+    1. Inside the raid window: take the one-time eligibility snapshot for the current season
+       (no-op once taken).
+    2. Fetch the newest raid season (limit=1) and match it against EVERY unfinalized stored
+       season — not just the newest — so a Friday snapshot can't hide last week's still-
+       unfinalized season while the API is still serving its members[] (plan §3 "Friday catch-up").
+    3. A season whose window is over but that the API isn't serving is closed as 'no_result'.
+    4. On finalization, the season's reminder dedup state is dropped (same lifecycle as a war).
+
+    Args:
+        clan_tag: Member clan tag.
+        now: Reference time (tests); defaults to the current UTC time.
+
+    Returns:
+        Counters {"snapshot", "fetched", "written", "finalized"} for the cycle log line.
+    """
+    from qapbot.constants import (
+        RAID_BASE_ATTACK_LIMIT, coc_timestamp_to_iso, current_raid_season_bounds, is_capital_raid_window,
+    )
+
+    counts = {"snapshot": 0, "fetched": 0, "written": 0, "finalized": 0}
+    db = CACHE.db_manager
+    if db is None:
+        return counts
+    now = now or datetime.now(_tz.utc)
+
+    roster: Optional[Dict[str, str]] = None
+    try:
+        clan_obj = await CACHE.coc_clan_cache.get_clan(clan_tag)
+        roster = {m.tag: m.name for m in getattr(clan_obj, "members", []) if getattr(m, "tag", None)}
+    except Exception as e:
+        # No roster -> no snapshot this cycle (retried next cycle) and no leaver cleanup.
+        logging.warning(f"[RAID-UPDATE] Roster fetch failed for {clan_tag}: {e}")
+
+    if roster is not None and is_capital_raid_window(now):
+        season_start, season_end = current_raid_season_bounds(now)
+        if await db.snapshot_capital_raid_roster(clan_tag, season_start, season_end, roster, RAID_BASE_ATTACK_LIMIT):
+            counts["snapshot"] = 1
+            late_minutes = (now - _iso_to_dt(season_start)).total_seconds() / 60
+            if late_minutes > RAID_LATE_SNAPSHOT_MINUTES:
+                logging.warning(
+                    f"[RAID-UPDATE] Late roster snapshot for {clan_tag} season {season_start}: "
+                    f"{late_minutes / 60:.1f}h after start — players who joined in that window may be "
+                    f"listed as eligible."
+                )
+
+    open_seasons = await asyncio.to_thread(db.get_unfinalized_capital_raid_seasons_sync, clan_tag)
+    if not open_seasons:
+        return counts
+
+    data = await CACHE.get_capital_raid_seasons_from_api(clan_tag, limit=1)
+    counts["fetched"] = 1
+    items = data.get("items") or []
+    item: Optional[Dict[str, Any]] = items[0] if items else None
+    api_start = coc_timestamp_to_iso(item.get("startTime", "")) if item else ""
+
+    for season in open_seasons:
+        finalized = False
+        if item is not None and season["season_start"] == api_start:
+            totals = {col: int(item.get(api_key) or 0) for col, api_key in _RAID_API_TOTAL_FIELDS.items()}
+            finalized = await db.upsert_capital_raid_season(
+                clan_tag, season["season_start"], coc_timestamp_to_iso(item.get("endTime", "")) or season["season_end"],
+                str(item.get("state") or "ongoing"), totals, item.get("members") or [], roster,
+            )
+            counts["written"] += 1
+        elif now >= _iso_to_dt(season["season_end"]):
+            # Window over and the API isn't serving it: never started, or already replaced by a
+            # newer season (data-loss window passed during downtime). Rows never count as misses.
+            finalized = await db.upsert_capital_raid_season(
+                clan_tag, season["season_start"], season["season_end"], "no_result", {}, [], roster,
+            )
+            counts["written"] += 1
+            logging.info(f"[RAID-UPDATE] {clan_tag} season {season['season_start']} closed as no_result")
+        # else: still inside its own window and not started by the clan yet -> stays 'pending'
+        if finalized:
+            counts["finalized"] += 1
+            key = raid_notification_key(clan_tag, season["season_start"])
+            CACHE.notification_state.pop(key, None)
+            try:
+                await db.delete_notification_state_for_war(key)
+            except Exception as e:
+                logging.warning(f"[RAID-UPDATE] Could not clear notification state {key}: {e}")
+    return counts
+
+
+async def update_capital_raids_for_member_clans(now: Optional[datetime] = None) -> Dict[str, int]:
+    """Per-cycle Clan Capital raid update for every guild member clan (plan §3).
+
+    A clan is processed when the raid window (Fri 07:00 -> Mon 07:00 UTC) is open, or when it
+    still has an unfinalized season (catch-up: the Monday post-end fetch and recovery from
+    downtime, possible until the next Friday). Outside both — the normal Tue-Thu case — this
+    makes zero API calls.
+
+    Returns:
+        Aggregated counters plus "clans" (processed) and "errors" for the [RAID-UPDATE] line.
+    """
+    from qapbot.constants import is_capital_raid_window
+    from qapbot.QBdiscocmdshelper_cwl import all_member_clan_tags
+
+    totals = {"clans": 0, "snapshot": 0, "fetched": 0, "written": 0, "finalized": 0, "errors": 0}
+    db = CACHE.db_manager
+    if db is None:
+        return totals
+    now = now or datetime.now(_tz.utc)
+    tags = all_member_clan_tags()
+    if is_capital_raid_window(now):
+        due = tags
+    else:
+        due = await asyncio.to_thread(
+            lambda: [t for t in tags if db.get_unfinalized_capital_raid_seasons_sync(t)]
+        )
+    if not due:
+        return totals
+    results = await asyncio.gather(*(update_capital_raid_for_clan(t, now) for t in due), return_exceptions=True)
+    for clan_tag, result in zip(due, results):
+        if isinstance(result, BaseException):
+            totals["errors"] += 1
+            logging.warning(f"[RAID-UPDATE] {clan_tag} failed: {result}")
+            continue
+        totals["clans"] += 1
+        for k, v in result.items():
+            totals[k] += v
+    return totals
 
 
 async def process_orphaned_cwl_wars(

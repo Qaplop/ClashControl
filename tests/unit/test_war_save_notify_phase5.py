@@ -387,14 +387,14 @@ class TestGetPlayersNeedingReminders:
 
     def test_unregistered_player_skipped(self, monkeypatch):
         monkeypatch.setattr("qapbot.war_notifications._get_hours_until_war_end", lambda wd: 5.0)  # type: ignore[misc]
-        monkeypatch.setattr("qapbot.war_notifications._get_player_discord_id", lambda tag: None)  # type: ignore[misc]
+        monkeypatch.setattr("qapbot.war_notifications._get_player_discord_id", lambda tag, *_: None)  # type: ignore[misc]
         members = [{"tag": "#P1", "name": "P1", "attacks": []}]
         result = self._fn()("#CLAN1", "WAR1", self._war_data(members=members))
         assert result == []
 
     def test_war_type_mismatch_skipped(self, monkeypatch):
         monkeypatch.setattr("qapbot.war_notifications._get_hours_until_war_end", lambda wd: 5.0)  # type: ignore[misc]
-        monkeypatch.setattr("qapbot.war_notifications._get_player_discord_id", lambda tag: "123")  # type: ignore[misc]
+        monkeypatch.setattr("qapbot.war_notifications._get_player_discord_id", lambda tag, *_: "123")  # type: ignore[misc]
         monkeypatch.setattr("qapbot.war_notifications._should_notify_for_war_type", lambda did, wd: False)  # type: ignore[misc]
         members = [{"tag": "#P1", "name": "P1", "attacks": []}]
         result = self._fn()("#CLAN1", "WAR1", self._war_data(members=members))
@@ -402,18 +402,18 @@ class TestGetPlayersNeedingReminders:
 
     def test_already_notified_skipped(self, monkeypatch):
         monkeypatch.setattr("qapbot.war_notifications._get_hours_until_war_end", lambda wd: 5.0)  # type: ignore[misc]
-        monkeypatch.setattr("qapbot.war_notifications._get_player_discord_id", lambda tag: "123")  # type: ignore[misc]
+        monkeypatch.setattr("qapbot.war_notifications._get_player_discord_id", lambda tag, *_: "123")  # type: ignore[misc]
         monkeypatch.setattr("qapbot.war_notifications._should_notify_for_war_type", lambda did, wd: True)  # type: ignore[misc]
-        monkeypatch.setattr("qapbot.war_notifications._should_send_notification", lambda wid, pt, did, hr: False)  # type: ignore[misc]
+        monkeypatch.setattr("qapbot.war_notifications._should_send_notification", lambda wid, pt, did, hr, *_: False)  # type: ignore[misc]
         members = [{"tag": "#P1", "name": "P1", "attacks": []}]
         result = self._fn()("#CLAN1", "WAR1", self._war_data(members=members))
         assert result == []
 
     def test_eligible_player_notified(self, monkeypatch):
         monkeypatch.setattr("qapbot.war_notifications._get_hours_until_war_end", lambda wd: 5.0)  # type: ignore[misc]
-        monkeypatch.setattr("qapbot.war_notifications._get_player_discord_id", lambda tag: "123")  # type: ignore[misc]
+        monkeypatch.setattr("qapbot.war_notifications._get_player_discord_id", lambda tag, *_: "123")  # type: ignore[misc]
         monkeypatch.setattr("qapbot.war_notifications._should_notify_for_war_type", lambda did, wd: True)  # type: ignore[misc]
-        monkeypatch.setattr("qapbot.war_notifications._should_send_notification", lambda wid, pt, did, hr: True)  # type: ignore[misc]
+        monkeypatch.setattr("qapbot.war_notifications._should_send_notification", lambda wid, pt, did, hr, *_: True)  # type: ignore[misc]
         monkeypatch.setattr("qapbot.war_notifications._get_buddy_watcher_discord_ids", lambda tag: [])  # type: ignore[misc]
         members = [{"tag": "#P1", "name": "P1", "attacks": [{"stars": 3}]}]
         result = self._fn()("#CLAN1", "WAR1", self._war_data(members=members))
@@ -425,11 +425,11 @@ class TestGetPlayersNeedingReminders:
 
     def test_buddy_watcher_notified(self, monkeypatch):
         monkeypatch.setattr("qapbot.war_notifications._get_hours_until_war_end", lambda wd: 5.0)  # type: ignore[misc]
-        monkeypatch.setattr("qapbot.war_notifications._get_player_discord_id", lambda tag: "123")  # type: ignore[misc]
+        monkeypatch.setattr("qapbot.war_notifications._get_player_discord_id", lambda tag, *_: "123")  # type: ignore[misc]
         monkeypatch.setattr("qapbot.war_notifications._should_notify_for_war_type", lambda did, wd: True)  # type: ignore[misc]
-        monkeypatch.setattr("qapbot.war_notifications._should_send_notification", lambda wid, pt, did, hr: True)  # type: ignore[misc]
+        monkeypatch.setattr("qapbot.war_notifications._should_send_notification", lambda wid, pt, did, hr, *_: True)  # type: ignore[misc]
         monkeypatch.setattr("qapbot.war_notifications._get_buddy_watcher_discord_ids", lambda tag: ["456"])  # type: ignore[misc]
-        monkeypatch.setattr("qapbot.war_notifications._should_send_buddy_notification", lambda wid, pt, did, hr: True)  # type: ignore[misc]
+        monkeypatch.setattr("qapbot.war_notifications._should_send_buddy_notification", lambda wid, pt, did, hr, *_: True)  # type: ignore[misc]
 
         # Mock CACHE for buddy watcher
         cache = MagicMock()
@@ -454,9 +454,9 @@ class TestGetPlayersNeedingReminders:
 
     def test_multiple_attacks_remaining(self, monkeypatch):
         monkeypatch.setattr("qapbot.war_notifications._get_hours_until_war_end", lambda wd: 3.0)  # type: ignore[misc]
-        monkeypatch.setattr("qapbot.war_notifications._get_player_discord_id", lambda tag: "789")  # type: ignore[misc]
+        monkeypatch.setattr("qapbot.war_notifications._get_player_discord_id", lambda tag, *_: "789")  # type: ignore[misc]
         monkeypatch.setattr("qapbot.war_notifications._should_notify_for_war_type", lambda did, wd: True)  # type: ignore[misc]
-        monkeypatch.setattr("qapbot.war_notifications._should_send_notification", lambda wid, pt, did, hr: True)  # type: ignore[misc]
+        monkeypatch.setattr("qapbot.war_notifications._should_send_notification", lambda wid, pt, did, hr, *_: True)  # type: ignore[misc]
         monkeypatch.setattr("qapbot.war_notifications._get_buddy_watcher_discord_ids", lambda tag: [])  # type: ignore[misc]
         # No attacks used at all
         members = [{"tag": "#P2", "name": "P2", "attacks": []}]

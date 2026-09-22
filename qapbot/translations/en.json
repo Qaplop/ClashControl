@@ -124,6 +124,14 @@
     "mode_once_desc": " (single notification {hours} hours before war ends)",
     "mode_repeated": "Repeated",
     "mode_repeated_desc": " (multiple reminders starting {hours} hours before war ends)",
+    "raid_label": "🏰 Raid reminder:",
+    "raid_value": "{hours} h before end · {scope}",
+    "raid_timing_placeholder": "🏰 Raid weekend reminder...",
+    "raid_timing_off": "Raid reminder off",
+    "raid_timing_hours": "Raid reminder {hours} h before raid end",
+    "raid_scope_placeholder": "🎯 Raid reminder for...",
+    "raid_scope_not_attacked": "Accounts with no raid attack yet",
+    "raid_scope_open_attacks": "Accounts with any raid attacks left",
     "timing_label": "**Timing:**",
     "timing_hours": " hours",
     "language_label": "**Preferred Language:**",
@@ -216,7 +224,7 @@
       "leaderboard": {
         "short": "Display clan/family leaderboards",
         "title": "🏆 Leaderboard Command",
-        "detailed": "Display a leaderboard for a specific clan or family with various statistics modes.\n\n**Usage:**\n`/leaderboard clan:<clan_tag_or_name> mode:<leaderboard_mode> [month:<month>] [year:<year>] [cwl_only:<true/false>] [season:<season>] [scope:<all|own>]`\n\n**Parameters:**\n• `clan` - Clan tag, name, or family tag. Leave empty to use this channel's subscriptions.\n• `mode` - Leaderboard mode: attack, avgstars, avgstarsbyth, attackdefratio, defense, missedattacks, currentwar, cwlinfo, cwlinfo_comp, cwlgroup\n• `month` - Optional: a single month (6), a range (6-7), a list (1;3;5), or a trailing count (-2 = last 2 months, may cross a year boundary)\n• `year` - Optional: Specific year\n• `cwl_only` - Optional: Restrict to CWL wars only (true/false)\n• `season` - Optional: CWL season (YYYY-MM, or YYYY-MM-DD for mid-month CWL). Overrides month/year and forces CWL mode\n• `scope` - Optional: `all` (default) credits a current member's stats even from clans no longer tracked here; `own` restricts to this server's current member clans\n\n**Available Modes:**\n• `currentwar` - Ongoing war stats with win prediction\n• `attack` - Sort by total war stars won (default)\n• `avgstars` - Sort by average stars per attack\n• `avgstarsbyth` - Average stars per attack, grouped by TH level\n• `attackdefratio` - Ratio of stars won to defensive stars suffered\n• `defense` - Fewest defensive stars conceded per defense\n• `missedattacks` - Most missed attacks\n• `cwlinfo` - CWL season: all 7 rounds with rosters, scores, and win predictions\n• `cwlinfo_comp` - CWL overview: standard vs. skill-adjusted win predictions\n• `cwlgroup` - CWL league-group standings: rank, stars, and destruction for all 8 clans\n\n**Example:**\n`/leaderboard clan:#L2J0C0PY mode:attack month:12 year:2025`"
+        "detailed": "Display a leaderboard for a specific clan or family with various statistics modes.\n\n**Usage:**\n`/leaderboard clan:<clan_tag_or_name> mode:<leaderboard_mode> [month:<month>] [year:<year>] [cwl_only:<true/false>] [season:<season>] [scope:<all|own>]`\n\n**Parameters:**\n• `clan` - Clan tag, name, or family tag. Leave empty to use this channel's subscriptions.\n• `mode` - Leaderboard mode: attack, avgstars, avgstarsbyth, attackdefratio, defense, missedattacks, currentwar, cwlinfo, cwlinfo_comp, cwlgroup, raid, currentraid, raidmissed\n• `month` - Optional: a single month (6), a range (6-7), a list (1;3;5), or a trailing count (-2 = last 2 months, may cross a year boundary)\n• `year` - Optional: Specific year\n• `cwl_only` - Optional: Restrict to CWL wars only (true/false)\n• `season` - Optional: CWL season (YYYY-MM, or YYYY-MM-DD for mid-month CWL). Overrides month/year and forces CWL mode\n• `scope` - Optional: `all` (default) credits a current member's stats even from clans no longer tracked here; `own` restricts to this server's current member clans\n\n**Available Modes:**\n• `currentwar` - Ongoing war stats with win prediction\n• `attack` - Sort by total war stars won (default)\n• `avgstars` - Sort by average stars per attack\n• `avgstarsbyth` - Average stars per attack, grouped by TH level\n• `attackdefratio` - Ratio of stars won to defensive stars suffered\n• `defense` - Fewest defensive stars conceded per defense\n• `missedattacks` - Most missed attacks\n• `cwlinfo` - CWL season: all 7 rounds with rosters, scores, and win predictions\n• `cwlinfo_comp` - CWL overview: standard vs. skill-adjusted win predictions\n• `cwlgroup` - CWL league-group standings: rank, stars, and destruction for all 8 clans\n• `raid` - Clan Capital raid loot, attacks and medals per player (a raid weekend counts toward the month of its Friday)\n• `currentraid` - Current (or last) raid weekend incl. players who haven't attacked yet\n• `raidmissed` - Players who missed a raid weekend completely (0 attacks); without month/year the last weekend, otherwise missed weekends summed per player. Only players in the clan before the raid started count\n\n**Example:**\n`/leaderboard clan:#L2J0C0PY mode:attack month:12 year:2025`"
       },
       "highlightme": {
         "short": "Highlight yourself in this channel's leaderboards (one-time)",
@@ -645,6 +653,19 @@
       "language_updated": "✅ Server language updated to {language_name}",
       "no_war_channel_set": "⚠️ Please set a war notification channel first",
       "no_registration_channel_set": "⚠️ Please set a registration message channel first",
+      "raid_channel_notification_title": "🏰 Raid Weekend Reminder - {clan_name}",
+      "raid_channel_notification_description": "**{count} player(s)** still have raid attacks open!",
+      "raid_channel_notification_time": "⏰ {time}",
+      "button_activate_raid_notifications": "🏰 Activate Channel Raid Reminders",
+      "button_deactivate_raid_notifications": "🏰 Deactivate Channel Raid Reminders",
+      "raid_threshold_config_current": "Raid reminder: **{threshold}** · reminds: **{scope}**",
+      "raid_threshold_hours": "{hours} hours before raid end",
+      "raid_threshold_placeholder": "Raid reminder time...",
+      "raid_scope_placeholder": "Raid reminder lists...",
+      "raid_scope_not_attacked": "Players with no raid attack yet",
+      "raid_scope_open_attacks": "Players with any raid attacks left",
+      "config_raid_channel_fallback": "war channel",
+      "config_raid_line": "🏰 Raid reminders: {status} · {channel} · {threshold} · {scope}",
       "war_channel_notification_title": "⚔️ War Reminder - {clan_name} vs {opponent_name}",
       "war_channel_notification_description": "**{count} player(s)** with open attacks need to attack!",
       "war_channel_notification_time": "⏰ War ends in **{time}**",
@@ -827,6 +848,13 @@
     "language_selector": {
       "placeholder": "Select a language...",
       "option_description": "Set server language to {lang_name}"
+    },
+    "raid_notification_dm": {
+      "header": "RAID WEEKEND REMINDER",
+      "war_matchup": "Clan Capital raid weekend — **{clan_name}**",
+      "war_ends_minutes": "Raid weekend ends in **{minutes} minutes**",
+      "war_ends_hours": "Raid weekend ends in **{hours} hours**",
+      "reminder": "Don't forget your raid attacks! 🏰"
     },
     "war_notification_dm": {
       "header": "WAR REMINDER",

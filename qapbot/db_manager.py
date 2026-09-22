@@ -2240,6 +2240,9 @@ class WarHistoryDB:
                 war_reminders_enabled BOOLEAN NOT NULL DEFAULT 1,
                 user_language TEXT,
                 user_language_locked BOOLEAN NOT NULL DEFAULT 0,
+                raid_reminders_enabled BOOLEAN NOT NULL DEFAULT 0,
+                raid_hours_before_end INTEGER NOT NULL DEFAULT 24,
+                raid_reminder_scope TEXT NOT NULL DEFAULT 'not_attacked',
                 created_at TEXT NOT NULL DEFAULT (datetime('now')),
                 updated_at TEXT NOT NULL DEFAULT (datetime('now')),
                 CHECK (notification_mode IN ('repeated', 'once')),
@@ -2336,6 +2339,10 @@ class WarHistoryDB:
                 cwl_enrollment_include_all_linked_accounts BOOLEAN NOT NULL DEFAULT 0,
                 cwl_coordinator_role_id TEXT,
                 timezone_name TEXT NOT NULL DEFAULT 'UTC',
+                channel_raid_notifications_enabled BOOLEAN NOT NULL DEFAULT 0,
+                raid_notification_threshold_hours REAL NOT NULL DEFAULT 24,
+                raid_notification_scope TEXT NOT NULL DEFAULT 'not_attacked',
+                raid_notification_channel_id TEXT,
                 created_at TEXT NOT NULL DEFAULT (datetime('now')),
                 updated_at TEXT NOT NULL DEFAULT (datetime('now'))
             )
@@ -2989,6 +2996,65 @@ class WarHistoryDB:
                 ") WHERE notified = 1"
             )
             logging.info("[DB-MIGRATE] Backfilled cwl_shared_clan_players.notified_clan_tag from notified=1 rows")
+
+        # Clan Capital raid reminders (tracker #0115). Own columns rather than new values in
+        # users.notification_type, whose CHECK constraint can't be widened in place. Raid DMs
+        # default OFF so existing registrants don't start receiving a new DM type unannounced.
+        await self._add_column_if_missing("users", "raid_reminders_enabled", "BOOLEAN NOT NULL DEFAULT 0")
+        await self._add_column_if_missing("users", "raid_hours_before_end", "INTEGER NOT NULL DEFAULT 24")
+        await self._add_column_if_missing("users", "raid_reminder_scope", "TEXT NOT NULL DEFAULT 'not_attacked'")
+        await self._add_column_if_missing("guild_config", "channel_raid_notifications_enabled", "BOOLEAN NOT NULL DEFAULT 0")
+        await self._add_column_if_missing("guild_config", "raid_notification_threshold_hours", "REAL NOT NULL DEFAULT 24")
+        await self._add_column_if_missing("guild_config", "raid_notification_scope", "TEXT NOT NULL DEFAULT 'not_attacked'")
+        # NULL = post raid reminders to war_notification_channel_id (see _notification_channel_id()
+        # in war_notifications.py).
+        await self._add_column_if_missing("guild_config", "raid_notification_channel_id", "TEXT")
+
+        # Clan Capital raid weekends (tracker #0115, plans/tracker-0115-capital-raid-leaderboards.md).
+        # MAIN ONLY — deliberately not in _HOT_HISTORY_MIRRORED_TABLES and never touched by the
+        # monthly hot->history migration (~50K rows/year), so no Cardinal-Rule-1 UNION is needed.
+        # season_start is the ISO Fri-07:00-UTC key shared by every clan for the same weekend.
+        await self._conn.execute("""
+            CREATE TABLE IF NOT EXISTS capital_raid_seasons (
+                clan_tag                  TEXT    NOT NULL,
+                season_start              TEXT    NOT NULL,
+                season_end                TEXT    NOT NULL,
+                -- 'pending' (roster snapshotted, API not serving this season yet) | 'ongoing' |
+                -- 'ended' | 'no_result' (window closed, API never delivered it)
+                state                     TEXT    NOT NULL,
+                roster_snapshot_at        TEXT    NOT NULL,
+                capital_total_loot        INTEGER NOT NULL DEFAULT 0,
+                raids_completed           INTEGER NOT NULL DEFAULT 0,
+                total_attacks             INTEGER NOT NULL DEFAULT 0,
+                enemy_districts_destroyed INTEGER NOT NULL DEFAULT 0,
+                offensive_reward          INTEGER NOT NULL DEFAULT 0,
+                defensive_reward          INTEGER NOT NULL DEFAULT 0,
+                finalized                 INTEGER NOT NULL DEFAULT 0,
+                updated_at                TEXT    NOT NULL DEFAULT (datetime('now')),
+                PRIMARY KEY (clan_tag, season_start)
+            )
+        """)
+        # One row per ELIGIBLE player (on the roster at season start — the in-game rule) plus any
+        # attacker. attacks = 0 means "not attacked yet" while ongoing and "missed" once ended.
+        await self._conn.execute("""
+            CREATE TABLE IF NOT EXISTS capital_raid_members (
+                clan_tag                 TEXT    NOT NULL,
+                season_start             TEXT    NOT NULL,
+                player_tag               TEXT    NOT NULL,
+                player_name              TEXT,
+                attacks                  INTEGER NOT NULL DEFAULT 0,
+                attack_limit             INTEGER NOT NULL DEFAULT 0,
+                bonus_attack_limit       INTEGER NOT NULL DEFAULT 0,
+                capital_resources_looted INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY (clan_tag, season_start, player_tag)
+            )
+        """)
+        await self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_capital_raid_members_player ON capital_raid_members(player_tag, season_start)"
+        )
+        await self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_capital_raid_members_season ON capital_raid_members(season_start)"
+        )
 
         logging.debug("[DB-SCHEMA] Maindata schema created/verified")
 
@@ -10424,7 +10490,11 @@ class WarHistoryDB:
                 "notification_mode": row["notification_mode"],
                 "notification_type": row["notification_type"],
                 "hours_before_end": row["hours_before_end"],
-                "war_reminders": bool(row["war_reminders_enabled"])
+                "war_reminders": bool(row["war_reminders_enabled"]),
+                # Clan Capital raid reminders (tracker #0115)
+                "raid_reminders": bool(row["raid_reminders_enabled"]),
+                "raid_hours_before_end": row["raid_hours_before_end"],
+                "raid_reminder_scope": row["raid_reminder_scope"],
             },
             "user_language": row["user_language"],
             "user_language_locked": bool(row["user_language_locked"]),
@@ -10452,8 +10522,9 @@ class WarHistoryDB:
         await self._conn.execute("""
             INSERT INTO users
             (discord_id, display_name, notification_mode, notification_type, hours_before_end,
-             war_reminders_enabled, user_language, user_language_locked)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+             war_reminders_enabled, user_language, user_language_locked,
+             raid_reminders_enabled, raid_hours_before_end, raid_reminder_scope)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(discord_id) DO UPDATE SET
                 display_name = excluded.display_name,
                 notification_mode = excluded.notification_mode,
@@ -10461,7 +10532,10 @@ class WarHistoryDB:
                 hours_before_end = excluded.hours_before_end,
                 war_reminders_enabled = excluded.war_reminders_enabled,
                 user_language = excluded.user_language,
-                user_language_locked = excluded.user_language_locked
+                user_language_locked = excluded.user_language_locked,
+                raid_reminders_enabled = excluded.raid_reminders_enabled,
+                raid_hours_before_end = excluded.raid_hours_before_end,
+                raid_reminder_scope = excluded.raid_reminder_scope
         """, (
             discord_id,
             user_data.get("display_name", "Unknown"),
@@ -10470,7 +10544,10 @@ class WarHistoryDB:
             notif.get("hours_before_end", 4),
             1 if notif.get("war_reminders", True) else 0,
             user_data.get("user_language"),
-            1 if user_data.get("user_language_locked", False) else 0
+            1 if user_data.get("user_language_locked", False) else 0,
+            1 if notif.get("raid_reminders", False) else 0,
+            notif.get("raid_hours_before_end", 24),
+            notif.get("raid_reminder_scope", "not_attacked"),
         ))
 
     async def _replace_user_players_rows(
@@ -10776,6 +10853,11 @@ class WarHistoryDB:
             "cwl_enrollment_include_all_linked_accounts": bool(row["cwl_enrollment_include_all_linked_accounts"]) if row["cwl_enrollment_include_all_linked_accounts"] is not None else False,
             "cwl_coordinator_role_id": row["cwl_coordinator_role_id"],
             "timezone_name": row["timezone_name"] if row["timezone_name"] is not None else "UTC",
+            # Clan Capital raid channel reminders (tracker #0115)
+            "channel_raid_notifications_enabled": bool(row["channel_raid_notifications_enabled"]),
+            "raid_notification_threshold_hours": row["raid_notification_threshold_hours"],
+            "raid_notification_scope": row["raid_notification_scope"],
+            "raid_notification_channel_id": row["raid_notification_channel_id"],
         }
     
     async def save_guild_config(self, guild_id: str, config: Dict[str, Any]) -> None:
@@ -10819,8 +10901,10 @@ class WarHistoryDB:
                  cwl_player_hub_channel_id, cwl_player_hub_message_id, cwl_player_hub_message_enabled, cwl_player_hub_message_last_bump_iso,
                  cwl_management_channel_id, cwl_management_message_id, cwl_management_message_enabled,
                  cwl_management_message_last_bump_iso, cwl_retention_months, cwl_selected_season,
-                 cwl_enrollment_include_all_linked_accounts, cwl_coordinator_role_id, timezone_name)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 cwl_enrollment_include_all_linked_accounts, cwl_coordinator_role_id, timezone_name,
+                 channel_raid_notifications_enabled, raid_notification_threshold_hours,
+                 raid_notification_scope, raid_notification_channel_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(guild_id) DO UPDATE SET
                     language = excluded.language,
                     newbie_role_id = excluded.newbie_role_id,
@@ -10855,7 +10939,11 @@ class WarHistoryDB:
                     cwl_selected_season = excluded.cwl_selected_season,
                     cwl_enrollment_include_all_linked_accounts = excluded.cwl_enrollment_include_all_linked_accounts,
                     cwl_coordinator_role_id = excluded.cwl_coordinator_role_id,
-                    timezone_name = excluded.timezone_name
+                    timezone_name = excluded.timezone_name,
+                    channel_raid_notifications_enabled = excluded.channel_raid_notifications_enabled,
+                    raid_notification_threshold_hours = excluded.raid_notification_threshold_hours,
+                    raid_notification_scope = excluded.raid_notification_scope,
+                    raid_notification_channel_id = excluded.raid_notification_channel_id
             """, (
                 guild_id,
                 config.get("language", "en"),
@@ -10892,6 +10980,10 @@ class WarHistoryDB:
                 1 if config.get("cwl_enrollment_include_all_linked_accounts", False) else 0,
                 config.get("cwl_coordinator_role_id"),
                 config.get("timezone_name", "UTC"),
+                1 if config.get("channel_raid_notifications_enabled", False) else 0,
+                config.get("raid_notification_threshold_hours", 24),
+                config.get("raid_notification_scope", "not_attacked"),
+                config.get("raid_notification_channel_id"),
             ))
             
             # Delete existing member families and clans
@@ -11589,6 +11681,304 @@ class WarHistoryDB:
                     conn.commit()
         except Exception as e:
             logging.warning(f"[DB-WRITE-SYNC] delete_notification_state_sync({war_key}) failed: {e}")
+
+    # ─── Clan Capital raid weekends (tracker #0115) ─────────────────────────
+    # capital_raid_seasons / capital_raid_members are MAIN-ONLY tables (never mirrored to
+    # history), so every read below queries main directly — no Cardinal-Rule-1 UNION exists.
+    # Design: plans/tracker-0115-capital-raid-leaderboards.md §2.
+
+    _RAID_SEASON_TOTAL_COLUMNS: Tuple[str, ...] = (
+        "capital_total_loot", "raids_completed", "total_attacks",
+        "enemy_districts_destroyed", "offensive_reward", "defensive_reward",
+    )
+
+    async def snapshot_capital_raid_roster(
+        self, clan_tag: str, season_start: str, season_end: str, roster: Dict[str, str], base_attack_limit: int,
+    ) -> bool:
+        """Take the one-time eligibility snapshot for a clan's raid season (plan §2.1).
+
+        Only players in the clan when the season starts can raid for it (game mechanic), so the
+        roster at this moment is the complete set of players who can be "not attacked yet" /
+        "missed". Writes the season row as 'pending' plus one zero-attack row per roster player.
+        Idempotent: once a row for (clan_tag, season_start) exists this is a no-op, which is what
+        keeps players who join later from ever becoming eligible.
+
+        Args:
+            clan_tag: Member clan tag.
+            season_start / season_end: ISO season bounds from current_raid_season_bounds().
+            roster: {player_tag: player_name} of the clan right now.
+            base_attack_limit: Attack limit stored on the zero rows (the game's 5; the bonus
+                attack is only earned by attacking, so it's 0 here).
+
+        Returns:
+            True if a new snapshot was written, False if one already existed.
+        """
+        return await self._retry_on_locked(
+            lambda: self._snapshot_capital_raid_roster_impl(clan_tag, season_start, season_end, roster, base_attack_limit)
+        )
+
+    async def _snapshot_capital_raid_roster_impl(
+        self, clan_tag: str, season_start: str, season_end: str, roster: Dict[str, str], base_attack_limit: int,
+    ) -> bool:
+        from datetime import datetime, timezone
+
+        await self._ensure_connection()
+        await self._write_lock.acquire()
+        try:
+            cursor = await self._conn.execute(
+                "SELECT 1 AS present FROM capital_raid_seasons WHERE clan_tag = ? AND season_start = ?",
+                (clan_tag, season_start),
+            )
+            if await cursor.fetchone() is not None:
+                return False
+            now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            await self._conn.execute("BEGIN")
+            await self._conn.execute(
+                "INSERT INTO capital_raid_seasons (clan_tag, season_start, season_end, state, roster_snapshot_at) "
+                "VALUES (?, ?, ?, 'pending', ?)",
+                (clan_tag, season_start, season_end, now_iso),
+            )
+            await self._conn.executemany(
+                "INSERT OR IGNORE INTO capital_raid_members "
+                "(clan_tag, season_start, player_tag, player_name, attacks, attack_limit, bonus_attack_limit) "
+                "VALUES (?, ?, ?, ?, 0, ?, 0)",
+                [(clan_tag, season_start, tag, name, base_attack_limit) for tag, name in roster.items()],
+            )
+            await self._conn.commit()
+            return True
+        except Exception as e:
+            await self._conn.rollback()
+            logging.error(f"[DB-WRITE] snapshot_capital_raid_roster({clan_tag}, {season_start}) failed: {e}")
+            raise
+        finally:
+            self._write_lock.release()
+
+    async def upsert_capital_raid_season(
+        self,
+        clan_tag: str,
+        season_start: str,
+        season_end: str,
+        state: str,
+        totals: Dict[str, int],
+        members: List[Dict[str, Any]],
+        roster: Optional[Dict[str, str]],
+    ) -> bool:
+        """Store the API's view of one raid season (plan §2 "upsert" steps 1-5).
+
+        - A finalized season (state 'ended' or 'no_result') is frozen: this is then a no-op.
+        - Attackers (API ``members[]``, raw dicts) are upserted, overwriting their zero row.
+        - Zero rows are NEVER inserted here — eligibility is fixed by the start snapshot.
+        - Zero rows of players no longer on *roster* are deleted (they left the clan). Skipped
+          when roster is None (roster fetch failed), so a transient failure can't wipe them.
+
+        Args:
+            state: 'ongoing' | 'ended' (API values) or 'no_result' (closing a season the API
+                never delivered).
+            totals: Values for _RAID_SEASON_TOTAL_COLUMNS (missing keys are stored as 0).
+
+        Returns:
+            True if this call finalized the season, False otherwise.
+        """
+        return await self._retry_on_locked(
+            lambda: self._upsert_capital_raid_season_impl(
+                clan_tag, season_start, season_end, state, totals, members, roster
+            )
+        )
+
+    async def _upsert_capital_raid_season_impl(
+        self,
+        clan_tag: str,
+        season_start: str,
+        season_end: str,
+        state: str,
+        totals: Dict[str, int],
+        members: List[Dict[str, Any]],
+        roster: Optional[Dict[str, str]],
+    ) -> bool:
+        from datetime import datetime, timezone
+
+        await self._ensure_connection()
+        await self._write_lock.acquire()
+        try:
+            cursor = await self._conn.execute(
+                "SELECT finalized FROM capital_raid_seasons WHERE clan_tag = ? AND season_start = ?",
+                (clan_tag, season_start),
+            )
+            existing = await cursor.fetchone()
+            if existing is not None and existing["finalized"]:
+                return False
+            finalized = 1 if state in ("ended", "no_result") else 0
+            now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            total_values = [int(totals.get(col) or 0) for col in self._RAID_SEASON_TOTAL_COLUMNS]
+            await self._conn.execute("BEGIN")
+            await self._conn.execute(
+                f"""
+                INSERT INTO capital_raid_seasons
+                    (clan_tag, season_start, season_end, state, roster_snapshot_at,
+                     {", ".join(self._RAID_SEASON_TOTAL_COLUMNS)}, finalized, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+                ON CONFLICT(clan_tag, season_start) DO UPDATE SET
+                    season_end = excluded.season_end,
+                    state = excluded.state,
+                    {", ".join(f"{col} = excluded.{col}" for col in self._RAID_SEASON_TOTAL_COLUMNS)},
+                    finalized = excluded.finalized,
+                    updated_at = excluded.updated_at
+                """,
+                (clan_tag, season_start, season_end, state, now_iso, *total_values, finalized),
+            )
+            await self._conn.executemany(
+                """
+                INSERT INTO capital_raid_members
+                    (clan_tag, season_start, player_tag, player_name, attacks, attack_limit,
+                     bonus_attack_limit, capital_resources_looted)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(clan_tag, season_start, player_tag) DO UPDATE SET
+                    player_name = excluded.player_name,
+                    attacks = excluded.attacks,
+                    attack_limit = excluded.attack_limit,
+                    bonus_attack_limit = excluded.bonus_attack_limit,
+                    capital_resources_looted = excluded.capital_resources_looted
+                """,
+                [
+                    (
+                        clan_tag, season_start, str(m.get("tag") or ""), m.get("name"),
+                        int(m.get("attacks") or 0), int(m.get("attackLimit") or 0),
+                        int(m.get("bonusAttackLimit") or 0), int(m.get("capitalResourcesLooted") or 0),
+                    )
+                    for m in members if m.get("tag")
+                ],
+            )
+            if roster is not None:
+                zero_cursor = await self._conn.execute(
+                    "SELECT player_tag FROM capital_raid_members "
+                    "WHERE clan_tag = ? AND season_start = ? AND attacks = 0",
+                    (clan_tag, season_start),
+                )
+                leavers = [(clan_tag, season_start, r["player_tag"]) for r in await zero_cursor.fetchall()
+                           if r["player_tag"] not in roster]
+                if leavers:
+                    await self._conn.executemany(
+                        "DELETE FROM capital_raid_members "
+                        "WHERE clan_tag = ? AND season_start = ? AND player_tag = ? AND attacks = 0",
+                        leavers,
+                    )
+            await self._conn.commit()
+            return bool(finalized)
+        except Exception as e:
+            await self._conn.rollback()
+            logging.error(f"[DB-WRITE] upsert_capital_raid_season({clan_tag}, {season_start}) failed: {e}")
+            raise
+        finally:
+            self._write_lock.release()
+
+    def get_unfinalized_capital_raid_seasons_sync(self, clan_tag: str) -> List[Dict[str, Any]]:
+        """Every not-yet-finalized season of a clan, oldest first (normally 0 or 1 rows; 2 in the
+        Friday catch-up case — plan §3). Drives both the update gate and season matching."""
+        with self._sync_conn() as conn:
+            rows = conn.execute(
+                "SELECT season_start, season_end, state FROM capital_raid_seasons "
+                "WHERE clan_tag = ? AND finalized = 0 ORDER BY season_start ASC",
+                (clan_tag,),
+            ).fetchall()
+        return [
+            {"season_start": row["season_start"], "season_end": row["season_end"], "state": row["state"]}
+            for row in rows
+        ]
+
+    def get_capital_raid_season_rows_sync(
+        self, clan_tags: List[str], season_starts: List[str],
+    ) -> List[Dict[str, Any]]:
+        """capital_raid_seasons rows (totals, state, roster_snapshot_at) for the given clans and
+        seasons — the currentraid header and the late-snapshot note."""
+        if not clan_tags or not season_starts:
+            return []
+        clan_ph = ",".join("?" * len(clan_tags))
+        season_ph = ",".join("?" * len(season_starts))
+        with self._sync_conn() as conn:
+            rows = conn.execute(
+                "SELECT clan_tag, season_start, season_end, state, roster_snapshot_at, "
+                f"{', '.join(self._RAID_SEASON_TOTAL_COLUMNS)} FROM capital_raid_seasons "
+                f"WHERE clan_tag IN ({clan_ph}) AND season_start IN ({season_ph})",
+                (*clan_tags, *season_starts),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def get_latest_capital_raid_season_sync(self, clan_tags: List[str], states: Tuple[str, ...]) -> Optional[str]:
+        """Newest season_start among *clan_tags* whose state is one of *states*, or None."""
+        if not clan_tags or not states:
+            return None
+        clan_ph = ",".join("?" * len(clan_tags))
+        state_ph = ",".join("?" * len(states))
+        with self._sync_conn() as conn:
+            row = conn.execute(
+                f"SELECT MAX(season_start) AS latest FROM capital_raid_seasons "
+                f"WHERE clan_tag IN ({clan_ph}) AND state IN ({state_ph})",
+                (*clan_tags, *states),
+            ).fetchone()
+        return row["latest"] if row is not None else None
+
+    def get_capital_raid_rows_sync(
+        self,
+        *,
+        clan_tags: Optional[List[str]] = None,
+        player_tags: Optional[List[str]] = None,
+        season_starts: Optional[List[str]] = None,
+        month_prefixes: Optional[List[str]] = None,
+        states: Tuple[str, ...] = ("ongoing", "ended"),
+    ) -> List[Dict[str, Any]]:
+        """The single reader behind every raid leaderboard (plan §4.2): per-player rows joined
+        with their season's state and rewards.
+
+        Exactly one of clan_tags / player_tags selects WHOSE rows (player_tags = leaderboard
+        scope "all"); season_starts or month_prefixes ("YYYY-MM", matched against the season's
+        Friday) selects WHEN. Rows of seasons outside *states* ('pending', 'no_result' by default)
+        are never returned.
+        """
+        if not clan_tags and not player_tags:
+            return []
+        clauses: List[str] = []
+        params: List[Any] = []
+        if clan_tags:
+            clauses.append(f"m.clan_tag IN ({','.join('?' * len(clan_tags))})")
+            params.extend(clan_tags)
+        else:
+            clauses.append(f"m.player_tag IN ({','.join('?' * len(player_tags or []))})")
+            params.extend(player_tags or [])
+        if season_starts:
+            clauses.append(f"m.season_start IN ({','.join('?' * len(season_starts))})")
+            params.extend(season_starts)
+        elif month_prefixes:
+            clauses.append(f"substr(m.season_start, 1, 7) IN ({','.join('?' * len(month_prefixes))})")
+            params.extend(month_prefixes)
+        clauses.append(f"s.state IN ({','.join('?' * len(states))})")
+        params.extend(states)
+        sql = (
+            "SELECT m.clan_tag, m.season_start, m.player_tag, m.player_name, m.attacks, m.attack_limit, "
+            "m.bonus_attack_limit, m.capital_resources_looted, s.state, s.offensive_reward, s.defensive_reward "
+            "FROM capital_raid_members m JOIN capital_raid_seasons s "
+            "ON s.clan_tag = m.clan_tag AND s.season_start = m.season_start "
+            f"WHERE {' AND '.join(clauses)} ORDER BY m.season_start ASC"
+        )
+        with self._sync_conn() as conn:
+            rows = conn.execute(sql, params).fetchall()
+        return [dict(row) for row in rows]
+
+    def get_ongoing_capital_raid_candidates_sync(self, season_end_before: str) -> List[Dict[str, Any]]:
+        """Reminder candidates (plan §5.2): every eligible player with attacks left in an
+        'ongoing' season ending no later than *season_end_before* (ISO). Limit = attack_limit +
+        bonus_attack_limit (bonusAttackLimit is the EARNED bonus — plan §10 Q-A)."""
+        with self._sync_conn() as conn:
+            rows = conn.execute(
+                "SELECT m.clan_tag, m.season_start, s.season_end, m.player_tag, m.player_name, m.attacks, "
+                "m.attack_limit + m.bonus_attack_limit AS attack_total_limit "
+                "FROM capital_raid_members m JOIN capital_raid_seasons s "
+                "ON s.clan_tag = m.clan_tag AND s.season_start = m.season_start "
+                "WHERE s.state = 'ongoing' AND s.season_end <= ? "
+                "AND m.attacks < m.attack_limit + m.bonus_attack_limit "
+                "ORDER BY m.clan_tag, m.player_name",
+                (season_end_before,),
+            ).fetchall()
+        return [dict(row) for row in rows]
 
     # ─── Hot/History DB Rolling Migration ──────────────────────────────────
     @staticmethod

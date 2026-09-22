@@ -396,3 +396,62 @@ def cwl_season_window_closed(cwl_season: str, now: object = None) -> bool:
 
     reference = now if isinstance(now, datetime) else datetime.now(timezone.utc)
     return reference.date() >= start + timedelta(days=CWL_SEASON_WINDOW_DAYS)
+
+
+# --- Clan Capital raid weekends (tracker #0115) ---------------------------------------------
+# A raid season runs Fri 07:00 UTC -> Mon 07:00 UTC every week (COC_GAME_MECHANICS.md
+# § Clan Capital Raid Weekends). Season keys are the ISO start timestamp, e.g.
+# "2026-09-18T07:00:00Z" — identical across clans, so cross-clan lookups are plain equality.
+RAID_SEASON_START_WEEKDAY = 4   # Friday (Monday == 0)
+RAID_SEASON_START_HOUR_UTC = 7
+RAID_SEASON_DURATION_HOURS = 72
+# Base raid attacks per player; the API's bonusAttackLimit (0/1) is the EARNED extra attack on top.
+RAID_BASE_ATTACK_LIMIT = 5
+
+
+def current_raid_season_bounds(now: object = None) -> Tuple[str, str]:
+    """Return the ISO (start, end) of the raid season that most recently started at or before
+    *now* — i.e. this weekend's season while it runs, and last weekend's season from Mon 07:00
+    until the next Fri 07:00.
+
+    Args:
+        now: Optional timezone-aware datetime (tests); defaults to the current UTC time.
+
+    Returns:
+        (season_start, season_end) as "YYYY-MM-DDTHH:MM:SSZ" strings.
+    """
+    from datetime import datetime, timedelta, timezone
+
+    reference = now if isinstance(now, datetime) else datetime.now(timezone.utc)
+    reference = reference.astimezone(timezone.utc)
+    days_back = (reference.weekday() - RAID_SEASON_START_WEEKDAY) % 7
+    start = (reference - timedelta(days=days_back)).replace(
+        hour=RAID_SEASON_START_HOUR_UTC, minute=0, second=0, microsecond=0
+    )
+    if start > reference:  # a Friday before 07:00 -> the season that started a week earlier
+        start -= timedelta(days=7)
+    end = start + timedelta(hours=RAID_SEASON_DURATION_HOURS)
+    fmt = "%Y-%m-%dT%H:%M:%SZ"
+    return start.strftime(fmt), end.strftime(fmt)
+
+
+def is_capital_raid_window(now: object = None) -> bool:
+    """True from Fri 07:00 UTC up to (not including) Mon 07:00 UTC — the only time raid data can
+    change. Outside it, the raid update step makes no API calls except catch-up for unfinalized
+    seasons (tracker #0115)."""
+    from datetime import datetime, timezone
+
+    reference = now if isinstance(now, datetime) else datetime.now(timezone.utc)
+    _start, end = current_raid_season_bounds(reference)
+    return reference.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ") < end
+
+
+def coc_timestamp_to_iso(raw: str) -> str:
+    """Convert a CoC API timestamp ("20260918T070000.000Z") to the raid season key format
+    ("2026-09-18T07:00:00Z"). Returns "" for an empty/unparseable value."""
+    from datetime import datetime
+
+    try:
+        return datetime.strptime(raw, "%Y%m%dT%H%M%S.%fZ").strftime("%Y-%m-%dT%H:%M:%SZ")
+    except (TypeError, ValueError):
+        return ""

@@ -195,6 +195,92 @@ class UnifiedNotificationView(TrackedView):
             remove_buddy_button.callback = self.remove_buddy_button_callback
             self.add_item(remove_buddy_button)  # type: ignore[arg-type]
 
+        # Rows 2-3: Clan Capital raid reminder settings (tracker #0115). Read straight from CACHE
+        # (like the Remove Buddy button above) so none of this view's many constructor call
+        # sites need new parameters.
+        self._raid_busy = False
+        self._add_raid_selects()
+
+    def _add_raid_selects(self) -> None:
+        """Raid reminder timing (Off / 24 h / 12 h before season end) and scope selects."""
+        notif = CACHE.user_accounts.get(self.user_id, {}).get("notification_settings", {})
+        hours = int(notif.get("raid_hours_before_end", 24) or 24)
+        timing_value = f"{hours}h" if notif.get("raid_reminders", False) else "off"
+        scope_value = notif.get("raid_reminder_scope") or "not_attacked"
+        kw = {"user_id": self.user_id, "guild_id": self.guild_id}
+
+        timing_select = discord.ui.Select(
+            placeholder=t('warnotifications.raid_timing_placeholder', **kw),
+            options=[
+                discord.SelectOption(label=t('warnotifications.raid_timing_off', **kw), value="off", emoji="🔕",
+                                     default=timing_value == "off"),
+                discord.SelectOption(label=t('warnotifications.raid_timing_hours', hours=24, **kw), value="24h",
+                                     emoji="🏰", default=timing_value == "24h"),
+                discord.SelectOption(label=t('warnotifications.raid_timing_hours', hours=12, **kw), value="12h",
+                                     emoji="🏰", default=timing_value == "12h"),
+            ],
+            row=2,
+        )
+        timing_select.callback = self._on_raid_timing_select  # type: ignore[assignment]
+        self.add_item(timing_select)  # type: ignore[arg-type]
+
+        scope_select = discord.ui.Select(
+            placeholder=t('warnotifications.raid_scope_placeholder', **kw),
+            options=[
+                discord.SelectOption(label=t('warnotifications.raid_scope_not_attacked', **kw), value="not_attacked",
+                                     emoji="🎯", default=scope_value == "not_attacked"),
+                discord.SelectOption(label=t('warnotifications.raid_scope_open_attacks', **kw), value="open_attacks",
+                                     emoji="🎯", default=scope_value == "open_attacks"),
+            ],
+            row=3,
+        )
+        scope_select.callback = self._on_raid_scope_select  # type: ignore[assignment]
+        self.add_item(scope_select)  # type: ignore[arg-type]
+
+    async def _on_raid_timing_select(self, interaction: discord.Interaction) -> None:
+        value = interaction.data['values'][0]  # type: ignore[index]
+        await self._apply_raid_setting(interaction, {
+            "raid_reminders": value != "off",
+            **({"raid_hours_before_end": 12 if value == "12h" else 24} if value != "off" else {}),
+        })
+
+    async def _on_raid_scope_select(self, interaction: discord.Interaction) -> None:
+        value = interaction.data['values'][0]  # type: ignore[index]
+        await self._apply_raid_setting(interaction, {"raid_reminder_scope": value})
+
+    async def _apply_raid_setting(self, interaction: discord.Interaction, updates: Dict[str, Any]) -> None:
+        """Persist raid reminder settings and re-render this message in place (Rule 7)."""
+        # Re-entrancy guard, set before any await: a rapid second pick must not race the first
+        # one's edit of the same message (Pitfall 41/49).
+        if self._raid_busy:
+            await interaction.response.defer()
+            return
+        self._raid_busy = True
+        user_data = CACHE.user_accounts.get(self.user_id)
+        if not user_data:
+            guild_id = interaction.guild.id if interaction.guild else None
+            await interaction.response.send_message(
+                t('ui_components.errors.user_data_not_found', user_id=str(interaction.user.id), guild_id=guild_id),
+                ephemeral=True,
+            )
+            return
+        notif_settings = user_data.setdefault("notification_settings", {})
+        notif_settings.update(updates)
+        await CACHE.set_user_account(self.user_id, user_data)
+        logging.info(f"User {interaction.user.name} (ID {self.user_id}) changed raid reminder settings: {updates}")
+
+        from qapbot.QBdiscocmdshelper import format_notification_settings
+        settings_text = format_notification_settings(user_data, interaction.user.display_name, user_id=self.user_id, guild_id=interaction.guild_id)
+        new_view = UnifiedNotificationView(
+            user_id=self.user_id,
+            is_enabled=notif_settings.get("war_reminders", False),
+            current_type=notif_settings.get("notification_type", "all_wars"),
+            current_mode=notif_settings.get("notification_mode", "repeated"),
+            original_interaction=self.original_interaction,
+        )
+        new_view.message = self.message
+        await interaction.response.edit_message(content=settings_text, view=new_view)
+
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         """Ensure only the owner can interact (and maintenance guard via super)."""
         if not await super().interaction_check(interaction):

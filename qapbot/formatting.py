@@ -132,7 +132,40 @@ MODE_REGISTRY: Dict[str, Dict[str, Any]] = cast(Dict[str, Dict[str, Any]], {
         "columns": [("Rank", 4), ("Clan", 22), ("Stars", 6), ("Destr.%", 8)],
         "sort_key": lambda p: (p.get("group_rank", 9999),),  # type: ignore[misc, union-attr]
         "description": "CWL league-group standings: rank, stars, and destruction for all 8 clans."
-    }
+    },
+    # Clan Capital raid weekends (tracker #0115). "source": "raid" routes these through
+    # calculate_raid_leaderboard() instead of the war aggregation; "cells" gives the non-player
+    # cell values so render_leaderboard() needs no per-mode branch. Medals are only final once a
+    # season has ended ("-" otherwise).
+    "raid": {
+        "columns": [("Player", 17), ("Loot", 8), ("Atk", 3), ("Ø Loot/Atk", 10), ("Medals", 6), ("Wknds", 5)],
+        "sort_key": lambda p: (-p.get("Loot", 0), p.get("Player", "").lower()),  # type: ignore[misc, union-attr]
+        "cells": lambda p: (  # type: ignore[misc]
+            p.get("Loot", 0), p.get("Attacks", 0),
+            f"{p['Loot'] / p['Attacks']:.0f}" if p.get("Attacks") else "0",
+            p.get("Medals", 0) if p.get("Medals_final") else "-", p.get("Weekends", 0),
+        ),
+        "source": "raid",
+        "description": "Clan Capital raid loot per player (month/period/year)."
+    },
+    "currentraid": {
+        "columns": [("Player", 17), ("Loot", 8), ("Atk", 3), ("Ø Loot/Atk", 10), ("Medals", 6), ("Wknds", 5)],
+        "sort_key": lambda p: (-p.get("Loot", 0), p.get("Player", "").lower()),  # type: ignore[misc, union-attr]
+        "cells": lambda p: (  # type: ignore[misc]
+            p.get("Loot", 0), p.get("Attacks", 0),
+            f"{p['Loot'] / p['Attacks']:.0f}" if p.get("Attacks") else "0",
+            p.get("Medals", 0) if p.get("Medals_final") else "-", p.get("Weekends", 0),
+        ),
+        "source": "raid",
+        "description": "Current (or last) raid weekend incl. players who haven't attacked yet."
+    },
+    "raidmissed": {
+        "columns": [("Player", 17), ("Missed", 6), ("Wknds", 5)],
+        "sort_key": lambda p: (-p.get("Missed", 0), p.get("Player", "").lower()),  # type: ignore[misc, union-attr]
+        "cells": lambda p: (p.get("Missed", 0), p.get("Weekends", 0)),  # type: ignore[misc]
+        "source": "raid",
+        "description": "Raid weekends missed completely (0 attacks) per player."
+    },
 })  # Close cast() wrapper
 DEFAULT_MODE = "attack"
 
@@ -144,7 +177,10 @@ MODE_REGISTRY: Dict[str, Dict[str, Any]] = MODE_REGISTRY  # type: ignore[misc, n
 # Modes that are inherently CWL-specific (or, for "currentwar", have no CWL
 # variant at all) and therefore have no "<mode>_cwl" counterpart in
 # MODE_REGISTRY above.
-NO_CWL_SUFFIX_MODES = frozenset({"cwlgroup", "cwlinfo", "cwlinfo_comp", "currentwar"})
+NO_CWL_SUFFIX_MODES = frozenset({"cwlgroup", "cwlinfo", "cwlinfo_comp", "currentwar", "raid", "currentraid", "raidmissed"})
+
+# Clan Capital raid modes (tracker #0115) — they read raid tables, never the war endpoint.
+RAID_MODES = frozenset(mode for mode, spec in MODE_REGISTRY.items() if spec.get("source") == "raid")
 
 
 def apply_cwl_mode_suffix(mode: str, cwl_only: bool) -> str:
@@ -729,7 +765,10 @@ def render_leaderboard(
         "attackdefratio": "Attack/Defense-Ratio Leaderboard",
         "missedattacks": "Missed Attacks Leaderboard",
         "defense": "Defense (Fewest Defensive Stars per War) Leaderboard",
-        "currentwar": "Current War"
+        "currentwar": "Current War",
+        "raid": "Capital Raid Leaderboard",
+        "currentraid": "Current Raid Weekend",
+        "raidmissed": "Missed Raid Weekends",
     }
     header_title = header_label_map.get(mode, mode.title())
     if not clan_name:
@@ -812,7 +851,13 @@ def render_leaderboard(
             # Calculate total attacks for display (attacks made + missed attacks)
             total_attacks = p.get("Attacks", 0) + p.get("Missed_Attacks", 0)  # type: ignore[misc]
             # Build row_parts based on mode
-            if mode == "missedattacks":
+            if "cells" in spec:
+                # Generic column-driven row (raid modes, tracker #0115): spec["cells"] returns the
+                # values for columns 1..N in order.
+                row_parts = [player_cell] + [
+                    right_pad_number(value, width) for value, (_, width) in zip(spec["cells"](p), cols[1:])  # type: ignore[misc]
+                ]
+            elif mode == "missedattacks":
                 row_parts = [
                     player_cell,
                     right_pad_number(p.get("TH_lvl", 0), cols[1][1]),  # type: ignore[misc]

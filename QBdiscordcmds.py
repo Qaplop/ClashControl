@@ -49,7 +49,7 @@ import QBcore
 from typing import Optional, Union, Any, Dict, List, Tuple, Set
 from QBhelperfunctions import (
     generate_leaderboard_text, generate_cwlinfo_embeds, generate_cwlinfo_comp_embeds, post_discord_content_with_tracking, post_leaderboard_to_discord,
-    update_clan_war_info_and_stats, generate_cwl_group_analysis_embeds,
+    update_clan_war_info_and_stats, update_capital_raid_for_clan, generate_cwl_group_analysis_embeds,
     update_cwl_group_stats, generate_cwl_group_image,
     build_cwl_opponent_embeds, parse_month_argument, resolve_subscription_period,
     coc_clan_profile_url, coc_player_profile_url,
@@ -496,7 +496,7 @@ async def unsubscribe_mode_autocomplete(interaction: discord.Interaction, curren
 @app_commands.command(name="leaderboard", description=dev_mode+"Display leaderboard(s) for subscribed clans or families with various modes.")
 @app_commands.describe(
     clan="Clan or clan-family tag or name. Leave empty for this channel's subscriptions.",
-    mode="Leaderboard mode: attack (total stars), defense (def stars taken), avgstars (stars per attack), currentwar (ongoing war), etc.",
+    mode="Mode: attack, defense, avgstars, currentwar, … raid / currentraid / raidmissed (Clan Capital raids)",
     month="Month: a number (6), a range (6-7), a list (1;3;5), or trailing count (-2 = last 2 months)",
     year="Year (YYYY)",
     cwl_only="Restrict to CWL stats only",
@@ -594,7 +594,7 @@ async def leaderboard(
     tags: List[str] = []
     per_tag_modes: List[str] = []
 
-    from qapbot.formatting import MODE_REGISTRY, DEFAULT_MODE, apply_cwl_mode_suffix  # type: ignore[attr-defined]
+    from qapbot.formatting import MODE_REGISTRY, DEFAULT_MODE, apply_cwl_mode_suffix, RAID_MODES  # type: ignore[attr-defined]
     valid_modes = set(MODE_REGISTRY.keys())  # type: ignore[arg-type]
 
     def apply_cwl(m: str) -> str:
@@ -688,8 +688,8 @@ async def leaderboard(
         # No clan argument: Update war info for all clans subscribed to current channel
         # This includes individual clans and all members of subscribed families
         for i, tag in enumerate(tags):
-            if per_tag_modes[i] in ('cwlinfo', 'cwlinfo_comp', 'cwlgroup'):
-                continue  # CWL embed / group standings don't use the regular war endpoint
+            if per_tag_modes[i] in ('cwlinfo', 'cwlinfo_comp', 'cwlgroup') or per_tag_modes[i] in RAID_MODES:
+                continue  # CWL embed / group standings / capital raids don't use the regular war endpoint
             if tag in CACHE.clan_families:
                 # Add all member clans from subscribed families
                 family_clans = CACHE.clan_families[tag].get('clans', [])
@@ -702,8 +702,8 @@ async def leaderboard(
     else:
         # Clan/family argument provided: Update war info for specified clan or family members
         for i, tag in enumerate(tags):
-            if per_tag_modes[i] in ('cwlinfo', 'cwlinfo_comp', 'cwlgroup'):
-                continue  # CWL embed / group standings don't use the regular war endpoint
+            if per_tag_modes[i] in ('cwlinfo', 'cwlinfo_comp', 'cwlgroup') or per_tag_modes[i] in RAID_MODES:
+                continue  # CWL embed / group standings / capital raids don't use the regular war endpoint
             if tag in CACHE.clan_families:
                 # Family specified: update all member clans
                 family_clans = CACHE.clan_families[tag].get('clans', [])
@@ -769,9 +769,22 @@ async def leaderboard(
     is_dm = interaction.guild is None
     for i, tag in enumerate(tags):
         is_family = tag in CACHE.clan_families
-        if is_family and per_tag_modes[i] in ('currentwar', 'cwlinfo', 'cwlinfo_comp', 'cwlgroup'):
+        if is_family and per_tag_modes[i] in ('currentwar', 'cwlinfo', 'cwlinfo_comp', 'cwlgroup', 'currentraid'):
             continue  # Skip live-war / group modes for families
         period_month, period_year = per_tag_periods[i] if i < len(per_tag_periods) else (month_range, yr)
+        if per_tag_modes[i] in ('currentraid', 'raidmissed') and not explicit_time:
+            # No month/year given: these two show the latest raid weekend, not "this month"
+            # (tracker #0115) — month=None is how generate_leaderboard_text() is told so.
+            period_month = None  # type: ignore[assignment]
+        if per_tag_modes[i] == 'currentraid':
+            from qapbot.constants import is_capital_raid_window
+            if is_capital_raid_window():
+                # Freshen the running weekend first (same idea as the war refresh above);
+                # otherwise the data is at most one update cycle old.
+                try:
+                    await update_capital_raid_for_clan(tag)
+                except Exception as _raid_ex:
+                    logging.warning(f"[leaderboard] currentraid refresh failed for {tag}: {_raid_ex}")
         if per_tag_modes[i] == 'cwlinfo':
             if not interaction.channel:
                 continue
@@ -960,6 +973,9 @@ async def highlightme(interaction: discord.Interaction):
             sub_month = sub.get('month')
             sub_year = sub.get('year')
             month, year, month_range = resolve_subscription_period(sub)
+            if mode in ('currentraid', 'raidmissed') and sub_month is None and sub_year is None:
+                # No fixed period: latest raid weekend, as the automatic poster does (tracker #0115).
+                month_range = None  # type: ignore[assignment]
 
             text = await asyncio.to_thread(
                 generate_leaderboard_text, clan_tag, month=month_range, year=year,
@@ -972,7 +988,7 @@ async def highlightme(interaction: discord.Interaction):
             # current period — only the fallback TEXT comes from the previous month —
             # so this still targets the latest message for a rolling subscription
             # instead of spawning a stray duplicate on a past month's message.
-            if sub_month is None and sub_year is None and "no wars recorded for" in text.lower() and mode != "currentwar":
+            if sub_month is None and sub_year is None and "recorded for" in text.lower() and mode != "currentwar":
                 prev_month = month - 1
                 prev_year = year
                 if prev_month == 0:

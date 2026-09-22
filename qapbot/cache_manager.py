@@ -3466,6 +3466,32 @@ class CacheManager:
             operation_name=f"get_current_war({clan_tag})"
         )
 
+    async def get_capital_raid_seasons_from_api(self, clan_tag: str, *, limit: int = 1) -> Dict[str, Any]:
+        """
+        Fetch a clan's Clan Capital raid seasons (``/clans/{tag}/capitalraidseasons``) as the raw
+        API dict ``{"items": [...], "paging": {...}}``, newest season first (tracker #0115).
+
+        Deliberately the raw HTTP call coc.py's own ``RaidLog`` paginator makes, not
+        ``coc_client.get_raid_log()``: ``RaidLogEntry`` objects are reference cycles (generator
+        closures over ``self`` + ``raid_log_entry`` back-references) that refcounting can never
+        free while automatic GC is off (qapbot/docs/PERFORMANCE_TUNING.md). Only ``items[0]``
+        carries per-player data, so ``limit=1`` is all any caller needs.
+
+        The returned dict is the object held in coc.py's response cache — DO NOT mutate it.
+
+        Raises:
+            RuntimeError: If the CoC client is not initialised.
+            coc.NotFound / coc.Maintenance / coc.Forbidden: Propagated from the CoC API.
+        """
+        if not self.coc_client:
+            raise RuntimeError("CoC API client not initialized. Call startup_login() first.")
+
+        logging.debug(f"[COC-API-CALL] Fetching capital raid seasons for clan {clan_tag}")
+        return await coc_retry(
+            lambda: self.coc_client.http.get_clan_raid_log(clan_tag, limit=limit),  # type: ignore[union-attr]
+            operation_name=f"get_capital_raid_seasons({clan_tag})"
+        )
+
     async def get_league_war(
         self,
         war_tag: str,

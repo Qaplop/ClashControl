@@ -938,9 +938,13 @@ async def post_leaderboards_to_subscribed_channels() -> None:
                         continue
 
                     # --- all other modes: text/leaderboard path ---
+                    if subscription_type in ('currentraid', 'raidmissed') and sub_month is None and sub_year is None:
+                        # No fixed period: these show the latest raid weekend (tracker #0115).
+                        month_range = None  # type: ignore[assignment]
                     leaderboard_text = await asyncio.to_thread(generate_leaderboard_text, clan_tag, month=month_range, year=year, mode=subscription_type)
-                    # Only auto-fallback when no explicit month/year is set
-                    if sub_month is None and sub_year is None and "no wars recorded for" in leaderboard_text.lower() and subscription_type != "currentwar":
+                    # Only auto-fallback when no explicit month/year is set. "recorded for" covers
+                    # both "No wars recorded for" and the raid modes' "No raid weekends recorded for".
+                    if sub_month is None and sub_year is None and "recorded for" in leaderboard_text.lower() and subscription_type != "currentwar":
                         prev_month = month - 1
                         prev_year = year
                         if prev_month == 0:
@@ -2414,6 +2418,25 @@ async def main() -> None:
             )
     except Exception as e:
         logging.error(f"Error in CWL ended-flag sweep: {e}")
+
+    # Clan Capital raid update (tracker #0115, plans/tracker-0115-capital-raid-leaderboards.md §3).
+    # Pure API + DB, no Discord I/O — like the sweep above it keeps running during a Discord
+    # outage, and it sits before the notification check and leaderboard posting below so raid
+    # reminders and auto-posted raid boards see this cycle's data. Fri 07:00 -> Mon 07:00 UTC
+    # only (plus catch-up for unfinalized seasons); zero API calls on a normal Tue-Thu.
+    _raid_t0 = time.monotonic()
+    try:
+        from QBhelperfunctions import update_capital_raids_for_member_clans
+        _raid = await update_capital_raids_for_member_clans()
+        if _raid["clans"] or _raid["errors"]:
+            logging.info(
+                "[RAID-UPDATE] clans=%d fetched=%d snapshots=%d written=%d finalized=%d errors=%d",
+                _raid["clans"], _raid["fetched"], _raid["snapshot"], _raid["written"],
+                _raid["finalized"], _raid["errors"],
+            )
+    except Exception as e:
+        logging.error(f"[RAID-UPDATE] Capital raid update error: {e}")
+    logging.info(f"[RAID-UPDATE-TIMING] Completed in {time.monotonic() - _raid_t0:.3f}s")
 
     # Check for war notifications (send DM reminders to players)
     try:

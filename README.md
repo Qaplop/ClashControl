@@ -13,6 +13,8 @@ A powerful, modular Discord bot designed for Clash of Clans clan management, fea
 
 ### Core Functionality
 - **Automated Leaderboards**: Generate and post clan war leaderboards with multiple display modes
+- **Clan Capital Raids**: Raid weekend tracking for member clans with `raid`, `currentraid` and `raidmissed`
+  leaderboard modes (loot, medals, and players who missed a raid weekend)
 - **War Predictions**: Simulate war outcomes and calculate win probabilities using advanced algorithms
 - **War Notifications**: Automated DM reminders for players with remaining attacks
 - **Clan Family Support**: Manage multiple clans as families with unified tracking and leaderboards
@@ -83,6 +85,9 @@ A powerful, modular Discord bot designed for Clash of Clans clan management, fea
 - **State Tracking**: Remembers which players have been notified to prevent duplicates
 - **Aggregated Messages**: Reduces Discord notification spam with consolidated updates
 - **Integration**: Seamlessly works with player registration system
+- **Clan Capital Raid Reminders**: One reminder per raid weekend, 12 or 24 h before it ends, for accounts
+  with no raid attack yet (or, optionally, any raid attacks left) — per user in the notification menu and
+  per server channel (clan management config; optional raid channel, defaults to the war channel)
 
 ## 🚀 Quick Start
 

@@ -244,6 +244,23 @@ was also collapsed from two queries to one (they differed only in the aggregate 
 WHERE/GROUP BY), with `get_cwl_group_war_stats_sync()` as its deliberately-identical sync twin for
 the sweep's to_thread batches.
 
+## Clan Capital raid update step (tracker #0115, 2026-09-22)
+
+`update_capital_raids_for_member_clans()` (`QBhelperfunctions.py`) runs once per cycle from
+`main()`, right after the `cwl_ended` sweep and before the notification check / leaderboard
+posting (so raid reminders and auto-posted raid boards see this cycle's data). Like the sweep it is
+pure API + DB and runs during Discord outages. Logs `[RAID-UPDATE]` / `[RAID-UPDATE-TIMING]`;
+the API calls show up as `get_capital_raid_seasons` in `[API-CALL-MIX]`.
+
+- Scope: every guild's member clans (`all_member_clan_tags()`), not subscribed/guest clans.
+- Gate: raid window Fri 07:00 -> Mon 07:00 UTC (`is_capital_raid_window()`), or the clan still has
+  an unfinalized season (catch-up). A normal Tue-Thu cycle makes zero API calls.
+- Per clan (`update_capital_raid_for_clan()`): one-time roster snapshot at season start, then
+  `capitalraidseasons?limit=1` matched against EVERY unfinalized season (not just the newest —
+  the "Friday catch-up" case), closing seasons the API never delivered as `no_result`.
+- Uses the raw `coc_client.http.get_clan_raid_log()` dict, not coc.py's cyclic `RaidLogEntry`
+  objects (see PERFORMANCE_TUNING.md GC policy).
+
 ## Error Handling
 
 ### Exception Hierarchy

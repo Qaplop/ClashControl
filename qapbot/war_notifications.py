@@ -61,6 +61,55 @@ from qapbot.formatting import normalize_player_name
 # _get_buddy_watcher_discord_ids — reduced to O(1) per lookup.
 _notification_player_index: Dict[str, str] = {}         # tag_clean → discord_id
 _notification_watcher_index: Dict[str, List[str]] = {}  # tag_clean_upper → [discord_ids]
+# Same as _notification_player_index, for users with Clan Capital raid reminders on (tracker #0115).
+_raid_notification_player_index: Dict[str, str] = {}    # tag_clean → discord_id
+
+# One row per reminder kind (tracker #0115). war_data["kind"] selects it; absent means "war", so
+# every pre-existing caller and war_data dict is untouched. Raid seasons are fed through this same
+# pipeline as extra "wars" (see _get_active_raids) instead of a parallel notifier — plan §5.
+_REMINDER_KINDS: Dict[str, Dict[str, Any]] = {
+    "war": {
+        "user_flag": "war_reminders", "user_hours": "hours_before_end", "repeat": True, "user_scope": None,
+        "guild_flag": "channel_war_notifications_enabled", "guild_hours": "war_notification_threshold_hours",
+        "guild_hours_default": 1.0, "guild_scope": None, "channel_key": "war_notification_channel_id",
+        "dm_keys": "ui_components.war_notification_dm",
+    },
+    "raid": {
+        "user_flag": "raid_reminders", "user_hours": "raid_hours_before_end", "repeat": False,
+        "user_scope": "raid_reminder_scope",
+        "guild_flag": "channel_raid_notifications_enabled", "guild_hours": "raid_notification_threshold_hours",
+        "guild_hours_default": 24.0, "guild_scope": "raid_notification_scope",
+        "channel_key": "raid_notification_channel_id",
+        "dm_keys": "ui_components.raid_notification_dm",
+    },
+}
+_RAID_REMINDER_MAX_HOURS = 24  # largest selectable raid threshold; nothing earlier is loaded
+
+
+def _reminder_profile(kind: Optional[str]) -> Dict[str, Any]:
+    """The _REMINDER_KINDS row for a war_data/player_info "kind" (default "war")."""
+    return _REMINDER_KINDS.get(kind or "war", _REMINDER_KINDS["war"])
+
+
+def _notification_channel_id(guild_config: Dict[str, Any], kind: str = "war") -> Optional[str]:
+    """Channel for a guild's channel reminder of this kind. Raid uses its own channel when one is
+    set and falls back to the war notification channel otherwise (tracker #0115)."""
+    return guild_config.get(_reminder_profile(kind)["channel_key"]) or guild_config.get("war_notification_channel_id")
+
+
+def _in_scope(scope: Optional[str], attacks_used: int) -> bool:
+    """Reminder-scope filter (tracker #0115): "not_attacked" = only players with 0 attacks;
+    "open_attacks" or None (wars) = every player with attacks left."""
+    return scope != "not_attacked" or attacks_used == 0
+
+
+def _reminder_timing(notif_settings: Dict[str, Any], kind: str) -> Tuple[float, str]:
+    """(hours_before_end, mode) a user's reminder of this kind uses. Raid reminders are always
+    once per season (project owner, 2026-09-22) whatever the user's war mode is."""
+    profile = _reminder_profile(kind)
+    if not profile["repeat"]:
+        return float(notif_settings.get(profile["user_hours"], 24) or 24), "once"
+    return notif_settings.get("hours_before_end", 4), notif_settings.get("notification_mode", "repeated")
 
 
 async def check_wars_for_notifications() -> None:
@@ -120,16 +169,22 @@ async def check_wars_for_notifications() -> None:
         # Build reverse lookup indices once — O(n_users) total instead of
         # O(n_users * n_members * n_wars) from per-member linear scans.
         _t_index0 = time.monotonic()
-        global _notification_player_index, _notification_watcher_index
+        global _notification_player_index, _notification_watcher_index, _raid_notification_player_index
         _notification_player_index = {}
         _notification_watcher_index = {}
+        _raid_notification_player_index = {}
         for _disc_id, _udata in CACHE.user_accounts.items():
             _nsettings = _udata.get("notification_settings", {})
-            if _nsettings.get("war_reminders", False):
+            _war_on = _nsettings.get("war_reminders", False)
+            _raid_on = _nsettings.get("raid_reminders", False)
+            if _war_on or _raid_on:
                 for _p in _udata.get("players", []):
                     _tc = _p.get("player_tag", "").lstrip("#")
                     if _tc:
-                        _notification_player_index[_tc] = _disc_id
+                        if _war_on:
+                            _notification_player_index[_tc] = _disc_id
+                        if _raid_on:
+                            _raid_notification_player_index[_tc] = _disc_id
             for _wp in _udata.get("watched_players", []):
                 _tc = _wp.get("player_tag", "").lstrip("#").upper()
                 if _tc:
@@ -156,6 +211,12 @@ async def check_wars_for_notifications() -> None:
         # at the scale measured then, not at current CWL-season scale.)
         _t0 = time.monotonic()
         active_wars = await asyncio.to_thread(_get_active_wars)
+        # Clan Capital raid seasons ending within 24 h ride the same loop as extra "wars"
+        # (tracker #0115) — one small indexed DB read, empty outside Sun 07:00 -> Mon 07:00 UTC.
+        try:
+            active_wars = list(active_wars) + await asyncio.to_thread(_get_active_raids)
+        except Exception as _raid_ex:
+            logging.error(f"[NOTIFY] Could not load raid reminder candidates: {_raid_ex}")
         _get_wars_elapsed = time.monotonic() - _t0
         logging.debug(f"[NOTIFY] wars loaded in {_get_wars_elapsed:.3f}s, {len(active_wars)} active war(s)")
 
@@ -331,6 +392,51 @@ def _get_active_wars() -> List[Tuple[str, str, Dict[str, Any]]]:
     return active_wars
 
 
+def _get_active_raids(now: Optional[datetime] = None) -> List[Tuple[str, str, Dict[str, Any]]]:
+    """Clan Capital raid seasons as reminder "wars" (tracker #0115, plan §5.2).
+
+    One (clan_tag, raid_key, war_data) per clan with an 'ongoing' season ending within
+    _RAID_REMINDER_MAX_HOURS, shaped like a war_data dict so _process_war_for_notifications()
+    handles it unchanged: clan.members = every ELIGIBLE player (on the roster at season start)
+    who still has attacks left, each with their own attack limit (5 + earned bonus). The
+    per-recipient scope filter ("not attacked" vs "any attacks left") is applied downstream.
+    Sync — call via asyncio.to_thread().
+    """
+    from QBhelperfunctions import raid_notification_key
+    db = CACHE.db_manager
+    if db is None:
+        return []
+    now = now or datetime.now(timezone.utc)
+    horizon = datetime.fromtimestamp(now.timestamp() + _RAID_REMINDER_MAX_HOURS * 3600, timezone.utc)
+    rows = db.get_ongoing_capital_raid_candidates_sync(horizon.strftime("%Y-%m-%dT%H:%M:%SZ"))
+    by_season: Dict[Tuple[str, str], Dict[str, Any]] = {}
+    for r in rows:
+        key = (r["clan_tag"], r["season_start"])
+        entry = by_season.get(key)
+        if entry is None:
+            season_end = datetime.strptime(r["season_end"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+            hours_remaining = (season_end - now).total_seconds() / 3600
+            if hours_remaining <= 0:
+                continue
+            clan_name = CACHE.get_clan_name(r["clan_tag"], r["clan_tag"])
+            entry = by_season[key] = {
+                "kind": "raid",
+                "war_key": raid_notification_key(r["clan_tag"], r["season_start"]),
+                "is_cwl": False,
+                "hours_remaining": hours_remaining,
+                "attacks_per_member": 5,
+                "clan": {"tag": r["clan_tag"], "name": clan_name, "members": []},
+                "opponent": {"tag": "", "name": ""},
+            }
+        entry["clan"]["members"].append({
+            "tag": r["player_tag"],
+            "name": r["player_name"] or r["player_tag"],
+            "attacks": [None] * int(r["attacks"] or 0),
+            "attacks_per_member": int(r["attack_total_limit"] or 5),
+        })
+    return [(clan_tag, data["war_key"], data) for (clan_tag, _start), data in by_season.items()]
+
+
 def parse_war_timestamp_field(ts_str: Any) -> Tuple[Optional[datetime], Optional[int]]:
     """
     Parse a QapBot war-JSON Timestamp string, e.g.:
@@ -432,6 +538,8 @@ def _get_war_id(clan_tag: str, war_data: Dict[str, Any]) -> str:
         war_id = _get_war_id("#2C9UR9GJY", war_data)
         # Returns: "2CLANTAG01_2OPPTAG02"
     """
+    if war_data.get("war_key"):
+        return str(war_data["war_key"])  # raid seasons carry their own key (tracker #0115)
     clan_tag_clean = clan_tag.lstrip("#")
     opponent_tag = war_data.get("opponent", {}).get("tag", "UNKNOWN").lstrip("#")
     return f"{clan_tag_clean}_{opponent_tag}"
@@ -600,26 +708,36 @@ def _get_players_needing_reminders(clan_tag: str, war_id: str, war_data: Dict[st
     if hours_remaining is None:
         return []
 
+    # Reminder kind (tracker #0115): "war" (default) or "raid" — selects which user flag,
+    # threshold, scope and dedup rules apply. See _REMINDER_KINDS.
+    kind = war_data.get("kind", "war")
+    profile = _reminder_profile(kind)
+
     for member in clan_members:
         player_tag = member.get("tag", "")
         player_name = member.get("name", "Unknown")
         attacks_used = len(member.get("attacks", []))
-        attacks_remaining = attacks_per_member - attacks_used
+        # Raid members carry their own limit (5 + earned bonus); war members never do.
+        attacks_remaining = member.get("attacks_per_member", attacks_per_member) - attacks_used
 
         if attacks_remaining <= 0:
             continue  # Player completed all attacks
 
         # Check if player registered and has notifications enabled
-        discord_id = _get_player_discord_id(player_tag)
+        discord_id = _get_player_discord_id(player_tag, kind)
         if not discord_id:
             continue  # Player not registered or notifications disabled
-        
+
         # Check notification_type filter (all_wars vs cwl_only)
         if not _should_notify_for_war_type(discord_id, war_data):
             continue  # War type doesn't match user's notification preferences
-        
+
+        # Raid reminder scope: only players with 0 attacks unless the user chose "any left"
+        if not _in_scope(_user_reminder_scope(discord_id, profile), attacks_used):
+            continue
+
         # Check notification eligibility based on mode (once vs repeated)
-        if not _should_send_notification(war_id, player_tag, discord_id, hours_remaining):
+        if not _should_send_notification(war_id, player_tag, discord_id, hours_remaining, kind):
             continue  # Already notified or not time for next notification yet
 
         players_to_notify.append({
@@ -631,6 +749,7 @@ def _get_players_needing_reminders(clan_tag: str, war_id: str, war_data: Dict[st
             "opponent_name": opponent_name,
             "hours_remaining": hours_remaining,
             "is_buddy": False,
+            "kind": kind,
         })
 
     # ── Save-your-Buddy: also notify users who are watching this player ──
@@ -639,7 +758,7 @@ def _get_players_needing_reminders(clan_tag: str, war_id: str, war_data: Dict[st
         player_tag = member.get("tag", "")
         player_name = member.get("name", "Unknown")
         attacks_used = len(member.get("attacks", []))
-        attacks_remaining = attacks_per_member - attacks_used
+        attacks_remaining = member.get("attacks_per_member", attacks_per_member) - attacks_used
 
         if attacks_remaining <= 0:
             continue  # Player completed all attacks
@@ -658,15 +777,19 @@ def _get_players_needing_reminders(clan_tag: str, war_id: str, war_data: Dict[st
             # Check watcher has notifications enabled
             watcher_data = CACHE.user_accounts.get(watcher_discord_id, {})
             notif_settings = watcher_data.get("notification_settings", {})
-            if not notif_settings.get("war_reminders", False):
+            if not notif_settings.get(profile["user_flag"], False):
                 continue
 
             # Check war type filter for watcher
             if not _should_notify_for_war_type(watcher_discord_id, war_data):
                 continue
 
+            # Raid reminder scope is the WATCHER's own setting
+            if not _in_scope(_user_reminder_scope(watcher_discord_id, profile), attacks_used):
+                continue
+
             # Check buddy notification eligibility (separate tracking from own accounts)
-            if not _should_send_buddy_notification(war_id, player_tag, watcher_discord_id, hours_remaining):
+            if not _should_send_buddy_notification(war_id, player_tag, watcher_discord_id, hours_remaining, kind):
                 continue
 
             players_to_notify.append({
@@ -678,6 +801,7 @@ def _get_players_needing_reminders(clan_tag: str, war_id: str, war_data: Dict[st
                 "opponent_name": opponent_name,
                 "hours_remaining": hours_remaining,
                 "is_buddy": True,
+                "kind": kind,
             })
 
     return players_to_notify
@@ -727,14 +851,15 @@ def _get_players_with_attacks_remaining(war_data: Dict[str, Any]) -> List[Dict[s
         player_tag = member.get("tag", "")
         player_name = member.get("name", "Unknown")
         attacks_used = len(member.get("attacks", []))
-        attacks_remaining = attacks_per_member - attacks_used
-        
+        attacks_remaining = member.get("attacks_per_member", attacks_per_member) - attacks_used
+
         if attacks_remaining <= 0:
             continue  # Player completed all attacks
-        
+
         players_with_attacks.append({
             "player_tag": player_tag,
             "player_name": player_name,
+            "attacks_used": attacks_used,  # for the raid channel-reminder scope filter
             "attacks_remaining": attacks_remaining,
             "clan_name": clan_name,
             "opponent_name": opponent_name,
@@ -765,7 +890,10 @@ def _should_notify_for_war_type(discord_id: str, war_data: Dict[str, Any]) -> bo
     user_data = CACHE.user_accounts.get(discord_id)
     if not user_data:
         return False
-    
+
+    if war_data.get("kind") == "raid":
+        return True  # all_wars/cwl_only is a war-only filter (tracker #0115)
+
     notif_settings = user_data.get("notification_settings", {})
     notif_type = notif_settings.get("notification_type", "all_wars")
     
@@ -783,7 +911,7 @@ def _should_notify_for_war_type(discord_id: str, war_data: Dict[str, Any]) -> bo
     return True
 
 
-def _get_player_discord_id(player_tag: str) -> Optional[str]:
+def _get_player_discord_id(player_tag: str, kind: str = "war") -> Optional[str]:
     """
     Map CoC player tag to Discord user ID using CACHE.user_accounts.
     
@@ -805,7 +933,16 @@ def _get_player_discord_id(player_tag: str) -> Optional[str]:
         # Returns: "123456789012345678" or None
     """
     player_tag_clean = player_tag.lstrip("#")
-    return _notification_player_index.get(player_tag_clean)
+    index = _raid_notification_player_index if kind == "raid" else _notification_player_index
+    return index.get(player_tag_clean)
+
+
+def _user_reminder_scope(discord_id: str, profile: Dict[str, Any]) -> Optional[str]:
+    """The user's reminder scope for this kind (raid: default "not_attacked"); None for wars."""
+    if not profile["user_scope"]:
+        return None
+    notif_settings = CACHE.user_accounts.get(discord_id, {}).get("notification_settings", {})
+    return notif_settings.get(profile["user_scope"]) or "not_attacked"
 
 
 def _get_buddy_watcher_discord_ids(player_tag: str) -> List[str]:
@@ -825,7 +962,7 @@ def _get_buddy_watcher_discord_ids(player_tag: str) -> List[str]:
     return list(_notification_watcher_index.get(player_tag_clean, []))
 
 
-def _should_send_buddy_notification(war_id: str, player_tag: str, watcher_discord_id: str, hours_remaining: float) -> bool:
+def _should_send_buddy_notification(war_id: str, player_tag: str, watcher_discord_id: str, hours_remaining: float, kind: str = "war") -> bool:
     """
     Determine whether a buddy notification should be sent to a watcher.
 
@@ -847,8 +984,7 @@ def _should_send_buddy_notification(war_id: str, player_tag: str, watcher_discor
         return False
 
     notif_settings = user_data.get("notification_settings", {})
-    notif_mode = notif_settings.get("notification_mode", "repeated")
-    hours_before_end = notif_settings.get("hours_before_end", 4)
+    hours_before_end, notif_mode = _reminder_timing(notif_settings, kind)
 
     if hours_remaining > hours_before_end:
         return False
@@ -942,7 +1078,7 @@ def _is_already_notified(war_id: str, player_tag: str) -> bool:  # type: ignore[
     return player_tag_clean in war_notifications
 
 
-def _should_send_notification(war_id: str, player_tag: str, discord_id: str, hours_remaining: float) -> bool:
+def _should_send_notification(war_id: str, player_tag: str, discord_id: str, hours_remaining: float, kind: str = "war") -> bool:
     """
     Determine if notification should be sent based on mode (once vs repeated) and timing.
     
@@ -971,9 +1107,9 @@ def _should_send_notification(war_id: str, player_tag: str, discord_id: str, hou
         return False
     
     notif_settings = user_data.get("notification_settings", {})
-    notif_mode = notif_settings.get("notification_mode", "repeated")
-    hours_before_end = notif_settings.get("hours_before_end", 4)
-    
+    # Raid reminders: raid_hours_before_end, always "once" (tracker #0115)
+    hours_before_end, notif_mode = _reminder_timing(notif_settings, kind)
+
     # Check if war is within user's notification threshold
     if hours_remaining > hours_before_end:
         logging.debug(f"War not within user threshold: {hours_remaining:.1f}h > {hours_before_end}h")
@@ -1221,6 +1357,9 @@ def _format_aggregated_reminder_message(display_name: str, player_list: List[Dic
     """
     # Get war context from first player (all same war)
     first_player = player_list[0]
+    # Raid reminders (tracker #0115) swap the war-specific texts (header, matchup, time left,
+    # closing line); the account lines and plural forms are shared.
+    dm_keys = _reminder_profile(first_player.get("kind"))["dm_keys"]
     hours = first_player["hours_remaining"]
     clan_name = first_player["clan_name"]
     opponent_name = first_player["opponent_name"]
@@ -1228,9 +1367,9 @@ def _format_aggregated_reminder_message(display_name: str, player_list: List[Dic
     # Format time remaining
     if hours < 1:
         minutes = int(hours * 60)
-        time_str = t('ui_components.war_notification_dm.war_ends_minutes', user_id=discord_user_id, guild_id=guild_id, minutes=minutes)
+        time_str = t(f'{dm_keys}.war_ends_minutes', user_id=discord_user_id, guild_id=guild_id, minutes=minutes)
     else:
-        time_str = t('ui_components.war_notification_dm.war_ends_hours', user_id=discord_user_id, guild_id=guild_id, hours=f"{hours:.1f}")
+        time_str = t(f'{dm_keys}.war_ends_hours', user_id=discord_user_id, guild_id=guild_id, hours=f"{hours:.1f}")
     
     # Build account table — separate own and buddy accounts
     own_players = [p for p in player_list if not p.get("is_buddy", False)]
@@ -1274,10 +1413,10 @@ def _format_aggregated_reminder_message(display_name: str, player_list: List[Dic
         attacks_line = t('ui_components.war_notification_dm.attacks_remaining_multiple_multiple',
                        user_id=discord_user_id, guild_id=guild_id, total_attacks=total_attacks, account_count=account_count)
     
-    header = t('ui_components.war_notification_dm.header', user_id=discord_user_id, guild_id=guild_id)
+    header = t(f'{dm_keys}.header', user_id=discord_user_id, guild_id=guild_id)
     greeting = t('ui_components.war_notification_dm.greeting', user_id=discord_user_id, guild_id=guild_id, display_name=display_name)
-    matchup = t('ui_components.war_notification_dm.war_matchup', user_id=discord_user_id, guild_id=guild_id, clan_name=clan_name, opponent_name=opponent_name)
-    reminder = t('ui_components.war_notification_dm.reminder', user_id=discord_user_id, guild_id=guild_id)
+    matchup = t(f'{dm_keys}.war_matchup', user_id=discord_user_id, guild_id=guild_id, clan_name=clan_name, opponent_name=opponent_name)
+    reminder = t(f'{dm_keys}.reminder', user_id=discord_user_id, guild_id=guild_id)
     
     message = f"""━━━━━━━━━━━━━━━━━━━━━━
 ⚔️ **{header}** ⚔️
@@ -1346,6 +1485,10 @@ async def _send_channel_war_notification(clan_tag: str, war_data: Dict[str, Any]
     # Format time remaining - will be used within guild context, need guild_id for proper translation
     # Note: guild_id will be set in the loop below for each subscribed guild
     
+    kind = war_data.get("kind", "war")
+    profile = _reminder_profile(kind)
+    dm_keys = profile["dm_keys"]
+
     # Find all guilds subscribed to this clan
     subscribed_guilds: Dict[str, bool] = {}
     for guild_id, channel_subs in CACHE.subscriptions.items():
@@ -1364,6 +1507,11 @@ async def _send_channel_war_notification(clan_tag: str, war_data: Dict[str, Any]
                             subscribed_guilds[guild_id] = True
                             break
     
+    if kind == "raid":
+        # Raids are tracked for member clans, not subscriptions (tracker #0115)
+        from qapbot.QBdiscocmdshelper_cwl import guild_ids_for_member_clan
+        subscribed_guilds = {g: True for g in guild_ids_for_member_clan(clan_tag)}
+
     if not subscribed_guilds:
         return 0
     
@@ -1387,14 +1535,15 @@ async def _send_channel_war_notification(clan_tag: str, war_data: Dict[str, Any]
                     continue
             
             guild_config = CACHE.server_config.get(guild_id, {})
-            channel_notifications_enabled = guild_config.get("channel_war_notifications_enabled", False)
-            war_notification_channel_id = guild_config.get("war_notification_channel_id")
+            channel_notifications_enabled = guild_config.get(profile["guild_flag"], False)
+            # Raid: own channel if configured, else the war channel (tracker #0115)
+            war_notification_channel_id = _notification_channel_id(guild_config, kind)
             
             if not channel_notifications_enabled or not war_notification_channel_id:
                 continue
             
             # Check if war is within this guild's notification threshold
-            threshold_hours = guild_config.get("war_notification_threshold_hours", 1.0)
+            threshold_hours = guild_config.get(profile["guild_hours"], profile["guild_hours_default"])
             if not (0 <= hours_remaining <= threshold_hours):
                 logging.debug(f"War {clan_tag} not within guild {guild_id}'s threshold ({threshold_hours}h), skipping channel notification")
                 continue
@@ -1403,9 +1552,9 @@ async def _send_channel_war_notification(clan_tag: str, war_data: Dict[str, Any]
             guild_id_int = int(guild_id)
             if hours_remaining < 1:
                 minutes = int(hours_remaining * 60)
-                time_str = t('ui_components.war_notification_dm.war_ends_minutes', guild_id=guild_id_int, minutes=minutes)
+                time_str = t(f'{dm_keys}.war_ends_minutes', guild_id=guild_id_int, minutes=minutes)
             else:
-                time_str = t('ui_components.war_notification_dm.war_ends_hours', guild_id=guild_id_int, hours=f"{hours_remaining:.1f}")
+                time_str = t(f'{dm_keys}.war_ends_hours', guild_id=guild_id_int, hours=f"{hours_remaining:.1f}")
             
             # Get the channel object — prefer cache lookup (get_channel) over
             # API call (fetch_channel) since the bot already caches all guild
@@ -1419,9 +1568,16 @@ async def _send_channel_war_notification(clan_tag: str, war_data: Dict[str, Any]
                 logging.warning(f"Could not fetch war notification channel {war_notification_channel_id} for guild {guild_id}: {e}")
                 continue
             
+            # Raid reminder scope is per guild (tracker #0115): "not_attacked" keeps only 0-attack
+            # players. Wars have no scope (None) -> everyone with attacks left, as before.
+            guild_scope = (guild_config.get(profile["guild_scope"]) or "not_attacked") if profile["guild_scope"] else None
+            guild_players = [p for p in players_to_notify if _in_scope(guild_scope, int(p.get("attacks_used", 0)))]
+            if not guild_players:
+                continue
+
             # Build player list
             player_lines: List[str] = []
-            for player_info in players_to_notify:
+            for player_info in guild_players:
                 attacks_remaining = player_info["attacks_remaining"]
                 player_name = player_info["player_name"]
                 # Normalize player name to add LTR marks for RTL scripts
@@ -1431,11 +1587,12 @@ async def _send_channel_war_notification(clan_tag: str, war_data: Dict[str, Any]
             player_list_text = "\n".join(player_lines)
             
             # Create embed
+            title_prefix = "raid" if kind == "raid" else "war"
             embed = discord.Embed(
-                title=t('ui_components.basic_config.war_channel_notification_title', 
+                title=t(f'ui_components.basic_config.{title_prefix}_channel_notification_title', 
                        guild_id=guild_id_int, clan_name=clan_name, opponent_name=opponent_name),
-                description=t('ui_components.basic_config.war_channel_notification_description',
-                             guild_id=guild_id_int, count=len(players_to_notify)),
+                description=t(f'ui_components.basic_config.{title_prefix}_channel_notification_description',
+                             guild_id=guild_id_int, count=len(guild_players)),
                 color=discord.Color.red()
             )
             
@@ -1447,7 +1604,7 @@ async def _send_channel_war_notification(clan_tag: str, war_data: Dict[str, Any]
             )
             
             embed.add_field(
-                name=t('ui_components.basic_config.war_channel_notification_time',
+                name=t(f'ui_components.basic_config.{title_prefix}_channel_notification_time',
                        guild_id=guild_id_int, time=time_str),
                 value="\u200b",
                 inline=False
@@ -1490,7 +1647,7 @@ async def _send_channel_war_notification(clan_tag: str, war_data: Dict[str, Any]
                     embed=embed,
                     allowed_mentions=discord.AllowedMentions(users=True, everyone=False, roles=False)
                 )
-            logging.info(f"✅ Sent channel war notification to guild {guild_id} channel {war_notification_channel_id} for {len(players_to_notify)} players")
+            logging.info(f"✅ Sent channel {kind} notification to guild {guild_id} channel {war_notification_channel_id} for {len(guild_players)} players")
             
             # Record that channel notification was sent for this war+guild
             await _record_channel_notification(war_id, guild_id, clan_name, opponent_name)

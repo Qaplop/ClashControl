@@ -3759,6 +3759,17 @@ def format_notification_settings(user_data: Dict[str, Any], display_name: str, u
         mode_value = notif_mode
         mode_description = ""  # Fallback for unknown modes
     
+    # Clan Capital raid reminder summary (tracker #0115): "Off" or "24 h before end · no attack yet"
+    if notif_settings.get("raid_reminders", False):
+        raid_display = t(
+            'warnotifications.raid_value', user_id=user_id, guild_id=guild_id,
+            hours=int(notif_settings.get("raid_hours_before_end", 24) or 24),
+            scope=t(f'warnotifications.raid_scope_{notif_settings.get("raid_reminder_scope") or "not_attacked"}',
+                    user_id=user_id, guild_id=guild_id),
+        )
+    else:
+        raid_display = t('warnotifications.raid_timing_off', user_id=user_id, guild_id=guild_id)
+
     # Format own player list
     players = user_data.get("players", [])
     player_lines = []
@@ -3814,6 +3825,7 @@ def format_notification_settings(user_data: Dict[str, Any], display_name: str, u
 {t('warnotifications.wartype_label', user_id=user_id, guild_id=guild_id)} **__`{type_value}`__**{type_description}
 {t('warnotifications.mode_label', user_id=user_id, guild_id=guild_id)} **__`{mode_value}`__**{mode_description}
 {t('warnotifications.timing_label', user_id=user_id, guild_id=guild_id)} **__`{hours_before}`__**{t('warnotifications.timing_hours', user_id=user_id, guild_id=guild_id)}
+{t('warnotifications.raid_label', user_id=user_id, guild_id=guild_id)} **__`{raid_display}`__**
 {t('warnotifications.language_label', user_id=user_id, guild_id=guild_id)} **__`{language_display}`__**
 
 ```{players_text}{buddies_text}```⠀"""
@@ -5044,6 +5056,25 @@ async def _format_clan_management_config(guild: discord.Guild) -> Tuple[discord.
     
     war_status_text = t('ui_components.basic_config.config_status_enabled', guild_id=guild_id_int) if channel_notifications_enabled else t('ui_components.basic_config.config_status_disabled', guild_id=guild_id_int)
     war_block = f"⠀\n**{t('ui_components.basic_config.config_war_block_title', guild_id=guild_id_int)}**\n{t('ui_components.basic_config.config_war_status', guild_id=guild_id_int, status=f'{war_status_emoji} {war_status_text}')}\n{t('ui_components.basic_config.config_war_channel', guild_id=guild_id_int, channel=war_channel_display)}\n{t('ui_components.basic_config.config_war_threshold', guild_id=guild_id_int, threshold=threshold_display)}"
+
+    # Clan Capital raid channel reminders (tracker #0115): own channel, or the war channel above.
+    raid_enabled = guild_config.get("channel_raid_notifications_enabled", False)
+    raid_channel_id = guild_config.get("raid_notification_channel_id")
+    raid_channel_display = (
+        f"<#{raid_channel_id}>" if raid_channel_id
+        else t('ui_components.basic_config.config_raid_channel_fallback', guild_id=guild_id_int)
+    )
+    raid_status = (
+        f"🟢 {t('ui_components.basic_config.config_status_enabled', guild_id=guild_id_int)}" if raid_enabled
+        else f"🔴 {t('ui_components.basic_config.config_status_disabled', guild_id=guild_id_int)}"
+    )
+    war_block += "\n" + t(
+        'ui_components.basic_config.config_raid_line', guild_id=guild_id_int,
+        status=raid_status, channel=raid_channel_display,
+        threshold=t('ui_components.basic_config.raid_threshold_hours', guild_id=guild_id_int,
+                    hours=int(guild_config.get("raid_notification_threshold_hours", 24) or 24)),
+        scope=t(f'ui_components.basic_config.raid_scope_{guild_config.get("raid_notification_scope") or "not_attacked"}', guild_id=guild_id_int),
+    )
     
     # Format member families block
     member_families = guild_config.get("member_families", [])

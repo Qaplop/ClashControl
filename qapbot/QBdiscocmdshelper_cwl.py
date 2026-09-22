@@ -644,6 +644,32 @@ def resolve_guild_member_clan_tags(guild_id: int) -> List[str]:
     return tags
 
 
+def all_member_clan_tags() -> List[str]:
+    """Every guild's member clans (member_clans + member_family clans), deduplicated and sorted —
+    resolve_guild_member_clan_tags() unioned over all guilds. The Clan Capital raid tracking set
+    (tracker #0115): raids are tracked for member clans only, not for subscribed/guest clans."""
+    tags: Set[str] = set()
+    for guild_id in list(CACHE.server_config.keys()):
+        try:
+            tags.update(resolve_guild_member_clan_tags(int(guild_id)))
+        except (TypeError, ValueError):
+            continue
+    return sorted(tags)
+
+
+def guild_ids_for_member_clan(clan_tag: str) -> List[str]:
+    """Guild ids (as str) whose member clans — directly or via a member family — include
+    *clan_tag*. Used to route Clan Capital raid channel reminders (tracker #0115)."""
+    result: List[str] = []
+    for guild_id in list(CACHE.server_config.keys()):
+        try:
+            if clan_tag in resolve_guild_member_clan_tags(int(guild_id)):
+                result.append(str(guild_id))
+        except (TypeError, ValueError):
+            continue
+    return result
+
+
 def resolve_cwl_pool_clan_tags_sync(guild_id: int, event_id: Optional[int]) -> List[str]:
     """The guild's whole clan family unioned with every clan configured for event_id —
     participating or not (rule b/f, CWL_ENROLLMENT_PLAYER_POOL_REDESIGN_PLAN.md: pool membership

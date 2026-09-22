@@ -916,6 +916,20 @@ class ClanManagementView(discord.ui.View):
         toggle_welcome_button.callback = self._on_toggle_welcome_message  # type: ignore[assignment]
         self.add_item(toggle_welcome_button)  # type: ignore[arg-type]
 
+        # Button 5 (row 4's last slot): Activate/Deactivate Clan Capital raid channel reminders
+        # (tracker #0115). "Ready" styling checks the EFFECTIVE channel: the raid channel if set,
+        # otherwise the war notification channel it falls back to.
+        raid_enabled = guild_config.get("channel_raid_notifications_enabled", False)
+        raid_channel_ready = bool(guild_config.get("raid_notification_channel_id") or war_notification_channel_id)
+        toggle_raid_button = discord.ui.Button(
+            label=t('ui_components.basic_config.button_activate_raid_notifications', guild_id=guild_id_int) if not raid_enabled else t('ui_components.basic_config.button_deactivate_raid_notifications', guild_id=guild_id_int),
+            style=discord.ButtonStyle.success if (not raid_enabled and raid_channel_ready) else discord.ButtonStyle.secondary,
+            custom_id="config_toggle_raid_notifications",
+            row=4
+        )
+        toggle_raid_button.callback = self._on_toggle_raid_notifications  # type: ignore[assignment]
+        self.add_item(toggle_raid_button)  # type: ignore[arg-type]
+
         # Button 4: Configure Welcome Message
         configure_welcome_button = discord.ui.Button(
             label=t('ui_components.basic_config.button_configure_welcome_message', guild_id=guild_id_int),
@@ -2355,9 +2369,19 @@ class ClanManagementView(discord.ui.View):
     
     async def _on_toggle_channel_notifications(self, interaction: discord.Interaction) -> None:
         """Toggle channel war notifications enabled/disabled."""
+        await self._toggle_channel_reminders(interaction, "channel_war_notifications_enabled")
+
+    async def _on_toggle_raid_notifications(self, interaction: discord.Interaction) -> None:
+        """Toggle Clan Capital raid channel reminders enabled/disabled (tracker #0115)."""
+        await self._toggle_channel_reminders(interaction, "channel_raid_notifications_enabled")
+
+    async def _toggle_channel_reminders(self, interaction: discord.Interaction, flag_key: str) -> None:
+        """Flip one channel-reminder flag (war or raid). Enabling needs a channel to post to:
+        the war channel for war reminders; for raid reminders the raid channel, or the war
+        channel it falls back to."""
         if not await self._check_admin_permission(interaction):
             return
-        
+
         await interaction.response.defer(thinking=False, ephemeral=False)
         
         from qapbot.cache_manager import CACHE
@@ -2369,11 +2393,13 @@ class ClanManagementView(discord.ui.View):
 
         # Read current state without mutating cache until validation passes
         guild_config = CACHE.server_config.get(guild_id, {})
-        current_enabled = guild_config.get("channel_war_notifications_enabled", False)
+        current_enabled = guild_config.get(flag_key, False)
 
-        # Check if war notification channel is set
+        # Check if a notification channel is set (raid falls back to the war channel)
         war_channel_id = guild_config.get("war_notification_channel_id")
-        
+        if flag_key == "channel_raid_notifications_enabled":
+            war_channel_id = guild_config.get("raid_notification_channel_id") or war_channel_id
+
         if not current_enabled and not war_channel_id:
             # Trying to enable but no channel set
             error_msg = t('ui_components.basic_config.no_war_channel_set', guild_id=int(guild_id))
@@ -2383,7 +2409,7 @@ class ClanManagementView(discord.ui.View):
         # Toggle state
         if guild_id not in CACHE.server_config:
             CACHE.server_config[guild_id] = {}
-        CACHE.server_config[guild_id]["channel_war_notifications_enabled"] = not current_enabled
+        CACHE.server_config[guild_id][flag_key] = not current_enabled
         await CACHE.persist_server_config(guild_id)
         
         # Refresh view
@@ -2688,7 +2714,13 @@ class ClanManagementView(discord.ui.View):
         threshold_display = self._format_threshold_label(current_threshold, guild_id)
         title = t('ui_components.basic_config.threshold_config_title', guild_id=guild_id)
         current_msg = t('ui_components.basic_config.threshold_config_current', guild_id=guild_id, threshold=threshold_display)
-        header_msg = f"{title}\n\n{current_msg}"
+        raid_msg = t(
+            'ui_components.basic_config.raid_threshold_config_current', guild_id=guild_id,
+            threshold=t('ui_components.basic_config.raid_threshold_hours', guild_id=guild_id,
+                        hours=int(guild_config.get("raid_notification_threshold_hours", 24) or 24)),
+            scope=t(f'ui_components.basic_config.raid_scope_{guild_config.get("raid_notification_scope") or "not_attacked"}', guild_id=guild_id),
+        )
+        header_msg = f"{title}\n\n{current_msg}\n{raid_msg}"
         
         # Use followup.send() to get a proper discord.Message object
         msg = await interaction.followup.send(
@@ -2931,6 +2963,13 @@ DEFAULT_CHANNEL_SLOTS: Tuple[ChannelSlotConfig, ...] = (
         config_key="war_notification_channel_id",
         disable_flag_keys=("channel_war_notifications_enabled",),
     ),
+    # Tracker #0115: optional — raid reminders post to the war channel while this is unset, so
+    # clearing it must NOT disable them (no disable_flag_keys).
+    ChannelSlotConfig(
+        key="raid",
+        label="Raid (optional, defaults to War)",
+        config_key="raid_notification_channel_id",
+    ),
     ChannelSlotConfig(
         key="cwl_management",
         label="CWL Management Hub",
@@ -2953,7 +2992,7 @@ DEFAULT_CHANNEL_SLOTS: Tuple[ChannelSlotConfig, ...] = (
 # screen — showing every slot from both contexts in either one is confusing (e.g. a CWL
 # hub channel selector appearing under basic server configuration).
 BASIC_CONFIG_CHANNEL_SLOTS: Tuple[ChannelSlotConfig, ...] = tuple(
-    slot for slot in DEFAULT_CHANNEL_SLOTS if slot.key in ("registration", "war")
+    slot for slot in DEFAULT_CHANNEL_SLOTS if slot.key in ("registration", "war", "raid")
 )
 CWL_CONFIG_CHANNEL_SLOTS: Tuple[ChannelSlotConfig, ...] = tuple(
     slot for slot in DEFAULT_CHANNEL_SLOTS if slot.key in ("cwl_management", "cwl_player_hub")
@@ -3381,63 +3420,93 @@ class NotificationThresholdConfigurationView(discord.ui.View):
         
         # Store config message for later deletion
         self.config_message: Optional[discord.Message] = None
-        
-        # Add UI components
-        self._add_threshold_select()
-    
-    def _add_threshold_select(self):
-        """Add notification threshold selector."""
-        threshold_options = []
-        for opt in self.THRESHOLD_OPTIONS:
-            option = discord.SelectOption(
-                label=opt["label"],  # type: ignore[arg-type]
-                value=opt["value"],  # type: ignore[arg-type]
-                emoji="⏰",
-                default=(opt["hours"] == self.current_threshold_hours)  # type: ignore[arg-type]
+
+        # Add UI components: one select per setting slot (tracker #0115 generalized the
+        # original single war-threshold select to also carry the raid reminder settings).
+        for row, slot in enumerate(self._setting_slots()):
+            self._add_setting_select(slot, row)
+
+    def _setting_slots(self) -> List[Dict[str, Any]]:
+        """Settings this dialog edits. Each option's "stored" value is written verbatim to
+        CACHE.server_config[guild][config_key]; "default" is the value assumed when unset."""
+        from qapbot.i18n import t
+        gid = self.guild.id
+        guild_config = CACHE.server_config.get(str(gid), {})
+        return [
+            {
+                "config_key": "war_notification_threshold_hours", "custom_id": "config_threshold_select",
+                "placeholder": "Select notification threshold...", "emoji": "⏰",
+                "current": self.current_threshold_hours,
+                "options": [{"label": o["label"], "value": o["value"], "stored": o["hours"]} for o in self.THRESHOLD_OPTIONS],
+            },
+            {
+                "config_key": "raid_notification_threshold_hours", "custom_id": "config_raid_threshold_select",
+                "placeholder": t('ui_components.basic_config.raid_threshold_placeholder', guild_id=gid), "emoji": "🏰",
+                "current": float(guild_config.get("raid_notification_threshold_hours", 24) or 24),
+                "options": [
+                    {"label": t('ui_components.basic_config.raid_threshold_hours', guild_id=gid, hours=h),
+                     "value": f"raid_{h}h", "stored": float(h)}
+                    for h in (24, 12)
+                ],
+            },
+            {
+                "config_key": "raid_notification_scope", "custom_id": "config_raid_scope_select",
+                "placeholder": t('ui_components.basic_config.raid_scope_placeholder', guild_id=gid), "emoji": "🎯",
+                "current": guild_config.get("raid_notification_scope") or "not_attacked",
+                "options": [
+                    {"label": t(f'ui_components.basic_config.raid_scope_{scope}', guild_id=gid), "value": scope, "stored": scope}
+                    for scope in ("not_attacked", "open_attacks")
+                ],
+            },
+        ]
+
+    def _add_setting_select(self, slot: Dict[str, Any], row: int) -> None:
+        """Add one auto-applying select for a setting slot."""
+        options = [
+            discord.SelectOption(
+                label=opt["label"], value=opt["value"], emoji=slot["emoji"],
+                default=(opt["stored"] == slot["current"]),
             )
-            threshold_options.append(option)
-        
-        threshold_select = discord.ui.Select(
-            placeholder="Select notification threshold...",
-            min_values=1,
-            max_values=1,
-            options=threshold_options,  # type: ignore[arg-type]
-            custom_id="config_threshold_select",
-            row=0
+            for opt in slot["options"]
+        ]
+        select = discord.ui.Select(
+            placeholder=slot["placeholder"], min_values=1, max_values=1,
+            options=options, custom_id=slot["custom_id"], row=row,
         )
-        threshold_select.callback = self._on_threshold_select  # type: ignore[assignment]
-        self.add_item(threshold_select)  # type: ignore[arg-type]
-    
-    async def _on_threshold_select(self, interaction: discord.Interaction) -> None:
-        """Handle threshold selection - auto-apply immediately."""
+
+        async def _callback(interaction: discord.Interaction, _slot: Dict[str, Any] = slot) -> None:
+            await self._on_setting_select(interaction, _slot)
+
+        select.callback = _callback  # type: ignore[assignment]
+        self.add_item(select)  # type: ignore[arg-type]
+
+    async def _on_setting_select(self, interaction: discord.Interaction, slot: Dict[str, Any]) -> None:
+        """Handle a setting selection - auto-apply immediately."""
         await interaction.response.defer(thinking=False, ephemeral=False)
-        
-        # Get selected threshold value
+
+        # Get selected value
         selected_value = interaction.data['values'][0]  # type: ignore[index]
-        
-        # Find matching threshold option
-        selected_option = None
-        for opt in self.THRESHOLD_OPTIONS:
-            if opt["value"] == selected_value:
-                selected_option = opt
-                break
-        
+
+        # Find matching option
+        selected_option = next((opt for opt in slot["options"] if opt["value"] == selected_value), None)
+
         if not selected_option:
-            logging.error(f"Invalid threshold value selected: {selected_value}")
+            logging.error(f"Invalid {slot['config_key']} value selected: {selected_value}")
             return
-        
-        # Update guild config with new threshold
+
+        # Update guild config
         guild_id = str(self.guild.id)
         if guild_id not in CACHE.server_config:
             CACHE.server_config[guild_id] = {}
-        
-        CACHE.server_config[guild_id]["war_notification_threshold_hours"] = selected_option["hours"]
-        self.current_threshold_hours = selected_option["hours"]
-        
+
+        CACHE.server_config[guild_id][slot["config_key"]] = selected_option["stored"]
+        if slot["config_key"] == "war_notification_threshold_hours":
+            self.current_threshold_hours = selected_option["stored"]
+
         # Save config
         await CACHE.persist_server_config(guild_id)
-        
-        logging.info(f"Updated war notification threshold for guild {guild_id} to {selected_option['hours']} hours")
+
+        logging.info(f"Updated {slot['config_key']} for guild {guild_id} to {selected_option['stored']}")
         
         # Refresh management view to show new threshold
         await self.clan_management_view._refresh_config_view(interaction)  # type: ignore[attr-defined]

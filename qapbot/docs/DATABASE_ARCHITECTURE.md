@@ -595,6 +595,33 @@ Migration: `_rename_column_if_present()` (`db_manager.py`), the companion to
 old and new names somehow exist (a half-applied migration) it logs a warning and leaves the table
 alone rather than guessing which column holds the real data.
 
+## Clan Capital raid tables (tracker #0115, 2026-09-22)
+
+Two **main-only** tables. They are deliberately NOT in `_HOT_HISTORY_MIRRORED_TABLES` and the
+monthly hot->history migration never touches them (~50K rows/year), so Cardinal Rule 1's UNION
+rules never apply. Every read queries `main` directly.
+
+- `capital_raid_seasons` — PK `(clan_tag, season_start)`. `season_start`/`season_end` are ISO UTC
+  keys (`2026-09-18T07:00:00Z`, always a Friday 07:00), identical across clans. `state`:
+  `pending` (roster snapshotted, API not serving the season yet) / `ongoing` / `ended` (API values)
+  / `no_result` (window closed and the API never delivered it). `finalized = 1` once `ended` or
+  `no_result`; a finalized row is frozen. `roster_snapshot_at` records when the eligibility
+  snapshot was taken (>30 min after start is flagged in the output).
+- `capital_raid_members` — PK `(clan_tag, season_start, player_tag)`. One row per **eligible**
+  player (on the roster at season start, the in-game rule) plus attackers. `attacks = 0` means
+  "not attacked yet" while `ongoing`, "missed" once `ended`, and is ignored for `pending`/`no_result`.
+  Zero rows are written ONLY by the one-time start snapshot (`snapshot_capital_raid_roster`),
+  never by the per-cycle upsert, so later joiners can't become eligible. Zero rows of players who
+  left the clan are deleted each cycle; attacker rows are always kept.
+- Settings columns (same change): `users.raid_reminders_enabled` (default 0),
+  `raid_hours_before_end` (24), `raid_reminder_scope` ('not_attacked');
+  `guild_config.channel_raid_notifications_enabled` (0), `raid_notification_threshold_hours` (24),
+  `raid_notification_scope` ('not_attacked'), `raid_notification_channel_id` (NULL = use
+  `war_notification_channel_id`). Separate columns because `users.notification_type` has a CHECK
+  constraint that can't be widened in place.
+
+Design: ../../plans/implemented/tracker-0115-capital-raid-leaderboards.md
+
 ## Migration Principles
 
 ### 1. Idempotent Operations

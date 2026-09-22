@@ -1,6 +1,23 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-22 (8)  Build 52.
+- Added: Clan Capital raid weekend tracking (tracker #0115). Member clans' raid seasons are
+  fetched once per update cycle Fri 07:00 -> Mon 07:00 UTC only (+ catch-up for unfinalized
+  seasons; zero API calls Tue-Thu) via capitalraidseasons?limit=1, stored in new hot-only
+  tables capital_raid_seasons / capital_raid_members. The roster is snapshotted at season start
+  so players joining later are never listed, reminded or penalized (game rule).
+- Added: /leaderboard modes raid (loot/attacks/medals per period), currentraid (latest weekend +
+  "Not attacked yet" list) and raidmissed (0-attack weekends summed per player, most first; last
+  weekend by default). Medals = offensiveReward x attacks + defensiveReward (verified in-game).
+- Added: raid reminders through the existing war-reminder pipeline — one per season, 12 or 24 h
+  before end, scope "no attack yet" (default) or "any attacks left"; per user (notification menu)
+  and per guild channel (config toggle + threshold dialog; optional raid channel, falls back to
+  the war channel). Defaults off.
+  Files: constants.py, db_manager.py, cache_manager.py, QBhelperfunctions.py, formatting.py,
+  war_notifications.py, ui_notifications.py, ui_clan_management.py, QBdiscocmdshelper(_cwl).py,
+  QBdiscordcmds.py, QapBot.py, translations (+ tests/unit/test_capital_raids.py). 3325 tests pass.
+
 2026-09-22 (7)  Build 51.
 - Added: the DEV-mode DM-guard report (entry 6) now follows EVERY CWL DM action whose summary
   shows a "Skipped (DM guard)" count: Start Enrollment, Notify New Pool Members, Remind Pending,

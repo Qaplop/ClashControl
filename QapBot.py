@@ -3596,6 +3596,7 @@ async def _setup_hook():
         QBdiscordcmds.subscriptions,  # type: ignore[misc]
         QBdiscordcmds.status,  # type: ignore[misc]
         QBdiscordcmds.ping,  # type: ignore[misc]
+        QBdiscordcmds.magnus,  # type: ignore[misc]
         QBdiscordcmds.list,  # type: ignore[misc]
         QBdiscordcmds.admin,  # type: ignore[misc]
         QBdiscordcmds.whois_slash,  # type: ignore[misc]

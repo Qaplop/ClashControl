@@ -1,6 +1,11 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-22 (16)  Build 60.
+- Added (tracker #0116): /magnus replies to the invoking user with an ephemeral "Hello, World!"
+  message (translated, DM-invokable); listed in /help under Bot Info.
+  Files: QBdiscordcmds.py, QapBot.py, translations, README.md (+ tests). 3364 tests pass.
+
 2026-09-22 (15)  Build 59.
 - Added (tracker #0092 follow-ups): the Manage CWL Coordinators table gains a "Role" column
   showing each clan's linked role name in per-clan role mode. Saving coordinators now reports

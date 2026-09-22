@@ -1090,6 +1090,7 @@ def _get_help_command_dm_status() -> Dict[str, bool]:
         "link clan": link_clan.guild_only,
         "link player": link_player.guild_only,
         "ping": ping.guild_only,
+        "magnus": magnus.guild_only,
         "status": status.guild_only,
         "help": help.guild_only,
         "bug": bug.guild_only,
@@ -1124,7 +1125,7 @@ async def help(interaction: discord.Interaction, command: Optional[str] = None):
     available_commands = [
         "subscribe", "unsubscribe", "subscriptions", "leaderboard", "highlightme", "analyse cwl_league_group",
         "analyse cwl_opponent", "clan management", "cwl preferences", "admin", "list", "whois", "link clan", "link player",
-        "ping", "status", "help"
+        "ping", "magnus", "status", "help"
     ]
     if CONFIG.tracker_enabled:
         available_commands += ["bug", "feature"]
@@ -1209,7 +1210,7 @@ async def help(interaction: discord.Interaction, command: Optional[str] = None):
         t('commands.help.category_leaderboards', user_id=user_id, guild_id=guild_id): ["subscribe", "unsubscribe", "subscriptions", "leaderboard", "highlightme"],
         t('commands.help.category_clan_player_info', user_id=user_id, guild_id=guild_id): ["analyse cwl_league_group", "analyse cwl_opponent", "whois", "link clan", "link player", "cwl preferences"],
         t('commands.help.category_administration', user_id=user_id, guild_id=guild_id): ["clan management", "admin", "list"],
-        t('commands.help.category_bot_info', user_id=user_id, guild_id=guild_id): ["ping", "status", "help"],
+        t('commands.help.category_bot_info', user_id=user_id, guild_id=guild_id): ["ping", "magnus", "status", "help"],
     }
     if CONFIG.tracker_enabled:
         categories[t('commands.help.category_tracker', user_id=user_id, guild_id=guild_id)] = ["bug", "feature"]
@@ -1261,7 +1262,7 @@ async def help_command_autocomplete(interaction: discord.Interaction, current: s
     commands_list = [
         "subscribe", "unsubscribe", "subscriptions", "leaderboard", "highlightme", "analyse cwl_league_group",
         "analyse cwl_opponent", "clan management", "cwl preferences", "admin", "list", "whois", "link clan", "link player",
-        "ping", "status", "help"
+        "ping", "magnus", "status", "help"
     ]
     if interaction.guild is None:
         dm_status = _get_help_command_dm_status()
@@ -3870,6 +3871,28 @@ async def ping(interaction: discord.Interaction):
         )
         return
     _log_cmd_done(interaction, "ping")
+
+@app_commands.command(name="magnus", description=dev_mode+"Say hello world.")
+# DM-invokable — no guild dependency at all.
+@app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.channel_id))
+async def magnus(interaction: discord.Interaction):
+    """
+    Reply to the invoking user with a simple, ephemeral hello-world message (tracker #0116).
+    """
+    guild_id = interaction.guild.id if interaction.guild else None
+    _log_cmd(interaction, "magnus")
+    try:
+        await interaction.response.send_message(
+            t('commands.magnus.hello', user_id=str(interaction.user.id), guild_id=guild_id),
+            ephemeral=True,
+        )
+    except discord.NotFound:
+        logging.warning(
+            "[DEFER] Interaction expired before defer — "
+            f"command=magnus user={interaction.user.id} guild={interaction.guild_id}"
+        )
+        return
+    _log_cmd_done(interaction, "magnus")
 
 @app_commands.command(name="list", description=dev_mode+"List accounts, families, or players with various filters.")
 @app_commands.describe(

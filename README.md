@@ -192,6 +192,7 @@ action. There is no separate `/clans`, `/list_families`, `/list_players`, `/list
 - `/link clan` / `/link player` - Post an in-game link (`Name: https://link.clashofclans.com/...`)
   to a clan or player profile; pick by tag or name substring like `/analyse` and `/whois`
 - `/status` - Show bot status: uptime, memory usage, cache statistics
+- `/magnus` - Reply with a simple hello-world message (only visible to you)
 - `/ping` - Check bot latency
 - `/help` - Show help information
 - `/bug` - Report a bug (opens a modal); works in any server the bot serves and in DMs. Only

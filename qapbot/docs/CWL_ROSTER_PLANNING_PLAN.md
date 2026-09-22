@@ -430,7 +430,7 @@ there first, so a guild-only rule would hand out the option by luck of the sende
 gates the Player Hub's Bench button, the board's per-card context-menu entry, and every
 server-side write (admin override, Hub status, preference mode).
 
-**The status is never rewritten per guild.** A Bench player shows the 🪑 icon on every board,
+**The status is never rewritten per guild.** A Bench player shows the bench icon on every board,
 including a standard-sign-up guild's — that is the project owner's rule ("show the player's real
 status"). What a standard guild does hide is the *chrome*: legend rows, the Hub's count lines and
 the clan-column active/bench split appear there only when such a player is actually present, and
@@ -439,8 +439,15 @@ screen is exactly as before.
 
 Bench counts as **answered** (`CWL_SETTLED_STATUSES`), so those players are never re-invited or
 reminded. Auto-assignment is unchanged and status-agnostic. The clan column header splits its fill
-count (`12 + 3🪑 / 15`) so an admin sees how many real attackers a roster has, and the roster
+count (`12 + 3<bench icon> / 15`) so an admin sees how many real attackers a roster has, and the roster
 announcement marks a bench player's line.
+
+**One icon everywhere** (tracker #0117): the Activity renders `bench.svg`; Discord can't render an
+SVG, so the bot ships the same artwork as `qapbot/assets/cwl_bench.png` and uploads it once as the
+**application emoji** `cwl_bench` (`emojis.ensure_application_emojis()`, INIT-STEP-6b). Text uses
+`bench_emoji()` through a `{bench}` placeholder in the translation strings; buttons pass
+`bench_button_emoji()` to `Button(emoji=...)`, since a custom emoji cannot live in label text. If
+the upload ever fails, everything falls back to 🪑 rather than breaking.
 
 **Switching a guild to extended mid-enrollment upgrades the DMs it already sent**
 (`upgrade_pending_cwl_dms_for_bench()`): every still-unanswered DM whose recipient is now

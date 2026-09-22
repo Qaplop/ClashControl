@@ -10,7 +10,7 @@ Usage:
     message = f"{BotEmojis.ENABLED} Notifications enabled"
 """
 import re
-from typing import Optional
+from typing import Any, Optional
 
 
 class BotEmojis:
@@ -84,3 +84,77 @@ def th_icon_url(th_level: int) -> Optional[str]:
     for it (e.g. a level newer than the last one QapBot's emoji set covers)."""
     emoji = getattr(BotEmojis, f"TH{th_level:02d}", None)
     return emoji_cdn_url(emoji) if emoji else None
+
+
+# ---------------------------------------------------------------------------
+# Application-owned emojis resolved at runtime (tracker #0117)
+# ---------------------------------------------------------------------------
+#
+# Every BotEmojis constant above is a hand-uploaded emoji whose id someone pasted in. The CWL
+# bench icon can't work that way: it ships WITH the bot (qapbot/assets/cwl_bench.png, the same
+# artwork as the Activity board's bench.svg), so the bot uploads it itself the first time it
+# starts and remembers the id for that session. That keeps the board, the DMs and the buttons
+# showing one identical icon instead of the board's blue bench next to Discord's brown 🪑.
+#
+# Application emojis (discord.py 2.5+) belong to the app, not to a guild, so one upload works in
+# every server the bot is in — no per-guild emoji slots consumed.
+
+BENCH_EMOJI_NAME = "cwl_bench"
+BENCH_EMOJI_FALLBACK = "🪑"
+BENCH_EMOJI_ASSET = "assets/cwl_bench.png"
+
+_resolved_bench_emoji: Optional[str] = None
+
+
+def bench_emoji() -> str:
+    """The bench icon for Discord text: `<:cwl_bench:id>` once resolved, else the 🪑 fallback.
+
+    Safe to call before (or without) ensure_application_emojis() — every caller renders user-facing
+    text, so an unresolved emoji must degrade to something readable rather than raise or print raw
+    markup.
+    """
+    return _resolved_bench_emoji or BENCH_EMOJI_FALLBACK
+
+
+def bench_button_emoji() -> Any:
+    """The same icon for a Button's `emoji=` parameter, which takes a PartialEmoji (or a plain
+    unicode string) — a custom emoji cannot be embedded in a button's label text, only passed
+    here."""
+    import discord
+
+    resolved = _resolved_bench_emoji
+    return discord.PartialEmoji.from_str(resolved) if resolved else BENCH_EMOJI_FALLBACK
+
+
+async def ensure_application_emojis(bot: Any) -> None:
+    """Make sure this application owns the bench emoji, uploading it once if it doesn't, and cache
+    its markup for bench_emoji()/bench_button_emoji().
+
+    Called once at startup. Never raises: the icon is cosmetic, so any failure (missing asset,
+    permissions, a Discord hiccup) is logged and leaves the 🪑 fallback in place rather than
+    holding up the rest of the boot sequence.
+    """
+    global _resolved_bench_emoji
+
+    import logging
+    import os
+
+    try:
+        existing = await bot.fetch_application_emojis()
+        for emoji in existing:
+            if emoji.name == BENCH_EMOJI_NAME:
+                _resolved_bench_emoji = str(emoji)
+                logging.info(f"[EMOJI] Application emoji '{BENCH_EMOJI_NAME}' already present: {emoji.id}")
+                return
+
+        path = os.path.join(os.path.dirname(__file__), *BENCH_EMOJI_ASSET.split("/"))
+        with open(path, "rb") as handle:
+            image = handle.read()
+        created = await bot.create_application_emoji(name=BENCH_EMOJI_NAME, image=image)
+        _resolved_bench_emoji = str(created)
+        logging.info(f"[EMOJI] Uploaded application emoji '{BENCH_EMOJI_NAME}' ({created.id})")
+    except Exception as e:
+        logging.warning(
+            f"[EMOJI] Could not resolve the '{BENCH_EMOJI_NAME}' application emoji, "
+            f"falling back to {BENCH_EMOJI_FALLBACK}: {e}"
+        )

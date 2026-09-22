@@ -1,6 +1,21 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-22 (25)  Build 66.
+- Fixed (tracker #0117): one bench icon everywhere. The board showed its blue bench in the legend
+  and on cards but the brown 🪑 emoji in the clan column counts, and Discord used 🪑 throughout
+  because it cannot render an SVG. The bot now ships the same artwork as
+  qapbot/assets/cwl_bench.png and uploads it once as the application emoji 'cwl_bench'
+  (emojis.ensure_application_emojis(), new INIT-STEP-6b; app emojis work in every server without
+  using a guild's emoji slots). Discord text takes it through a new {bench} placeholder in the
+  translation strings, and the sign-up/reminder buttons pass it to Button(emoji=...) — a custom
+  emoji cannot live in label text. The Activity's column counts and the Player Hub's bench button
+  now render the SVG instead of the emoji. Everything falls back to 🪑 if the upload ever fails,
+  and a test asserts no translation string carries the chair emoji any more.
+  Files: qapbot/emojis.py, assets/cwl_bench.png (new), QapBot.py, ui_cwl_roster.py,
+  QBdiscocmdshelper_cwl.py, activity/client (enrollmentBoard, playerPrefs, index.html),
+  translations (5 languages), docs (+ tests). 3422 tests pass.
+
 2026-09-22 (24)  Build 65.
 - Fixed: the 17 translation keys the new guard test found, all of which rendered as a raw key
   path to the user. 13 got real strings in all five languages — the six clan_management_errors.*

@@ -182,6 +182,7 @@ def _make_cwl_settings_toggle_signup_mode_callback(view: discord.ui.View):
         await _refresh_parent(view, interaction, "cwl_settings")
 
         if now_extended:
+            from qapbot.emojis import bench_emoji
             from qapbot.i18n import t
             from qapbot.QBdiscocmdshelper_cwl import upgrade_pending_cwl_dms_for_bench
 
@@ -189,7 +190,8 @@ def _make_cwl_settings_toggle_signup_mode_callback(view: discord.ui.View):
             if upgraded:
                 await interaction.followup.send(
                     t('cwl.settings.extended_signup_dms_upgraded',
-                      guild_id=interaction.guild.id, user_id=str(interaction.user.id), count=upgraded),
+                      guild_id=interaction.guild.id, user_id=str(interaction.user.id), count=upgraded,
+                      bench=bench_emoji()),
                     ephemeral=True,
                 )
 
@@ -3240,19 +3242,26 @@ async def rerender_cwl_dm_after_response(
         from qapbot.QBdiscocmdshelper_cwl import cwl_bench_enabled_for
 
         bench = cwl_bench_enabled_for(discord_id, guild_id)
+        from qapbot.emojis import bench_emoji
+
         content = t(
             'cwl.reminder.dm_buttons_intro_bench' if bench else 'cwl.reminder.dm_buttons_intro',
-            user_id=discord_id, guild_id=guild_id, season=season,
+            user_id=discord_id, guild_id=guild_id, season=season, bench=bench_emoji(),
         )
         view: Optional[discord.ui.View] = build_cwl_reminder_response_view(
             event_id, remaining, guild_id, bench=bench
         )
     else:
+        from qapbot.emojis import bench_emoji
+
         response_key = {
             "confirm": 'cwl.template.confirmed_msg',
             "passive": 'cwl.template.bench_msg',
         }.get(action, 'cwl.template.declined_msg')
-        content = t(response_key, user_id=discord_id, guild_id=guild_id, player_name=player_name)
+        content = t(
+            response_key, user_id=discord_id, guild_id=guild_id, player_name=player_name,
+            bench=bench_emoji(),
+        )
         view = None
 
     if interaction is not None:
@@ -3299,10 +3308,15 @@ class CwlSignupResponseButton(
             # neighbour, and visually distinct from the green confirm and the grey opt-out.
             "passive": ('cwl.template.bench_button', discord.ButtonStyle.primary),
         }.get(action, ('cwl.template.optout_button', discord.ButtonStyle.secondary))
+        from qapbot.emojis import bench_button_emoji
+
         super().__init__(
             discord.ui.Button(
                 label=t(label_key, guild_id=guild_id),
                 style=style,
+                # Tracker #0117: the bench icon rides in emoji=, not in the label — Discord only
+                # renders a custom emoji through this parameter, never inside label text.
+                emoji=bench_button_emoji() if action == "passive" else None,
                 custom_id=f"cwl:signup:{action}:{event_id}:{player_tag}",
             )
         )
@@ -3405,10 +3419,13 @@ class CwlReminderResponseButton(
             "confirm": ('cwl.reminder.confirm_button_labeled', discord.ButtonStyle.success),
             "passive": ('cwl.reminder.bench_button_labeled', discord.ButtonStyle.primary),
         }.get(action, ('cwl.reminder.optout_button_labeled', discord.ButtonStyle.secondary))
+        from qapbot.emojis import bench_button_emoji
+
         super().__init__(
             discord.ui.Button(
                 label=t(label_key, guild_id=guild_id, player_name=player_name or player_tag),
                 style=style,
+                emoji=bench_button_emoji() if action == "passive" else None,  # tracker #0117
                 custom_id=f"cwl:remind:{action}:{event_id}:{player_tag}",
                 row=row,
             )

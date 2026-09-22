@@ -4319,6 +4319,18 @@ async def _run_startup_initialization() -> None:
         # PROD mode: guild commands already cleared by _clear_dev_guild_commands_before_prod() before startup
         logging.info("[INIT-STEP-6] Done")
         
+        # Step 6b: Resolve (uploading once if needed) the application emojis the bot ships with
+        # (tracker #0117 — the CWL bench icon). Before the Hub reposts below, so the reposted
+        # messages already carry the real icon instead of the 🪑 fallback.
+        logging.info("[INIT-STEP-6b] Resolving application emojis...")
+        try:
+            from qapbot.emojis import ensure_application_emojis
+
+            await asyncio.wait_for(ensure_application_emojis(QBcore.bot), timeout=15.0)
+        except asyncio.TimeoutError:
+            logging.warning("⚠️ Resolving application emojis timed out after 15 seconds (continuing)")
+        logging.info("[INIT-STEP-6b] Done")
+
         # Step 7: Clean up stale UI messages from before restart
         logging.info("[INIT-STEP-7] Starting stale UI message cleanup...")
         try:

@@ -1055,7 +1055,7 @@
       "signup_mode_standard": "Estándar (confirmar / darse de baja)",
       "signup_mode_extended": "Ampliado (confirmar / banquillo / darse de baja)",
       "signup_mode_description": "El modo ampliado permite apuntarse al banquillo: en la plantilla por las recompensas de temporada o como suplente, sin atacar de forma habitual.",
-      "extended_signup_dms_upgraded": "🪑 Se actualizaron {count} MD de inscripción sin responder con la opción de banquillo.",
+      "extended_signup_dms_upgraded": "{bench} Se actualizaron {count} MD de inscripción sin responder con la opción de banquillo.",
       "coordinator_role_per_clan_value": "Un rol por clan — {linked} de {total} clan(es) vinculado(s)",
       "coordinator_role_per_clan_description": "Los coordinadores de LGC de cada clan tienen automáticamente el rol de ese clan; quien coordina varios clanes tiene cada uno de ellos.",
       "button_enable_include_all_accounts": "Incluir Todas las Cuentas Vinculadas",
@@ -1218,7 +1218,7 @@
       "status_tooltip_auto_passive": "Puesto en el banquillo automáticamente por tu preferencia \"siempre banquillo\": aún no es una respuesta manual.",
       "button_im_in": "Estoy dentro",
       "button_im_out": "Estoy fuera",
-      "button_bench": "🪑 Banquillo",
+      "button_bench": "Banquillo",
       "bench_tooltip_default": "Estar en la plantilla por las recompensas de temporada o como suplente, sin atacar de forma habitual.",
       "bench_tooltip_already_bench": "Esta cuenta ya está en el banquillo.",
       "bench_tooltip_auto_bench": "Tu preferencia permanente puso esta cuenta en el banquillo: haz clic para confirmarlo como respuesta real.",
@@ -1241,13 +1241,13 @@
     "template": {
       "confirm_button": "Confirmar",
       "optout_button": "Excluirse",
-      "bench_button": "🪑 Banquillo",
-      "bench_explanation": "✅ **Confirmar** — juegas y atacas.\n🪑 **Banquillo** — quieres estar en la plantilla (por las recompensas de temporada o como suplente), pero no piensas atacar de forma habitual.\n❌ **Darse de baja** — esta temporada no.",
+      "bench_button": "Banquillo",
+      "bench_explanation": "✅ **Confirmar** — juegas y atacas.\n{bench} **Banquillo** — quieres estar en la plantilla (por las recompensas de temporada o como suplente), pero no piensas atacar de forma habitual.\n❌ **Darse de baja** — esta temporada no.",
       "dm_body": "📋 ¡Inscripción para la temporada de LGC **{season}**!\n¿Quieres jugar esta LGC con **{player_name}**?",
-      "dm_body_bench": "📋 ¡Inscripción para la temporada de CWL **{season}**!\n¿Quieres jugar esta CWL con **{player_name}**?\n\n✅ **Confirmar** — juegas y atacas.\n🪑 **Banquillo** — quieres estar en la plantilla (por las recompensas de temporada o como suplente), pero no piensas atacar de forma habitual.\n❌ **Darse de baja** — esta temporada no.",
+      "dm_body_bench": "📋 ¡Inscripción para la temporada de CWL **{season}**!\n¿Quieres jugar esta CWL con **{player_name}**?\n\n✅ **Confirmar** — juegas y atacas.\n{bench} **Banquillo** — quieres estar en la plantilla (por las recompensas de temporada o como suplente), pero no piensas atacar de forma habitual.\n❌ **Darse de baja** — esta temporada no.",
       "confirmed_msg": "✅ Gracias — **{player_name}** está confirmado para el fondo de plantilla de LGC de esta temporada.",
       "declined_msg": "👍 Entendido — **{player_name}** se ha excluido del fondo de plantilla de LGC de esta temporada.",
-      "bench_msg": "🪑 Entendido — **{player_name}** está en el banquillo esta temporada de CWL: en la plantilla, pero sin obligación de atacar.",
+      "bench_msg": "{bench} Entendido — **{player_name}** está en el banquillo esta temporada de CWL: en la plantilla, pero sin obligación de atacar.",
       "no_longer_valid": "⚠️ Esta inscripción ya no es válida (puede que se haya eliminado la temporada).",
       "not_your_signup": "⚠️ Esta inscripción pertenece a otra cuenta.",
       "signup_closed": "⚠️ La inscripción ya no está abierta para esta temporada.",
@@ -1265,12 +1265,12 @@
       "dm_line_green": "\n✅ **{player_name}** — ya estás en **{clan_name}**. Tu LGC empieza {start_full} ({start_rel}). Nada que hacer, quédate donde estás.",
       "dm_line_amber": "\n⚠️ **{player_name}** — actualmente estás en **{current_clan_name}** y necesitas mudarte a **{clan_name}** *bastante antes de* {start_full} ({start_rel}).\n➡️ <{clan_url}>",
       "dm_unknown_clan": "sin clan",
-      "dm_line_bench_suffix": "(🪑 Banquillo: estás en la plantilla, atacar es cosa tuya.)"
+      "dm_line_bench_suffix": "({bench} Banquillo: estás en la plantilla, atacar es cosa tuya.)"
     },
     "update": {
       "dm_intro": "📋 Hola **{display_name}**, tu alineación de LGC para la temporada **{season}** ha cambiado ({count} actualización(es)):",
       "dm_confirm_prompt": "\n\nConfirma abajo si quieres jugar esta LGC — tu líder está esperando tu respuesta.",
-      "dm_confirm_prompt_bench": "\nConfirma abajo si quieres jugar esta CWL — tu dirección espera tu respuesta.\n\n✅ **Confirmar** — juegas y atacas.\n🪑 **Banquillo** — en la plantilla (recompensas de temporada o suplente), sin atacar de forma habitual.\n❌ **Darse de baja** — esta temporada no.",
+      "dm_confirm_prompt_bench": "\nConfirma abajo si quieres jugar esta CWL — tu dirección espera tu respuesta.\n\n✅ **Confirmar** — juegas y atacas.\n{bench} **Banquillo** — en la plantilla (recompensas de temporada o suplente), sin atacar de forma habitual.\n❌ **Darse de baja** — esta temporada no.",
       "dm_line_dropped": "\n➖ **{player_name}** — ya no estás en la alineación de LGC de **{clan_name}**. Tu líder todavía puede colocarte en otro sitio antes de que empiece. Ponte en contacto con tu líder de clan si necesitas aclaración.",
       "dm_line_moved_prefix": "\n🔄 **{player_name}** — cambiado desde **{old_clan_name}**:"
     },
@@ -1287,10 +1287,10 @@
     "reminder": {
       "dm_intro_body": "👋 Hola **{display_name}**,\n\ntodavía estamos esperando tu respuesta para la temporada de LGC **{season}** — actualmente tienes **{count}** inscripción(es) pendiente(s) en el fondo de plantilla de LGC de la(s) que no hemos tenido noticias tuyas.\n\nPor favor, confirma o excluyete en el próximo mensaje tan pronto como puedas — encontrarás un par de botones Confirmar/Excluirme independiente para cada una de tus cuentas ahí. Una respuesta rápida nos ayuda mucho con la planificación de plantillas esta temporada.",
       "dm_buttons_intro": "📋 Por favor, responde a cada una de tus inscripciones de LGC todavía pendientes para la temporada **{season}** abajo:",
-      "dm_buttons_intro_bench": "📋 Responde abajo a cada una de tus inscripciones de CWL pendientes de la temporada **{season}**:\n\n✅ **Confirmar** — juegas y atacas.\n🪑 **Banquillo** — en la plantilla (recompensas de temporada o suplente), sin atacar de forma habitual.\n❌ **Darse de baja** — esta temporada no.",
+      "dm_buttons_intro_bench": "📋 Responde abajo a cada una de tus inscripciones de CWL pendientes de la temporada **{season}**:\n\n✅ **Confirmar** — juegas y atacas.\n{bench} **Banquillo** — en la plantilla (recompensas de temporada o suplente), sin atacar de forma habitual.\n❌ **Darse de baja** — esta temporada no.",
       "confirm_button_labeled": "✅ {player_name}",
       "optout_button_labeled": "❌ {player_name}",
-      "bench_button_labeled": "🪑 {player_name}"
+      "bench_button_labeled": "{player_name}"
     }
   }
 }

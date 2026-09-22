@@ -533,7 +533,13 @@ function buildSeasonRow(
     // deliberate click turns it into a real answer.
     if (benchEnabled) {
       const benchButton = document.createElement('button')
-      benchButton.textContent = t('button_bench')
+      // Tracker #0117: the blue bench icon, same as the status cell and the board — the label
+      // itself no longer carries the 🪑 emoji.
+      const benchButtonIcon = document.createElement('img')
+      benchButtonIcon.className = 'bench-icon'
+      benchButtonIcon.src = STATUS_ICON.passive
+      benchButtonIcon.alt = ''
+      benchButton.append(benchButtonIcon, t('button_bench'))
       benchButton.className = 'status-action-button'
       benchButton.disabled = notInvited || currentStatus === 'passive'
       if (notInvited) {

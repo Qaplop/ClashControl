@@ -23,6 +23,7 @@ import discord
 
 from qapbot.cache_manager import CACHE
 from qapbot.constants import CWL_LEAGUE_ORDER
+from qapbot.emojis import bench_emoji
 
 # Serializes start_cwl_enrollment() per (guild_id, season) — 2026-08-21 hardening, same bug class
 # and same fix shape as CoCClanCache._update_locks (COPILOT_PITFALLS_COOKBOOK.md Pitfall 35).
@@ -2885,7 +2886,10 @@ async def upgrade_pending_cwl_dms_for_bench(guild_id: int) -> int:
                 {"player_tag": r["player_tag"], "player_name": r["player_name"]}
                 for r in message_rows
             ]
-            explanation = t('cwl.template.bench_explanation', user_id=discord_id, guild_id=guild_id)
+            explanation = t(
+                'cwl.template.bench_explanation', user_id=discord_id, guild_id=guild_id,
+                bench=bench_emoji(),
+            )
             content = message.content or ""
             if explanation in content:
                 # Already carries the Bench option (an earlier run, or it was sent that way
@@ -3829,6 +3833,7 @@ async def send_cwl_signup_template_dm(
         user_id=discord_id,
         season=season,
         player_name=participant["player_name"] or participant["player_tag"],
+        bench=bench_emoji(),
     )
     view = build_cwl_signup_response_view(event_id, participant["player_tag"], guild_id, bench=bench)
     sent_message_ref: List[Any] = []
@@ -3882,7 +3887,7 @@ async def send_cwl_reminder_dm_group(
         bench = cwl_bench_enabled_for(discord_id, guild_id)
         content = t(
             'cwl.reminder.dm_buttons_intro_bench' if bench else 'cwl.reminder.dm_buttons_intro',
-            user_id=discord_id, guild_id=guild_id, season=season,
+            user_id=discord_id, guild_id=guild_id, season=season, bench=bench_emoji(),
         )
         view = build_cwl_reminder_response_view(event_id, chunk, guild_id, bench=bench)
         sent_message_ref: List[Any] = []
@@ -4475,7 +4480,7 @@ async def send_cwl_roster_updates(guild_id: int, season: str) -> Dict[str, Any]:
             )
             lines.append(t(
                 'cwl.update.dm_confirm_prompt_bench' if bench else 'cwl.update.dm_confirm_prompt',
-                user_id=discord_id, guild_id=guild_id,
+                user_id=discord_id, guild_id=guild_id, bench=bench_emoji(),
             ))
 
         sent_message_ref: List[Any] = []
@@ -4568,7 +4573,10 @@ def _build_cwl_roster_account_lines(
         start_full = cwl_start_at_discord_timestamp(account["cwl_start_at"], "F") or "?"
         start_rel = cwl_start_at_discord_timestamp(account["cwl_start_at"], "R") or "?"
         bench_suffix = (
-            " " + t('cwl.start.dm_line_bench_suffix', user_id=discord_id, guild_id=guild_id)
+            " " + t(
+                'cwl.start.dm_line_bench_suffix', user_id=discord_id, guild_id=guild_id,
+                bench=bench_emoji(),
+            )
             if account.get("signup_status") in CWL_BENCH_STATUSES else ""
         )
         if account["in_clan"]:

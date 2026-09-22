@@ -1302,10 +1302,17 @@ export function renderEnrollmentBoard(
     // extended-sign-up guild with none looks exactly as before).
     const benchCount = players.filter((p) => isBenchStatus(p.signup_status)).length
     const activeCount = players.length - benchCount
-    const filled = benchCount > 0 ? `${activeCount} + ${benchCount}🪑` : `${players.length}`
-    countSpan.textContent = rosterSize !== null ? `(${filled}/${rosterSize})` : `(${filled})`
     if (benchCount > 0) {
+      // Tracker #0117: the same blue bench icon the legend and the cards use — an <img>, not the
+      // brown 🪑 emoji, so one view never shows the symbol two different ways.
+      const benchIcon = document.createElement('img')
+      benchIcon.className = 'bench-icon'
+      benchIcon.src = STATUS_ICON.passive
+      benchIcon.alt = STATUS_LABEL.passive
+      countSpan.append(`(${activeCount} + ${benchCount}`, benchIcon, rosterSize !== null ? `/${rosterSize})` : ')')
       countSpan.title = `${activeCount} attacking, ${benchCount} on the bench`
+    } else {
+      countSpan.textContent = rosterSize !== null ? `(${players.length}/${rosterSize})` : `(${players.length})`
     }
     // Roster-filled indicator (live-testing feedback, 2026-08-15) — green once the column has
     // reached or passed its target roster_size, amber while still short. Unassigned has no

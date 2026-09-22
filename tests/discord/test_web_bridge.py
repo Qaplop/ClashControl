@@ -3457,6 +3457,37 @@ async def test_guest_search_coc_api_fallback_excludes_current_family_clan_member
 
 @pytest.mark.discord
 @pytest.mark.asyncio
+async def test_guest_search_tag_of_clan_already_in_table_is_not_offered_as_player(
+    db, bridge_config, client, monkeypatch
+):
+    """2026-09-22 live report: after adding guest clan #2CGGVVVJG, re-searching its tag offered
+    "#2CGGVVVJG (#2CGGVVVJG) — PLAYER, not linked". The clan is excluded from clan hits (already
+    in the lineup) and the API fallback returns None for it — the raw player placeholder must not
+    be created for a known clan tag in the first place."""
+    from types import SimpleNamespace
+
+    from qapbot.cache_manager import CACHE
+
+    await _setup_api_fallback_guild(db, "853", monkeypatch)
+    await _seed_guild_and_clans(db, "853", {"#2CGGVVVJG": "AKATSUKI"})
+    CACHE.clan_name_cache = {"#2CGGVVVJG": {"name": "AKATSUKI"}}
+    event_id = db.create_cwl_event_sync("853", "2026-10", "discordid1")
+    db.set_cwl_event_clans_sync(event_id, [{"clan_tag": "#2CGGVVVJG", "participating": True}])
+    monkeypatch.setattr(
+        CACHE.coc_clan_cache, "get_clan", AsyncMock(return_value=SimpleNamespace(tag="#2CGGVVVJG", name="AKATSUKI"))
+    )
+    monkeypatch.setattr(CACHE, "get_player", AsyncMock(return_value=None))
+
+    resp = await client.get(
+        "/api/cwl/guest-search?guild_id=853&discord_user_id=42&q=%232CGGVVVJG",
+        headers={"X-Bridge-Secret": "test-secret"},
+    )
+    assert resp.status == 200
+    assert (await resp.json())["results"] == []
+
+
+@pytest.mark.discord
+@pytest.mark.asyncio
 async def test_guest_search_unknown_tag_absent_from_coc_api_keeps_raw_placeholder(
     db, bridge_config, client, monkeypatch
 ):

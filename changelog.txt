@@ -1,6 +1,13 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-22 (4)  Build 48.
+- Fixed: CWL Guests search offered an already-added guest clan's own tag as an addable PLAYER
+  ("#2CGGVVVJG (#2CGGVVVJG) — not linked"). The clan is excluded from clan hits once it's in the
+  table, the CoC API fallback returns None for it, and by design the raw "unindexed tag"
+  player placeholder then survived. The placeholder is no longer created for a tag the bot knows
+  as a clan. File: qapbot/web_bridge.py (+ regression test). 3276 tests pass.
+
 2026-09-22 (3)
 - Fixed: Activity "Configure Participating Clans" said "click Save above to persist" after adding
   a guest clan, but the Save button sits below the Guests section. Now says "below".

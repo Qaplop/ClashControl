@@ -1187,7 +1187,12 @@ def _search_cwl_guests_sync(guild_id: int, query: str) -> List[Dict[str, Any]]:
         # "the DB found something", which is what gates the CoC API fallback
         # (_resolve_guest_tag_via_coc_api); the marker never reaches the frontend. Added
         # regardless of the cap above (a single entry — the final [:12] slice below re-caps it).
-        if len(upper_query) >= 5 and upper_query not in player_hits:
+        # Never for a tag the bot knows as a CLAN (2026-09-22, live report: searching an
+        # already-added guest clan's tag offered "#2CGGVVVJG (#2CGGVVVJG) — PLAYER, not linked").
+        # The clan itself is excluded from clan hits once it's in the lineup, and the CoC API
+        # fallback then returns None for it, which by design keeps this placeholder — so without
+        # this check the clan's own tag survives as a fake, addable player.
+        if len(upper_query) >= 5 and upper_query not in player_hits and upper_query not in CACHE.clan_name_cache:
             player_hits[upper_query] = {
                 "player_tag": upper_query, "player_name": upper_query, "unverified": True
             }

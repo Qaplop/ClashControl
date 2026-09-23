@@ -919,14 +919,19 @@ _split_and_post_leaderboard_helper()
     │   │       who fought for the clan(s), past members included, PLUS current members'
     │   │       wars for any other clan (a war row returned by both counted once);
     │   │       "members" = current members only, wars for any clan (what "all" meant
-    │   │       2026-07-30 → 2026-09-23); "own" = only the clan(s)' own wars (the
-    │   │       subscription posts always use "own"). "all"/"members" resolve the current
-    │   │       roster via `CACHE.coc_clan_cache.get_clan()` per target clan/family — skipped
-    │   │       when no requested mode reads history — and thread `member_player_tags`
-    │   │       through to `_load_history_rows()` / `calculate_raid_leaderboard()`. A roster
-    │   │       that can't be loaded adds a ⚠️ note under the board. Single-raid-weekend
-    │   │       views (currentraid, raidmissed without a period) always use "own". See
-    │   │       DATABASE_ARCHITECTURE.md § 2026-07-30 for the cross-clan DB query.
+    │   │       2026-07-30 → 2026-09-23); "own" = only the clan(s)' own wars. "all" is
+    │   │       also what the scheduled subscription posts render (generate_leaderboard_text's
+    │   │       default), so a manual board and the scheduled one are identical. The roster for
+    │   │       "all"/"members" comes from the DB, never the CoC API:
+    │   │       `get_leaderboard_roster()` reads user_players.current_clan_tag (kept current by
+    │   │       the clan poll — 30 min role clans / 12 h others), resolved inside
+    │   │       generate_leaderboard_text() for every caller. The roster only decides whose wars
+    │   │       for OTHER clans are credited; the clan's own war records are counted in full
+    │   │       either way. Single-raid-weekend views (currentraid, raidmissed without a period)
+    │   │       always use "own". Cost with the roster scopes on every scheduled post: ~30 ms
+    │   │       per cycle warm / ~90 ms cold for PROD's 37 history subscriptions (measured
+    │   │       2026-09-23; each month's history is loaded once and handed to
+    │   │       calculate_leaderboard). See DATABASE_ARCHITECTURE.md § 2026-07-30 for the query.
     │   ├── Resolves the invoking user's own registered player tag(s) from
     │   │   `CACHE.user_accounts` and passes them as `highlight_player_ids` so their
     │   │   row is auto-bolded in the rendered table (see render_leaderboard() below)

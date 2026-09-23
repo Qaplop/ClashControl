@@ -197,10 +197,32 @@ def _load_history_filtered(clan_tag: str, month: Optional[int], year: Optional[i
     CACHE.history_cache[key] = filtered
     return filtered
 
-# /leaderboard scope values, see _load_history_rows(). "all" is the command's default;
-# "members" and "all" need the target clans' current rosters (member_player_tags).
+# Leaderboard scope values, see _load_history_rows(). "all" is the default for /leaderboard AND
+# the scheduled subscription posts (since 2026-09-23); "members" and "all" need the target
+# clans' current rosters (member_player_tags) — see get_leaderboard_roster().
 LEADERBOARD_SCOPES: Tuple[str, ...] = ("all", "members", "own")
 LEADERBOARD_ROSTER_SCOPES: Tuple[str, ...] = ("all", "members")
+
+
+def get_leaderboard_roster(clan_tag: str) -> Set[str]:
+    """Current member tags of a clan or family, from the DB — no CoC API call.
+
+    Source: user_players.current_clan_tag, which the clan poll keeps current for every tracked
+    clan (update_player_info_in_user_accounts(): new members get an UNASSIGNED row, leavers are
+    cleared) — refreshed every 30 min for role clans, 12 h otherwise. That staleness only decides
+    whose wars for OTHER clans get credited; everyone's wars for the clan itself are counted from
+    the war records regardless. Costs one indexed lookup per constituent clan (idx_user_players_
+    clan_tag; ~1.5 ms for all 37 PROD history subscriptions together, measured 2026-09-23).
+    Returns an empty set without a DB, which makes "all" behave as "own".
+    """
+    db = CACHE.db_manager
+    if db is None:
+        return set()
+    clan_tags = CACHE.clan_families[clan_tag].get("clans", []) if clan_tag in CACHE.clan_families else [clan_tag]
+    roster: Set[str] = set()
+    for tag in clan_tags:
+        roster.update(db.get_player_owners_for_clan_sync(tag).keys())
+    return roster
 
 
 def _load_history_filtered_by_players(player_tags: Set[str], month: Optional[int], year: Optional[int], cwl_season: Optional[str] = None) -> List[Dict[str, Any]]:
@@ -425,7 +447,7 @@ def _merge_entries(history_rows: List[Dict[str, Any]], temp_stats: Dict[str, Dic
 
 # --- Leaderboard calculation ---
 
-def calculate_leaderboard(clan_tag: str, month: Optional[int] = None, year: Optional[int] = None, *, cwl_only: bool = False, mode: str = DEFAULT_MODE, cwl_season: Optional[str] = None, scope: str = "own", member_player_tags: Optional[Set[str]] = None) -> Dict[str, Dict[str, Any]]:
+def calculate_leaderboard(clan_tag: str, month: Optional[int] = None, year: Optional[int] = None, *, cwl_only: bool = False, mode: str = DEFAULT_MODE, cwl_season: Optional[str] = None, scope: str = "own", member_player_tags: Optional[Set[str]] = None, history_rows: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Dict[str, Any]]:
     """
     Calculate leaderboard statistics for a clan or clan family with comprehensive data processing.
     This function aggregates historical war data with current war statistics to
@@ -443,7 +465,9 @@ def calculate_leaderboard(clan_tag: str, month: Optional[int] = None, year: Opti
             "members" counts every war of a player currently rostered in the target
             clan(s), for any clan; "all" is both — see _load_history_rows()
         member_player_tags: Current roster tags for the target clan(s), used only
-            for scope "members"/"all" — resolved by the caller (needs a CoC API call)
+            for scope "members"/"all" — resolved by the caller (get_leaderboard_roster())
+        history_rows: This month's _load_history_rows() result if the caller already has it
+            (same clan/month/year/season/scope) — skips loading it again
 
     Returns:
         Dictionary keyed by PlayerID containing comprehensive player statistics:
@@ -492,7 +516,9 @@ def calculate_leaderboard(clan_tag: str, month: Optional[int] = None, year: Opti
     # underlying wars were fought under.
     all_history_rows: List[Dict[str, Any]] = []
     if mode != "currentwar":
-        all_history_rows = _load_history_rows(clan_tag, month, year, cwl_season, scope=scope, member_player_tags=member_player_tags)
+        all_history_rows = history_rows if history_rows is not None else _load_history_rows(
+            clan_tag, month, year, cwl_season, scope=scope, member_player_tags=member_player_tags
+        )
         if cwl_only:
             all_history_rows = [r for r in all_history_rows if r.get("Max_Attacks", 2) == 1]
     # Temp (in-progress war) stats are always per-clan — an ongoing war only exists
@@ -4959,7 +4985,7 @@ def generate_leaderboard_text(
     mode: str = DEFAULT_MODE,
     style: str = "discord",
     cwl_season: Optional[str] = None,
-    scope: str = "own",
+    scope: str = "all",
     member_player_tags: Optional[Set[str]] = None,
     highlight_player_ids: Optional[Set[str]] = None,
 ) -> str:
@@ -4978,11 +5004,11 @@ def generate_leaderboard_text(
         year: Year for leaderboard data (ignored when month is a list of pairs)
         mode: Leaderboard mode (attack, avgstars, attackdefratio, etc.)
         style: Output style ("discord" or "terminal")
-        scope: "own" (default) counts only wars fought by the clan(s) themselves;
-            "members" counts every war of a player currently rostered in the target
-            clan(s), for any clan; "all" is both — see _load_history_rows()
-        member_player_tags: Current roster tags for the target clan(s); required
-            for scope "members"/"all", ignored otherwise
+        scope: "all" (default — /leaderboard and the scheduled subscription posts alike),
+            "members" or "own" — see _load_history_rows()
+        member_player_tags: Current roster tags for the target clan(s) for scope
+            "members"/"all"; None (the normal case) resolves them from the DB via
+            get_leaderboard_roster(), so every caller renders the same board
         highlight_player_ids: PlayerIDs to bold/color in the rendered table (style="discord"
             only) — see render_leaderboard(). The caller must post the result inside a
             ```ansi code block for the highlight to actually render.
@@ -5027,6 +5053,12 @@ def generate_leaderboard_text(
 
     logging.debug(f"generate_leaderboard_text() called with: clan_tag={clan_tag}, clan_name={clan_name}, mode={mode}, month={month}, year={year}, type(month)={type(month)}")
 
+    # Roster for the roster scopes: from the DB, never the CoC API — see get_leaderboard_roster().
+    # One resolver for every caller keeps a manual /leaderboard and the scheduled post of the same
+    # board byte-identical, so they don't overwrite each other with different content.
+    if scope in LEADERBOARD_ROSTER_SCOPES and member_player_tags is None and mode != "currentwar":
+        member_player_tags = get_leaderboard_roster(clan_tag)
+
     # Clan Capital raid modes (tracker #0115) read their own tables — separate path.
     if mode in RAID_MODES:
         return _generate_raid_leaderboard_text(
@@ -5046,10 +5078,11 @@ def generate_leaderboard_text(
     else:
         for m, y in periods:
             logging.debug(f"Processing month {m}/{y} for aggregation")
-            stats = calculate_leaderboard(clan_tag, m, y, cwl_only=cwl_only, mode=mode, cwl_season=cwl_season, scope=scope, member_player_tags=member_player_tags)
-            logging.debug(f"Stats for month {m}/{y}: {len(stats)} players")
-            # Load history for this specific month to get war IDs
+            # Loaded once and handed to calculate_leaderboard(), which used to load the same rows
+            # a second time — for the roster scopes that was a second cross-clan DB query.
             history_rows = _load_history_rows(clan_tag, m, y, cwl_season, scope=scope, member_player_tags=member_player_tags)
+            stats = calculate_leaderboard(clan_tag, m, y, cwl_only=cwl_only, mode=mode, cwl_season=cwl_season, scope=scope, member_player_tags=member_player_tags, history_rows=history_rows)
+            logging.debug(f"Stats for month {m}/{y}: {len(stats)} players")
             month_war_ids: set[str] = set()
             for row in history_rows:
                 war_id = row.get("WarID") or row.get("WarId", "")

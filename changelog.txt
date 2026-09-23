@@ -1,6 +1,20 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-23 (15)  Build 79.
+- Changed: scheduled leaderboard posts use scope `all` too (past members' achievements stay on
+  the clan's board). A manual /leaderboard and the scheduled post of the same board are now
+  identical, so a manual one no longer gets switched back to a different version by the next
+  update cycle.
+- Changed: the current-member roster behind `all`/`members` comes from the DB
+  (user_players.current_clan_tag, kept current by the clan poll) instead of a CoC API call —
+  zero API calls for leaderboards. The ⚠️ "roster could not be loaded" note is gone with it.
+- Perf: each month's war history is loaded once per board instead of twice. Measured on the
+  PROD snapshot: all 37 scheduled history boards with scope `all` cost ~30 ms per cycle
+  (warm) / ~90 ms (cold) of DB time, rosters ~1.5 ms.
+  Files: QBhelperfunctions.py, QBdiscordcmds.py, QBcore.py, docs (CODE_STRUCTURE.md,
+  DATABASE_ARCHITECTURE.md) (+ tests/discord/test_leaderboard_scope_command.py).
+
 2026-09-23 (14)  Build 78.
 - Pyright/Pylance (strict, pyproject.toml): 54 errors -> 0. Real bugs among them:
   - db_manager.get_user_player_cwl_prefs_sync caught sqlite3.Error without importing sqlite3 —

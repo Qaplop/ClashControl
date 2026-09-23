@@ -1157,9 +1157,12 @@ re-check) rather than trusting them long-term.
   (player, `"{clan_tag}::{war_id}"`) — see CODE_STRUCTURE.md § /leaderboard.
 - Chunks the player-tag `IN (...)` clause at 400 tags per query to stay under SQLite's default
   host-parameter limit even for large clan families.
-- Not cached across calls (unlike `_load_history_filtered`'s per-clan history_cache) — this path
-  is only reached from the manual `/leaderboard` command, not the automatic per-subscription
-  posting loop, so the extra per-invocation DB round trip is not a concern.
+- Not cached across calls (unlike `_load_history_filtered`'s per-clan history_cache). Until
+  2026-09-23 only the manual `/leaderboard` command reached it; since then the scheduled
+  subscription posts use scope "all" too, so it runs once per history subscription per month
+  shown, every cycle — measured on the PROD snapshot: ~30 ms warm / ~90 ms cold per cycle for
+  all 37 history subscriptions (1776 roster tags), plus ~1.5 ms for the rosters themselves
+  (user_players.current_clan_tag, idx_user_players_clan_tag). No CoC API call is involved.
 - 1457 tests passing.
 
 ### 2026-07-30: Leaderboard scope="all" Perf Fix — Composite Index + Parallel Roster Fetch (Complete ✅)

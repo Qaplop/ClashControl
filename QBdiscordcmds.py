@@ -52,7 +52,7 @@ from QBhelperfunctions import (
     update_clan_war_info_and_stats, update_capital_raid_for_clan, generate_cwl_group_analysis_embeds,
     update_cwl_group_stats, generate_cwl_group_image,
     build_cwl_opponent_embeds, parse_month_argument, resolve_subscription_period,
-    coc_clan_profile_url, coc_player_profile_url, LEADERBOARD_SCOPES, LEADERBOARD_ROSTER_SCOPES,
+    coc_clan_profile_url, coc_player_profile_url, LEADERBOARD_SCOPES,
 )
 from QapBot import GLOBAL_GUILD_ID, run_nightly_maintenance_routine, is_history_migration_due
 from qapbot.config import CONFIG
@@ -722,49 +722,9 @@ async def leaderboard(
         if not await update_clan_war_info_and_stats(clan_tag):  # type: ignore[arg-type]
             logging.warning(f"War data processing failed for {clan_tag}")
 
-    # Resolve current rosters for scope "all"/"members" — credits a current member's stats
-    # even for wars fought while registered to a clan no longer tracked/subscribed
-    # here. Uses the same stale-while-revalidate coc_clan_cache as everywhere else.
-    # Skipped when no requested mode reads history (live war / CWL group / one raid
-    # weekend views ignore scope), so those don't pay for roster lookups.
-    #
-    # PERF: fetch every distinct constituent clan in ONE parallel gather instead of
-    # awaiting them one at a time — a cache miss/expiry is a live CoC API call, and
-    # sequentially awaiting a whole channel's subscribed clans/families (no clan
-    # filter given) is what made /leaderboard take minutes to respond on prod.
-    # Same pattern as ui_clan_management.py's guild-clan refresh.
-    member_tags_by_tag: Dict[str, Set[str]] = {}
-    # Constituent clans whose roster couldn't be fetched, per target — noted under the board,
-    # since the result silently differs otherwise (their members missing, or "own" fallback).
-    roster_missing_by_tag: Dict[str, List[str]] = {}
-    _scope_free_modes ={'currentwar', 'cwlinfo', 'cwlinfo_comp', 'cwlgroup', 'currentraid'}
-    if not explicit_time:
-        _scope_free_modes.add('raidmissed')  # latest weekend only — always the clan's own
-    if scope in LEADERBOARD_ROSTER_SCOPES and any(m not in _scope_free_modes for m in per_tag_modes):
-        tag_to_constituent: Dict[str, List[str]] = {
-            tag: (CACHE.clan_families[tag].get('clans', []) if tag in CACHE.clan_families else [tag])
-            for tag in tags
-        }
-        all_constituent_clans: Set[str] = {ct for cts in tag_to_constituent.values() for ct in cts}
-        clan_results = await asyncio.gather(
-            *(CACHE.coc_clan_cache.get_clan(ct) for ct in all_constituent_clans),
-            return_exceptions=True,
-        )
-        clan_obj_by_tag: Dict[str, Any] = {}
-        for ct, result in zip(all_constituent_clans, clan_results):
-            if isinstance(result, BaseException):
-                logging.warning(f"[leaderboard scope={scope}] Failed to fetch roster for {ct}: {result}")
-            else:
-                clan_obj_by_tag[ct] = result
-        for tag, constituent in tag_to_constituent.items():
-            roster: Set[str] = set()
-            for ct in constituent:
-                clan_obj = clan_obj_by_tag.get(ct)
-                if clan_obj is not None:
-                    roster.update(m.tag for m in clan_obj.members if getattr(m, "tag", None))
-                else:
-                    roster_missing_by_tag.setdefault(tag, []).append(ct)
-            member_tags_by_tag[tag] = roster
+    # Rosters for scope "all"/"members" are resolved inside generate_leaderboard_text() from
+    # the DB (get_leaderboard_roster) — no CoC API call, and the same board the scheduled
+    # subscription post renders, so the two never overwrite each other with different content.
 
     # Auto-highlight (bold, via ANSI code block) the invoking user's own registered
     # player(s) in the rendered table, so they can spot themselves in a long list.
@@ -884,15 +844,9 @@ async def leaderboard(
             text = await asyncio.to_thread(
                 generate_leaderboard_text, tag, month=period_month, year=period_year,
                 mode=per_tag_modes[i], cwl_season=cwl_season,
-                scope=scope, member_player_tags=member_tags_by_tag.get(tag),
+                scope=scope,
                 highlight_player_ids=highlight_player_ids,
             )
-            missing = roster_missing_by_tag.get(tag)
-            if missing and per_tag_modes[i] not in _scope_free_modes:
-                names = ", ".join(CACHE.get_clan_name(ct, ct) or ct for ct in missing)
-                effect = ("shown as scope OWN" if not member_tags_by_tag.get(tag)
-                          else "its current members may be missing")
-                text += f"\n\n⚠️ Current roster of {names} could not be loaded — {effect}."
             if is_dm:
                 # ```ansi fence matches post_leaderboard_to_discord()'s formatting — the
                 # auto-highlight feature above embeds ANSI codes for the caller's own player(s).

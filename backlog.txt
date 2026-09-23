@@ -1,6 +1,8 @@
 Project Backlog, Improvement Ideas and General Remarks
 
 Immediate next steps:
+- Remove Guild/Server Emojis after 2026-10 CWL season ended
+- Start the App Verification on Discord Dev Portal
 - Modal TextInput LABELS are still English on every server: discord.py 2.7 deprecates
   TextInput.label ("use discord.ui.Label instead"), so the 2026-09-22 i18n sweep translated only
   the placeholders and left the labels alone rather than ship a deprecated API. Migrating the

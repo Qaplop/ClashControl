@@ -10,8 +10,9 @@ deployed to Cloudflare:
   Currently just proves the OAuth round-trip: shows "Hello, guild {id}" once launched from
   inside Discord.
 
-Both currently install/typecheck/build clean with **zero `npm audit` findings** (verified
-2026-08-09 against wrangler 4.x, vite 6.x, `@discord/embedded-app-sdk` 2.5.x — the versions
+Both currently install/typecheck/build clean with **zero `npm audit` findings** (last verified
+2026-09-23 against wrangler 4.137, hono 4.13.8, sharp 0.35.4; first verified 2026-08-09 against
+wrangler 4.x, vite 6.x, `@discord/embedded-app-sdk` 2.5.x — the versions
 originally scaffolded pulled in known-vulnerable transitive deps via wrangler 3.x; bumped past
 them rather than carrying that forward).
 

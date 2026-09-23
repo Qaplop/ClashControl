@@ -1,6 +1,14 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-23 (17)
+- Security: Activity dependencies updated to clear all `npm audit` findings. Server: hono
+  4.13.8 (moderate advisory, runs in the live Worker) and wrangler 4.137.0. Client: wrangler
+  4.137.0 and the pinned sharp 0.35.2 -> 0.35.4 (high libheif advisory, build tooling only).
+  Typecheck + build clean in both; deployed to DEV (Worker + Pages). PROD Worker not yet
+  redeployed.
+  Files: activity/server/package*.json, activity/client/package*.json, activity/README.md.
+
 2026-09-23 (16)
 - Added: Terms of Service and Privacy Policy pages (English), needed for Discord app
   verification. Served as static files by the Activity's Cloudflare Pages site at /terms and

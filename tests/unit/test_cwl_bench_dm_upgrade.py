@@ -15,6 +15,14 @@ import discord
 import pytest
 
 
+def _fake_message(content: str, custom_ids: List[str]) -> MagicMock:
+    """A DM as the upgrade sees it: text plus one action row of buttons."""
+    message = MagicMock()
+    message.content = content
+    message.components = [MagicMock(children=[MagicMock(custom_id=cid) for cid in custom_ids])]
+    return message
+
+
 def _row(tag: str, *, user: str, message_id: str, guild: str = "1", status: str = "pending") -> Dict[str, Any]:
     return {
         "player_tag": tag, "player_name": tag.strip("#"), "dmed_discord_id": user,
@@ -41,9 +49,16 @@ def _wire(monkeypatch, rows: List[Dict[str, Any]], *, modes: Dict[str, str], mem
     )
 
     edits: List[Dict[str, Any]] = []
-    message = MagicMock()
-    message.content = message_content
-    message.edit = AsyncMock(side_effect=lambda **kwargs: edits.append(kwargs))
+    message = _fake_message(message_content, [])
+
+    def _apply_edit(**kwargs):
+        # A real message takes on the text and buttons it was edited to; the upgrade's
+        # "already offers Bench" check reads exactly those.
+        edits.append(kwargs)
+        message.content = kwargs["content"]
+        message.components = [MagicMock(children=list(kwargs["view"].children))]
+
+    message.edit = AsyncMock(side_effect=_apply_edit)
 
     channel = MagicMock()
     channel.fetch_message = AsyncMock(return_value=message)

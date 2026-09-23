@@ -1243,7 +1243,7 @@
       "bench_button": "Bench",
       "bench_explanation": "{confirm} **Confirm** — you play and attack.\n{bench} **Bench** — you'd like to be on the roster (for the season rewards or as a backup) but don't plan to attack regularly.\n{optout} **Opt Out** — not this season.",
       "dm_body": "📋 Sign-up for CWL season **{season}**!\nDo you want to play this CWL with **{player_name}**?",
-      "dm_body_bench": "📋 Sign-up for CWL season **{season}**!\nDo you want to play this CWL with **{player_name}**?\n\n{confirm} **Confirm** — you play and attack.\n{bench} **Bench** — you'd like to be on the roster (for the season rewards or as a backup) but don't plan to attack regularly.\n{optout} **Opt Out** — not this season.",
+      "dm_body_bench": "📋 Sign-up for CWL season **{season}**!\n\n{confirm} **Confirm** — you play and attack.\n{bench} **Bench** — you'd like to be on the roster (for the season rewards or as a backup) but don't plan to attack regularly.\n{optout} **Opt Out** — not this season.\n\nDo you want to play this CWL with **{player_name}**?",
       "confirmed_msg": "{confirm} Thanks — **{player_name}** is confirmed for this season's CWL roster pool.",
       "declined_msg": "👍 Got it — **{player_name}** has opted out of this season's CWL roster pool.",
       "bench_msg": "{bench} Got it — **{player_name}** is on the bench for this season's CWL: on the roster, but not expected to attack.",

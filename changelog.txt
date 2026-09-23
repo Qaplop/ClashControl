@@ -1,6 +1,22 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-23 (7)  Build 73.
+- Fixed: CWL sign-up DMs upgraded to extended mode looked different from DMs sent in extended mode
+  from the start (buttons labelled with the player name instead of Confirm / Bench / Opt Out, and
+  the legend appended below the question). Both paths now render through one builder,
+  build_cwl_signup_dm(), so an upgraded DM is identical to a fresh one; reminder / roster-update
+  DMs keep their own text and gain the Bench button plus one legend. "Already upgraded" is now
+  detected by the Bench button, not by matching text.
+- Changed: the Bench legend appears once per player instead of under every account's DM — in the
+  player's first DM of a batch, at the top (season line, legend, question); their other accounts
+  get the plain question with the three buttons. The upgrade places it on the player's oldest
+  pending DM. Answering the account that carries the legend keeps the legend above the "thanks".
+  Standard mode has no legend. es/zh/la now use the same season line and question wording as
+  their plain sign-up DM.
+  Files: qapbot/QBdiscocmdshelper_cwl.py, ui_cwl_roster.py, translations (5) (+ tests).
+  3453 tests pass.
+
 2026-09-23 (6)  Build 72.
 - Changed: new servers start with 12 months of CWL data retention (was 0 = keep indefinitely);
   existing servers keep whatever they have, 0 included (CWL_RETENTION_MONTHS_NEW_GUILD). Enforced

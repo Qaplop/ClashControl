@@ -460,7 +460,7 @@ class TestDmBatchSeedsSignupRows:
         CACHE.db_manager = db
         sent = []
 
-        async def _fake_dm(evt, gid, season, participant):
+        async def _fake_dm(evt, gid, season, participant, **_kwargs):
             # The row its button needs must already exist at send time, not after.
             assert db.get_cwl_signup_sync(evt, participant["player_tag"]) is not None
             sent.append(participant["player_tag"])
@@ -479,6 +479,32 @@ class TestDmBatchSeedsSignupRows:
         assert row["dmed_discord_id"] == "owner1"
 
     @pytest.mark.asyncio
+    async def test_only_each_players_first_dm_in_a_batch_carries_the_bench_legend(self, db, monkeypatch):
+        """2026-09-23: the legend used to be repeated in every account's DM. Two accounts of one
+        player plus one of another: each player's first DM gets it, the second account doesn't."""
+        from qapbot.cache_manager import CACHE
+        import qapbot.QBdiscocmdshelper_cwl as cwl
+
+        event_id = await _seed(db, "923", "#CLANK")
+        for owner, tag in (("owner1", "#A1"), ("owner1", "#A2"), ("owner2", "#B1")):
+            await _link(db, owner, tag)
+        CACHE.db_manager = db
+        legend_by_tag = {}
+
+        async def _fake_dm(evt, gid, season, participant, *, with_legend=True):
+            legend_by_tag[participant["player_tag"]] = with_legend
+            return True, "sent", f"m-{participant['player_tag']}", "c"
+
+        monkeypatch.setattr(cwl, "send_cwl_signup_template_dm", _fake_dm)
+        await cwl._send_cwl_enrollment_dm_batch(event_id, 923, "2026-09", [
+            self._target("#A1", "A1", "owner1"),
+            self._target("#B1", "B1", "owner2"),
+            self._target("#A2", "A2", "owner1"),
+        ])
+
+        assert legend_by_tag == {"#A1": True, "#B1": True, "#A2": False}
+
+    @pytest.mark.asyncio
     async def test_seeded_row_adopts_the_global_response(self, db, monkeypatch):
         """Not a hardcoded 'pending' -- a player who already answered another guild's DM must
         not be contradicted (rule h)."""
@@ -492,7 +518,7 @@ class TestDmBatchSeedsSignupRows:
             "#ANSWERED2", "2026-09", "Answered", "owner1", "confirmed", "2026-09-01T10:00Z", 99, "922",
         )
 
-        async def _fake_dm(evt, gid, season, participant):
+        async def _fake_dm(evt, gid, season, participant, **_kwargs):
             return True, "sent", "m", "c"
 
         monkeypatch.setattr(cwl, "send_cwl_signup_template_dm", _fake_dm)
@@ -520,7 +546,7 @@ class TestDmBatchSeedsSignupRows:
             "2026-09-01T10:00Z", "m", "c",
         )
 
-        async def _fake_dm(evt, gid, season, participant):
+        async def _fake_dm(evt, gid, season, participant, **_kwargs):
             raise AssertionError("should not have DMed a skipped target")
 
         monkeypatch.setattr(cwl, "send_cwl_signup_template_dm", _fake_dm)
@@ -543,7 +569,7 @@ class TestDmBatchSeedsSignupRows:
             event_id, "#KEEP2", "Keep2", "owner1", None, "template_confirm", "declined",
         )
 
-        async def _fake_dm(evt, gid, season, participant):
+        async def _fake_dm(evt, gid, season, participant, **_kwargs):
             return True, "sent", "m", "c"
 
         monkeypatch.setattr(cwl, "send_cwl_signup_template_dm", _fake_dm)
@@ -590,7 +616,7 @@ class TestDmBatchRechecksLinkBeforeSending:
         event_id = await _seed(db, "926", "#CLANM")
         CACHE.db_manager = db
 
-        async def _fake_dm(evt, gid, season, participant):
+        async def _fake_dm(evt, gid, season, participant, **_kwargs):
             raise AssertionError("must not DM a player with no linked Discord account")
 
         monkeypatch.setattr(cwl, "send_cwl_signup_template_dm", _fake_dm)
@@ -616,7 +642,7 @@ class TestDmBatchRechecksLinkBeforeSending:
         await db._conn.execute("DELETE FROM user_players WHERE player_tag = ?", ("#RACED",))
         await db._conn.commit()
 
-        async def _fake_dm(evt, gid, season, participant):
+        async def _fake_dm(evt, gid, season, participant, **_kwargs):
             raise AssertionError("must not DM an account unlinked before the send loop reached it")
 
         monkeypatch.setattr(cwl, "send_cwl_signup_template_dm", _fake_dm)
@@ -639,7 +665,7 @@ class TestDmBatchRechecksLinkBeforeSending:
         await _link(db, "new_owner", "#RELINKED")
         CACHE.db_manager = db
 
-        async def _fake_dm(evt, gid, season, participant):
+        async def _fake_dm(evt, gid, season, participant, **_kwargs):
             assert participant["discord_id"] == "new_owner"
             return True, "sent", "m", "c"
 

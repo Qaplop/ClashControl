@@ -2870,12 +2870,33 @@ async def upgrade_pending_cwl_dms_for_bench(guild_id: int) -> int:
     if bot is None:
         return 0
 
+    def _custom_ids(message: Any) -> List[str]:
+        ids: List[str] = []
+        for row in getattr(message, "components", None) or []:
+            for child in getattr(row, "children", None) or []:
+                custom_id = getattr(child, "custom_id", None)
+                if custom_id:
+                    ids.append(custom_id)
+        return ids
+
+    # Per player, oldest DM first, so the legend lands on the TOPMOST still-pending sign-up DM —
+    # the same place a fresh extended-mode send puts it (build_cwl_signup_dm, with_legend).
+    ordered = sorted(
+        by_message.items(),
+        key=lambda item: (str(item[1][0]["dmed_discord_id"]), int(item[0])),
+    )
+    legend_placed: Set[str] = set()
+
     upgraded = 0
-    for message_id, message_rows in by_message.items():
+    for message_id, message_rows in ordered:
         first = message_rows[0]
         discord_id = str(first["dmed_discord_id"])
         channel_id = first["dm_sent_via_channel_id"]
-        event_id = first["dm_sent_via_event_id"]
+        event_id = int(first["dm_sent_via_event_id"])
+        try:
+            sending_guild_id = int(first["dm_sent_via_guild_id"])
+        except (TypeError, ValueError):
+            sending_guild_id = guild_id
         try:
             channel = bot.get_channel(int(channel_id)) if channel_id else None
             if channel is None:
@@ -2883,25 +2904,43 @@ async def upgrade_pending_cwl_dms_for_bench(guild_id: int) -> int:
                 channel = user.dm_channel or await user.create_dm()
             message = await channel.fetch_message(int(message_id))
 
-            accounts = [
-                {"player_tag": r["player_tag"], "player_name": r["player_name"]}
-                for r in message_rows
-            ]
-            explanation = t(
-                'cwl.template.bench_explanation', user_id=discord_id, guild_id=guild_id,
+            custom_ids = _custom_ids(message)
+            legend = t(
+                'cwl.template.bench_explanation', user_id=discord_id, guild_id=sending_guild_id,
                 **signup_dm_icons(),
             )
-            content = message.content or ""
-            if explanation in content:
-                # Already carries the Bench option (an earlier run, or it was sent that way
-                # because the sending guild was extended all along) — nothing to do, and it must
-                # not be counted as upgraded in what the admin is told.
+            if any(":passive:" in cid for cid in custom_ids):
+                # Already offers Bench (an earlier run, or sent in extended mode from the start):
+                # nothing to do, and not counted in what the admin is told. Remember whether it
+                # carries the legend, so this player's later DMs don't get a second one.
+                if legend in (message.content or ""):
+                    legend_placed.add(discord_id)
                 continue
-            content = f"{content}\n\n{explanation}".strip()
-            await message.edit(
-                content=content,
-                view=build_cwl_reminder_response_view(int(event_id), accounts, guild_id, bench=True),
-            )
+
+            if any(cid.startswith("cwl:signup:") for cid in custom_ids):
+                # A single-account sign-up DM: rebuild it exactly as a fresh extended-mode send
+                # would render it (2026-09-23 — the upgraded DM used to look different from one
+                # sent in extended mode from the start).
+                with_legend = discord_id not in legend_placed
+                content, view = build_cwl_signup_dm(
+                    event_id, sending_guild_id, season, discord_id,
+                    first["player_tag"], first["player_name"], with_legend=with_legend, bench=True,
+                )
+                if with_legend:
+                    legend_placed.add(discord_id)
+            else:
+                # A reminder / roster-update DM: its own text (which account, where they play)
+                # stays; it gains the legend once and the Bench button per account.
+                accounts = [
+                    {"player_tag": r["player_tag"], "player_name": r["player_name"]}
+                    for r in message_rows
+                ]
+                content = message.content or ""
+                if legend not in content:
+                    content = f"{content}\n\n{legend}".strip()
+                view = build_cwl_reminder_response_view(event_id, accounts, sending_guild_id, bench=True)
+
+            await message.edit(content=content, view=view)
             upgraded += 1
         except discord.NotFound as e:
             # The DM is gone (the player deleted it, or — on DEV, running on a copy of PROD's
@@ -3795,11 +3834,16 @@ async def _send_cwl_enrollment_dm_batch(
                 f"{event_id} before DMing — their buttons would otherwise have been dead (#0016)"
             )
 
+    # The bench legend goes into the FIRST DM each player gets in this batch only (2026-09-23);
+    # their other accounts' DMs follow with just the question and the three buttons.
+    legend_sent_to: Set[str] = set()
     for participant in to_dm:
+        recipient = str(participant["discord_id"])
         sent, outcome, dm_message_id, dm_channel_id = await send_cwl_signup_template_dm(
-            event_id, guild_id, season, participant
+            event_id, guild_id, season, participant, with_legend=recipient not in legend_sent_to,
         )
         if sent:
+            legend_sent_to.add(recipient)
             result["contacted"] += 1
             if db is not None:
                 await asyncio.to_thread(
@@ -3817,8 +3861,51 @@ async def _send_cwl_enrollment_dm_batch(
     return result
 
 
+def build_cwl_signup_dm(
+    event_id: int, guild_id: int, season: str, discord_id: Any, player_tag: str,
+    player_name: Optional[str], *, with_legend: bool, bench: Optional[bool] = None,
+) -> Tuple[str, Any]:
+    """(content, view) of ONE account's sign-up DM — the single definition both the fresh send
+    (send_cwl_signup_template_dm) and the bench upgrade of an already-sent DM
+    (upgrade_pending_cwl_dms_for_bench) render through, so an upgraded DM is identical to one sent
+    in extended mode from the start (project owner, 2026-09-23).
+
+    Standard mode: the plain question with Confirm / Opt Out — no legend, the buttons explain
+    themselves. Extended (bench) mode: Confirm / Bench / Opt Out, and the three-line legend only
+    when `with_legend` — i.e. in the FIRST DM a player gets in a batch, at its top. Every further
+    account's DM is the plain question with the three buttons, so a player with several accounts
+    reads the legend once instead of once per account.
+
+    Args:
+        event_id / guild_id / season: the sending event, its guild (language, bench rule) and season.
+        discord_id: the recipient.
+        player_tag / player_name: the account this DM asks about.
+        with_legend: put the legend into this DM (extended mode only).
+        bench: force the bench decision; None = cwl_bench_enabled_for(discord_id, guild_id).
+    """
+    from qapbot.i18n import t
+    from qapbot.ui_cwl_roster import build_cwl_signup_response_view
+
+    if bench is None:
+        # Tracker #0114: the Bench option follows the PLAYER, not the sending guild — a player
+        # gets exactly one enrollment DM per season, sent by whichever guild's event got there
+        # first, so a guild-only rule would hand out the option by luck of who sent it.
+        bench = cwl_bench_enabled_for(discord_id, guild_id)
+    content = t(
+        'cwl.template.dm_body_bench' if bench and with_legend else 'cwl.template.dm_body',
+        guild_id=guild_id,
+        user_id=discord_id,
+        season=season,
+        player_name=player_name or player_tag,
+        **signup_dm_icons(),
+    )
+    view = build_cwl_signup_response_view(event_id, player_tag, guild_id, bench=bench)
+    return content, view
+
+
 async def send_cwl_signup_template_dm(
     event_id: int, guild_id: int, season: str, participant: Dict[str, Any],
+    *, with_legend: bool = True,
 ) -> Tuple[bool, str, Optional[str], Optional[str]]:
     """Send one template-copy confirm/opt-out DM. Originally kept as its own function just so
     start_cwl_enrollment stayed readable — no longer private (dropped the leading underscore
@@ -3830,23 +3917,11 @@ async def send_cwl_signup_template_dm(
     redesign). message_id/channel_id (2026-08-19, added for the Delete-Season DM-retraction fix —
     see db_manager.py's cwl_player_season_status CREATE TABLE comment) are None whenever sent is
     False, and are the caller's only way to later find/delete this exact DM."""
-    from qapbot.i18n import t
-    from qapbot.ui_cwl_roster import build_cwl_signup_response_view
-
     discord_id = participant["discord_id"]
-    # Tracker #0114: the Bench option follows the PLAYER, not the sending guild — a player gets
-    # exactly one enrollment DM per season, sent by whichever guild's event got there first, so a
-    # guild-only rule would hand out the option by luck of who sent it.
-    bench = cwl_bench_enabled_for(discord_id, guild_id)
-    message = t(
-        'cwl.template.dm_body_bench' if bench else 'cwl.template.dm_body',
-        guild_id=guild_id,
-        user_id=discord_id,
-        season=season,
-        player_name=participant["player_name"] or participant["player_tag"],
-        **signup_dm_icons(),
+    message, view = build_cwl_signup_dm(
+        event_id, guild_id, season, discord_id, participant["player_tag"], participant["player_name"],
+        with_legend=with_legend,
     )
-    view = build_cwl_signup_response_view(event_id, participant["player_tag"], guild_id, bench=bench)
     sent_message_ref: List[Any] = []
     sent, outcome = await CACHE.send_user_dm_detailed(
         str(discord_id), message, view=view, sent_message_out=sent_message_ref

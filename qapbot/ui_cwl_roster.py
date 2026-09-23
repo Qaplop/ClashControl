@@ -3275,6 +3275,14 @@ async def rerender_cwl_dm_after_response(
             response_key, user_id=discord_id, guild_id=guild_id, player_name=player_name,
             **signup_dm_icons(),
         )
+        # In extended mode only a player's FIRST sign-up DM carries the Bench legend
+        # (build_cwl_signup_dm, 2026-09-23). Answering that account must not take the legend away
+        # from the other accounts' DMs below it, which still show the three buttons — so a
+        # message that carried the legend keeps it above its "thanks".
+        legend = t('cwl.template.bench_explanation', user_id=discord_id, guild_id=guild_id,
+                   **signup_dm_icons())
+        if legend in (getattr(message, "content", None) or ""):
+            content = f"{legend}\n\n{content}"
         view = None
 
     if interaction is not None:

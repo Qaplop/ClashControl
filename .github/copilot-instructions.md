@@ -110,9 +110,13 @@ Token budget note (cl100k_base): keep this file ~≤3000 tokens.
 📖 Details: ../qapbot/docs/RATE_LIMITING_IMPLEMENTATION.md
 
 ### 10) discord.py modal pattern
-- DO: `class MyModal(discord.ui.Modal, title="..."):` + TextInput as class attributes.
-- DON'T: Pass `title=` to `super().__init__()` or create TextInputs in `__init__`.
-- WHY: Required by discord.py lifecycle.
+- DO: `class MyModal(discord.ui.Modal, title="..."):` + fields as class attributes, each TextInput
+  wrapped in `discord.ui.Label(text=..., component=discord.ui.TextInput(...))`. Translate per
+  instance in `__init__`: `super().__init__(title=t(...)[:45])` (the class-level title is the
+  English fallback), then `self.field.text = t(...)` and the placeholder via `.component`.
+- DON'T: Create TextInputs in `__init__`, or pass `label=` to a TextInput / set `TextInput.label`
+  (deprecated in discord.py 2.7 — and a label left there can never follow the guild language).
+- WHY: Required by discord.py lifecycle; Label is the only non-deprecated way to a translated label.
 📖 Details: ../qapbot/docs/CODE_STRUCTURE.md § Discord.py Patterns
 
 ### 11) Database access through db_manager only

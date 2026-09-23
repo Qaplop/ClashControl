@@ -1,6 +1,23 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-23 (11)  Build 75.
+- Fixed: modal field labels and titles were English on every server — only the placeholders
+  followed the guild language (discord.py 2.7 deprecates TextInput.label). All 10 remaining
+  modals now wrap their fields in discord.ui.Label and translate title, label and placeholder:
+  Verify Account, Prove Account Ownership, Enter API Token, Enter Player Data (registration);
+  Enter Player Tag, Enter Discord User ID, Add Clan or Family, Create / Rename Clan Family, Add
+  Clan to Family (clan management); Link Buddy Account (war notifications).
+- Fixed: Rename Family and Add Clan to Family looked up the guild via a guild_id attribute their
+  parent views don't have, so even their placeholders were always English; Add Clan or Family's
+  placeholder was never translated at all. New helper _view_guild_id() in ui_clan_management.py.
+- New keys: ui_components.modals.title_* / label_* / placeholder_clan_or_family and
+  warnotifications.buddy_modal_info_label (5 languages).
+- Docs: Cardinal Rule 10 (Label-wrapped fields, per-instance translated title),
+  CODE_STRUCTURE.md § Modal Pattern, REGISTRATION_MESSAGE_WORKFLOWS.md. Backlog item removed.
+  Files: qapbot/ui_registration.py, ui_clan_management.py, ui_notifications.py, translations (5),
+  QBcore.py (+ tests/discord/test_modal_labels_i18n.py, registration phase 11/13 tests).
+
 2026-09-23 (10)  Build 74 (translations only, no code change).
 - Fixed: the "has opted out" reply in a CWL sign-up DM still showed 👍 while the Confirm and Bench
   replies use their app icons — it now shows the Opt Out app icon, in all 5 languages

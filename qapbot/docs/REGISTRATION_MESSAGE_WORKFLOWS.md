@@ -911,10 +911,11 @@ so it was left out of scope for tracker #45.
 
 ### Modal Class Pattern (CRITICAL)
 See Cardinal Rule 10 (`.github/copilot-instructions.md`) and `../qapbot/docs/CODE_STRUCTURE.md`
-§ Discord.py Patterns for the full pattern + code example. One nuance specific to this flow
-worth calling out here: only the `TextInput.placeholder` gets translated after `super().__init__()`
-— the `label` stays hardcoded English (discord.py's Modal lifecycle requires TextInput labels as
-class attributes, set before any translation context is available).
+§ Discord.py Patterns for the full pattern + code example. Every registration modal
+(`VerifyAccountModal`, `ApiTokenOwnershipModal`, `ApiTokenEntryModal`, `PlayerSubstringModal`)
+wraps its TextInputs in `discord.ui.Label` and translates title, label and placeholder per
+instance (2026-09-23) — read a submitted value as `cast(discord.ui.TextInput,
+self.field.component).value`, not `self.field.value`.
 
 ### Modular Flow Design
 - **Linking** happens immediately in `_link_player_to_user()`

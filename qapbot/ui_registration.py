@@ -9,7 +9,7 @@ and player search/selection components.
 import asyncio
 import discord
 import logging
-from typing import List, Dict, Callable, Any, Optional, Set
+from typing import List, Dict, Callable, Any, Optional, Set, cast
 
 from qapbot.i18n import t  # type: ignore[reportUnusedImport]  # tests monkeypatch ui_registration.t
 from qapbot.cache_manager import CACHE
@@ -749,17 +749,17 @@ class VerifyAccountModal(discord.ui.Modal, title="Verify Account"):
     Modal for verifying an existing unverified account with CoC API token.
     
     NOTE: Title is set at class definition (discord.py requirement).
-    TextInput labels/placeholders are translated at instantiation.
+    Field labels/placeholders are translated at instantiation.
     """
-    
-    # TextInput MUST be class attribute for discord.py Modal system
-    coc_api_token = discord.ui.TextInput(
-        label="CoC API Token",
-        required=True,
-        max_length=32,
-        placeholder="Your API token"
+
+    # Label/TextInput MUST be class attributes for discord.py Modal system. Label-wrapped
+    # (discord.py 2.7 deprecates TextInput.label) so the label can follow the guild language —
+    # see CODE_STRUCTURE.md § Modal Pattern.
+    coc_api_token = discord.ui.Label(
+        text="CoC API Token",
+        component=discord.ui.TextInput(required=True, max_length=32, placeholder="Your API token"),
     )
-    
+
     def __init__(self, player_data: Dict[str, str], action_view_interaction: Optional[discord.Interaction] = None, guild_id: Optional[int] = None, parent_view: Optional['AccountManagementView'] = None):
         """
         Initialize verification modal.
@@ -783,11 +783,8 @@ class VerifyAccountModal(discord.ui.Modal, title="Verify Account"):
         title = t('playerregistration.verify_player', guild_id=guild_id, player_name=player_name, player_tag=player_tag)
         super().__init__(title=title[:45])  # Discord modal title hard limit
 
-        # Translate TextInput placeholder after instantiation.
-        # The LABEL stays English on purpose: discord.py 2.7 deprecates TextInput.label in favour
-        # of discord.ui.Label, so translating it would ship a deprecated API (verified 2026-09-22
-        # — it warns). Migrating these modals to Label is its own job; see backlog.txt.
-        self.coc_api_token.placeholder = t('ui_components.modals.placeholder_api_token', guild_id=guild_id)
+        self.coc_api_token.text = t('ui_components.modals.label_api_token', guild_id=guild_id)
+        cast(discord.ui.TextInput, self.coc_api_token.component).placeholder = t('ui_components.modals.placeholder_api_token', guild_id=guild_id)
 
         self.guild_id = guild_id
         self.player_data = player_data
@@ -799,14 +796,14 @@ class VerifyAccountModal(discord.ui.Modal, title="Verify Account"):
         from qapbot.QBdiscocmdshelper import verify_and_update_player
         from qapbot.i18n import t
         
-        api_token = (self.coc_api_token.value or "").strip()
+        api_token = (cast(discord.ui.TextInput, self.coc_api_token.component).value or "").strip()
         if not api_token:
             user_id_local = str(interaction.user.id)
             guild_id = interaction.guild.id if interaction.guild else None
             message = t('playerregistration.api_token_required', user_id=user_id_local, guild_id=guild_id)
             await interaction.response.send_message(message, ephemeral=True)
             return
-        
+
         player_id = self.player_data.get("player_tag", "")
         player_name = self.player_data.get("player_name", "Unknown")
         
@@ -924,12 +921,15 @@ class ApiTokenOwnershipModal(discord.ui.Modal, title="Prove Account Ownership"):
         guild_id: Guild ID for i18n
     """
     
-    api_token_input = discord.ui.TextInput(
-        label="CoC API Token",
-        placeholder="Enter your API token from Clash of Clans",
-        required=True,
-        max_length=200,
-        style=discord.TextStyle.short
+    # Label-wrapped so the label can follow the guild language (CODE_STRUCTURE.md § Modal Pattern)
+    api_token_input = discord.ui.Label(
+        text="CoC API Token",
+        component=discord.ui.TextInput(
+            placeholder="Enter your API token from Clash of Clans",
+            required=True,
+            max_length=200,
+            style=discord.TextStyle.short,
+        ),
     )
     
     def __init__(
@@ -942,7 +942,9 @@ class ApiTokenOwnershipModal(discord.ui.Modal, title="Prove Account Ownership"):
         player_selection_interaction: Optional[discord.Interaction] = None,
         guild_id: Optional[int] = None
     ):
-        super().__init__()
+        from qapbot.i18n import t
+
+        super().__init__(title=t('ui_components.modals.title_api_token_ownership', guild_id=guild_id)[:45])
         self.player_tag = player_tag
         self.target_user_id = target_user_id
         self.previous_owner_name = previous_owner_name
@@ -951,9 +953,8 @@ class ApiTokenOwnershipModal(discord.ui.Modal, title="Prove Account Ownership"):
         self.player_selection_interaction = player_selection_interaction
         self.guild_id = guild_id
         
-        # Translate placeholder (label cannot be translated due to discord.py limitations)
-        from qapbot.i18n import t
-        self.api_token_input.placeholder = t('ui_components.modals.placeholder_api_token_ownership', guild_id=guild_id)
+        self.api_token_input.text = t('ui_components.modals.label_api_token', guild_id=guild_id)
+        cast(discord.ui.TextInput, self.api_token_input.component).placeholder = t('ui_components.modals.placeholder_api_token_ownership', guild_id=guild_id)
     
     async def on_submit(self, interaction: discord.Interaction):
         """Handle API token submission and attempt ownership transfer."""
@@ -961,7 +962,7 @@ class ApiTokenOwnershipModal(discord.ui.Modal, title="Prove Account Ownership"):
         from qapbot.i18n import t
         import logging
         
-        api_token = self.api_token_input.value.strip()
+        api_token = cast(discord.ui.TextInput, self.api_token_input.component).value.strip()
         
         if not api_token:
             user_id = str(interaction.user.id)
@@ -2004,14 +2005,13 @@ class ApiTokenEntryModal(discord.ui.Modal, title="Enter API Token"):
     Used when player is being registered for the first time with verification.
     """
     
-    # TextInput MUST be class attribute for discord.py Modal system
-    coc_api_token = discord.ui.TextInput(
-        label="CoC API Token",
-        required=True,
-        max_length=32,
-        placeholder="Your API token"
+    # Label/TextInput MUST be class attributes for discord.py Modal system; Label-wrapped so the
+    # label can follow the guild language (CODE_STRUCTURE.md § Modal Pattern)
+    coc_api_token = discord.ui.Label(
+        text="CoC API Token",
+        component=discord.ui.TextInput(required=True, max_length=32, placeholder="Your API token"),
     )
-    
+
     def __init__(self, player_tag: str, player_name: str, player_selection_interaction: Optional[discord.Interaction] = None, guild_id: Optional[int] = None):
         """
         Initialize API token entry modal for player registration with verification.
@@ -2024,15 +2024,11 @@ class ApiTokenEntryModal(discord.ui.Modal, title="Enter API Token"):
         """
         from qapbot.i18n import t
         
-        # NOTE: super().__init__() must be called WITHOUT title parameter
-        # Title is already set in class definition above
-        super().__init__()
-        
-        # Translate TextInput placeholder after instantiation.
-        # The LABEL stays English on purpose: discord.py 2.7 deprecates TextInput.label in favour
-        # of discord.ui.Label, so translating it would ship a deprecated API (verified 2026-09-22
-        # — it warns). Migrating these modals to Label is its own job; see backlog.txt.
-        self.coc_api_token.placeholder = t('ui_components.modals.placeholder_api_token', guild_id=guild_id)
+        # The class-level title is the English fallback; title= overrides it per instance.
+        super().__init__(title=t('ui_components.modals.title_api_token_entry', guild_id=guild_id)[:45])
+
+        self.coc_api_token.text = t('ui_components.modals.label_api_token', guild_id=guild_id)
+        cast(discord.ui.TextInput, self.coc_api_token.component).placeholder = t('ui_components.modals.placeholder_api_token', guild_id=guild_id)
         
         self.player_tag = player_tag
         self.player_name = player_name
@@ -2046,14 +2042,14 @@ class ApiTokenEntryModal(discord.ui.Modal, title="Enter API Token"):
         from qapbot.i18n import t
         import logging
         
-        api_token = (self.coc_api_token.value or "").strip()
+        api_token = (cast(discord.ui.TextInput, self.coc_api_token.component).value or "").strip()
         if not api_token:
             user_id_local = str(interaction.user.id)
             guild_id = interaction.guild.id if interaction.guild else None
             message = t('playerregistration.api_token_required', user_id=user_id_local, guild_id=guild_id)
             await interaction.response.send_message(message, ephemeral=True)
             return
-        
+
         # Get user entry
         user_id = str(interaction.user.id)
         user_entry = CACHE.user_accounts.get(user_id, {"players": []})
@@ -2131,21 +2127,18 @@ class PlayerSubstringModal(discord.ui.Modal, title="Enter Player Data"):
     Handles player matching, direct tag lookup, and registration flow.
     
     NOTE: Title is set at class definition (discord.py requirement).
-    TextInput labels/placeholders are translated at instantiation.
+    Title, field labels and placeholders are translated at instantiation.
     """
-    
-    # TextInputs MUST be class attributes for discord.py Modal system
-    substring = discord.ui.TextInput(
-        label="Player Name or Tag",
-        required=True,
-        max_length=32,
-        placeholder="Name or #TAG"
+
+    # Labels/TextInputs MUST be class attributes for discord.py Modal system; Label-wrapped so the
+    # labels can follow the guild language (CODE_STRUCTURE.md § Modal Pattern)
+    substring = discord.ui.Label(
+        text="Player Name or Tag",
+        component=discord.ui.TextInput(required=True, max_length=32, placeholder="Name or #TAG"),
     )
-    coc_api_token = discord.ui.TextInput(
-        label="CoC API Token (optional)",
-        required=False,
-        max_length=32,
-        placeholder="Your API token"
+    coc_api_token = discord.ui.Label(
+        text="CoC API Token (optional)",
+        component=discord.ui.TextInput(required=False, max_length=32, placeholder="Your API token"),
     )
     
     def __init__(self, player_list: List[Dict[str, Any]], clan_selection_interaction: Optional[discord.Interaction] = None, user_id: Optional[str] = None, guild_id: Optional[int] = None, clans_in_guild: Optional[List[str]] = None, filtered_by_clan: bool = False):
@@ -2162,14 +2155,13 @@ class PlayerSubstringModal(discord.ui.Modal, title="Enter Player Data"):
         """
         from qapbot.i18n import t
         
-        # NOTE: super().__init__() must be called WITHOUT title parameter
-        # Title is already set in class definition above
-        super().__init__()
-        
-        # Translate TextInput placeholders after instantiation
-        # (Labels remain in English due to discord.py Modal lifecycle requirements)
-        self.substring.placeholder = t('playerregistration.modal_placeholder_player_name', user_id=user_id, guild_id=guild_id)
-        self.coc_api_token.placeholder = t('playerregistration.modal_placeholder_api_token', user_id=user_id, guild_id=guild_id)
+        # The class-level title is the English fallback; title= overrides it per instance.
+        super().__init__(title=t('ui_components.modals.title_player_search', user_id=user_id, guild_id=guild_id)[:45])
+
+        self.substring.text = t('ui_components.modals.label_player_name_or_tag', user_id=user_id, guild_id=guild_id)
+        self.coc_api_token.text = t('ui_components.modals.label_api_token_optional', user_id=user_id, guild_id=guild_id)
+        cast(discord.ui.TextInput, self.substring.component).placeholder = t('playerregistration.modal_placeholder_player_name', user_id=user_id, guild_id=guild_id)
+        cast(discord.ui.TextInput, self.coc_api_token.component).placeholder = t('playerregistration.modal_placeholder_api_token', user_id=user_id, guild_id=guild_id)
         
         self.player_list = player_list
         self.clan_selection_interaction = clan_selection_interaction
@@ -2188,9 +2180,9 @@ class PlayerSubstringModal(discord.ui.Modal, title="Enter Player Data"):
         # All subsequent messages must use followup
         await interaction.response.defer(ephemeral=True)
         
-        substr_raw = (self.substring.value or "").strip()
+        substr_raw = (cast(discord.ui.TextInput, self.substring.component).value or "").strip()
         substr = substr_raw.lower()
-        api_token = (self.coc_api_token.value or "").strip()
+        api_token = (cast(discord.ui.TextInput, self.coc_api_token.component).value or "").strip()
 
         logging.debug(f"PlayerSubstringModal: User entered '{substr_raw}', searching in {len(self.player_list)} players")
         

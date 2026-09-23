@@ -8,7 +8,7 @@ language selection for notifications, and clan-wide notification management.
 """
 import discord
 import logging
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, cast
 
 from qapbot.i18n import t
 from qapbot.cache_manager import CACHE
@@ -779,21 +779,27 @@ class BuddyPlayerSelectView(TrackedView):
 class LinkBuddyModal(discord.ui.Modal, title="Link Buddy Account"):
     """Modal for searching a CoC player by name or tag substring and adding them to the buddy watch list."""
 
-    # Labels remain in English — discord.py Modal lifecycle requires class-level label definitions.
+    # Label-wrapped (discord.py 2.7 deprecates TextInput.label) so the labels can follow the guild
+    # language — see CODE_STRUCTURE.md § Modal Pattern. Title, labels, info text and placeholder
+    # are all translated per instance in __init__.
     # info_display is a read-only paragraph whose `default` text is translated at runtime.
-    info_display = discord.ui.TextInput(
-        label="ℹ️  Save your Buddy",
-        style=discord.TextStyle.paragraph,
-        required=False,
-        max_length=300,
-        default="You will receive war attack reminders for this player — in the same DM and at the same times as your own accounts."
+    info_display = discord.ui.Label(
+        text="ℹ️  Save your Buddy",
+        component=discord.ui.TextInput(
+            style=discord.TextStyle.paragraph,
+            required=False,
+            max_length=300,
+            default="You will receive war attack reminders for this player — in the same DM and at the same times as your own accounts."
+        ),
     )
-    search_input = discord.ui.TextInput(
-        label="Player Name or Tag",
-        placeholder="e.g. PlayerName or #ABC123XY",
-        min_length=2,
-        max_length=30,
-        required=True
+    search_input = discord.ui.Label(
+        text="Player Name or Tag",
+        component=discord.ui.TextInput(
+            placeholder="e.g. PlayerName or #ABC123XY",
+            min_length=2,
+            max_length=30,
+            required=True
+        ),
     )
 
     def __init__(self, user_id: str, parent_view: 'UnifiedNotificationView', original_interaction: Optional[discord.Interaction], timeout: int = 180):
@@ -806,21 +812,23 @@ class LinkBuddyModal(discord.ui.Modal, title="Link Buddy Account"):
             original_interaction: The interaction that spawned this modal flow
             timeout: Modal timeout in seconds
         """
-        super().__init__()
+        guild_id = original_interaction.guild_id if original_interaction else None
+        super().__init__(title=t('warnotifications.buddy_modal_title', user_id=user_id, guild_id=guild_id)[:45])
         self.user_id = user_id
         self.parent_view = parent_view
         self.original_interaction = original_interaction
-        self.guild_id = original_interaction.guild_id if original_interaction else None
+        self.guild_id = guild_id
 
-        # Translate info text and placeholder — labels are class-level and cannot be translated at runtime
-        self.info_display.default = t('warnotifications.buddy_modal_info', user_id=self.user_id, guild_id=self.guild_id)
-        self.search_input.placeholder = t('warnotifications.buddy_modal_placeholder', user_id=self.user_id, guild_id=self.guild_id)
+        self.info_display.text = t('warnotifications.buddy_modal_info_label', user_id=self.user_id, guild_id=self.guild_id)
+        self.search_input.text = t('warnotifications.buddy_modal_label', user_id=self.user_id, guild_id=self.guild_id)
+        cast(discord.ui.TextInput, self.info_display.component).default = t('warnotifications.buddy_modal_info', user_id=self.user_id, guild_id=self.guild_id)
+        cast(discord.ui.TextInput, self.search_input.component).placeholder = t('warnotifications.buddy_modal_placeholder', user_id=self.user_id, guild_id=self.guild_id)
 
     async def on_submit(self, interaction: discord.Interaction):
         """Handle modal submission: search by name/tag, resolve via CoC API, add buddy."""
         await interaction.response.defer(ephemeral=True)
 
-        raw_input = self.search_input.value.strip()
+        raw_input = cast(discord.ui.TextInput, self.search_input.component).value.strip()
         substr = raw_input.lower()
 
         user_data = CACHE.user_accounts.get(self.user_id, {})

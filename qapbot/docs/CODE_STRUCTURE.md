@@ -145,54 +145,49 @@ CACHE.db_manager: WarHistoryDB  # All database operations via this reference
 
 ### Modal Pattern (REQUIRED)
 ```python
-# Title MUST be in class definition
+# Class-level title = English fallback
 class MyModal(discord.ui.Modal, title="My Modal Title"):
-    # TextInputs MUST be class attributes
-    my_input = discord.ui.TextInput(
-        label="Input Label",
-        placeholder="Placeholder"
+    # Fields MUST be class attributes; every TextInput is wrapped in a Label (no label= on it)
+    my_input = discord.ui.Label(
+        text="Input Label",
+        component=discord.ui.TextInput(placeholder="Placeholder"),
     )
     
     def __init__(self, guild_id=None):
-        # NO title parameter to super().__init__()
-        super().__init__()
-        # Translate placeholders AFTER super init
-        self.my_input.placeholder = t('key', guild_id=guild_id)
+        # title= overrides the class-level title per instance (45-char Discord limit)
+        super().__init__(title=t('title_key', guild_id=guild_id)[:45])
+        # Translate label + placeholder AFTER super init (Modal._init_children() deep-copies the
+        # class-level items onto the instance, so this never touches the class attribute)
+        self.my_input.text = t('label_key', guild_id=guild_id)
+        cast(discord.ui.TextInput, self.my_input.component).placeholder = t('key', guild_id=guild_id)
     
     async def on_submit(self, interaction):
         # ALWAYS defer first
         await interaction.response.defer(ephemeral=True)
+        value = cast(discord.ui.TextInput, self.my_input.component).value  # NOT self.my_input.value
         # ... process ...
         await interaction.followup.send("Done", ephemeral=True)
 ```
+Every modal in `qapbot/` follows this since 2026-09-23 (registration, clan management, buddy
+modal, tracker); `tests/discord/test_modal_labels_i18n.py` fails on any `TextInput(label=...)`.
+A modal opened from a management view should take its language from the view's guild —
+`ui_clan_management._view_guild_id(view)` — because those views keep a `discord.Guild` on
+`.guild` and have no `guild_id` attribute.
 
-**`placeholder` is fine to set post-construction like above — `label` is NOT (discord.py 2.6+).**
+**Why a Label and not `TextInput(label=...)` (discord.py 2.6+):**
 `TextInput.label`'s getter/setter are deprecated in favor of wrapping the TextInput in
 `discord.ui.Label`, per Discord's own developer docs: *"The `label` field on a Text Input is
 deprecated in favor of `label` and `description` on the Label component"* — `label` is not a
 required field on the wire-level Text Input structure, so a nested TextInput built with no
 `label=` argument (sending `label: null`) is the documented, sanctioned shape, not a workaround.
-This matters whenever a modal field's label needs i18n translation (Cardinal Rule 6) — which,
-same as `placeholder` above, can only happen per-instance in `__init__`/a `_localize()` method,
-after the field's per-user/guild `t()` call is possible, i.e. exactly where the deprecated
-`.label =` assignment used to live:
-```python
-class MyModal(discord.ui.Modal, title="..."):
-    my_input = discord.ui.Label(
-        text="Input Label",  # English fallback / used before _localize() runs
-        component=discord.ui.TextInput(placeholder="Placeholder"),  # no label= here
-    )
-
-    def _localize(self, guild_id=None):
-        self.my_input.text = t('key', guild_id=guild_id)  # NOT .my_input.label
-
-    async def on_submit(self, interaction):
-        value = self.my_input.component.value  # NOT .my_input.value
-```
-Real-world example: `qapbot/ui_tracker.py`'s `TrackerItemModal.title_input`/`description_input`/
-`details_input` (migrated 2026-08-29, tracker #0009 follow-up work — see Pitfall 44's sibling
-fix note). Same idiom as "Select Menus Inside Modals" below, just for a plain text field instead
-of a Select/RadioGroup.
+This matters whenever a modal field's label needs i18n translation (Cardinal Rule 6), which can
+only happen per-instance in `__init__` (or a `_localize()` method it calls) — setting `.text` on
+the Label as in the example above, never `.label` on the TextInput. The `cast(...)` is only for
+the type checker: `Label.component` is typed as a generic `Item`. Real-world examples:
+`qapbot/ui_tracker.py`'s `TrackerItemModal` (migrated 2026-08-29, tracker #0009 follow-up) and,
+since 2026-09-23, every modal in `ui_registration.py`, `ui_clan_management.py` and
+`ui_notifications.py`. Same idiom as "Select Menus Inside Modals" below, just for a plain text
+field instead of a Select/RadioGroup.
 
 ### Adding a new `qapbot/translations/{lang}.json` file
 `i18n.py`'s `TranslationManager.load_translations()` auto-discovers every `*.json` in

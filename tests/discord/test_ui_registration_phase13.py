@@ -58,8 +58,8 @@ async def test_psm_single_match_calls_process_registration(monkeypatch: pytest.M
         guild_id=interaction.guild.id,
         clans_in_guild=["#C1"],
     )
-    modal.substring._value = "alice"  # type: ignore[attr-defined]
-    modal.coc_api_token._value = ""  # type: ignore[attr-defined]
+    modal.substring.component._value = "alice"  # type: ignore[attr-defined]
+    modal.coc_api_token.component._value = ""  # type: ignore[attr-defined]
 
     await modal.on_submit(interaction)
 
@@ -95,8 +95,8 @@ async def test_psm_valid_tag_input_calls_process_registration(monkeypatch: pytes
         guild_id=interaction.guild.id,
         clans_in_guild=["#C1"],
     )
-    modal.substring._value = "#P99"  # type: ignore[attr-defined]
-    modal.coc_api_token._value = ""  # type: ignore[attr-defined]
+    modal.substring.component._value = "#P99"  # type: ignore[attr-defined]
+    modal.coc_api_token.component._value = ""  # type: ignore[attr-defined]
 
     await modal.on_submit(interaction)
 
@@ -131,8 +131,8 @@ async def test_psm_invalid_input_sends_error_followup(monkeypatch: pytest.Monkey
         guild_id=interaction.guild.id,
         clans_in_guild=["#C1"],
     )
-    modal.substring._value = "xyzxyzxyz"  # type: ignore[attr-defined]
-    modal.coc_api_token._value = ""  # type: ignore[attr-defined]
+    modal.substring.component._value = "xyzxyzxyz"  # type: ignore[attr-defined]
+    modal.coc_api_token.component._value = ""  # type: ignore[attr-defined]
 
     await modal.on_submit(interaction)
 
@@ -165,8 +165,8 @@ async def test_psm_two_matches_sends_select_dropdown(monkeypatch: pytest.MonkeyP
         guild_id=interaction.guild.id,
         clans_in_guild=["#C1"],
     )
-    modal.substring._value = "ali"  # type: ignore[attr-defined]
-    modal.coc_api_token._value = ""  # type: ignore[attr-defined]
+    modal.substring.component._value = "ali"  # type: ignore[attr-defined]
+    modal.coc_api_token.component._value = ""  # type: ignore[attr-defined]
 
     await modal.on_submit(interaction)
 
@@ -204,8 +204,8 @@ async def test_psm_over25_matches_multiple_clans_shows_clan_filter(monkeypatch: 
         clans_in_guild=["#C1", "#C2"],  # Multiple clans
         filtered_by_clan=False,
     )
-    modal.substring._value = "ali"  # type: ignore[attr-defined]
-    modal.coc_api_token._value = ""  # type: ignore[attr-defined]
+    modal.substring.component._value = "ali"  # type: ignore[attr-defined]
+    modal.coc_api_token.component._value = ""  # type: ignore[attr-defined]
 
     await modal.on_submit(interaction)
 
@@ -242,8 +242,8 @@ async def test_psm_over25_matches_single_clan_sends_specific_error(monkeypatch: 
         clans_in_guild=["#C1"],  # Single clan → goes to error branch
         filtered_by_clan=False,
     )
-    modal.substring._value = "ali"  # type: ignore[attr-defined]
-    modal.coc_api_token._value = ""  # type: ignore[attr-defined]
+    modal.substring.component._value = "ali"  # type: ignore[attr-defined]
+    modal.coc_api_token.component._value = ""  # type: ignore[attr-defined]
 
     await modal.on_submit(interaction)
 
@@ -279,8 +279,8 @@ async def test_psm_no_match_own_player_calls_complete_linking(monkeypatch: pytes
         guild_id=interaction.guild.id,
         clans_in_guild=["#C1"],
     )
-    modal.substring._value = "alice"  # type: ignore[attr-defined]
-    modal.coc_api_token._value = ""  # type: ignore[attr-defined]
+    modal.substring.component._value = "alice"  # type: ignore[attr-defined]
+    modal.coc_api_token.component._value = ""  # type: ignore[attr-defined]
 
     await modal.on_submit(interaction)
 
@@ -320,7 +320,7 @@ async def test_verify_modal_happy_path_calls_war_notifications_check(monkeypatch
         {"player_tag": "#P1", "player_name": "Alice"},
         guild_id=interaction.guild.id,
     )
-    modal.coc_api_token._value = "valid_token_123"  # type: ignore[attr-defined]
+    modal.coc_api_token.component._value = "valid_token_123"  # type: ignore[attr-defined]
 
     await modal.on_submit(interaction)
 
@@ -350,7 +350,7 @@ async def test_verify_modal_verification_failed_sends_error(monkeypatch: pytest.
         {"player_tag": "#P1", "player_name": "Alice"},
         guild_id=interaction.guild.id,
     )
-    modal.coc_api_token._value = "wrong_token"  # type: ignore[attr-defined]
+    modal.coc_api_token.component._value = "wrong_token"  # type: ignore[attr-defined]
 
     await modal.on_submit(interaction)
 

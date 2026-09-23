@@ -10,12 +10,25 @@ and data import/export views.
 import asyncio
 import discord
 import logging
-from typing import List, Dict, Any, Optional, Callable, Tuple
+from typing import List, Dict, Any, Optional, Callable, Tuple, cast
 
 from qapbot.i18n import t
 from qapbot.cache_manager import CACHE
 from qapbot.emojis import BotEmojis
 from qapbot.ui_common import claim_action, lock_buttons, release_action, unlock_buttons
+
+
+def _view_guild_id(view: Any) -> Optional[int]:
+    """Guild id of the view a modal was opened from, for translating that modal.
+
+    The management views keep a discord.Guild on ``.guild`` and have no ``guild_id`` attribute —
+    reading ``getattr(view, 'guild_id', None)`` alone (as the family/clan modals once did) always
+    got None, so their text stayed English on every server.
+    """
+    guild_id = getattr(view, "guild_id", None)
+    if guild_id is not None:
+        return guild_id
+    return getattr(getattr(view, "guild", None), "id", None)
 
 
 class ManualPlayerTagModal(discord.ui.Modal, title="Enter Player Tag"):
@@ -25,12 +38,11 @@ class ManualPlayerTagModal(discord.ui.Modal, title="Enter Player Tag"):
     NOTE: Title is set at class definition (discord.py requirement).
     """
     
-    # TextInput MUST be class attribute for discord.py Modal system
-    player_tag_input = discord.ui.TextInput(
-        label="Player Tag",
-        required=True,
-        max_length=15,
-        placeholder="#PLAYERTAG"
+    # Label/TextInput MUST be class attributes for discord.py Modal system; Label-wrapped so the
+    # label can follow the guild language (CODE_STRUCTURE.md § Modal Pattern)
+    player_tag_input = discord.ui.Label(
+        text="Player Tag",
+        component=discord.ui.TextInput(required=True, max_length=15, placeholder="#PLAYERTAG"),
     )
     
     def __init__(self, link_view: 'ClanManagementLinkAccountView'):  # type: ignore[name-defined]
@@ -40,19 +52,14 @@ class ManualPlayerTagModal(discord.ui.Modal, title="Enter Player Tag"):
         Args:
             link_view: Parent ClanManagementLinkAccountView to update after player fetch
         """
-        super().__init__()
+        guild_id = _view_guild_id(link_view)
+        # The class-level title is the English fallback; title= overrides it per instance.
+        super().__init__(title=t('ui_components.modals.title_player_tag', guild_id=guild_id)[:45])
         self.link_view = link_view
-        # 2026-09-22: this modal carried a _translate_inputs() helper that nothing ever called
-        # (and whose keys existed nowhere), so nothing here was ever translated — Cardinal Rule 6.
-        # Translated inline instead, the way every other modal here already does it
-        # (ui_components.modals.*). Safe per instance: discord.py's Modal._init_children()
-        # deepcopies each class-level TextInput onto the instance, so this never mutates the
-        # shared class attribute. The LABEL stays English on purpose — discord.py 2.7 deprecates
-        # TextInput.label in favour of discord.ui.Label; see backlog.txt.
-        from qapbot.i18n import t
-
-        guild_id = getattr(getattr(link_view, "guild", None), "id", None)
-        self.player_tag_input.placeholder = t('ui_components.modals.placeholder_player_tag', guild_id=guild_id)
+        # Safe per instance: discord.py's Modal._init_children() deepcopies each class-level
+        # item onto the instance, so this never mutates the shared class attribute.
+        self.player_tag_input.text = t('ui_components.modals.label_player_tag', guild_id=guild_id)
+        cast(discord.ui.TextInput, self.player_tag_input.component).placeholder = t('ui_components.modals.placeholder_player_tag', guild_id=guild_id)
     
     async def on_submit(self, interaction: discord.Interaction):
         """Handle modal submission - fetch player info and update view."""
@@ -61,7 +68,7 @@ class ManualPlayerTagModal(discord.ui.Modal, title="Enter Player Tag"):
         import logging
         
         # Normalize player tag
-        player_tag = (self.player_tag_input.value or "").strip()
+        player_tag = (cast(discord.ui.TextInput, self.player_tag_input.component).value or "").strip()
         normalized_tag = normalize_clan_tag(player_tag)
         
         if not normalized_tag:
@@ -142,14 +149,13 @@ class ManualUserIDModal(discord.ui.Modal, title="Enter Discord User ID"):
     NOTE: Title is set at class definition (discord.py requirement).
     """
     
-    # TextInput MUST be class attribute for discord.py Modal system
-    user_id_input = discord.ui.TextInput(
-        label="Discord User ID",
-        required=True,
-        max_length=20,
-        placeholder="123456789012345678"
+    # Label/TextInput MUST be class attributes for discord.py Modal system; Label-wrapped so the
+    # label can follow the guild language (CODE_STRUCTURE.md § Modal Pattern)
+    user_id_input = discord.ui.Label(
+        text="Discord User ID",
+        component=discord.ui.TextInput(required=True, max_length=20, placeholder="123456789012345678"),
     )
-    
+
     def __init__(self, link_view: 'ClanManagementLinkAccountView'):  # type: ignore[name-defined]
         """
         Initialize manual Discord user ID modal.
@@ -157,8 +163,10 @@ class ManualUserIDModal(discord.ui.Modal, title="Enter Discord User ID"):
         Args:
             link_view: Parent ClanManagementLinkAccountView to update after user fetch
         """
-        super().__init__()
+        guild_id = _view_guild_id(link_view)
+        super().__init__(title=t('ui_components.modals.title_discord_user_id', guild_id=guild_id)[:45])
         self.link_view = link_view
+        self.user_id_input.text = t('ui_components.modals.label_discord_user_id', guild_id=guild_id)
     
     async def on_submit(self, interaction: discord.Interaction):
         """Handle modal submission - fetch Discord user and update view."""
@@ -166,7 +174,7 @@ class ManualUserIDModal(discord.ui.Modal, title="Enter Discord User ID"):
         from qapbot.cache_manager import CACHE
         
         # Get user ID
-        user_id_str = (self.user_id_input.value or "").strip()
+        user_id_str = (cast(discord.ui.TextInput, self.user_id_input.component).value or "").strip()
         
         # Validate it's a number
         try:
@@ -4034,16 +4042,22 @@ class CustodianConfigurationView(discord.ui.View):
 class AddClanFamilyModal(discord.ui.Modal, title="Add Clan or Family"):
     """Modal for adding a clan or family by entering their tag or name."""
     
-    search_input = discord.ui.TextInput(
-        label="Clan/Family Tag or Name",
-        required=True,
-        max_length=50,
-        placeholder="Enter tag (e.g., #2C9UR9GJY) or name (e.g., The QCrew)"
+    # Label-wrapped so the label can follow the guild language (CODE_STRUCTURE.md § Modal Pattern)
+    search_input = discord.ui.Label(
+        text="Clan/Family Tag or Name",
+        component=discord.ui.TextInput(
+            required=True,
+            max_length=50,
+            placeholder="Enter tag (e.g., #2C9UR9GJY) or name (e.g., The QCrew)",
+        ),
     )
-    
+
     def __init__(self, parent_view: 'MemberClansConfigurationView'):
-        super().__init__()
+        guild_id = _view_guild_id(parent_view)
+        super().__init__(title=t('ui_components.modals.title_add_clan_or_family', guild_id=guild_id)[:45])
         self.parent_view = parent_view
+        self.search_input.text = t('ui_components.modals.label_clan_or_family', guild_id=guild_id)
+        cast(discord.ui.TextInput, self.search_input.component).placeholder = t('ui_components.modals.placeholder_clan_or_family', guild_id=guild_id)
     
     async def on_submit(self, interaction: discord.Interaction):
         """Handle modal submission - search by tag or name and add clan/family."""
@@ -4052,8 +4066,8 @@ class AddClanFamilyModal(discord.ui.Modal, title="Add Clan or Family"):
         
         await interaction.response.defer(thinking=False, ephemeral=True)
         
-        search_input = self.search_input.value.strip()
-        
+        search_input = cast(discord.ui.TextInput, self.search_input.component).value.strip()
+
         # First, try to normalize as a tag
         normalized_tag = normalize_clan_tag(search_input)
         
@@ -5247,29 +5261,29 @@ class RemoveGuestClanView(discord.ui.View):
 class CreateFamilyModal(discord.ui.Modal, title="Create Clan Family"):
     """Modal for creating a new clan family with a name."""
     
-    family_name = discord.ui.TextInput(
-        label="Family Name",
-        required=True,
-        max_length=50,
-        placeholder="Enter a name for this clan family..."
+    # Label-wrapped so the label can follow the guild language (CODE_STRUCTURE.md § Modal Pattern)
+    family_name = discord.ui.Label(
+        text="Family Name",
+        component=discord.ui.TextInput(
+            required=True, max_length=50, placeholder="Enter a name for this clan family..."
+        ),
     )
-    
+
     def __init__(self, clan_management_view: 'ClanManagementView'):
-        super().__init__()
+        guild = getattr(clan_management_view.sent_message, 'guild', None)  # type: ignore[arg-type]
+        guild_id = guild.id if guild else None
+        super().__init__(title=t('ui_components.modals.title_create_family', guild_id=guild_id)[:45])
         self.clan_management_view = clan_management_view
-        
-        # Translate placeholder
-        from qapbot.i18n import t
-        guild_id = getattr(clan_management_view.sent_message, 'guild', None)  # type: ignore[arg-type]
-        guild_id = guild_id.id if guild_id else None
-        self.family_name.placeholder = t('ui_components.modals.placeholder_family_name', guild_id=guild_id)
-    
+
+        self.family_name.text = t('ui_components.modals.label_family_name', guild_id=guild_id)
+        cast(discord.ui.TextInput, self.family_name.component).placeholder = t('ui_components.modals.placeholder_family_name', guild_id=guild_id)
+
     async def on_submit(self, interaction: discord.Interaction):
         """Handle modal submission - create family and open edit view."""
         from qapbot.cache_manager import CACHE
         from qapbot.QBdiscocmdshelper import generate_family_tag
-        
-        family_name = self.family_name.value.strip()
+
+        family_name = cast(discord.ui.TextInput, self.family_name.component).value.strip()
         
         if not family_name:
             from qapbot.i18n import t
@@ -5339,26 +5353,27 @@ class CreateFamilyModal(discord.ui.Modal, title="Create Clan Family"):
 class RenameFamilyModal(discord.ui.Modal, title="Rename Clan Family"):
     """Modal for renaming an existing clan family."""
     
-    family_name = discord.ui.TextInput(
-        label="New Family Name",
-        required=True,
-        max_length=50,
-        placeholder="Enter a new name for this clan family..."
+    # Label-wrapped so the label can follow the guild language (CODE_STRUCTURE.md § Modal Pattern)
+    family_name = discord.ui.Label(
+        text="New Family Name",
+        component=discord.ui.TextInput(
+            required=True, max_length=50, placeholder="Enter a new name for this clan family..."
+        ),
     )
-    
+
     def __init__(self, edit_family_view: 'EditFamilyView', current_name: str):
-        super().__init__()
+        guild_id = _view_guild_id(edit_family_view)
+        super().__init__(title=t('ui_components.modals.title_rename_family', guild_id=guild_id)[:45])
         self.edit_family_view = edit_family_view
-        self.family_name.default = current_name
-        
-        # Translate placeholder
-        from qapbot.i18n import t
-        guild_id = getattr(edit_family_view, 'guild_id', None)  # type: ignore[arg-type]
-        self.family_name.placeholder = t('ui_components.modals.placeholder_new_family_name', guild_id=guild_id)
-    
+        name_input = cast(discord.ui.TextInput, self.family_name.component)
+        name_input.default = current_name
+
+        self.family_name.text = t('ui_components.modals.label_new_family_name', guild_id=guild_id)
+        name_input.placeholder = t('ui_components.modals.placeholder_new_family_name', guild_id=guild_id)
+
     async def on_submit(self, interaction: discord.Interaction):
         """Handle modal submission - update family name and refresh view."""
-        new_name = self.family_name.value.strip()
+        new_name = cast(discord.ui.TextInput, self.family_name.component).value.strip()
         
         if not new_name:
             from qapbot.i18n import t
@@ -5378,31 +5393,33 @@ class RenameFamilyModal(discord.ui.Modal, title="Rename Clan Family"):
 class AddClanModal(discord.ui.Modal, title="Add Clan to Family"):
     """Modal for adding a clan by name or tag."""
     
-    clan_search = discord.ui.TextInput(
-        label="Clan Name (substring) or Tag (complete)",
-        required=True,
-        max_length=50,
-        placeholder="Enter clan name or tag (e.g., 'Dark' or '#2C9UR9GJY')"
+    # Label-wrapped so the label can follow the guild language (CODE_STRUCTURE.md § Modal Pattern)
+    clan_search = discord.ui.Label(
+        text="Clan Name (substring) or Tag (complete)",
+        component=discord.ui.TextInput(
+            required=True,
+            max_length=50,
+            placeholder="Enter clan name or tag (e.g., 'Dark' or '#2C9UR9GJY')",
+        ),
     )
-    
+
     def __init__(self, parent_view: Any):  # type: ignore[misc]
         """
         Initialize add clan modal.
-        
+
         Args:
             parent_view: EditFamilyView or MemberClansConfigurationView
         """
-        super().__init__()
+        guild_id = _view_guild_id(parent_view)
+        super().__init__(title=t('ui_components.modals.title_add_clan', guild_id=guild_id)[:45])
         self.parent_view = parent_view
-        
-        # Translate placeholder
-        from qapbot.i18n import t
-        guild_id = getattr(parent_view, 'guild_id', None)  # type: ignore[arg-type]
-        self.clan_search.placeholder = t('ui_components.modals.placeholder_clan_search', guild_id=guild_id)
-    
+
+        self.clan_search.text = t('ui_components.modals.label_clan_search', guild_id=guild_id)
+        cast(discord.ui.TextInput, self.clan_search.component).placeholder = t('ui_components.modals.placeholder_clan_search', guild_id=guild_id)
+
     async def on_submit(self, interaction: discord.Interaction):
         """Handle modal submission - search for clan and add it."""
-        search_input = self.clan_search.value.strip()
+        search_input = cast(discord.ui.TextInput, self.clan_search.component).value.strip()
         
         if not search_input:
             from qapbot.i18n import t

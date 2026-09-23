@@ -257,13 +257,13 @@ async def test_verify_account_modal_submit_error_paths(monkeypatch: pytest.Monke
 
     modal = ui.VerifyAccountModal({"player_tag": "#P1", "player_name": "Alice"}, guild_id=interaction.guild.id)
 
-    modal.coc_api_token._value = ""  # type: ignore[attr-defined]
+    modal.coc_api_token.component._value = ""  # type: ignore[attr-defined]
     await modal.on_submit(interaction)
     interaction.response.send_message.assert_awaited_once()
 
     interaction2 = make_interaction(user_id=555)
     modal2 = ui.VerifyAccountModal({"player_tag": "#P1", "player_name": "Alice"}, guild_id=interaction.guild.id)
-    modal2.coc_api_token._value = "abc"  # type: ignore[attr-defined]
+    modal2.coc_api_token.component._value = "abc"  # type: ignore[attr-defined]
 
     await modal2.on_submit(interaction2)
     interaction2.response.send_message.assert_awaited_once()

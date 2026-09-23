@@ -4,7 +4,8 @@ Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but
 2026-09-23 (16)
 - Added: Terms of Service and Privacy Policy pages (English), needed for Discord app
   verification. Served as static files by the Activity's Cloudflare Pages site at /terms and
-  /privacy. The privacy policy lists what the bot stores (from the DB schema); keep it current
+  /privacy. The terms include a trademarks/copyrights section (Supercell, Discord, no
+  affiliation, takedown contact). The privacy policy lists what the bot stores (from the DB schema); keep it current
   when adding new personal data (copilot-instructions Rule 15).
   Files: activity/client/public/terms.html, activity/client/public/privacy.html, activity/README.md,
   .github/copilot-instructions.md. No Python change, no build bump.

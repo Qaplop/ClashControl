@@ -22,6 +22,7 @@ import discord
 
 from qapbot.cache_manager import CACHE
 from qapbot.constants import CWL_LEAGUE_ORDER
+from qapbot.db_manager import CWL_RETENTION_MONTHS_NEW_GUILD
 
 # CoC's real league ladder, used for target_league_rank / preferred_league_rank pickers
 # throughout this feature (Phase 1's per-clan target tier, Phase 2's sign-up preference).
@@ -402,7 +403,7 @@ def _make_cwl_settings_retention_button_callback(view: discord.ui.View):
         if not interaction.guild:
             return
         guild_config = CACHE.server_config.get(str(interaction.guild.id), {})
-        current_months = guild_config.get("cwl_retention_months", 0)
+        current_months = guild_config.get("cwl_retention_months", CWL_RETENTION_MONTHS_NEW_GUILD)
         await interaction.response.send_modal(CwlRetentionModal(view, interaction.guild.id, current_months))
 
     return callback

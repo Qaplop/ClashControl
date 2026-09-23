@@ -475,7 +475,9 @@ class TestGuildConfigCwlColumns:
         cfg = await db.get_guild_config("222")
         assert cfg["cwl_player_hub_message_enabled"] is False
         assert cfg["cwl_management_message_enabled"] is False
-        assert cfg["cwl_retention_months"] == 0
+        # 2026-09-23: a NEW guild starts at 12 months (was 0 = keep indefinitely); existing guilds
+        # keep their value — see test_an_existing_guild_is_never_moved_onto_the_new_default.
+        assert cfg["cwl_retention_months"] == 12
         assert cfg["cwl_selected_season"] is None
         assert cfg["timezone_name"] == "UTC"
 
@@ -1770,3 +1772,49 @@ async def test_purge_keeps_shared_clans_another_guild_still_retains(db):
 
     assert result["events"] == 1
     assert result["shared_clans"] == 0  # 809 still has that season
+
+
+# ---------------------------------------------------------------------------
+# New-guild retention default (2026-09-23, project owner: 12 months for NEW servers, existing
+# ones keep whatever they have)
+# ---------------------------------------------------------------------------
+
+async def _stored_retention(db, guild_id: str) -> int:
+    cur = await db._conn.execute(
+        "SELECT cwl_retention_months AS m FROM guild_config WHERE guild_id = ?", (guild_id,)
+    )
+    return (await cur.fetchone())["m"]
+
+
+@pytest.mark.asyncio
+async def test_a_new_guild_starts_with_twelve_months_retention(db):
+    from qapbot.db_manager import CWL_RETENTION_MONTHS_NEW_GUILD
+
+    config: dict = {"language": "de"}
+    await db.save_guild_config("901", config)
+
+    assert CWL_RETENTION_MONTHS_NEW_GUILD == 12
+    assert await _stored_retention(db, "901") == 12
+    # Mirrored back, so CWL Settings shows what is actually stored.
+    assert config["cwl_retention_months"] == 12
+
+
+@pytest.mark.asyncio
+async def test_an_existing_guild_is_never_moved_onto_the_new_default(db):
+    """The dangerous case: an existing 'keep indefinitely' guild saved from a config dict that
+    merely lacks the key must stay at 0 — flipping it to 12 would start purging its seasons."""
+    await db.save_guild_config("902", {"cwl_retention_months": 0})
+    assert await _stored_retention(db, "902") == 0
+
+    config: dict = {"language": "en"}  # no retention key at all
+    await db.save_guild_config("902", config)
+
+    assert await _stored_retention(db, "902") == 0
+    assert config["cwl_retention_months"] == 0
+
+
+@pytest.mark.asyncio
+async def test_an_explicit_retention_change_is_still_saved(db):
+    await db.save_guild_config("903", {"cwl_retention_months": 0})
+    await db.save_guild_config("903", {"cwl_retention_months": 6})
+    assert await _stored_retention(db, "903") == 6

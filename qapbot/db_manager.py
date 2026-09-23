@@ -146,6 +146,12 @@ PLAYER_NAME_FTS_ROWID_SCHEME_VALUE = "player_name_search_rowid_v2"
 # is silently reset on every save_user() (2026-09-22: cwl_permanent_optin and
 # cwl_optout_send_dm_anyway were). tests/unit/test_user_players_cwl_prefs_roundtrip.py fails if a
 # cwl_* column exists in the table but not in this tuple.
+# CWL data retention a NEW guild starts with (2026-09-23, project owner). Existing guilds keep
+# whatever they have — including 0, "keep indefinitely"; save_guild_config's upsert only ever writes
+# this default into a brand-new row. The column's own DDL default stays 0 on purpose: changing it
+# would make fresh databases disagree with every existing one.
+CWL_RETENTION_MONTHS_NEW_GUILD = 12
+
 # How old a CWL sign-up DM must be before nightly maintenance drops its stored message reference
 # (purge_stale_cwl_dm_refs_sync, 2026-09-23). Only ever for a season whose month has passed, so a
 # running season is safe whatever this is set to.
@@ -11216,7 +11222,12 @@ class WarHistoryDB:
                     cwl_management_message_id = excluded.cwl_management_message_id,
                     cwl_management_message_enabled = excluded.cwl_management_message_enabled,
                     cwl_management_message_last_bump_iso = excluded.cwl_management_message_last_bump_iso,
-                    cwl_retention_months = excluded.cwl_retention_months,
+                    -- 2026-09-23: only overwrite when the caller actually carried the key (last
+                    -- bound parameter). A config dict that merely LACKS it must never flip an
+                    -- existing guild onto the new-guild default — that would start purging
+                    -- seasons a guild chose to keep forever.
+                    cwl_retention_months = CASE WHEN ? THEN excluded.cwl_retention_months
+                                                ELSE guild_config.cwl_retention_months END,
                     cwl_selected_season = excluded.cwl_selected_season,
                     cwl_enrollment_include_all_linked_accounts = excluded.cwl_enrollment_include_all_linked_accounts,
                     cwl_coordinator_role_id = excluded.cwl_coordinator_role_id,
@@ -11258,7 +11269,9 @@ class WarHistoryDB:
                 config.get("cwl_management_message_id"),
                 1 if config.get("cwl_management_message_enabled", False) else 0,
                 config.get("cwl_management_message_last_bump_iso"),
-                config.get("cwl_retention_months", 0),
+                # New guilds start at CWL_RETENTION_MONTHS_NEW_GUILD; see the ON CONFLICT clause
+                # for why an existing guild is never moved onto it.
+                config.get("cwl_retention_months", CWL_RETENTION_MONTHS_NEW_GUILD),
                 config.get("cwl_selected_season"),
                 1 if config.get("cwl_enrollment_include_all_linked_accounts", False) else 0,
                 config.get("cwl_coordinator_role_id"),
@@ -11269,6 +11282,8 @@ class WarHistoryDB:
                 config.get("raid_notification_threshold_hours", 24),
                 config.get("raid_notification_scope", "not_attacked"),
                 config.get("raid_notification_channel_id"),
+                # Bound by the CASE in the ON CONFLICT clause above (it comes after VALUES).
+                1 if "cwl_retention_months" in config else 0,
             ))
             
             # Delete existing member families and clans
@@ -11306,6 +11321,18 @@ class WarHistoryDB:
                 )
             
             await self._conn.commit()
+
+            # The upsert decided cwl_retention_months itself when the caller didn't carry it (a
+            # new guild gets CWL_RETENTION_MONTHS_NEW_GUILD, an existing one keeps its value).
+            # Mirror that decision back into the caller's dict — normally CACHE.server_config's
+            # own entry — so the CWL Settings screen shows what is actually stored.
+            if "cwl_retention_months" not in config:
+                cursor = await self._conn.execute(
+                    "SELECT cwl_retention_months FROM guild_config WHERE guild_id = ?", (guild_id,)
+                )
+                stored = await cursor.fetchone()
+                if stored is not None:
+                    config["cwl_retention_months"] = stored["cwl_retention_months"]
         except Exception as e:
             await self._conn.rollback()
             logging.error(f"[DB-WRITE] Transaction failed for save_guild_config({guild_id}): {e}")

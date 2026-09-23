@@ -23,6 +23,7 @@ import discord
 
 from qapbot.cache_manager import CACHE
 from qapbot.constants import CWL_LEAGUE_ORDER
+from qapbot.db_manager import CWL_RETENTION_MONTHS_NEW_GUILD
 from qapbot.emojis import bench_emoji, signup_dm_icons
 
 # Serializes start_cwl_enrollment() per (guild_id, season) — 2026-08-21 hardening, same bug class
@@ -302,7 +303,7 @@ async def format_clan_management_cwl_settings(
 
     management_channel_id = guild_config.get("cwl_management_channel_id")
     management_enabled = guild_config.get("cwl_management_message_enabled", False)
-    retention_months = guild_config.get("cwl_retention_months", 0)
+    retention_months = guild_config.get("cwl_retention_months", CWL_RETENTION_MONTHS_NEW_GUILD)
 
     if management_channel_id:
         try:

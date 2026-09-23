@@ -1,6 +1,16 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-23 (6)  Build 72.
+- Changed: new servers start with 12 months of CWL data retention (was 0 = keep indefinitely);
+  existing servers keep whatever they have, 0 included (CWL_RETENTION_MONTHS_NEW_GUILD). Enforced
+  in save_guild_config's upsert rather than by a plain default: the value is written only into a
+  brand-new row, and an existing row is overwritten only when the saved config carries the key —
+  so a partial config can never move a "keep indefinitely" server onto 12 months and start
+  purging its seasons. The stored decision is mirrored back into CACHE so CWL Settings shows it.
+  Files: qapbot/db_manager.py, QBdiscocmdshelper_cwl.py, ui_cwl_roster.py, docs (+ tests).
+  3446 tests pass.
+
 2026-09-23 (5)  Build 71.
 - Fixed: the nightly CWL retention purge left cross-guild shared clans behind. cwl_shared_clans
   has no FK to cwl_events and was missing from the referential sweep, so a purged season's shared

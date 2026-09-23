@@ -627,7 +627,12 @@ lost.
 **Retention** (shipped 2026-08-30). `guild_config.cwl_retention_months` is enforced by
 `WarHistoryDB.purge_expired_cwl_events()`, run as Step 0.6 of `QapBot.py`'s nightly maintenance —
 before the VACUUM/REINDEX pass, so the freed pages are reclaimed in the same run. `0` means "keep
-indefinitely" (the default) and purges nothing.
+indefinitely" and purges nothing. **New servers start at 12 months** (`CWL_RETENTION_MONTHS_NEW_GUILD`,
+since 2026-09-23); servers that existed before keep whatever they had, 0 included. The upsert in
+`save_guild_config()` enforces that structurally: it writes the default only into a brand-new row, and
+overwrites an existing row's value only when the saved config actually carries the key — so no code
+path that happens to save a partial config can ever move a "keep indefinitely" server onto 12 months
+and start purging its seasons. The column's DDL default stays 0 so fresh and existing databases agree.
 
 Scoped **by season age, not by event status**: there is deliberately no `completed` status in this
 lifecycle (`draft → signup_open → announced → war`, plus `cancelled`) — a finished season simply

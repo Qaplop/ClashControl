@@ -5016,9 +5016,9 @@ def generate_leaderboard_text(
         return f"[cwlgroup] mode is rendered as an image, not text. Subscription routing error."
     # Determine clan_name based on clan_tag type (clan or family)
     if clan_tag in CACHE.clan_families:
-        clan_name = CACHE.clan_families[clan_tag].get("name", "FAMILY")
+        clan_name: str = CACHE.clan_families[clan_tag].get("name") or "FAMILY"
     else:
-        clan_name = CACHE.get_clan_name(clan_tag, "UNKNOWN")
+        clan_name = CACHE.get_clan_name(clan_tag, "UNKNOWN") or "UNKNOWN"
     if mode == "currentwar":
         war_info_line = generate_war_info_text(clan_tag)
     else:

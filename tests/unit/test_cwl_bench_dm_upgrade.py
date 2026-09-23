@@ -151,7 +151,7 @@ async def test_dm_sent_by_another_guild_is_upgraded_for_a_member_of_this_one(mon
     """The Bench rule is player-based, so the DM another guild sent still gets the option."""
     from qapbot.QBdiscocmdshelper_cwl import upgrade_pending_cwl_dms_for_bench
 
-    edits, _ = _wire(
+    _wire(
         monkeypatch, [_row("#P1", user="777", message_id="100", guild="2")],
         modes={"1": "extended", "2": "standard"}, members={"1": [777]},
     )

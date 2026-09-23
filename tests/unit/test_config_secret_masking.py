@@ -59,7 +59,7 @@ class TestSecretsNeverRendered:
         import traceback
 
         try:
-            config = loaded  # noqa: F841 — deliberately a frame local, as in real call sites
+            config = loaded  # noqa: F841  # pyright: ignore[reportUnusedVariable] — deliberately a frame local, as in real call sites
             raise RuntimeError("boom")
         except RuntimeError:
             rendered = "".join(traceback.format_exc())

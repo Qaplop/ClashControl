@@ -122,7 +122,7 @@ def test_signup_view_has_two_buttons_without_bench_and_three_with():
 
     assert len(build_cwl_signup_response_view(1, "#P1", 5).children) == 2
     view = build_cwl_signup_response_view(1, "#P1", 5, bench=True)
-    assert [c.custom_id.split(":")[2] for c in view.children] == ["confirm", "passive", "optout"]
+    assert [getattr(c, "custom_id").split(":")[2] for c in view.children] == ["confirm", "passive", "optout"]
 
 
 def test_reminder_view_keeps_three_buttons_per_account_on_one_row():
@@ -179,7 +179,7 @@ async def test_clicking_bench_stores_passive_globally(monkeypatch):
     assert result["code"] == "ok"
     assert written == {"status": "passive", "source": "template_passive"}
     # The global row (and therefore every other guild's mirror) gets the same real status.
-    assert propagate.await_args.args[2] == "passive"
+    assert propagate.await_args is not None and propagate.await_args.args[2] == "passive"
 
 
 # ---------------------------------------------------------------------------
@@ -262,7 +262,8 @@ def test_settings_buttons_sit_below_the_view_selector():
 
     assert selector.row == 1
     # Everything except the view-level refresh control sits below the selector.
-    assert all(b.row > selector.row for b in buttons if b not in refresh)
+    assert selector.row is not None
+    assert all((b.row or 0) > selector.row for b in buttons if b not in refresh)
 
 
 def test_signup_mode_status_uses_green_and_blue_never_red():
@@ -301,14 +302,14 @@ def test_hub_buttons_follow_the_guild_language():
     CACHE.server_config["9844"] = {"language": "de"}
 
     player_hub = CwlPlayerHubView(guild_id=9844)
-    assert player_hub.children[0].label == "Deine CWL-Einstellungen"
+    assert getattr(player_hub.children[0], "label") == "Deine CWL-Einstellungen"
 
     admin_hub = CwlManagementHubView(guild_id=9844)
-    labels = [c.label for c in admin_hub.children]
+    labels = [getattr(c, "label", None) for c in admin_hub.children]
     assert "Einstellungen" in labels and "Saisonverwaltung" in labels
 
     # The generic startup registration (no guild) still builds, falling back to English.
-    assert CwlPlayerHubView().children[0].label == "Your CWL Preferences"
+    assert getattr(CwlPlayerHubView().children[0], "label") == "Your CWL Preferences"
 
 
 # ---------------------------------------------------------------------------

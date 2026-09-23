@@ -716,12 +716,12 @@ class WarHistoryDB:
         assert self.conn is not None, "[DB] Connection is None; _ensure_connection() not called"
         return self.conn
 
-    async def _retry_on_locked(self, coro_factory: Callable[[], Awaitable[None]], *, retries: int = 4, base_delay: float = 0.5) -> None:
+    async def _retry_on_locked[T](self, coro_factory: Callable[[], Awaitable[T]], *, retries: int = 4, base_delay: float = 0.5) -> T:
         """Retry an async DB operation on ``database is locked`` errors.
 
         *coro_factory* is a zero-arg callable returning a fresh awaitable
         (the coroutine must be re-created on each attempt because a consumed
-        coroutine cannot be re-awaited).
+        coroutine cannot be re-awaited). Returns whatever that awaitable returns.
 
         Backoff: 0.5 → 1.0 → 2.0 → 4.0 s (total ~7.5 s before giving up).
         This keeps user interactions responsive while surviving heavy
@@ -5631,6 +5631,8 @@ class WarHistoryDB:
         """player_tag -> {every USER_PLAYER_CWL_PREF_COLUMNS column} for one discord_id, in the same
         value shape get_user() puts into the CACHE player dict (bools, league rank as-is). Used to
         re-sync CACHE after set_cwl_preferences_sync() (web_bridge._refresh_cached_cwl_prefs)."""
+        import sqlite3
+
         if not self.db_path:
             raise RuntimeError("Database not initialized. Call initialize() first.")
         cols = ", ".join(USER_PLAYER_CWL_PREF_COLUMNS)

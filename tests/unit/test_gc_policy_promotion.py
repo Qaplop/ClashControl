@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import gc
 import os
+from typing import Any
 
 os.environ.setdefault("DISCORD_TOKEN", "test-token")
 
@@ -50,8 +51,8 @@ class _Node:
     __slots__ = ("peer", "payload")
 
     def __init__(self) -> None:
-        self.peer = None
-        self.payload = None
+        self.peer: _Node | None = None
+        self.payload: tuple[str, ...] | None = None
 
 
 def _make_cycles(n: int) -> list:
@@ -122,6 +123,7 @@ class TestPolicyOutcome:
             gc.set_threshold(threshold0, t1, t2)
 
         held = None
+        fresh: list[Any] = []
         for _ in range(cycles):
             fresh = _make_cycles(2_000)
             held = fresh                      # still referenced at the cleanup point

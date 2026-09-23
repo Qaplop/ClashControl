@@ -3063,3 +3063,24 @@ with no exception surfaced anywhere the admin could see (Discord just never open
   days after the doc was updated for the SAME feature area. A rule worth documenting for
   discovery is also worth a cheap runtime/test check wherever the pattern gets reused, not just a
   comment for the next reader to remember.
+
+## Pitfall 67: never name a View method `_refresh` (or any other private discord.py View hook)
+
+**Symptom:** none visible. `pyright` reports `Method "_refresh" overrides class "BaseView" in an
+incompatible manner` (reportIncompatibleMethodOverride), and at runtime a
+`RuntimeWarning: coroutine '..._refresh' was never awaited` can appear in the log.
+
+**What happened (found 2026-09-23 in a pyright sweep):** `CwlCoordinatorRoleConfigurationView`
+(`qapbot/ui_cwl_roster.py`) had its own `async def _refresh(self, interaction)` to re-render
+itself. discord.py's `View` already has a sync `_refresh(self, components)`: the ViewStore calls
+it (`update_from_message`) on every MESSAGE_UPDATE of a message whose view it tracks, including
+the echo of our own `edit_original_response`. With the override in place, that call hit our method
+with a components list as `interaction`, which just created a coroutine that was never awaited,
+and discord.py's own component-state sync for the view was skipped. Renamed to `_rerender`.
+
+**How to apply:**
+- Name view helpers so they can't collide with discord.py internals: `_rerender`,
+  `_refresh_message`, `_rebuild_view` are fine; a bare `_refresh`, `_start_listening_from_store`,
+  `_dispatch_item`, `_refresh_timeout` and the like are discord.py's own.
+- Treat `reportIncompatibleMethodOverride` on a discord.py base class as a real bug, not
+  typing noise: the base method is usually called by the library, so the override is live code.

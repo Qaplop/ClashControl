@@ -1550,7 +1550,7 @@ def _get_malloc_info() -> dict[str, float]:
         return {}
 
 
-def _get_rss_breakdown() -> dict[str, float]:
+def _get_rss_breakdown() -> dict[str, Any]:
     """Split VmRSS into anonymous vs. file-backed vs. shared memory, in MB (Linux 4.5+,
     `/proc/self/status`'s RssAnon/RssFile/RssShmem lines). Added 2026-09-06 (tracker #0106) as
     the most decisive diagnostic yet: every other tool in this report — [CACHE STRUCTURE SIZES],
@@ -1590,13 +1590,14 @@ def _get_rss_breakdown() -> dict[str, float]:
     runs on an explicit /admin request, never on the per-cycle path.
 
     Returns {} on any non-Linux platform or failure — best-effort, must never break the report.
-    A `source` key ("status" or "smaps") records which path actually supplied the numbers.
+    Otherwise always anon_mb + file_mb (floats) and a `source` key ("status" or "smaps", a str —
+    why the value type is Any), plus shmem_mb (status path only) and swap_mb when reported.
     """
     try:
         with open('/proc/self/status', 'r') as _f:
             _status = _f.read()
         _wanted = {"RssAnon:": "anon_mb", "RssFile:": "file_mb", "RssShmem:": "shmem_mb"}
-        _out: dict[str, float] = {}
+        _vals: dict[str, float] = {}
         _swap_kb: int | None = None
         for _line in _status.splitlines():
             # VmSwap is parsed independently of the three Rss* fields: it exists since Linux
@@ -1608,9 +1609,12 @@ def _get_rss_breakdown() -> dict[str, float]:
                 continue
             for _prefix, _key in _wanted.items():
                 if _line.startswith(_prefix):
-                    _out[_key] = int(_line.split()[1]) / 1024
-        if len(_out) == 3:
-            _out["source"] = "status"
+                    _vals[_key] = int(_line.split()[1]) / 1024
+        if len(_vals) == 3:
+            _out: dict[str, Any] = {
+                "anon_mb": _vals["anon_mb"], "file_mb": _vals["file_mb"], "shmem_mb": _vals["shmem_mb"],
+                "source": "status",
+            }
             if _swap_kb is not None:
                 _out["swap_mb"] = _swap_kb / 1024
             return _out
@@ -1634,7 +1638,7 @@ def _get_rss_breakdown() -> dict[str, float]:
                     _total_swap_kb += int(_line.split()[1])
                     _saw_swap = True
         if _total_rss_kb:
-            _result = {
+            _result: dict[str, Any] = {
                 "anon_mb": _total_anon_kb / 1024,
                 "file_mb": (_total_rss_kb - _total_anon_kb) / 1024,
                 "source": "smaps",
@@ -1744,7 +1748,7 @@ def save_memtrace_snapshot(cache: Any) -> str:
     _rss_source = rss_breakdown.get("source")
     _rss_source_label = {
         "status": "/proc/self/status", "smaps": "/proc/self/smaps (older-kernel fallback)",
-    }.get(_rss_source, "unavailable")
+    }.get(_rss_source or "", "unavailable")
     lines.append(f"\n[RSS BREAKDOWN — {_rss_source_label}]")
     if rss_breakdown:
         _shmem_part = (
@@ -2203,7 +2207,6 @@ async def handle_memory_profile(cache: Any) -> str:
         Short summary string for the Discord followup message.
     """
     import tracemalloc
-    import gc
     import os
     import glob as _glob
     import asyncio as _asyncio

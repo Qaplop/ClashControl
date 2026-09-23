@@ -1756,6 +1756,7 @@ async def test_cwl_carry_over_prompt_creates_season_once_on_double_click(monkeyp
     await asyncio.gather(view._on_yes(mock_interaction), view._on_no(_second_click()))
 
     create_mock.assert_awaited_once()
+    assert create_mock.await_args is not None
     assert create_mock.await_args.args[1] is True  # the first click (Yes) won
 
 

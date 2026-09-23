@@ -23,7 +23,7 @@ import discord
 from qapbot.cache_manager import CACHE
 from qapbot.constants import CWL_LEAGUE_ORDER
 from qapbot.db_manager import CWL_RETENTION_MONTHS_NEW_GUILD
-from qapbot.ui_common import action_in_flight, claim_action, lock_buttons, release_action
+from qapbot.ui_common import claim_action, lock_buttons, release_action
 
 # CoC's real league ladder, used for target_league_rank / preferred_league_rank pickers
 # throughout this feature (Phase 1's per-clan target tier, Phase 2's sign-up preference).
@@ -1967,7 +1967,10 @@ class CwlCoordinatorRoleConfigurationView(discord.ui.View):
             content += "\n\n" + t(f'{key}.unsaved', guild_id=guild_id)
         return content
 
-    async def _refresh(self, interaction: discord.Interaction) -> None:
+    async def _rerender(self, interaction: discord.Interaction) -> None:
+        # NOT named _refresh: discord.py's View._refresh(components) is its own sync hook, called
+        # by the ViewStore on every MESSAGE_UPDATE of a tracked message — overriding it made that
+        # call create a never-awaited coroutine and skipped discord.py's component sync.
         self._rebuild_view()
         await interaction.edit_original_response(content=self.build_content(), view=self)
 
@@ -1979,7 +1982,7 @@ class CwlCoordinatorRoleConfigurationView(discord.ui.View):
             values = interaction.data.get('values', [])  # type: ignore[union-attr]
             if values and values[0] in self.MODES:
                 self.mode = values[0]
-            await self._refresh(interaction)
+            await self._rerender(interaction)
 
     async def _on_clan_select(self, interaction: discord.Interaction) -> None:
         await interaction.response.defer(thinking=False, ephemeral=False)
@@ -1987,7 +1990,7 @@ class CwlCoordinatorRoleConfigurationView(discord.ui.View):
             values = interaction.data.get('values', [])  # type: ignore[union-attr]
             if values and values[0] in self.clan_tags:
                 self.clan_tag = values[0]
-            await self._refresh(interaction)
+            await self._rerender(interaction)
 
     async def _on_role_select(self, interaction: discord.Interaction) -> None:
         await interaction.response.defer(thinking=False, ephemeral=False)
@@ -1999,7 +2002,7 @@ class CwlCoordinatorRoleConfigurationView(discord.ui.View):
                     self.single_role_id = role_id
                 elif self.clan_tag:
                     self.role_ids_by_clan[self.clan_tag] = role_id
-            await self._refresh(interaction)
+            await self._rerender(interaction)
 
     async def _on_clear(self, interaction: discord.Interaction) -> None:
         await interaction.response.defer(thinking=False, ephemeral=False)
@@ -2008,7 +2011,7 @@ class CwlCoordinatorRoleConfigurationView(discord.ui.View):
                 self.single_role_id = None
             elif self.clan_tag:
                 self.role_ids_by_clan.pop(self.clan_tag, None)
-            await self._refresh(interaction)
+            await self._rerender(interaction)
 
     async def _on_save(self, interaction: discord.Interaction) -> None:
         """Persist mode + single role + every clan's link together, then reconcile role holders.
@@ -2055,7 +2058,7 @@ class CwlCoordinatorRoleConfigurationView(discord.ui.View):
                 msg = t(f'{key}.saved_per_clan', guild_id=guild_id_for_t,
                         count=len(self.role_ids_by_clan), added=added, removed=removed)
 
-            await self._refresh(interaction)
+            await self._rerender(interaction)
             await interaction.followup.send(msg, ephemeral=True)
 
 

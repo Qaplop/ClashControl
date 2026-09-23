@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import glob
 import json
-from unittest.mock import AsyncMock, MagicMock
+from typing import Any, cast
 
 import pytest
 
@@ -83,6 +83,18 @@ def test_resolved_emoji_is_used_for_text_and_buttons():
 # The Discord surfaces actually use it
 # ---------------------------------------------------------------------------
 
+def _answer_buttons(view: Any) -> list[tuple[str, Any]]:
+    """(action, Button) per answer button — they are DynamicItem wrappers; the Button is .item."""
+    import discord
+
+    result: list[tuple[str, Any]] = []
+    for child in view.children:
+        assert isinstance(child, discord.ui.DynamicItem)
+        wrapper = cast(discord.ui.DynamicItem[discord.ui.Button[Any]], child)
+        result.append((wrapper.custom_id.split(":")[2], wrapper.item))
+    return result
+
+
 def test_every_answer_button_carries_its_app_icon():
     """2026-09-23: confirm and opt-out got their app icons too (gcheck/redx), so all three buttons
     match the icons in the DM text above them."""
@@ -96,20 +108,17 @@ def test_every_answer_button_carries_its_app_icon():
     })
     expected = {"confirm": 1552060584176914601, "passive": 1455513859715629077, "optout": 1552060584176914602}
 
-    # These are DynamicItem wrappers; the real Button is on .item.
     signup = build_cwl_signup_response_view(1, "#P1", 5, bench=True)
-    for child in signup.children:
-        action = child.custom_id.split(":")[2]
-        assert child.item.emoji is not None and child.item.emoji.id == expected[action], action
-        assert "<:" not in (child.item.label or "")  # never inside the label text
+    for action, button in _answer_buttons(signup):
+        assert button.emoji is not None and button.emoji.id == expected[action], action
+        assert "<:" not in (button.label or "")  # never inside the label text
 
     reminder = build_cwl_reminder_response_view(
         1, [{"player_tag": "#P1", "player_name": "Alpha"}], 5, bench=True
     )
-    for child in reminder.children:
-        action = child.custom_id.split(":")[2]
-        assert child.item.emoji.id == expected[action], action
-        assert child.item.label == "Alpha"  # the name only; the icon rides in emoji=
+    for action, button in _answer_buttons(reminder):
+        assert button.emoji is not None and button.emoji.id == expected[action], action
+        assert button.label == "Alpha"  # the name only; the icon rides in emoji=
 
 
 def test_dm_texts_use_the_app_icons_not_unicode():

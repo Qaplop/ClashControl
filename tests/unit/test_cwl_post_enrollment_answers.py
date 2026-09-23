@@ -8,7 +8,7 @@ accounts whose status is still 'pending'; a settled answer stays final once rost
 """
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -17,7 +17,6 @@ import pytest
 def _wire(monkeypatch, *, event_status: str, signup_status: str) -> Dict[str, Any]:
     """Patch the DB reads _apply_cwl_signup_response makes, and capture what it writes."""
     from qapbot.cache_manager import CACHE
-    import qapbot.ui_cwl_roster as ui
 
     written: Dict[str, Any] = {}
     db = MagicMock()

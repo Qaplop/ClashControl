@@ -17,7 +17,6 @@ that a failure in the check can never take the update cycle down with it.
 # pyright: reportPrivateUsage=false
 from __future__ import annotations
 
-import dataclasses
 import os
 
 os.environ.setdefault("DISCORD_TOKEN", "test-token")

@@ -142,8 +142,9 @@ class TestYoungCollectSuffices:
         gc.set_threshold(50_000, t1, t2)
 
         held: List[Any] = []
+        graph: List[Any] = []
         for _ in range(6):
-            graph: List[Any] = []
+            graph = []
             _war_graph_into(graph)
             held = graph                 # LIVE across the cleanup point, as temp_war_* is
         del held, graph

@@ -212,7 +212,7 @@ class UnifiedNotificationView(TrackedView):
         hours = int(notif.get("raid_hours_before_end", 24) or 24)
         timing_value = f"{hours}h" if notif.get("raid_reminders", False) else "off"
         scope_value = notif.get("raid_reminder_scope") or "not_attacked"
-        kw = {"user_id": self.user_id, "guild_id": self.guild_id}
+        kw: Dict[str, Any] = {"user_id": self.user_id, "guild_id": self.guild_id}
 
         timing_select = discord.ui.Select(
             placeholder=t('warnotifications.raid_timing_placeholder', **kw),

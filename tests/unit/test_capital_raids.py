@@ -423,7 +423,7 @@ async def test_get_active_raids_shape(cache):
     await _seed_ongoing(cache.db_manager)
     assert wn._get_active_raids(_utc("2026-09-19T12:00")) == []          # > 24 h before end
     raids = wn._get_active_raids(_utc("2026-09-20T08:00"))
-    (clan_tag, key, data), = raids
+    (_clan_tag, key, data), = raids
     assert key == qh.raid_notification_key("#C", S2) and data["kind"] == "raid"
     members = {m["tag"]: m for m in data["clan"]["members"]}
     assert set(members) == {"#A", "#B"}                                  # #F used all 6 (earned bonus)

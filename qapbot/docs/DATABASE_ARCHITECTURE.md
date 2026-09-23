@@ -1152,6 +1152,9 @@ re-check) rather than trusting them long-term.
   previous per-clan-only behavior. See `QBhelperfunctions._load_history_rows()` /
   `calculate_leaderboard(scope=...)` for the dispatch, and `QBdiscordcmds.leaderboard()` for how
   the current roster (`CACHE.coc_clan_cache.get_clan()`) is resolved per target clan/family.
+  **2026-09-23:** this player-only behavior is now `scope="members"`; the new default
+  `scope="all"` is `"own"` ∪ `"members"` (past members listed too), deduped on
+  (player, `"{clan_tag}::{war_id}"`) — see CODE_STRUCTURE.md § /leaderboard.
 - Chunks the player-tag `IN (...)` clause at 400 tags per query to stay under SQLite's default
   host-parameter limit even for large clan families.
 - Not cached across calls (unlike `_load_history_filtered`'s per-clan history_cache) — this path

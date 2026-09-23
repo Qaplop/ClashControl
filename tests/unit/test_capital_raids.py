@@ -310,8 +310,40 @@ async def test_family_and_scope_all(cache, monkeypatch):
     await db.upsert_capital_raid_season("#C2", S2, E2, "ended", {}, [_member("#A", "Alice", 4, 50)], None)
     monkeypatch.setattr(cache, "clan_families", {"FAM": {"name": "Fam", "clans": ["#C1", "#C2"]}})
     assert qh.calculate_raid_leaderboard("FAM", periods=[(9, 2026)])["#A"]["Loot"] == 150
-    assert qh.calculate_raid_leaderboard("#C1", periods=[(9, 2026)], scope="all",
+    assert qh.calculate_raid_leaderboard("#C1", periods=[(9, 2026)], scope="members",
                                          member_player_tags={"#A"})["#A"]["Loot"] == 150
+
+
+async def test_scope_all_adds_past_members_and_members_other_clans(cache):
+    """2026-09-23: "all" = the clan's own rows (past member #B included) + the current roster's
+    rows in other clans (#A's #C2 weekend); a row in both is counted once. "members" drops #B."""
+    db = cache.db_manager
+    await db.snapshot_capital_raid_roster("#C1", S1, E1, {"#A": "Alice", "#B": "Bob"}, 5)
+    await db.upsert_capital_raid_season("#C1", S1, E1, "ended", {},
+                                        [_member("#A", "Alice", 5, 100), _member("#B", "Bob", 5, 70)], None)
+    await db.snapshot_capital_raid_roster("#C2", S2, E2, {"#A": "Alice"}, 5)
+    await db.upsert_capital_raid_season("#C2", S2, E2, "ended", {}, [_member("#A", "Alice", 4, 50)], None)
+
+    all_scope = qh.calculate_raid_leaderboard("#C1", periods=[(9, 2026)], scope="all", member_player_tags={"#A"})
+    assert all_scope["#A"]["Loot"] == 150  # #C1 once + #C2
+    assert all_scope["#B"]["Loot"] == 70  # past member stays
+
+    members = qh.calculate_raid_leaderboard("#C1", periods=[(9, 2026)], scope="members", member_player_tags={"#A"})
+    assert "#B" not in members and members["#A"]["Loot"] == 150
+
+
+async def test_current_raid_weekend_is_always_the_clans_own(cache):
+    """currentraid shows ONE weekend of this clan — a current member's attacks in another tracked
+    clan the same weekend must not appear under it, whatever the scope."""
+    db = cache.db_manager
+    await db.snapshot_capital_raid_roster("#C1", S2, E2, {"#A": "Alice"}, 5)
+    await db.upsert_capital_raid_season("#C1", S2, E2, "ended", {}, [_member("#A", "Alice", 5, 100)], None)
+    await db.snapshot_capital_raid_roster("#C2", S2, E2, {"#Z": "Zed"}, 5)
+    await db.upsert_capital_raid_season("#C2", S2, E2, "ended", {}, [_member("#Z", "Zed", 5, 999)], None)
+
+    text = qh.generate_leaderboard_text("#C1", month=None, year=None, mode="currentraid",
+                                        scope="all", member_player_tags={"#A", "#Z"})
+    assert "Alice" in text and "Zed" not in text
 
 
 async def test_late_snapshot_note(cache):

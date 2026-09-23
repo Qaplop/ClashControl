@@ -915,11 +915,17 @@ _split_and_post_leaderboard_helper()
     │   │   ├── `month` accepts a single value ("6"), a range ("6-7"), a semicolon list
     │   │   │   ("1;3;5"), or a trailing count ("-2" = last 2 months, may cross a year
     │   │   │   boundary) — parsed by `parse_month_argument()` into (month, year) pairs
-    │   │   └── `scope`: "all" (default) credits a current clan member's stats even for wars
-    │   │       fought while registered to a clan no longer tracked/subscribed here; "own"
-    │   │       restores the previous per-clan-only behavior. Resolves the current roster via
-    │   │       `CACHE.coc_clan_cache.get_clan()` per target clan/family, then threads
-    │   │       `member_player_tags` through to `calculate_leaderboard(scope=...)` — see
+    │   │   └── `scope` (since 2026-09-23; `LEADERBOARD_SCOPES`): "all" (default) = everyone
+    │   │       who fought for the clan(s), past members included, PLUS current members'
+    │   │       wars for any other clan (a war row returned by both counted once);
+    │   │       "members" = current members only, wars for any clan (what "all" meant
+    │   │       2026-07-30 → 2026-09-23); "own" = only the clan(s)' own wars (the
+    │   │       subscription posts always use "own"). "all"/"members" resolve the current
+    │   │       roster via `CACHE.coc_clan_cache.get_clan()` per target clan/family — skipped
+    │   │       when no requested mode reads history — and thread `member_player_tags`
+    │   │       through to `_load_history_rows()` / `calculate_raid_leaderboard()`. A roster
+    │   │       that can't be loaded adds a ⚠️ note under the board. Single-raid-weekend
+    │   │       views (currentraid, raidmissed without a period) always use "own". See
     │   │       DATABASE_ARCHITECTURE.md § 2026-07-30 for the cross-clan DB query.
     │   ├── Resolves the invoking user's own registered player tag(s) from
     │   │   `CACHE.user_accounts` and passes them as `highlight_player_ids` so their

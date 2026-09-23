@@ -52,7 +52,7 @@ from QBhelperfunctions import (
     update_clan_war_info_and_stats, update_capital_raid_for_clan, generate_cwl_group_analysis_embeds,
     update_cwl_group_stats, generate_cwl_group_image,
     build_cwl_opponent_embeds, parse_month_argument, resolve_subscription_period,
-    coc_clan_profile_url, coc_player_profile_url,
+    coc_clan_profile_url, coc_player_profile_url, LEADERBOARD_SCOPES, LEADERBOARD_ROSTER_SCOPES,
 )
 from QapBot import GLOBAL_GUILD_ID, run_nightly_maintenance_routine, is_history_migration_due
 from qapbot.config import CONFIG
@@ -501,11 +501,12 @@ async def unsubscribe_mode_autocomplete(interaction: discord.Interaction, curren
     year="Year (YYYY)",
     cwl_only="Restrict to CWL stats only",
     season="CWL season to filter by (YYYY-MM or YYYY-MM-DD for mid-month CWL, e.g. 2026-05 or 2026-06-15). Overrides month/year and forces CWL mode.",
-    scope="ALL: count every clan a current member played for (default). OWN: this server's clans only.",
+    scope="ALL (default): current + past members. MEMBERS: current members only. OWN: this clan's wars only.",
 )
 @app_commands.choices(scope=[
-    app_commands.Choice(name="All clans a current member played for (default)", value="all"),
-    app_commands.Choice(name="Own clans only (current member clans of this server)", value="own"),
+    app_commands.Choice(name="All: current + past members, current members' other clans too (default)", value="all"),
+    app_commands.Choice(name="Members: current members only, all clans they played for", value="members"),
+    app_commands.Choice(name="Own: only wars of this clan / family, past members included", value="own"),
 ])
 # DM-invokable (Phase 0b, CWL_ROSTER_PLANNING_PLAN.md) — not actually channel-bound: the
 # clan-omitted path reads "this channel's" subscriptions, which in a DM is simply empty (nobody
@@ -536,16 +537,17 @@ async def leaderboard(
         - Month: single month, "a-b" range, "a;b;c" list, or "-N" for the trailing N months
           (may cross a year boundary, e.g. "-2" in January = December + January)
         - Month/year: year only -> YTD; month+year -> specific period(s); neither -> current month
-        - Scope: "all" (default) credits a current member's stats even for wars fought
-          while registered to a clan no longer tracked/subscribed here; "own" restricts to
-          wars fought by this server's current member clans, as before
+        - Scope (see QBhelperfunctions._load_history_rows): "all" (default) = everyone who
+          fought for the clan(s), past members included, plus current members' wars for any
+          other clan; "members" = current members only, wars for any clan; "own" = only wars
+          fought by the clan(s) themselves
     """
     if not await _safe_defer(interaction, thinking=True, ephemeral=True):
         return
     _log_cmd(interaction, "leaderboard", clan=clan, mode=mode, month=month, year=year, cwl_only=cwl_only, season=season, scope=scope)
 
     scope = (scope or "all").lower()
-    if scope not in ("own", "all"):
+    if scope not in LEADERBOARD_SCOPES:
         scope = "all"
 
     # Convert 2-digit year to 4-digit year (add 2000)
@@ -720,9 +722,11 @@ async def leaderboard(
         if not await update_clan_war_info_and_stats(clan_tag):  # type: ignore[arg-type]
             logging.warning(f"War data processing failed for {clan_tag}")
 
-    # Resolve current rosters for scope="all" — credits a current member's stats
+    # Resolve current rosters for scope "all"/"members" — credits a current member's stats
     # even for wars fought while registered to a clan no longer tracked/subscribed
     # here. Uses the same stale-while-revalidate coc_clan_cache as everywhere else.
+    # Skipped when no requested mode reads history (live war / CWL group / one raid
+    # weekend views ignore scope), so those don't pay for roster lookups.
     #
     # PERF: fetch every distinct constituent clan in ONE parallel gather instead of
     # awaiting them one at a time — a cache miss/expiry is a live CoC API call, and
@@ -730,7 +734,13 @@ async def leaderboard(
     # filter given) is what made /leaderboard take minutes to respond on prod.
     # Same pattern as ui_clan_management.py's guild-clan refresh.
     member_tags_by_tag: Dict[str, Set[str]] = {}
-    if scope == "all":
+    # Constituent clans whose roster couldn't be fetched, per target — noted under the board,
+    # since the result silently differs otherwise (their members missing, or "own" fallback).
+    roster_missing_by_tag: Dict[str, List[str]] = {}
+    _scope_free_modes ={'currentwar', 'cwlinfo', 'cwlinfo_comp', 'cwlgroup', 'currentraid'}
+    if not explicit_time:
+        _scope_free_modes.add('raidmissed')  # latest weekend only — always the clan's own
+    if scope in LEADERBOARD_ROSTER_SCOPES and any(m not in _scope_free_modes for m in per_tag_modes):
         tag_to_constituent: Dict[str, List[str]] = {
             tag: (CACHE.clan_families[tag].get('clans', []) if tag in CACHE.clan_families else [tag])
             for tag in tags
@@ -743,7 +753,7 @@ async def leaderboard(
         clan_obj_by_tag: Dict[str, Any] = {}
         for ct, result in zip(all_constituent_clans, clan_results):
             if isinstance(result, BaseException):
-                logging.warning(f"[leaderboard scope=all] Failed to fetch roster for {ct}: {result}")
+                logging.warning(f"[leaderboard scope={scope}] Failed to fetch roster for {ct}: {result}")
             else:
                 clan_obj_by_tag[ct] = result
         for tag, constituent in tag_to_constituent.items():
@@ -752,6 +762,8 @@ async def leaderboard(
                 clan_obj = clan_obj_by_tag.get(ct)
                 if clan_obj is not None:
                     roster.update(m.tag for m in clan_obj.members if getattr(m, "tag", None))
+                else:
+                    roster_missing_by_tag.setdefault(tag, []).append(ct)
             member_tags_by_tag[tag] = roster
 
     # Auto-highlight (bold, via ANSI code block) the invoking user's own registered
@@ -875,6 +887,12 @@ async def leaderboard(
                 scope=scope, member_player_tags=member_tags_by_tag.get(tag),
                 highlight_player_ids=highlight_player_ids,
             )
+            missing = roster_missing_by_tag.get(tag)
+            if missing and per_tag_modes[i] not in _scope_free_modes:
+                names = ", ".join(CACHE.get_clan_name(ct, ct) or ct for ct in missing)
+                effect = ("shown as scope OWN" if not member_tags_by_tag.get(tag)
+                          else "its current members may be missing")
+                text += f"\n\n⚠️ Current roster of {names} could not be loaded — {effect}."
             if is_dm:
                 # ```ansi fence matches post_leaderboard_to_discord()'s formatting — the
                 # auto-highlight feature above embeds ANSI codes for the caller's own player(s).

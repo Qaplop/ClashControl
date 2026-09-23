@@ -1,6 +1,26 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-23 (13)  Build 77.
+- Changed: /leaderboard scope has three values. `all` (still the default) now also lists PAST
+  members — everyone who fought for the clan/family in the period — and still credits current
+  members' wars for other clans; a war row found both ways counts once. A past member's wars for
+  other clans (e.g. after leaving) are not counted. `members` = the previous `all` (current
+  members only, any clan). `own` unchanged (only the clan's own wars). Raid modes follow the
+  same three scopes.
+- Fixed: currentraid (and raidmissed without month/year) showed a current member's attacks /
+  "not attacked yet" / missed weekend in ANOTHER tracked clan under this clan's raid weekend
+  when scope was all — a single raid weekend is now always the clan's own.
+- Fixed: when a clan's current roster couldn't be loaded, `all`/`members` silently fell back to
+  `own` (or dropped that clan's members from a family board) — the board now says so in a
+  ⚠️ line. The roster lookup is also skipped for modes that ignore scope (currentwar, cwlinfo,
+  cwlinfo_comp, cwlgroup, currentraid, raidmissed without month/year).
+- /help text for scope updated (5 languages). Docs: CODE_STRUCTURE.md § /leaderboard,
+  DATABASE_ARCHITECTURE.md § 2026-07-30.
+  Files: QBhelperfunctions.py, QBdiscordcmds.py, QBcore.py, translations (5) (+ tests:
+  test_leaderboard_scope_command.py, test_leaderboard_scope_and_month_parsing.py,
+  test_capital_raids.py).
+
 2026-09-23 (12)  Build 76.
 - Fixed: Link Buddy refused clan members by name ("Kein Spieler für Zim gefunden") unless they had
   fought a recorded war for one of the server's clans — the name search only used war data. It

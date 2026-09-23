@@ -197,10 +197,16 @@ def _load_history_filtered(clan_tag: str, month: Optional[int], year: Optional[i
     CACHE.history_cache[key] = filtered
     return filtered
 
+# /leaderboard scope values, see _load_history_rows(). "all" is the command's default;
+# "members" and "all" need the target clans' current rosters (member_player_tags).
+LEADERBOARD_SCOPES: Tuple[str, ...] = ("all", "members", "own")
+LEADERBOARD_ROSTER_SCOPES: Tuple[str, ...] = ("all", "members")
+
+
 def _load_history_filtered_by_players(player_tags: Set[str], month: Optional[int], year: Optional[int], cwl_season: Optional[str] = None) -> List[Dict[str, Any]]:
     """
     Load historical war data for a specific set of players, regardless of which
-    clan_tag they fought under (used by leaderboard scope="all").
+    clan_tag they fought under (used by leaderboard scopes "members" and "all").
 
     Unlike _load_history_filtered, this is not cached across calls — it's only used
     for the manual /leaderboard command (not the automatic per-subscription posting
@@ -228,25 +234,40 @@ def _load_history_rows(
 ) -> List[Dict[str, Any]]:
     """
     Load history rows for a clan or clan family for a single month, honoring
-    leaderboard scope.
+    leaderboard scope (see LEADERBOARD_SCOPES).
 
-    scope="own" (default, unchanged behavior): only wars fought by the clan(s)
-        themselves are counted — a player's stats from a clan that has since left
-        the family/guild are not included.
-    scope="all": counts every war fought by a player currently rostered in the
-        target clan(s), even wars fought while registered to a clan that is no
-        longer tracked/subscribed. Falls back to "own" behavior if the current
-        roster couldn't be resolved (member_player_tags is empty/None).
+    scope="own" (the function default, used by the subscription posts): only wars
+        fought by the clan(s) themselves — every player who fought there, past
+        members included; a player's wars for any other clan are not counted.
+    scope="members": current members only — every war fought by a player currently
+        rostered in the target clan(s), for any clan, even one no longer
+        tracked/subscribed. Past members are not listed.
+    scope="all" (the /leaderboard default since 2026-09-23): the union of the two —
+        everyone's wars for the target clan(s) (past members included) plus current
+        members' wars for any other clan. A war row present in both is counted once.
+        A past member's wars for other clans (e.g. after leaving) are not counted.
+
+    "members"/"all" fall back to "own" if the current roster couldn't be resolved
+    (member_player_tags is empty/None) — for "all" that only drops the other-clan part.
     """
-    if scope == "all" and member_player_tags:
+    if scope == "members" and member_player_tags:
         return _load_history_filtered_by_players(member_player_tags, month, year, cwl_season)
     if clan_tag in CACHE.clan_families:
         clan_tags = CACHE.clan_families[clan_tag].get("clans", [])
     else:
         clan_tags = [clan_tag]
     rows: List[Dict[str, Any]] = []
+    # (player, "{clan}::{war}") of every own-clan row — the cross-clan query's WarID format
+    own_keys: Set[Tuple[str, str]] = set()
     for tag in clan_tags:
-        rows.extend(_load_history_filtered(tag, month, year, cwl_season))
+        for row in _load_history_filtered(tag, month, year, cwl_season):
+            rows.append(row)
+            own_keys.add((row.get("PlayerID", ""), f"{tag}::{row.get('WarID', '')}"))
+    if scope == "all" and member_player_tags:
+        rows.extend(
+            row for row in _load_history_filtered_by_players(member_player_tags, month, year, cwl_season)
+            if (row.get("PlayerID", ""), row.get("WarID", "")) not in own_keys
+        )
     return rows
 
 def _merge_entries(history_rows: List[Dict[str, Any]], temp_stats: Dict[str, Dict[str, Any]], war_in_progress: bool, mode: str) -> Dict[str, Dict[str, Any]]:
@@ -419,11 +440,10 @@ def calculate_leaderboard(clan_tag: str, month: Optional[int] = None, year: Opti
         year: Optional year filter (4-digit) - if None, includes all years
         cwl_only: Whether to include only CWL (Clan War League) wars
         scope: "own" (default) counts only wars fought by the clan(s) themselves;
-            "all" counts every war fought by a player currently rostered in the
-            target clan(s), even ones fought while registered to a clan that is
-            no longer tracked/subscribed (requires member_player_tags)
+            "members" counts every war of a player currently rostered in the target
+            clan(s), for any clan; "all" is both — see _load_history_rows()
         member_player_tags: Current roster tags for the target clan(s), used only
-            when scope="all" — resolved by the caller (needs a live CoC API call)
+            for scope "members"/"all" — resolved by the caller (needs a CoC API call)
 
     Returns:
         Dictionary keyed by PlayerID containing comprehensive player statistics:
@@ -467,9 +487,9 @@ def calculate_leaderboard(clan_tag: str, month: Optional[int] = None, year: Opti
         clan_tags = CACHE.clan_families[clan_tag].get("clans", [])
     else:
         clan_tags = [clan_tag]
-    # Aggregate history for all relevant clans (or, for scope="all", for every
-    # player currently rostered in those clans regardless of which clan_tag the
-    # underlying wars were fought under).
+    # Aggregate history for all relevant clans and/or, for scope "members"/"all", for
+    # every player currently rostered in those clans regardless of which clan_tag the
+    # underlying wars were fought under.
     all_history_rows: List[Dict[str, Any]] = []
     if mode != "currentwar":
         all_history_rows = _load_history_rows(clan_tag, month, year, cwl_season, scope=scope, member_player_tags=member_player_tags)
@@ -4678,11 +4698,13 @@ def get_recent_cwl_player_stats(player_tag: str, num_months: int = 3, *, now: Op
     a nonzero count that exact month), which would silently undercount a month where this player
     has missed attacks or defensive stars recorded but made zero real attacks that month.
 
-    scope="all" (member_player_tags={player_tag}) — the command's own default — credits this
-    player for CWL wars fought under ANY clan, not just clans this guild still tracks, matching
-    `_load_history_rows`'s scope="all" dispatch to `get_player_attack_history_sync` exactly; the
-    `clan_tag` argument that function normally takes is irrelevant on that path (only scope="own"
-    reads it), so an empty string is passed rather than a real tag.
+    scope="members" (member_player_tags={player_tag}) credits this player for CWL wars fought
+    under ANY clan, not just clans this guild still tracks, matching `_load_history_rows`'s
+    scope="members" dispatch to `get_player_attack_history_sync` exactly; the `clan_tag` argument
+    that function normally takes is irrelevant on that path (only "own"/"all" read it), so an
+    empty string is passed rather than a real tag. (This was scope="all" until 2026-09-23, when
+    "all" became "members" + the clan's own wars and the player-only behavior moved to
+    "members".)
 
     Doesn't fold in the CURRENTLY in-progress war's temp stats the way the live command does for
     whichever month is "now" — there's no clan context available to look up an in-progress war for
@@ -4707,7 +4729,7 @@ def get_recent_cwl_player_stats(player_tag: str, num_months: int = 3, *, now: Op
     total_defensive = 0
     any_history = False
     for month, year in periods:
-        rows = _load_history_rows("", month, year, None, scope="all", member_player_tags={player_tag})
+        rows = _load_history_rows("", month, year, None, scope="members", member_player_tags={player_tag})
         rows = [r for r in rows if r.get("Max_Attacks", 2) == 1]  # cwl_only, matching calculate_leaderboard()
         entry = _merge_entries(rows, {}, False, mode="currentwar").get(player_tag)
         if entry is None:
@@ -4758,8 +4780,9 @@ def calculate_raid_leaderboard(
     """Aggregate Clan Capital raid rows per player for a clan or family (tracker #0115, plan §4.2).
 
     Exactly one of *periods* (list of (month, year); a weekend belongs to the month of its
-    Friday) or *season_start* (one season key) selects the time window. scope="all" with a
-    roster filters by player tags instead of clans, same semantics as the war leaderboards.
+    Friday) or *season_start* (one season key) selects the time window. scope works as for the
+    war leaderboards (_load_history_rows): "own" = the clans' rows, "members" = the roster's
+    rows in any clan, "all" = both (a row in both counted once); without a roster -> "own".
 
     Returns every player with a row — attackers AND eligible non-attackers — keyed by tag:
         Player, PlayerID, Loot, Attacks (ongoing + ended seasons), Medals (ended seasons only,
@@ -4772,13 +4795,20 @@ def calculate_raid_leaderboard(
     if db is None:
         return {}
     clan_tags = CACHE.clan_families[clan_tag].get("clans", []) if clan_tag in CACHE.clan_families else [clan_tag]
-    use_players = scope == "all" and bool(member_player_tags)
-    rows = db.get_capital_raid_rows_sync(
-        clan_tags=None if use_players else list(clan_tags),
-        player_tags=sorted(member_player_tags) if use_players and member_player_tags else None,
-        season_starts=[season_start] if season_start else None,
-        month_prefixes=None if season_start else [f"{y:04d}-{m:02d}" for m, y in (periods or [])],
-    )
+    use_players = scope in LEADERBOARD_ROSTER_SCOPES and bool(member_player_tags)
+    use_clans = scope != "members" or not use_players
+    window: Dict[str, Any] = {
+        "season_starts": [season_start] if season_start else None,
+        "month_prefixes": None if season_start else [f"{y:04d}-{m:02d}" for m, y in (periods or [])],
+    }
+    rows = db.get_capital_raid_rows_sync(clan_tags=list(clan_tags), **window) if use_clans else []
+    if use_players and member_player_tags:
+        seen = {(r["player_tag"], r["clan_tag"], r["season_start"]) for r in rows}
+        rows += [
+            r for r in db.get_capital_raid_rows_sync(player_tags=sorted(member_player_tags), **window)
+            if (r["player_tag"], r["clan_tag"], r["season_start"]) not in seen
+        ]
+        rows.sort(key=lambda r: r["season_start"])  # the loop below relies on oldest-first
     stats: Dict[str, Dict[str, Any]] = {}
     attacked: Dict[str, Set[str]] = defaultdict(set)
     eligible_ended: Dict[str, Set[str]] = defaultdict(set)
@@ -4859,6 +4889,12 @@ def _generate_raid_leaderboard_text(
         periods = _normalize_leaderboard_periods(month, year)
         period_label = f" for {_format_periods_label(periods)}"
 
+    # One specific weekend (currentraid, raidmissed without a period) is THIS clan's weekend:
+    # every clan shares the same raid weekend dates, so a roster scope would pull in a current
+    # member's attacks / "not attacked yet" / missed weekend in another tracked clan, under this
+    # clan's totals line. Always "own" there (2026-09-23).
+    if season_start is not None:
+        scope = "own"
     stats = calculate_raid_leaderboard(
         clan_tag, periods=periods, season_start=season_start, scope=scope, member_player_tags=member_player_tags,
     )
@@ -4943,10 +4979,10 @@ def generate_leaderboard_text(
         mode: Leaderboard mode (attack, avgstars, attackdefratio, etc.)
         style: Output style ("discord" or "terminal")
         scope: "own" (default) counts only wars fought by the clan(s) themselves;
-            "all" counts every war fought by a player currently rostered in the
-            target clan(s), even ones fought under a clan no longer tracked/subscribed
+            "members" counts every war of a player currently rostered in the target
+            clan(s), for any clan; "all" is both — see _load_history_rows()
         member_player_tags: Current roster tags for the target clan(s); required
-            for scope="all", ignored otherwise
+            for scope "members"/"all", ignored otherwise
         highlight_player_ids: PlayerIDs to bold/color in the rendered table (style="discord"
             only) — see render_leaderboard(). The caller must post the result inside a
             ```ansi code block for the highlight to actually render.

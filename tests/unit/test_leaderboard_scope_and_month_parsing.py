@@ -3,9 +3,9 @@
 Covers:
 - parse_month_argument(): single month, range, list, trailing "-N" (incl. year rollover)
 - _format_periods_label(): display formatting for contiguous/non-contiguous/cross-year periods
-- _load_history_rows(): scope="own" vs scope="all" dispatch, with graceful fallback
-- calculate_leaderboard(scope="all"): a current member is credited for wars fought
-  under a clan that is no longer tracked/subscribed
+- _load_history_rows(): scope "own" / "members" / "all" dispatch, dedupe, graceful fallback
+- calculate_leaderboard(): "members" credits a current member for wars fought under a clan
+  that is no longer tracked/subscribed; "all" (default since 2026-09-23) adds past members
 """
 # pyright: reportUnknownParameterType=false, reportMissingParameterType=false
 # pyright: reportUnknownVariableType=false, reportUnknownMemberType=false
@@ -135,7 +135,9 @@ class TestLoadHistoryRowsScope:
         assert calls == ["#CLAN1"]
         assert len(rows) == 1
 
-    def test_scope_all_uses_player_query(self, monkeypatch):
+    def test_scope_members_uses_player_query_only(self, monkeypatch):
+        """scope="members" (the pre-2026-09-23 "all"): current members' wars in any clan, and
+        nothing else — the clan's own history (with its past members) is not read."""
         db = MagicMock()
         db.get_player_attack_history_sync = MagicMock(return_value=[
             {"WarID": "#OLD::W1", "PlayerID": "#P1", "Player": "A", "Stars": 2,
@@ -143,11 +145,57 @@ class TestLoadHistoryRowsScope:
         ])
         mock = _mock_cache(db_manager=db)
         monkeypatch.setattr("QBhelperfunctions.CACHE", mock)
+        monkeypatch.setattr("QBhelperfunctions._load_history_filtered",
+                            MagicMock(side_effect=AssertionError("members must not read own history")))
         from QBhelperfunctions import _load_history_rows
-        rows = _load_history_rows("#CLAN1", 6, 2026, None, scope="all", member_player_tags={"#P1"})
+        rows = _load_history_rows("#CLAN1", 6, 2026, None, scope="members", member_player_tags={"#P1"})
         db.get_player_attack_history_sync.assert_called_once_with(["#P1"], 6, 2026)
         assert len(rows) == 1
         assert rows[0]["WarID"] == "#OLD::W1"
+
+    def test_scope_all_is_own_history_plus_current_members_elsewhere(self, monkeypatch):
+        """scope="all" (default since 2026-09-23): past member #PAST (only in the clan's own
+        history) is kept, current member #P1 also gets their war for #OLD, and #P1's war for
+        #CLAN1 — returned by both queries — is counted once."""
+        own = [
+            {"WarID": "W1", "PlayerID": "#PAST", "Player": "Gone", "Stars": 3, "Attacks": 1},
+            {"WarID": "W1", "PlayerID": "#P1", "Player": "A", "Stars": 2, "Attacks": 1},
+        ]
+        db = MagicMock()
+        db.get_player_attack_history_sync = MagicMock(return_value=[
+            {"WarID": "#CLAN1::W1", "PlayerID": "#P1", "Player": "A", "Stars": 2, "Attacks": 1},
+            {"WarID": "#OLD::W9", "PlayerID": "#P1", "Player": "A", "Stars": 1, "Attacks": 1},
+        ])
+        monkeypatch.setattr("QBhelperfunctions.CACHE", _mock_cache(db_manager=db))
+        monkeypatch.setattr("QBhelperfunctions._load_history_filtered", lambda tag, m, y, s: own)
+        from QBhelperfunctions import _load_history_rows
+
+        rows = _load_history_rows("#CLAN1", 6, 2026, None, scope="all", member_player_tags={"#P1"})
+
+        assert sorted((r["PlayerID"], r["WarID"]) for r in rows) == [
+            ("#P1", "#OLD::W9"), ("#P1", "W1"), ("#PAST", "W1"),
+        ]
+
+    def test_scope_all_dedupes_per_family_clan(self, monkeypatch):
+        """In a family the own rows come per constituent clan — the dedupe key must use the
+        clan the row came from, so the same war_id in two clans isn't mistaken for one war."""
+        own = {
+            "#C1": [{"WarID": "W1", "PlayerID": "#P1", "Player": "A", "Stars": 2, "Attacks": 1}],
+            "#C2": [],
+        }
+        db = MagicMock()
+        db.get_player_attack_history_sync = MagicMock(return_value=[
+            {"WarID": "#C1::W1", "PlayerID": "#P1", "Player": "A", "Stars": 2, "Attacks": 1},  # duplicate
+            {"WarID": "#C2::W1", "PlayerID": "#P1", "Player": "A", "Stars": 1, "Attacks": 1},  # own clan, other war
+        ])
+        monkeypatch.setattr("QBhelperfunctions.CACHE",
+                            _mock_cache(families={"FAM": {"clans": ["#C1", "#C2"]}}, db_manager=db))
+        monkeypatch.setattr("QBhelperfunctions._load_history_filtered", lambda tag, m, y, s: own[tag])
+        from QBhelperfunctions import _load_history_rows
+
+        rows = _load_history_rows("FAM", 6, 2026, None, scope="all", member_player_tags={"#P1"})
+
+        assert sorted(r["WarID"] for r in rows) == ["#C2::W1", "W1"]
 
     def test_scope_all_without_member_tags_falls_back_to_own(self, monkeypatch):
         mock = _mock_cache()
@@ -190,11 +238,39 @@ class TestCalculateLeaderboardScopeAll:
 
         result = calculate_leaderboard(
             "#NEW", month=6, year=2026, mode="attack",
-            scope="all", member_player_tags={"#P1"},
+            scope="members", member_player_tags={"#P1"},
         )
 
         assert "#P1" in result
         assert result["#P1"]["Stars"] == 5
+        assert result["#P1"]["Wars_Count"] == 2
+
+    def test_scope_all_lists_past_members_and_credits_current_members_elsewhere(self, monkeypatch):
+        """The 2026-09-23 default: Bob left #NEW (not in the roster) but fought for it in June —
+        he stays on the board; Alice (current member) gets her #OLD war too, her #NEW war once."""
+        history_new = [
+            {"WarID": "W2", "PlayerID": "#P1", "Player": "Alice", "Stars": 3, "Attacks": 1,
+             "Missed_Attacks": 0, "Defensive_Stars": 0, "Max_Attacks": 2, "Date": "2026-06-20T10:00", "TH_lvl": 15},
+            {"WarID": "W2", "PlayerID": "#BOB", "Player": "Bob", "Stars": 1, "Attacks": 1,
+             "Missed_Attacks": 0, "Defensive_Stars": 0, "Max_Attacks": 2, "Date": "2026-06-20T10:00", "TH_lvl": 14},
+        ]
+        db = MagicMock()
+        db.get_player_attack_history_sync = MagicMock(return_value=[
+            {"WarID": "#OLD::W1", "PlayerID": "#P1", "Player": "Alice", "Stars": 2, "Attacks": 1,
+             "Missed_Attacks": 0, "Defensive_Stars": 0, "Max_Attacks": 2, "Date": "2026-06-05T10:00", "TH_lvl": 15},
+            {"WarID": "#NEW::W2", "PlayerID": "#P1", "Player": "Alice", "Stars": 3, "Attacks": 1,
+             "Missed_Attacks": 0, "Defensive_Stars": 0, "Max_Attacks": 2, "Date": "2026-06-20T10:00", "TH_lvl": 15},
+        ])
+        mock = _mock_cache(db_manager=db)
+        mock.get_clan_history = MagicMock(return_value=history_new)
+        monkeypatch.setattr("QBhelperfunctions.CACHE", mock)
+        from QBhelperfunctions import calculate_leaderboard
+
+        result = calculate_leaderboard("#NEW", month=6, year=2026, mode="attack",
+                                       scope="all", member_player_tags={"#P1"})
+
+        assert result["#BOB"]["Stars"] == 1  # past member still listed
+        assert result["#P1"]["Stars"] == 5  # 2 (#OLD) + 3 (#NEW, counted once)
         assert result["#P1"]["Wars_Count"] == 2
 
     def test_scope_own_only_sees_current_clan_stats(self, monkeypatch):
@@ -267,9 +343,9 @@ class TestGetRecentCwlPlayerStats:
         db = MagicMock()
         db.get_player_attack_history_sync = MagicMock(side_effect=fake_history)
         mock = _mock_cache(db_manager=db)
-        # scope="all" must never fall back to the per-clan path (that's the whole point of the
-        # project owner's follow-up: "the option scope=ALL is also important").
-        mock.get_clan_history = MagicMock(side_effect=AssertionError("scope=all must not use get_clan_history"))
+        # The player-only scope ("members", called "all" when this was written) must never fall
+        # back to the per-clan path (project owner: "the option scope=ALL is also important").
+        mock.get_clan_history = MagicMock(side_effect=AssertionError("scope=members must not use get_clan_history"))
         monkeypatch.setattr("QBhelperfunctions.CACHE", mock)
         from QBhelperfunctions import get_recent_cwl_player_stats
 

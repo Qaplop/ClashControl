@@ -1,6 +1,15 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-23 (12)  Build 76.
+- Fixed: Link Buddy refused clan members by name ("Kein Spieler für Zim gefunden") unless they had
+  fought a recorded war for one of the server's clans — the name search only used war data. It
+  now also searches the clans' current members (get_player_list use_live_api=True, cached clan
+  lookups).
+- Fixed: searching for a player you already watch, or one of your own accounts, said "not found";
+  it now shows the existing "already added" / "own account" message.
+  Files: qapbot/ui_notifications.py, QBcore.py (+ tests/discord/test_link_buddy_search.py).
+
 2026-09-23 (11)  Build 75.
 - Fixed: modal field labels and titles were English on every server — only the placeholders
   followed the guild language (discord.py 2.7 deprecates TextInput.label). All 10 remaining

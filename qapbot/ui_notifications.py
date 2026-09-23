@@ -835,14 +835,16 @@ class LinkBuddyModal(discord.ui.Modal, title="Link Buddy Account"):
         watched_players: List[Dict[str, Any]] = user_data.get("watched_players", [])
         own_players: List[Dict[str, Any]] = user_data.get("players", [])
 
-        # Build player list for name/substring search (all known players in guild clans)
+        # Build player list for name/substring search: everyone seen in the guild clans' wars PLUS
+        # their current members (use_live_api, cached clan lookups). 2026-09-23: war data alone
+        # missed every member who never fought a recorded war, so those names were "not found".
         from qapbot.QBdiscocmdshelper import get_guild_clans_including_member_config, get_player_list, normalize_clan_tag
 
         player_list: List[Dict[str, Any]] = []
         if self.guild_id:
             guild_clans = get_guild_clans_including_member_config(self.guild_id)
             if guild_clans:
-                player_list = await get_player_list(guild_clans, exclude_registered_players=False, use_live_api=False)
+                player_list = await get_player_list(guild_clans, exclude_registered_players=False, use_live_api=True)
 
         # Search: name substring match OR exact/partial tag match (normalise '#' prefix)
         substr_notag = substr.lstrip("#")
@@ -851,12 +853,18 @@ class LinkBuddyModal(discord.ui.Modal, title="Link Buddy Account"):
         } | {
             p.get("player_tag", "").upper() for p in own_players
         }
-        matches = [
+        found = [
             p for p in player_list
-            if (substr in p.get("name", "").lower()
-                or substr_notag == p.get("tag", "").lstrip("#").lower())
-            and p.get("tag", "").upper() not in already_tracked
+            if substr in p.get("name", "").lower()
+            or substr_notag == p.get("tag", "").lstrip("#").lower()
         ]
+        # Players already watched / own accounts can't be picked again. If they are the ONLY
+        # hits, let _add_buddy explain why (already added / own account) instead of "not found".
+        matches = [p for p in found if p.get("tag", "").upper() not in already_tracked]
+        if found and not matches:
+            p = found[0]
+            await self._add_buddy(interaction, p["tag"], p.get("name", p["tag"]), user_data, watched_players, own_players)
+            return
 
         if not matches:
             # No local match — try direct CoC API lookup if input looks like a tag

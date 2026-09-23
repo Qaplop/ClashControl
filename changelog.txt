@@ -1,6 +1,15 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-23 (3)  Build 69.
+- Changed: the CWL sign-up/reminder DMs use the app icons for Confirm and Opt Out too (gcheck /
+  redx), not unicode ✅/❌ — in the explanation text, in the "confirmed" reply, and on the
+  buttons, which now carry the icon via Button(emoji=...) with the plain player name / label.
+  One helper (emojis.signup_dm_icons()) feeds {confirm}/{bench}/{optout} to every DM string that
+  uses them. The roster announcement's "already in your clan" ✅ is untouched (different meaning).
+  Files: qapbot/emojis.py, ui_cwl_roster.py, QBdiscocmdshelper_cwl.py, translations (5), tests.
+  3434 tests pass.
+
 2026-09-23 (2)  Build 68.
 - Fixed: Role Configuration still showed the old SERVER gcheck/verified emoji next to the
   assignment-mode line while every other icon on that screen used the application emoji. The two

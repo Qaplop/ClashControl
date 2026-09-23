@@ -1240,10 +1240,10 @@
       "confirm_button": "确认",
       "optout_button": "退出",
       "bench_button": "替补",
-      "bench_explanation": "✅ **确认** — 你参加并进攻。\n{bench} **替补** — 你希望留在名单中（为了赛季奖励或作为候补），但不打算经常进攻。\n❌ **退出** — 本赛季不参加。",
+      "bench_explanation": "{confirm} **确认** — 你参加并进攻。\n{bench} **替补** — 你希望留在名单中（为了赛季奖励或作为候补），但不打算经常进攻。\n{optout} **退出** — 本赛季不参加。",
       "dm_body": "📋 部落战联赛赛季 **{season}** 报名开始！\n你想用 **{player_name}** 参加本次部落战联赛吗？",
-      "dm_body_bench": "📋 联赛赛季 **{season}** 报名！\n你想用 **{player_name}** 参加本次联赛吗？\n\n✅ **确认** — 你参加并进攻。\n{bench} **替补** — 你希望留在名单中（为了赛季奖励或作为候补），但不打算经常进攻。\n❌ **退出** — 本赛季不参加。",
-      "confirmed_msg": "✅ 谢谢 — **{player_name}** 已确认加入本赛季的部落战联赛阵容报名池。",
+      "dm_body_bench": "📋 联赛赛季 **{season}** 报名！\n你想用 **{player_name}** 参加本次联赛吗？\n\n{confirm} **确认** — 你参加并进攻。\n{bench} **替补** — 你希望留在名单中（为了赛季奖励或作为候补），但不打算经常进攻。\n{optout} **退出** — 本赛季不参加。",
+      "confirmed_msg": "{confirm} 谢谢 — **{player_name}** 已确认加入本赛季的部落战联赛阵容报名池。",
       "declined_msg": "👍 收到 — **{player_name}** 已退出本赛季的部落战联赛阵容报名池。",
       "bench_msg": "{bench} 明白了 — **{player_name}** 本赛季联赛担任替补：在名单中，但无需进攻。",
       "no_longer_valid": "⚠️ 此报名已不再有效（该赛季可能已被删除）。",
@@ -1268,7 +1268,7 @@
     "update": {
       "dm_intro": "📋 你好，**{display_name}**，你在赛季 **{season}** 的部落战联赛阵容已发生变化（共 {count} 处更新）：",
       "dm_confirm_prompt": "\n\n请在下方确认你是否想参加本次部落战联赛 — 你的领袖正在等待你的回复。",
-      "dm_confirm_prompt_bench": "\n请在下方确认你是否参加本次联赛 — 你的管理层正在等待答复。\n\n✅ **确认** — 你参加并进攻。\n{bench} **替补** — 留在名单中（赛季奖励或候补），无需经常进攻。\n❌ **退出** — 本赛季不参加。",
+      "dm_confirm_prompt_bench": "\n请在下方确认你是否参加本次联赛 — 你的管理层正在等待答复。\n\n{confirm} **确认** — 你参加并进攻。\n{bench} **替补** — 留在名单中（赛季奖励或候补），无需经常进攻。\n{optout} **退出** — 本赛季不参加。",
       "dm_line_dropped": "\n➖ **{player_name}** — 你已不再在 **{clan_name}** 的部落战联赛阵容中。你的领袖可能仍会在开始前将你安排到其他位置。如需澄清，请联系你的部落领袖。",
       "dm_line_moved_prefix": "\n🔄 **{player_name}** — 已从 **{old_clan_name}** 变更："
     },
@@ -1285,9 +1285,9 @@
     "reminder": {
       "dm_intro_body": "👋 你好，**{display_name}**，\n\n我们仍在等待你对部落战联赛赛季 **{season}** 的回复——你目前在部落战联赛阵容报名池中有 **{count}** 项待处理报名，我们尚未收到你的回复。\n\n请尽快在下一条消息中确认或退出——你会在那里找到每个账号各自独立的一对确认/退出按钮。快速回复对我们本赛季的阵容规划很有帮助。",
       "dm_buttons_intro": "📋 请在下方回复你在赛季 **{season}** 中每一项仍待处理的部落战联赛报名：",
-      "dm_buttons_intro_bench": "📋 请在下方回复你在赛季 **{season}** 中尚未答复的联赛报名：\n\n✅ **确认** — 你参加并进攻。\n{bench} **替补** — 留在名单中（赛季奖励或候补），无需经常进攻。\n❌ **退出** — 本赛季不参加。",
-      "confirm_button_labeled": "✅ {player_name}",
-      "optout_button_labeled": "❌ {player_name}",
+      "dm_buttons_intro_bench": "📋 请在下方回复你在赛季 **{season}** 中尚未答复的联赛报名：\n\n{confirm} **确认** — 你参加并进攻。\n{bench} **替补** — 留在名单中（赛季奖励或候补），无需经常进攻。\n{optout} **退出** — 本赛季不参加。",
+      "confirm_button_labeled": "{player_name}",
+      "optout_button_labeled": "{player_name}",
       "bench_button_labeled": "{player_name}"
     }
   }

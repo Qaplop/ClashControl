@@ -23,7 +23,7 @@ import discord
 
 from qapbot.cache_manager import CACHE
 from qapbot.constants import CWL_LEAGUE_ORDER
-from qapbot.emojis import bench_emoji
+from qapbot.emojis import bench_emoji, signup_dm_icons
 
 # Serializes start_cwl_enrollment() per (guild_id, season) — 2026-08-21 hardening, same bug class
 # and same fix shape as CoCClanCache._update_locks (COPILOT_PITFALLS_COOKBOOK.md Pitfall 35).
@@ -2888,7 +2888,7 @@ async def upgrade_pending_cwl_dms_for_bench(guild_id: int) -> int:
             ]
             explanation = t(
                 'cwl.template.bench_explanation', user_id=discord_id, guild_id=guild_id,
-                bench=bench_emoji(),
+                **signup_dm_icons(),
             )
             content = message.content or ""
             if explanation in content:
@@ -3833,7 +3833,7 @@ async def send_cwl_signup_template_dm(
         user_id=discord_id,
         season=season,
         player_name=participant["player_name"] or participant["player_tag"],
-        bench=bench_emoji(),
+        **signup_dm_icons(),
     )
     view = build_cwl_signup_response_view(event_id, participant["player_tag"], guild_id, bench=bench)
     sent_message_ref: List[Any] = []
@@ -3887,7 +3887,7 @@ async def send_cwl_reminder_dm_group(
         bench = cwl_bench_enabled_for(discord_id, guild_id)
         content = t(
             'cwl.reminder.dm_buttons_intro_bench' if bench else 'cwl.reminder.dm_buttons_intro',
-            user_id=discord_id, guild_id=guild_id, season=season, bench=bench_emoji(),
+            user_id=discord_id, guild_id=guild_id, season=season, **signup_dm_icons(),
         )
         view = build_cwl_reminder_response_view(event_id, chunk, guild_id, bench=bench)
         sent_message_ref: List[Any] = []
@@ -4480,7 +4480,7 @@ async def send_cwl_roster_updates(guild_id: int, season: str) -> Dict[str, Any]:
             )
             lines.append(t(
                 'cwl.update.dm_confirm_prompt_bench' if bench else 'cwl.update.dm_confirm_prompt',
-                user_id=discord_id, guild_id=guild_id, bench=bench_emoji(),
+                user_id=discord_id, guild_id=guild_id, **signup_dm_icons(),
             ))
 
         sent_message_ref: List[Any] = []

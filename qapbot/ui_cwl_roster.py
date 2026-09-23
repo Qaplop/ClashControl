@@ -3053,6 +3053,18 @@ class CwlOpenEnrollmentView(discord.ui.View):
 # Template-copy DM confirm/opt-out buttons (Phase 2) — DynamicItem, restart-safe
 # ---------------------------------------------------------------------------
 
+def _signup_button_emoji(action: str) -> Any:
+    """The app icon on a sign-up/reminder answer button — gcheck for confirm, the bench for
+    passive, redx for opt-out — matching the icons in the DM text above it (2026-09-23). Passed
+    to Button(emoji=...): a custom emoji never renders inside label text."""
+    from qapbot.emojis import BotEmojis, button_emoji
+
+    return button_emoji({
+        "confirm": BotEmojis.GCHECK,
+        "passive": BotEmojis.CWL_BENCH,
+    }.get(action, BotEmojis.REDX))
+
+
 CWL_SIGNUP_RESPONSE_TEMPLATE = r'^cwl:signup:(?P<action>confirm|passive|optout):(?P<event_id>\d+):(?P<player_tag>#[A-Z0-9]{1,15})$'
 
 
@@ -3242,17 +3254,17 @@ async def rerender_cwl_dm_after_response(
         from qapbot.QBdiscocmdshelper_cwl import cwl_bench_enabled_for
 
         bench = cwl_bench_enabled_for(discord_id, guild_id)
-        from qapbot.emojis import bench_emoji
+        from qapbot.emojis import signup_dm_icons
 
         content = t(
             'cwl.reminder.dm_buttons_intro_bench' if bench else 'cwl.reminder.dm_buttons_intro',
-            user_id=discord_id, guild_id=guild_id, season=season, bench=bench_emoji(),
+            user_id=discord_id, guild_id=guild_id, season=season, **signup_dm_icons(),
         )
         view: Optional[discord.ui.View] = build_cwl_reminder_response_view(
             event_id, remaining, guild_id, bench=bench
         )
     else:
-        from qapbot.emojis import bench_emoji
+        from qapbot.emojis import signup_dm_icons
 
         response_key = {
             "confirm": 'cwl.template.confirmed_msg',
@@ -3260,7 +3272,7 @@ async def rerender_cwl_dm_after_response(
         }.get(action, 'cwl.template.declined_msg')
         content = t(
             response_key, user_id=discord_id, guild_id=guild_id, player_name=player_name,
-            bench=bench_emoji(),
+            **signup_dm_icons(),
         )
         view = None
 
@@ -3308,7 +3320,6 @@ class CwlSignupResponseButton(
             # neighbour, and visually distinct from the green confirm and the grey opt-out.
             "passive": ('cwl.template.bench_button', discord.ButtonStyle.primary),
         }.get(action, ('cwl.template.optout_button', discord.ButtonStyle.secondary))
-        from qapbot.emojis import bench_button_emoji
 
         super().__init__(
             discord.ui.Button(
@@ -3316,7 +3327,7 @@ class CwlSignupResponseButton(
                 style=style,
                 # Tracker #0117: the bench icon rides in emoji=, not in the label — Discord only
                 # renders a custom emoji through this parameter, never inside label text.
-                emoji=bench_button_emoji() if action == "passive" else None,
+                emoji=_signup_button_emoji(action),
                 custom_id=f"cwl:signup:{action}:{event_id}:{player_tag}",
             )
         )
@@ -3419,13 +3430,12 @@ class CwlReminderResponseButton(
             "confirm": ('cwl.reminder.confirm_button_labeled', discord.ButtonStyle.success),
             "passive": ('cwl.reminder.bench_button_labeled', discord.ButtonStyle.primary),
         }.get(action, ('cwl.reminder.optout_button_labeled', discord.ButtonStyle.secondary))
-        from qapbot.emojis import bench_button_emoji
 
         super().__init__(
             discord.ui.Button(
                 label=t(label_key, guild_id=guild_id, player_name=player_name or player_tag),
                 style=style,
-                emoji=bench_button_emoji() if action == "passive" else None,  # tracker #0117
+                emoji=_signup_button_emoji(action),  # tracker #0117
                 custom_id=f"cwl:remind:{action}:{event_id}:{player_tag}",
                 row=row,
             )

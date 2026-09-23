@@ -1240,10 +1240,10 @@
       "confirm_button": "Confirma",
       "optout_button": "Recusa",
       "bench_button": "Subsellium",
-      "bench_explanation": "✅ **Confirmare** — ludis et impetum facis.\n{bench} **Subsellium** — in indice esse vis (propter praemia temporis vel ut subsidium), sed impetus assiduos facere non cogitas.\n❌ **Renuntiare** — hoc tempore non.",
+      "bench_explanation": "{confirm} **Confirmare** — ludis et impetum facis.\n{bench} **Subsellium** — in indice esse vis (propter praemia temporis vel ut subsidium), sed impetus assiduos facere non cogitas.\n{optout} **Renuntiare** — hoc tempore non.",
       "dm_body": "📋 Inscriptio pro tempore CWL **{season}**!\nVisne hoc CWL cum **{player_name}** ludere?",
-      "dm_body_bench": "📋 Inscriptio ad tempus CWL **{season}**!\nVisne hoc CWL cum **{player_name}** ludere?\n\n✅ **Confirmare** — ludis et impetum facis.\n{bench} **Subsellium** — in indice esse vis (propter praemia temporis vel ut subsidium), sed impetus assiduos facere non cogitas.\n❌ **Renuntiare** — hoc tempore non.",
-      "confirmed_msg": "✅ Gratias — **{player_name}** confirmatus est pro fonte ordinis CWL huius temporis.",
+      "dm_body_bench": "📋 Inscriptio ad tempus CWL **{season}**!\nVisne hoc CWL cum **{player_name}** ludere?\n\n{confirm} **Confirmare** — ludis et impetum facis.\n{bench} **Subsellium** — in indice esse vis (propter praemia temporis vel ut subsidium), sed impetus assiduos facere non cogitas.\n{optout} **Renuntiare** — hoc tempore non.",
+      "confirmed_msg": "{confirm} Gratias — **{player_name}** confirmatus est pro fonte ordinis CWL huius temporis.",
       "declined_msg": "👍 Intellexi — **{player_name}** ex fonte ordinis CWL huius temporis recusavit.",
       "bench_msg": "{bench} Intellectum — **{player_name}** hoc tempore CWL in subsellio est: in indice, sed sine officio impetus.",
       "no_longer_valid": "⚠️ Haec inscriptio non amplius valida est (tempus fortasse deletum est).",
@@ -1268,7 +1268,7 @@
     "update": {
       "dm_intro": "📋 Salve **{display_name}**, ordo tuus CWL pro tempore **{season}** mutatus est ({count} renovationes):",
       "dm_confirm_prompt": "\n\nQuaeso infra confirma an hoc CWL ludere velis — dux tuus responsum tuum exspectat.",
-      "dm_confirm_prompt_bench": "\nQuaeso infra confirma utrum hoc CWL ludere velis — praefectus tuus responsum tuum exspectat.\n\n✅ **Confirmare** — ludis et impetum facis.\n{bench} **Subsellium** — in indice (praemia temporis vel subsidium), sine impetibus assiduis.\n❌ **Renuntiare** — hoc tempore non.",
+      "dm_confirm_prompt_bench": "\nQuaeso infra confirma utrum hoc CWL ludere velis — praefectus tuus responsum tuum exspectat.\n\n{confirm} **Confirmare** — ludis et impetum facis.\n{bench} **Subsellium** — in indice (praemia temporis vel subsidium), sine impetibus assiduis.\n{optout} **Renuntiare** — hoc tempore non.",
       "dm_line_dropped": "\n➖ **{player_name}** — non amplius in ordine CWL pro **{clan_name}** es. Dux tuus adhuc te alibi ponere potest antequam incipit. Ducem gentis tuae contacta si hoc clarificatione indiget.",
       "dm_line_moved_prefix": "\n🔄 **{player_name}** — mutatus ex **{old_clan_name}**:"
     },
@@ -1285,9 +1285,9 @@
     "reminder": {
       "dm_intro_body": "👋 Salve **{display_name}**,\n\nadhuc responsum tuum pro tempore CWL **{season}** exspectamus — nunc **{count}** inscriptiones pendentes in fonte ordinis CWL habes de quibus nihil a te audivimus.\n\nQuaeso in proximo nuntio quam primum confirma vel recusa — ibi par separatum bullarum Confirma/Recusa pro quaque ratione tua invenies. Responsum celere nos multum in consilio ordinis huius temporis adiuvat.",
       "dm_buttons_intro": "📋 Quaeso omnibus inscriptionibus CWL adhuc pendentibus pro tempore **{season}** infra responde:",
-      "dm_buttons_intro_bench": "📋 Quaeso responde infra ad singulas inscriptiones CWL temporis **{season}** nondum expletas:\n\n✅ **Confirmare** — ludis et impetum facis.\n{bench} **Subsellium** — in indice (praemia temporis vel subsidium), sine impetibus assiduis.\n❌ **Renuntiare** — hoc tempore non.",
-      "confirm_button_labeled": "✅ {player_name}",
-      "optout_button_labeled": "❌ {player_name}",
+      "dm_buttons_intro_bench": "📋 Quaeso responde infra ad singulas inscriptiones CWL temporis **{season}** nondum expletas:\n\n{confirm} **Confirmare** — ludis et impetum facis.\n{bench} **Subsellium** — in indice (praemia temporis vel subsidium), sine impetibus assiduis.\n{optout} **Renuntiare** — hoc tempore non.",
+      "confirm_button_labeled": "{player_name}",
+      "optout_button_labeled": "{player_name}",
       "bench_button_labeled": "{player_name}"
     }
   }

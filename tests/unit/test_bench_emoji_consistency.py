@@ -83,27 +83,48 @@ def test_resolved_emoji_is_used_for_text_and_buttons():
 # The Discord surfaces actually use it
 # ---------------------------------------------------------------------------
 
-def test_only_the_bench_button_carries_an_emoji():
+def test_every_answer_button_carries_its_app_icon():
+    """2026-09-23: confirm and opt-out got their app icons too (gcheck/redx), so all three buttons
+    match the icons in the DM text above them."""
     import qapbot.emojis as emojis
     from qapbot.ui_cwl_roster import build_cwl_reminder_response_view, build_cwl_signup_response_view
 
-    emojis._resolved["CWL_BENCH"] = "<:cwl_bench:1455513859715629077>"
+    emojis._resolved.update({
+        "GCHECK": "<:gcheck:1552060584176914601>",
+        "CWL_BENCH": "<:cwl_bench:1455513859715629077>",
+        "REDX": "<:redx:1552060584176914602>",
+    })
+    expected = {"confirm": 1552060584176914601, "passive": 1455513859715629077, "optout": 1552060584176914602}
 
     # These are DynamicItem wrappers; the real Button is on .item.
     signup = build_cwl_signup_response_view(1, "#P1", 5, bench=True)
-    by_action = {c.custom_id.split(":")[2]: c.item for c in signup.children}
-    assert by_action["passive"].emoji is not None
-    assert by_action["passive"].emoji.id == 1455513859715629077
-    assert by_action["confirm"].emoji is None and by_action["optout"].emoji is None
-    # …and never inside the label text, which Discord would show as raw markup.
-    assert "<:" not in (by_action["passive"].label or "")
+    for child in signup.children:
+        action = child.custom_id.split(":")[2]
+        assert child.item.emoji is not None and child.item.emoji.id == expected[action], action
+        assert "<:" not in (child.item.label or "")  # never inside the label text
 
     reminder = build_cwl_reminder_response_view(
         1, [{"player_tag": "#P1", "player_name": "Alpha"}], 5, bench=True
     )
-    bench_button = next(c.item for c in reminder.children if ":passive:" in (c.custom_id or ""))
-    assert bench_button.emoji is not None and bench_button.emoji.id == 1455513859715629077
-    assert bench_button.label == "Alpha"
+    for child in reminder.children:
+        action = child.custom_id.split(":")[2]
+        assert child.item.emoji.id == expected[action], action
+        assert child.item.label == "Alpha"  # the name only; the icon rides in emoji=
+
+
+def test_dm_texts_use_the_app_icons_not_unicode():
+    import qapbot.emojis as emojis
+    from qapbot.i18n import t
+
+    emojis._resolved.update({"GCHECK": "<:gcheck:1552060584176914601>", "REDX": "<:redx:1552060584176914602>"})
+    body = t('cwl.template.dm_body_bench', guild_id=None, season="2026-10", player_name="Alpha",
+             **emojis.signup_dm_icons())
+    confirmed = t('cwl.template.confirmed_msg', guild_id=None, player_name="Alpha", **emojis.signup_dm_icons())
+
+    assert "<:gcheck:1552060584176914601>" in body and "<:redx:1552060584176914602>" in body
+    assert confirmed.startswith("<:gcheck:1552060584176914601>")
+    for text in (body, confirmed):
+        assert "✅" not in text and "❌" not in text
 
 
 def test_dm_body_and_finalize_text_render_the_resolved_emoji():
@@ -113,9 +134,9 @@ def test_dm_body_and_finalize_text_render_the_resolved_emoji():
     emojis._resolved["CWL_BENCH"] = "<:cwl_bench:1455513859715629077>"
 
     body = t('cwl.template.dm_body_bench', guild_id=None, season="2026-10",
-             player_name="Alpha", bench=emojis.bench_emoji())
+             player_name="Alpha", **emojis.signup_dm_icons())
     finalize = t('cwl.template.bench_msg', guild_id=None, player_name="Alpha",
-                 bench=emojis.bench_emoji())
+                 **emojis.signup_dm_icons())
 
     for text in (body, finalize):
         assert "<:cwl_bench:1455513859715629077>" in text

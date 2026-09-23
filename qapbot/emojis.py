@@ -136,14 +136,26 @@ def bench_emoji() -> str:
     return BotEmojis.CWL_BENCH
 
 
-def bench_button_emoji() -> Any:
-    """The same icon for a Button's `emoji=` parameter. A custom emoji cannot be embedded in a
-    button's label text — it has to be passed here, as a PartialEmoji (a unicode emoji can stay
-    a plain string)."""
+def button_emoji(value: str) -> Any:
+    """Turn a BotEmojis value into what a Button's `emoji=` parameter takes. A custom emoji cannot
+    be embedded in a button's label text — it has to be passed here, as a PartialEmoji (a unicode
+    fallback can stay a plain string)."""
     import discord
 
-    value = BotEmojis.CWL_BENCH
     return discord.PartialEmoji.from_str(value) if _CUSTOM_EMOJI_RE.match(value) else value
+
+
+def bench_button_emoji() -> Any:
+    """The bench icon for a Button's `emoji=` parameter."""
+    return button_emoji(BotEmojis.CWL_BENCH)
+
+
+def signup_dm_icons() -> Dict[str, str]:
+    """The three sign-up answer icons for DM text, as t() kwargs — {confirm}, {bench}, {optout}.
+
+    One helper so every sign-up/reminder/roster-update DM shows the same three app icons as the
+    buttons underneath (2026-09-23: the text used unicode ✅/❌ while the buttons didn't match)."""
+    return {"confirm": BotEmojis.GCHECK, "bench": BotEmojis.CWL_BENCH, "optout": BotEmojis.REDX}
 
 
 # ---------------------------------------------------------------------------

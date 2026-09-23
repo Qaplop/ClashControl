@@ -1241,10 +1241,10 @@
       "confirm_button": "Bestätigen",
       "optout_button": "Abmelden",
       "bench_button": "Ersatzbank",
-      "bench_explanation": "✅ **Bestätigen** — du spielst mit und greifst an.\n{bench} **Ersatzbank** — du möchtest im Kader sein (für die Saison-Belohnung oder als Ersatz), willst aber nicht regelmäßig angreifen.\n❌ **Abmelden** — diese Saison nicht.",
+      "bench_explanation": "{confirm} **Bestätigen** — du spielst mit und greifst an.\n{bench} **Ersatzbank** — du möchtest im Kader sein (für die Saison-Belohnung oder als Ersatz), willst aber nicht regelmäßig angreifen.\n{optout} **Abmelden** — diese Saison nicht.",
       "dm_body": "📋 Anmeldung zur CWL Saison **{season}**!\nMöchtest du mit **{player_name}** an dieser CWL teilnehmen?",
-      "dm_body_bench": "📋 Anmeldung zur CWL Saison **{season}**!\nMöchtest du mit **{player_name}** an dieser CWL teilnehmen?\n\n✅ **Bestätigen** — du spielst mit und greifst an.\n{bench} **Ersatzbank** — du möchtest im Kader sein (für die Saison-Belohnung oder als Ersatz), willst aber nicht regelmäßig angreifen.\n❌ **Abmelden** — diese Saison nicht.",
-      "confirmed_msg": "✅ Danke — **{player_name}** ist für den CWL-Kader-Pool dieser Saison bestätigt.",
+      "dm_body_bench": "📋 Anmeldung zur CWL Saison **{season}**!\nMöchtest du mit **{player_name}** an dieser CWL teilnehmen?\n\n{confirm} **Bestätigen** — du spielst mit und greifst an.\n{bench} **Ersatzbank** — du möchtest im Kader sein (für die Saison-Belohnung oder als Ersatz), willst aber nicht regelmäßig angreifen.\n{optout} **Abmelden** — diese Saison nicht.",
+      "confirmed_msg": "{confirm} Danke — **{player_name}** ist für den CWL-Kader-Pool dieser Saison bestätigt.",
       "declined_msg": "👍 Verstanden — **{player_name}** hat sich für den CWL-Kader-Pool dieser Saison abgemeldet.",
       "bench_msg": "{bench} Alles klar — **{player_name}** sitzt diese CWL-Saison auf der Ersatzbank: im Kader, aber ohne Angriffspflicht.",
       "no_longer_valid": "⚠️ Diese Anmeldung ist nicht mehr gültig (die Saison wurde möglicherweise gelöscht).",
@@ -1269,7 +1269,7 @@
     "update": {
       "dm_intro": "\ud83d\udccb Hallo **{display_name}**, deine CWL-Aufstellung f\u00fcr Saison **{season}** hat sich ge\u00e4ndert ({count} \u00c4nderung(en)):",
       "dm_confirm_prompt": "\n\nBitte best\u00e4tige unten, ob du diese CWL spielen m\u00f6chtest \u2014 deine Leitung wartet auf deine Antwort.",
-      "dm_confirm_prompt_bench": "\nBitte bestätige unten, ob du diese CWL mitspielen willst — deine Leitung wartet auf deine Antwort.\n\n✅ **Bestätigen** — du spielst mit und greifst an.\n{bench} **Ersatzbank** — im Kader (Saison-Belohnung oder als Ersatz), ohne regelmäßig anzugreifen.\n❌ **Abmelden** — diese Saison nicht.",
+      "dm_confirm_prompt_bench": "\nBitte bestätige unten, ob du diese CWL mitspielen willst — deine Leitung wartet auf deine Antwort.\n\n{confirm} **Bestätigen** — du spielst mit und greifst an.\n{bench} **Ersatzbank** — im Kader (Saison-Belohnung oder als Ersatz), ohne regelmäßig anzugreifen.\n{optout} **Abmelden** — diese Saison nicht.",
       "dm_line_dropped": "\n\u2796 **{player_name}** \u2014 du bist nicht mehr in der CWL-Aufstellung von **{clan_name}**. Deine Leitung kann dich vor dem Start noch anderweitig einteilen. Wende dich bei R\u00fcckfragen an deine Clanleitung.",
       "dm_line_moved_prefix": "\n\ud83d\udd04 **{player_name}** \u2014 ge\u00e4ndert von **{old_clan_name}**:"
     },
@@ -1286,9 +1286,9 @@
     "reminder": {
       "dm_intro_body": "👋 Hallo **{display_name}**,\n\nfür die CWL-Saison **{season}** warten wir noch auf deine Rückmeldung — du hast aktuell **{count}** offene Anmeldung(en) im CWL-Kader-Pool, auf die wir bisher keine Antwort von dir erhalten haben.\n\nBitte bestätige oder melde dich in der nächsten Nachricht so schnell wie möglich ab — dort findest du für jeden deiner Accounts eigene Bestätigen-/Abmelden-Buttons. Deine schnelle Rückmeldung hilft uns sehr bei der Kaderplanung dieser Saison.",
       "dm_buttons_intro": "📋 Bitte beantworte jede deiner noch offenen CWL-Anmeldungen für Saison **{season}** unten:",
-      "dm_buttons_intro_bench": "📋 Bitte beantworte jede deiner noch offenen CWL-Anmeldungen für Saison **{season}** unten:\n\n✅ **Bestätigen** — du spielst mit und greifst an.\n{bench} **Ersatzbank** — im Kader (Saison-Belohnung oder als Ersatz), ohne regelmäßig anzugreifen.\n❌ **Abmelden** — diese Saison nicht.",
-      "confirm_button_labeled": "✅ {player_name}",
-      "optout_button_labeled": "❌ {player_name}",
+      "dm_buttons_intro_bench": "📋 Bitte beantworte jede deiner noch offenen CWL-Anmeldungen für Saison **{season}** unten:\n\n{confirm} **Bestätigen** — du spielst mit und greifst an.\n{bench} **Ersatzbank** — im Kader (Saison-Belohnung oder als Ersatz), ohne regelmäßig anzugreifen.\n{optout} **Abmelden** — diese Saison nicht.",
+      "confirm_button_labeled": "{player_name}",
+      "optout_button_labeled": "{player_name}",
       "bench_button_labeled": "{player_name}"
     }
   }

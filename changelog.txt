@@ -1,6 +1,11 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-23 (10)  Build 74 (translations only, no code change).
+- Fixed: the "has opted out" reply in a CWL sign-up DM still showed 👍 while the Confirm and Bench
+  replies use their app icons — it now shows the Opt Out app icon, in all 5 languages
+  (cwl.template.declined_msg). Files: translations (5) (+ test).
+
 2026-09-23 (9)  Build 74.
 - Fixed: "Yes, Delete Season" stayed clickable for the whole multi-second deletion. The click now
   greys every button out at once and shows "Deleting the <season> CWL season and withdrawing its

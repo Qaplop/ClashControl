@@ -1245,7 +1245,7 @@
       "dm_body": "📋 Inscriptio pro tempore CWL **{season}**!\nVisne hoc CWL cum **{player_name}** ludere?",
       "dm_body_bench": "📋 Inscriptio pro tempore CWL **{season}**!\n\n{confirm} **Confirmare** — ludis et impetum facis.\n{bench} **Subsellium** — in indice esse vis (propter praemia temporis vel ut subsidium), sed impetus assiduos facere non cogitas.\n{optout} **Renuntiare** — hoc tempore non.\n\nVisne hoc CWL cum **{player_name}** ludere?",
       "confirmed_msg": "{confirm} Gratias — **{player_name}** confirmatus est pro fonte ordinis CWL huius temporis.",
-      "declined_msg": "👍 Intellexi — **{player_name}** ex fonte ordinis CWL huius temporis recusavit.",
+      "declined_msg": "{optout} Intellexi — **{player_name}** ex fonte ordinis CWL huius temporis recusavit.",
       "bench_msg": "{bench} Intellectum — **{player_name}** hoc tempore CWL in subsellio est: in indice, sed sine officio impetus.",
       "no_longer_valid": "⚠️ Haec inscriptio non amplius valida est (tempus fortasse deletum est).",
       "not_your_signup": "⚠️ Haec inscriptio ad aliam rationem pertinet.",

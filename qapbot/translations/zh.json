@@ -1245,7 +1245,7 @@
       "dm_body": "📋 部落战联赛赛季 **{season}** 报名开始！\n你想用 **{player_name}** 参加本次部落战联赛吗？",
       "dm_body_bench": "📋 部落战联赛赛季 **{season}** 报名开始！\n\n{confirm} **确认** — 你参加并进攻。\n{bench} **替补** — 你希望留在名单中（为了赛季奖励或作为候补），但不打算经常进攻。\n{optout} **退出** — 本赛季不参加。\n\n你想用 **{player_name}** 参加本次部落战联赛吗？",
       "confirmed_msg": "{confirm} 谢谢 — **{player_name}** 已确认加入本赛季的部落战联赛阵容报名池。",
-      "declined_msg": "👍 收到 — **{player_name}** 已退出本赛季的部落战联赛阵容报名池。",
+      "declined_msg": "{optout} 收到 — **{player_name}** 已退出本赛季的部落战联赛阵容报名池。",
       "bench_msg": "{bench} 明白了 — **{player_name}** 本赛季联赛担任替补：在名单中，但无需进攻。",
       "no_longer_valid": "⚠️ 此报名已不再有效（该赛季可能已被删除）。",
       "not_your_signup": "⚠️ 此报名属于另一个账号。",

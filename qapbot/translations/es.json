@@ -1245,7 +1245,7 @@
       "dm_body": "📋 ¡Inscripción para la temporada de LGC **{season}**!\n¿Quieres jugar esta LGC con **{player_name}**?",
       "dm_body_bench": "📋 ¡Inscripción para la temporada de LGC **{season}**!\n\n{confirm} **Confirmar** — juegas y atacas.\n{bench} **Banquillo** — quieres estar en la plantilla (por las recompensas de temporada o como suplente), pero no piensas atacar de forma habitual.\n{optout} **Darse de baja** — esta temporada no.\n\n¿Quieres jugar esta LGC con **{player_name}**?",
       "confirmed_msg": "{confirm} Gracias — **{player_name}** está confirmado para el fondo de plantilla de LGC de esta temporada.",
-      "declined_msg": "👍 Entendido — **{player_name}** se ha excluido del fondo de plantilla de LGC de esta temporada.",
+      "declined_msg": "{optout} Entendido — **{player_name}** se ha excluido del fondo de plantilla de LGC de esta temporada.",
       "bench_msg": "{bench} Entendido — **{player_name}** está en el banquillo esta temporada de CWL: en la plantilla, pero sin obligación de atacar.",
       "no_longer_valid": "⚠️ Esta inscripción ya no es válida (puede que se haya eliminado la temporada).",
       "not_your_signup": "⚠️ Esta inscripción pertenece a otra cuenta.",

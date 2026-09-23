@@ -127,6 +127,21 @@ def test_dm_texts_use_the_app_icons_not_unicode():
         assert "✅" not in text and "❌" not in text
 
 
+def test_opt_out_reply_uses_the_opt_out_app_icon_in_every_language():
+    """2026-09-23 live report: the "has opted out" DM reply still showed a 👍 while Confirm and
+    Bench replies used their app icons — it must carry the same icon as the Opt Out button."""
+    import qapbot.emojis as emojis
+    from qapbot.i18n import _translation_manager
+
+    emojis._resolved.update({"REDX": "<:redx:1552060584176914602>"})
+    for lang in ("en", "de", "es", "zh", "la"):
+        declined = _translation_manager.get_translation(
+            'cwl.template.declined_msg', lang, player_name="Alpha", **emojis.signup_dm_icons()
+        )
+        assert declined.startswith("<:redx:1552060584176914602>"), lang
+        assert "👍" not in declined and "{optout}" not in declined, lang
+
+
 def test_dm_body_and_finalize_text_render_the_resolved_emoji():
     import qapbot.emojis as emojis
     from qapbot.i18n import t

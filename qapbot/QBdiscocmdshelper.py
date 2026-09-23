@@ -4698,8 +4698,12 @@ async def _format_clan_management_roles(guild: discord.Guild) -> Tuple[discord.E
 
     # ── Role Assignment Mode ─────────────────────────────────────────────
     _mode_value_key = "assignment_mode_strict" if member_role_strict else "assignment_mode_simple"
+    # The icon comes from BotEmojis, never from the translation text: these two strings used to
+    # carry a hardcoded guild-emoji id, which kept showing the old server emoji after every other
+    # icon on this screen moved to the application emoji (2026-09-23).
+    _mode_emoji = BotEmojis.VERIFIED if member_role_strict else BotEmojis.GCHECK
     mode_lines = [
-        t(f'ui_components.role_configuration.{_mode_value_key}', guild_id=guild_id_int),
+        t(f'ui_components.role_configuration.{_mode_value_key}', guild_id=guild_id_int, emoji=_mode_emoji),
         "",
         f"*{t('ui_components.role_configuration.assignment_mode_scope', guild_id=guild_id_int)}*",
     ]

@@ -220,3 +220,50 @@ async def test_discord_unreachable_keeps_every_fallback():
     assert await emojis.ensure_application_emojis(bot) == 0
     assert BotEmojis.ENABLED == "<:enabled:1455513859715629076>"
     assert BotEmojis.CWL_BENCH == "\U0001fa91"
+
+
+# ---------------------------------------------------------------------------
+# No hardcoded emoji ids outside BotEmojis
+# ---------------------------------------------------------------------------
+
+_MARKUP = re.compile(r"<a?:\w+:\d{15,20}>")
+
+
+def test_no_translation_string_hardcodes_an_emoji_id():
+    """2026-09-23: two role-configuration strings carried '<:gcheck:…>' / '<:verified:…>' inline,
+    so that screen kept showing the old SERVER emoji after every other icon moved to the
+    application emoji. Icons must come from BotEmojis through a placeholder such as {emoji}."""
+    import glob
+    import json
+
+    for path in glob.glob("qapbot/translations/*.json"):
+        data = json.load(open(path, encoding="utf-8"))
+
+        def walk(node, trail=""):
+            if isinstance(node, dict):
+                for key, value in node.items():
+                    walk(value, f"{trail}.{key}" if trail else key)
+            elif isinstance(node, str):
+                assert not _MARKUP.search(node), f"{path}: {trail} hardcodes an emoji id"
+
+        walk(data)
+
+
+def test_no_python_module_hardcodes_an_emoji_id_outside_emojis_py():
+    import glob
+
+    for path in glob.glob("qapbot/**/*.py", recursive=True) + glob.glob("*.py"):
+        if path.replace("\\", "/").endswith("qapbot/emojis.py"):
+            continue
+        source = open(path, encoding="utf-8").read()
+        assert not _MARKUP.search(source), f"{path} hardcodes an emoji id — use BotEmojis"
+
+
+def test_role_assignment_mode_line_uses_the_resolved_emoji():
+    import qapbot.emojis as emojis
+    from qapbot.i18n import t
+
+    emojis._resolved["GCHECK"] = "<:gcheck:1552060584176914601>"
+    line = t('ui_components.role_configuration.assignment_mode_simple', guild_id=None,
+             emoji=emojis.BotEmojis.GCHECK)
+    assert line.startswith("<:gcheck:1552060584176914601>")

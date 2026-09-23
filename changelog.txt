@@ -1,6 +1,15 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-23 (2)  Build 68.
+- Fixed: Role Configuration still showed the old SERVER gcheck/verified emoji next to the
+  assignment-mode line while every other icon on that screen used the application emoji. The two
+  assignment_mode_* strings had the guild-emoji markup baked into their text; they now take an
+  {emoji} placeholder filled from BotEmojis. Removed two unused keys that did the same
+  (member_role_mode_simple/_strict). New tests fail on any hardcoded <:name:id> in a translation
+  string or in any Python module other than emojis.py; a full sweep found no other occurrence.
+  Files: qapbot/QBdiscocmdshelper.py, translations (5), tests. 3433 tests pass.
+
 2026-09-23 (1)  Build 67.
 - Changed: every custom emoji is now an application emoji the bot owns and uploads itself, not a
   hand-uploaded guild emoji (plans/implemented/app-emoji-migration.md). Masters stay in

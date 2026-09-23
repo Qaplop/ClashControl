@@ -1,6 +1,12 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-23 (8)  Build 73 (translations only, no code change).
+- Changed: the CWL Management button "Add New Season" is now "Start New Season" (de: "Neue Saison
+  starten", es: "Iniciar Nueva Temporada", zh: "开始新赛季", la: "Incipe Novum Tempus"), together with
+  the two texts that name it (the "no season yet" hint and the CWL help). Files: translations (5),
+  qapbot/docs/CWL_ROSTER_PLANNING_PLAN.md. 933 translation/CWL tests pass.
+
 2026-09-23 (7)  Build 73.
 - Fixed: CWL sign-up DMs upgraded to extended mode looked different from DMs sent in extended mode
   from the start (buttons labelled with the player name instead of Confirm / Bench / Opt Out, and

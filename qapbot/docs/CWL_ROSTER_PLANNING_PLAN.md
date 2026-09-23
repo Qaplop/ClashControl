@@ -255,7 +255,7 @@ button's gating, and the freeze guards can never disagree about where a guild is
 
 | Phase | `cwl_events.status` | Entered by |
 | --- | --- | --- |
-| 1 Setup | `draft` | "Add New Season" |
+| 1 Setup | `draft` | "Start New Season" |
 | 2 Enrollment | `signup_open` | "Start Enrollment" |
 | 3 Preparation | `announced` | "Start Preparation" (§8) |
 | 4 War | `war` (or *any* participating clan `locked_at`) | Automatic, first clan lock (§10) |
@@ -301,7 +301,7 @@ action buttons whose visibility/label is entirely phase-driven:
   board) from `signup_open` onward.
 - **Delete Season** — disabled once any participating clan has locked (§10) — an in-game CWL is
   running against that roster.
-- **Add New Season** — shown only when the current CWL month has no event yet (omitted entirely,
+- **Start New Season** (called "Add New Season" until 2026-09-23; older records use that name) — shown only when the current CWL month has no event yet (omitted entirely,
   not disabled, once it would be a no-op for the rest of the month).
 - **Notify New Pool Members** / **Remind Pending** / **Start Preparation** (or **Send Roster
   Updates** once something is pending) — row 4, each shown only when it would actually do
@@ -324,7 +324,7 @@ screen the admin currently has open.
 
 ## 5. Setup phase
 
-**Season creation** ("Add New Season") defaults to carrying over the previous season's
+**Season creation** ("Start New Season") defaults to carrying over the previous season's
 `cwl_event_clans` — but "participating" is derived from **real war history** (which family clans
 actually have an `is_cwl=1` war for the prior season), not from whatever the admin last happened
 to toggle. A guild with no prior CWL history at all (or whose prior season was also empty)

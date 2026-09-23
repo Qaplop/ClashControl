@@ -146,6 +146,11 @@ PLAYER_NAME_FTS_ROWID_SCHEME_VALUE = "player_name_search_rowid_v2"
 # is silently reset on every save_user() (2026-09-22: cwl_permanent_optin and
 # cwl_optout_send_dm_anyway were). tests/unit/test_user_players_cwl_prefs_roundtrip.py fails if a
 # cwl_* column exists in the table but not in this tuple.
+# How old a CWL sign-up DM must be before nightly maintenance drops its stored message reference
+# (purge_stale_cwl_dm_refs_sync, 2026-09-23). Only ever for a season whose month has passed, so a
+# running season is safe whatever this is set to.
+CWL_DM_REF_MAX_AGE_DAYS = 30
+
 USER_PLAYER_CWL_PREF_COLUMNS: Tuple[str, ...] = (
     "cwl_permanent_optout",
     "cwl_permanent_optin",
@@ -6438,6 +6443,115 @@ class WarHistoryDB:
                 )
                 conn.rollback()
                 return False
+
+    def clear_cwl_dm_message_ref_sync(self, message_id: str) -> int:
+        """Forget a DM that no longer exists: NULL the message/channel reference on every row that
+        points at it, and nothing else (2026-09-23, self-healing on a 404).
+
+        Deliberately NOT clear_cwl_player_dm_sent_sync(): that one also resets dm_sent, which
+        would make "Notify New Pool Members" invite the player a second time — the opposite of
+        what a player who deleted the DM wants. Here dm_sent, dm_sent_at and the answer all stay;
+        only the pointer to the vanished message goes, so nothing tries to fetch it again.
+
+        Matched by message id across all seasons: one reminder/roster-update DM can cover up to
+        five accounts, and they all lose the same message at once.
+
+        Args:
+            message_id: The Discord message id that returned "Unknown Message".
+
+        Returns:
+            How many rows were cleared (0 on failure too — never raises).
+        """
+        import sqlite3
+
+        if not self.db_path:
+            raise RuntimeError("Database not initialized. Call initialize() first.")
+
+        with self._sync_conn() as conn:
+            try:
+                with self._sync_write_lock:
+                    cursor = conn.execute(
+                        """
+                        UPDATE cwl_player_season_status
+                        SET dm_sent_via_message_id = NULL,
+                            dm_sent_via_channel_id = NULL,
+                            updated_at = datetime('now')
+                        WHERE dm_sent_via_message_id = ?
+                        """,
+                        (str(message_id),),
+                    )
+                    if self._should_commit():
+                        conn.commit()
+                return cursor.rowcount or 0
+            except sqlite3.Error as e:
+                logging.error(f"[DB-WRITE-SYNC] clear_cwl_dm_message_ref_sync failed for {message_id}: {e}")
+                conn.rollback()
+                return 0
+
+    def purge_stale_cwl_dm_refs_sync(self, max_age_days: int = CWL_DM_REF_MAX_AGE_DAYS) -> int:
+        """Nightly housekeeping: drop DM message references nothing can use any more.
+
+        A stored reference only matters while its DM can still change — re-rendered after an
+        answer, upgraded with the bench button, retracted by Delete Season. Once a season is over
+        none of that happens, and a player who simply deleted the DM leaves a reference that would
+        otherwise sit there for good (the season rows themselves live until the guild's retention
+        purge, which defaults to "keep indefinitely").
+
+        Two conditions, BOTH required, so a running season is never touched however early its
+        enrollment opened:
+          - the DM is older than `max_age_days` (dm_sent_at), and
+          - the season's own month has already passed. CWL runs in the first ~10 days of its
+            month, so a past month is a finished season whatever state its event rows are in.
+        Only the two reference columns are cleared; dm_sent, dm_sent_at and the answer stay, so no
+        one is ever re-invited because of this.
+
+        Args:
+            max_age_days: Minimum DM age before its reference may go (default 30).
+
+        Returns:
+            How many rows were cleared (0 on failure — never raises).
+        """
+        import sqlite3
+        from datetime import datetime, timedelta, timezone
+
+        if not self.db_path:
+            raise RuntimeError("Database not initialized. Call initialize() first.")
+
+        now = datetime.now(timezone.utc)
+        # Same "%Y-%m-%dT%H:%MZ" shape every writer stores dm_sent_at in, so a plain string
+        # comparison orders them correctly.
+        cutoff = (now - timedelta(days=max_age_days)).strftime("%Y-%m-%dT%H:%MZ")
+        current_season = f"{now.year:04d}-{now.month:02d}"
+
+        with self._sync_conn() as conn:
+            try:
+                with self._sync_write_lock:
+                    cursor = conn.execute(
+                        """
+                        UPDATE cwl_player_season_status
+                        SET dm_sent_via_message_id = NULL,
+                            dm_sent_via_channel_id = NULL,
+                            updated_at = datetime('now')
+                        WHERE dm_sent_via_message_id IS NOT NULL
+                          AND dm_sent_at IS NOT NULL
+                          AND dm_sent_at < ?
+                          AND cwl_season < ?
+                        """,
+                        (cutoff, current_season),
+                    )
+                    if self._should_commit():
+                        conn.commit()
+                cleared = cursor.rowcount or 0
+                if cleared:
+                    logging.info(
+                        f"[CWL-DM-REFS] Cleared {cleared} stale DM message reference(s) "
+                        f"(older than {max_age_days} days, season before {current_season})"
+                    )
+                return cleared
+            except sqlite3.Error as e:
+                logging.error(f"[DB-WRITE-SYNC] purge_stale_cwl_dm_refs_sync failed: {e}")
+                conn.rollback()
+                return 0
 
     def set_cwl_player_response_status_sync(
         self, player_tag: str, cwl_season: str, player_name: Optional[str], dmed_discord_id: Optional[str],

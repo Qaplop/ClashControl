@@ -1766,11 +1766,22 @@ async def handle_post_cwl_player_prefs_status(request: web.Request) -> web.Respo
 
                 dm_owner = await QBcore.bot.fetch_user(int(global_row["dmed_discord_id"]))
                 dm_channel = dm_owner.dm_channel or await dm_owner.create_dm()
-                message = await dm_channel.fetch_message(int(global_row["dm_sent_via_message_id"]))
-                await rerender_cwl_dm_after_response(
-                    message, event["id"], season, global_row["dmed_discord_id"],
-                    action=action, player_name=result["player_name"], interaction=None,
-                )
+                import discord
+
+                try:
+                    message = await dm_channel.fetch_message(int(global_row["dm_sent_via_message_id"]))
+                except discord.NotFound:
+                    # The player deleted the DM: forget the reference so nothing fetches it again
+                    # (dm_sent and the answer they just gave both stay).
+                    await asyncio.to_thread(
+                        db.clear_cwl_dm_message_ref_sync, str(global_row["dm_sent_via_message_id"])
+                    )
+                    message = None
+                if message is not None:
+                    await rerender_cwl_dm_after_response(
+                        message, event["id"], season, global_row["dmed_discord_id"],
+                        action=action, player_name=result["player_name"], interaction=None,
+                    )
         except Exception as e:
             logging.warning(
                 f"[WEB-BRIDGE] player-prefs status change: could not reconcile DM for {player_tag}: {e}"

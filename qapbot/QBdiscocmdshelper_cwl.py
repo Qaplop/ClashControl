@@ -2902,7 +2902,17 @@ async def upgrade_pending_cwl_dms_for_bench(guild_id: int) -> int:
                 view=build_cwl_reminder_response_view(int(event_id), accounts, guild_id, bench=True),
             )
             upgraded += 1
-        except (discord.NotFound, discord.Forbidden) as e:
+        except discord.NotFound as e:
+            # The DM is gone (the player deleted it, or — on DEV, running on a copy of PROD's
+            # data — it was sent by a different bot). Forget the reference so no later run fetches
+            # it again; dm_sent and the player's answer stay (clear_cwl_dm_message_ref_sync).
+            cleared = await asyncio.to_thread(db.clear_cwl_dm_message_ref_sync, str(message_id))
+            logging.info(
+                f"[CWL-BENCH-UPGRADE] DM {message_id} for user {discord_id} no longer exists "
+                f"({e.code}); cleared its reference on {cleared} row(s)"
+            )
+        except discord.Forbidden as e:
+            # The message may well still exist (DMs closed, bot blocked) — keep the reference.
             logging.info(
                 f"[CWL-BENCH-UPGRADE] Skipping DM {message_id} for user {discord_id}: {e}"
             )

@@ -2654,6 +2654,15 @@ async def run_nightly_maintenance_routine(db_mgr: Any, run_migration: bool) -> s
             await db_mgr.purge_expired_cwl_events()
         except Exception as _purge_exc:
             logging.error(f"[CWL-PURGE] Failed, continuing with maintenance: {_purge_exc}", exc_info=True)
+        # Step 0.7: drop CWL sign-up DM message references nothing can use any more — older than
+        # CWL_DM_REF_MAX_AGE_DAYS and from a season whose month has passed (2026-09-23). Players who
+        # delete their DM instead of answering would otherwise leave dead references for good,
+        # since the season rows live until retention (default: keep indefinitely). Same
+        # never-abort-maintenance rule as Step 0.6.
+        try:
+            await asyncio.to_thread(db_mgr.purge_stale_cwl_dm_refs_sync)
+        except Exception as _refs_exc:
+            logging.error(f"[CWL-DM-REFS] Failed, continuing with maintenance: {_refs_exc}", exc_info=True)
         # Steps 1-3: WAL checkpoint → REINDEX/VACUUM → ANALYZE (blocks
         # Discord commands internally via db_maintenance_mode).
         _result = await db_mgr.nightly_db_maintenance()

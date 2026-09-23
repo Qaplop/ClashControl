@@ -645,6 +645,21 @@ destroy state another guild still keeps. They are therefore swept **referentiall
 season's rows go only once no `cwl_events` row anywhere still references that season. A guild set
 to "keep indefinitely" keeps its event, which keeps the shared rows alive for everyone.
 
+**Sign-up DM references** (2026-09-23). `cwl_player_season_status.dm_sent_via_message_id` /
+`dm_sent_via_channel_id` point at each player's sign-up DM so it can be re-rendered, upgraded with
+the bench button or retracted. Players who delete the DM instead of answering leave references to
+messages that no longer exist, and the rows themselves live until retention (default: forever). Two
+mechanisms clear them, both touching only those two columns — `dm_sent`, `dm_sent_at` and the answer
+stay, so nobody is ever invited twice because of this:
+- **self-healing**: a fetch that returns 404 clears that reference at once
+  (`clear_cwl_dm_message_ref_sync()`, called by the bench upgrade and the Player Hub's DM reconcile);
+- **nightly** (Step 0.7, right after the retention purge): `purge_stale_cwl_dm_refs_sync()` drops
+  references older than `CWL_DM_REF_MAX_AGE_DAYS` (30) **and** from a season whose month has
+  passed, so a running season is never touched however early its enrollment opened.
+
+`/admin cleanup_messages` does not cover these: it only walks server channels CACHE tracks
+messages in, never DM channels or this table.
+
 **Docs**: this file, which is the single design record alongside the two companion plans listed at
 the top. It lived at the repo root until 2026-08-30 and moved to `qapbot/docs/` once the feature
 was complete — it is reference documentation for a shipped system, not a build record, so it

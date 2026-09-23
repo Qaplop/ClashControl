@@ -1,6 +1,21 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-23 (4)  Build 70.
+- Added: housekeeping for stored CWL sign-up DM references (cwl_player_season_status
+  dm_sent_via_message_id/channel_id). Players who delete the DM instead of answering left
+  references to vanished messages behind, retried by every bench upgrade (a DEV run fetched 43 in
+  a row) and otherwise kept for good, since season rows live until retention (default: forever).
+  * Self-healing: a 404 on fetch clears that reference right away (bench upgrade, Player Hub DM
+    reconcile) — clear_cwl_dm_message_ref_sync().
+  * Nightly Step 0.7 (after the retention purge): purge_stale_cwl_dm_refs_sync() drops references
+    older than CWL_DM_REF_MAX_AGE_DAYS (30) from a season whose month has passed, so a running
+    season is never touched.
+  Both clear only the two reference columns; dm_sent and the answer stay, so nobody is invited
+  twice. /admin cleanup_messages never covered these (server channels only) — documented.
+  Files: qapbot/db_manager.py, QBdiscocmdshelper_cwl.py, web_bridge.py, QapBot.py, docs (+ tests).
+  3441 tests pass.
+
 2026-09-23 (3)  Build 69.
 - Changed: the CWL sign-up/reminder DMs use the app icons for Confirm and Opt Out too (gcheck /
   redx), not unicode ✅/❌ — in the explanation text, in the "confirmed" reply, and on the

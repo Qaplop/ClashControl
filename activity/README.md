@@ -111,6 +111,15 @@ locally, without requiring an actual `git checkout main` (which would swap every
 disk and could break a bot currently running off the feature branch — see `git worktree` instead
 if you ever need both checked out at once).
 
+## Legal pages (Terms of Service / Privacy Policy)
+
+`client/public/terms.html` and `client/public/privacy.html` are copied as-is into `dist/` by Vite
+and served by Pages at `/terms` and `/privacy`. The PROD URLs
+(`https://cwl-clan-config-prod.pages.dev/terms` and `/privacy`) are entered in the Developer
+Portal under General Information, where Discord requires them for app verification. They go live
+only with a client `deploy:prod`. Keep `privacy.html` in line with what the bot actually stores (see
+copilot-instructions Rule 15).
+
 ## Local development
 
 Discord cannot embed `localhost` URLs directly — for local iteration once Phase A's spike is

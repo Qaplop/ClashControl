@@ -1850,6 +1850,19 @@ component is session-scoped (`self`-state flag via `_consume_once()`) or a persi
 `DynamicItem` (persisted-state re-check). A bare `check permission → defer() → act` shape with
 neither is the exact pattern that shipped both #0026 and #0036.
 
+**Shared helpers (2026-09-23):** after "Yes, Delete Season" was found clickable through its whole
+multi-second run, every confirm/apply/save step across `ui_cwl_roster.py`, `ui_clan_management.py`,
+`ui_registration.py`, `ui_tracker.py` and `ui_notifications.py` was moved onto
+`qapbot/ui_common.py`'s `claim_action()` / `release_action()` / `lock_buttons()` /
+`unlock_buttons()` — the same flag-first + disabled-`edit_message()` pattern as `_consume_once()`,
+usable from any module. Two traps the audit found: (1) a flag set AFTER an awaited permission
+check (`_check_cwl_admin_permission`) is too late — claim first, `release_action()` if the check
+fails; (2) `interaction.message.edit(view=...)` to grey buttons out silently fails on ephemeral
+messages — `lock_buttons()` answers via `response.edit_message()`, which works for both. A view
+whose first response is reserved for something else (`CwlCarryOverPromptView`: the Activity
+launch must be the first response) just claims without locking. The structural test in
+`tests/discord/test_ui_double_click_guards.py` pins every guarded handler.
+
 ## Pitfall 42: `interaction.followup.send(view=...)` rejects an explicit `None` — only `edit_message()`/`edit_original_response()` treat `None` as "no view"
 
 **Symptom (2026-08-23, live report, found while re-testing #0036's fix):** clicking "Move to

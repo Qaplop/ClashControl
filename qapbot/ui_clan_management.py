@@ -15,6 +15,7 @@ from typing import List, Dict, Any, Optional, Callable, Tuple
 from qapbot.i18n import t
 from qapbot.cache_manager import CACHE
 from qapbot.emojis import BotEmojis
+from qapbot.ui_common import claim_action, lock_buttons, release_action, unlock_buttons
 
 
 class ManualPlayerTagModal(discord.ui.Modal, title="Enter Player Tag"):
@@ -2107,6 +2108,10 @@ class ClanManagementView(discord.ui.View):
         )
         
         async def confirm_callback(confirm_interaction: discord.Interaction):
+            # Claimed before any await (Cardinal Rule 7) — a second click would re-run the
+            # whole family deletion.
+            if not await claim_action(confirm_view, confirm_interaction):
+                return
             # Delete confirmation message before showing success
             try:
                 await self.confirmation_interaction.delete_original_response()
@@ -2124,6 +2129,8 @@ class ClanManagementView(discord.ui.View):
         )
         
         async def cancel_callback(cancel_interaction: discord.Interaction):
+            if not await claim_action(confirm_view, cancel_interaction):
+                return
             await cancel_interaction.response.defer()
             try:
                 await self.confirmation_interaction.delete_original_response()
@@ -3126,13 +3133,15 @@ class ChannelConfigurationView(discord.ui.View):
 
     async def _on_apply(self, interaction: discord.Interaction) -> None:
         """Apply channel configuration changes for every slot."""
-        await interaction.response.defer(thinking=False, ephemeral=False)
+        if not await claim_action(self, interaction):  # Cardinal Rule 7: before any await
+            return
+        await lock_buttons(self, interaction)  # ack + greyed-out buttons in one call
 
         from qapbot.cache_manager import CACHE
 
         # Ensure we have a guild
         if not interaction.guild:
-            await interaction.response.send_message("This command must be used in a guild.", ephemeral=True)
+            await interaction.followup.send("This command must be used in a guild.", ephemeral=True)
             return
 
         guild_id_str = str(interaction.guild.id)
@@ -3767,7 +3776,9 @@ class RoleConfigurationView(discord.ui.View):
     
     async def _on_apply(self, interaction: discord.Interaction) -> None:
         """Apply role configuration changes."""
-        await interaction.response.defer(thinking=False, ephemeral=True)
+        if not await claim_action(self, interaction):  # Cardinal Rule 7: before any await
+            return
+        await lock_buttons(self, interaction)  # ack + greyed-out buttons in one call
         
         from qapbot.cache_manager import CACHE
         
@@ -3992,7 +4003,9 @@ class CustodianConfigurationView(discord.ui.View):
 
     async def _on_apply(self, interaction: discord.Interaction) -> None:
         """Persist the custodian configuration for this clan."""
-        await interaction.response.defer(thinking=False, ephemeral=True)
+        if not await claim_action(self, interaction):  # Cardinal Rule 7: before any await
+            return
+        await lock_buttons(self, interaction)  # ack + greyed-out buttons in one call
 
         from qapbot.cache_manager import CACHE
 
@@ -4015,6 +4028,7 @@ class CustodianConfigurationView(discord.ui.View):
                 user_id=user_id, guild_id=guild_id_for_t,
                 names=self._current_names_text())
         await interaction.followup.send(msg, ephemeral=True)
+        await unlock_buttons(self, interaction)  # dialog stays open for further edits
 
 
 class AddClanFamilyModal(discord.ui.Modal, title="Add Clan or Family"):
@@ -4208,7 +4222,9 @@ class RoleDeleteConfirmationView(discord.ui.View):
 
     async def _on_confirm(self, interaction: discord.Interaction) -> None:
         """Delete roles, disable feature flag, refresh main view."""
-        await interaction.response.defer(thinking=False, ephemeral=True)
+        if not await claim_action(self, interaction):  # Cardinal Rule 7: before any await
+            return
+        await lock_buttons(self, interaction)  # ack + greyed-out buttons in one call
         # Delete the ephemeral confirmation message via the stored WebhookMessage reference.
         # edit_message() only edits; WebhookMessage.delete() is the only way to truly remove it.
         if self.confirmation_message:
@@ -4241,6 +4257,8 @@ class RoleDeleteConfirmationView(discord.ui.View):
 
     async def _on_cancel(self, interaction: discord.Interaction) -> None:
         """Dismiss the confirmation without making any changes."""
+        if not await claim_action(self, interaction):  # never while the confirm action runs
+            return
         self.stop()
         await interaction.response.defer(thinking=False, ephemeral=True)
         if self.confirmation_message:
@@ -4423,7 +4441,9 @@ class ConfirmDeleteClanRolesView(discord.ui.View):
 
     async def _on_delete(self, interaction: discord.Interaction) -> None:
         """Delete the Discord roles for all removed clans."""
-        await interaction.response.defer(thinking=False, ephemeral=True)
+        if not await claim_action(self, interaction):  # Cardinal Rule 7: before any await
+            return
+        await lock_buttons(self, interaction)  # ack + greyed-out buttons in one call
         from qapbot import guild_role_manager
         deleted: list[str] = []
         failed: list[str] = []
@@ -4449,7 +4469,9 @@ class ConfirmDeleteClanRolesView(discord.ui.View):
 
     async def _on_keep(self, interaction: discord.Interaction) -> None:
         """Dismiss and inform the admin roles were kept."""
-        await interaction.response.defer(ephemeral=True)
+        if not await claim_action(self, interaction):  # never while the confirm action runs
+            return
+        await lock_buttons(self, interaction)  # ack + greyed-out buttons in one call
         self.stop()
         if self._msg:
             try:
@@ -4755,7 +4777,9 @@ class MemberClansConfigurationView(discord.ui.View):
         still marked participating in an active (non-cancelled) CWL lineup, and let the admin
         confirm or cancel entirely (CWL_ROSTER_PLANNING_PLAN.md, 2026-08-10 fix: a live test
         showed a removed clan lingering in the CWL Management table with no warning at all)."""
-        await interaction.response.defer(thinking=False, ephemeral=True)
+        if not await claim_action(self, interaction):  # Cardinal Rule 7: before any await
+            return
+        await lock_buttons(self, interaction)  # ack + greyed-out buttons in one call
 
         from qapbot.cache_manager import CACHE
 
@@ -4806,6 +4830,8 @@ class MemberClansConfigurationView(discord.ui.View):
                 view=confirm_view,
                 ephemeral=True,
             )
+            # The conflict dialog's Cancel leaves this dialog open — give its buttons back.
+            await unlock_buttons(self, interaction)
             return
 
         await self._apply_member_clans_changes(interaction)
@@ -5055,7 +5081,9 @@ class CwlLineupRemovalConfirmView(discord.ui.View):
         self.add_item(cancel_button)
 
     async def _on_confirm(self, interaction: discord.Interaction) -> None:
-        await interaction.response.defer(thinking=False, ephemeral=True)
+        if not await claim_action(self, interaction):  # Cardinal Rule 7: before any await
+            return
+        await lock_buttons(self, interaction)  # ack + greyed-out buttons in one call
 
         from qapbot.cache_manager import CACHE
 
@@ -5086,6 +5114,8 @@ class CwlLineupRemovalConfirmView(discord.ui.View):
 
     async def _on_cancel(self, interaction: discord.Interaction) -> None:
         """Aborts the whole operation — the member-clan/family change is never applied."""
+        if not await claim_action(self, interaction):  # never while the confirm action runs
+            return
         await interaction.response.defer(thinking=False, ephemeral=True)
         try:
             await interaction.delete_original_response()
@@ -5906,11 +5936,13 @@ class EditFamilyView(discord.ui.View):
     
     async def _on_save(self, interaction: discord.Interaction):
         """Save changes to family."""
+        if not await claim_action(self, interaction):  # Cardinal Rule 7: before any await
+            return
         from qapbot.cache_manager import CACHE
         from qapbot.QBdiscocmdshelper import format_clan_management_message
 
-        # Defer immediately so we can always use followup (no second response needed)
-        await interaction.response.defer(thinking=False, ephemeral=True)
+        # Acknowledge immediately so we can always use followup (no second response needed)
+        await lock_buttons(self, interaction)  # ack + greyed-out buttons in one call
 
         try:
             guild_id = str(self.guild.id) if self.guild else None
@@ -6961,6 +6993,8 @@ class ClanManagementUnlinkPlayerConfirmView(discord.ui.View):
 
     async def _on_cancel(self, interaction: discord.Interaction) -> None:
         """Handle Cancel button - restore the parent player-selection view unchanged."""
+        if not await claim_action(self, interaction):  # never while the confirm action runs
+            return
         from qapbot.i18n import t
         guild_id = self.guild.id if self.guild else None
         header_msg = t('ui_components.prompts.unlink_player_header', guild_id=guild_id)
@@ -6968,6 +7002,8 @@ class ClanManagementUnlinkPlayerConfirmView(discord.ui.View):
 
     async def _on_confirm(self, interaction: discord.Interaction) -> None:
         """Handle Confirm button - unlink the player, sync roles, and refresh the clan management message."""
+        if not await claim_action(self, interaction):  # Cardinal Rule 7: before any await
+            return
         from qapbot.QBdiscocmdshelper import unlink_player
         from qapbot.i18n import t
 
@@ -6975,7 +7011,7 @@ class ClanManagementUnlinkPlayerConfirmView(discord.ui.View):
         # UnlinkConfirmView._on_confirm in ui_registration.py: unlink_player() + role sync can
         # take several seconds under load, well past Discord's 3s ack window for a bare
         # interaction.response call.
-        await interaction.response.defer(thinking=False, ephemeral=True)
+        await lock_buttons(self, interaction)  # ack + greyed-out buttons in one call
 
         player_tag = self.player_data.get("tag", "")
         player_name = self.player_data.get("name", "Unknown")
@@ -7091,6 +7127,8 @@ class ClanManagementAdminOverrideView(discord.ui.View):
     
     async def _cancel_callback(self, interaction: discord.Interaction):
         """Cancel the admin override."""
+        if not await claim_action(self, interaction):  # never while the confirm action runs
+            return
         from qapbot.i18n import t
         user_id = str(interaction.user.id)
         guild_id = interaction.guild.id if interaction.guild else None
@@ -7109,6 +7147,8 @@ class ClanManagementAdminOverrideView(discord.ui.View):
     
     async def _confirm_callback(self, interaction: discord.Interaction):
         """Confirm the admin override and proceed with linking."""
+        if not await claim_action(self, interaction):  # Cardinal Rule 7: before any await
+            return
         # Disable all buttons
         for item in self.children:
             item.disabled = True  # type: ignore[attr-defined]
@@ -7185,6 +7225,8 @@ class AdminOverrideConfirmView(discord.ui.View):
         
     async def _cancel_callback(self, interaction: discord.Interaction):
         """Cancel the admin override."""
+        if not await claim_action(self, interaction):  # never while the confirm action runs
+            return
         from qapbot.i18n import t
         user_id = str(interaction.user.id)
         guild_id = interaction.guild.id if interaction.guild else None
@@ -7205,15 +7247,9 @@ class AdminOverrideConfirmView(discord.ui.View):
         """Confirm the admin override and proceed with linking."""
         from qapbot.QBdiscocmdshelper import process_player_registration
         
-        await interaction.response.defer(ephemeral=True)
-        
-        # Disable all buttons
-        for item in self.children:
-            item.disabled = True  # type: ignore[attr-defined]
-        try:
-            await interaction.message.edit(view=self)  # type: ignore[union-attr]
-        except Exception:
-            pass
+        if not await claim_action(self, interaction):  # Cardinal Rule 7: before any await
+            return
+        await lock_buttons(self, interaction)  # ack + greyed-out buttons in one call
         
         # Call process_player_registration with admin_override=True
         await process_player_registration(
@@ -7286,6 +7322,8 @@ class ImportDataConfirmView(discord.ui.View):
         
     async def _cancel_callback(self, interaction: discord.Interaction):
         """Cancel the import."""
+        if not await claim_action(self, interaction):  # never while the confirm action runs
+            return
         from qapbot.i18n import t
         user_id = str(interaction.user.id)
         guild_id = interaction.guild.id if interaction.guild else None
@@ -7307,14 +7345,9 @@ class ImportDataConfirmView(discord.ui.View):
         from qapbot.QBdiscocmdshelper import send_and_track
         from qapbot.cache_manager import CACHE
         
-        await interaction.response.defer(ephemeral=True)
-        
-        for item in self.children:
-            item.disabled = True  # type: ignore[attr-defined]
-        try:
-            await interaction.message.edit(view=self)  # type: ignore[union-attr]
-        except Exception:
-            pass
+        if not await claim_action(self, interaction):  # Cardinal Rule 7: before any await
+            return
+        await lock_buttons(self, interaction)  # ack + greyed-out buttons in one call
         
         try:
             _, added, upgraded, skipped, changed_user_ids = apply_import_changes(self.user_accounts, self.results)
@@ -7422,14 +7455,9 @@ class SwitchViewContinueView(discord.ui.View):
         from qapbot.import_clashperk_userlist import parse_clashperk_embed_with_tag_data
         from qapbot.QBdiscocmdshelper import send_and_track
         
-        await interaction.response.defer(ephemeral=True)
-        
-        for item in self.children:
-            item.disabled = True  # type: ignore[attr-defined]
-        try:
-            await interaction.message.edit(view=self)  # type: ignore[union-attr]
-        except Exception:
-            pass
+        if not await claim_action(self, interaction):  # Cardinal Rule 7: before any await
+            return
+        await lock_buttons(self, interaction)  # ack + greyed-out buttons in one call
         
         try:
             # Re-fetch and parse with tag data
@@ -7536,6 +7564,8 @@ class SwitchViewContinueView(discord.ui.View):
     
     async def _cancel_callback(self, interaction: discord.Interaction):
         """Cancel the import."""
+        if not await claim_action(self, interaction):  # never while the confirm action runs
+            return
         await interaction.response.send_message(t('ui_components.import_cancelled', guild_id=interaction.guild.id if interaction.guild else None), ephemeral=True)
         
         for item in self.children:
@@ -7848,8 +7878,11 @@ class WelcomeMessageConfigView(discord.ui.View):
 
     async def _on_save(self, interaction: discord.Interaction) -> None:
         """Validate pending state, persist to DB, refresh main config, close dialog."""
-        await interaction.response.defer(thinking=False, ephemeral=False)
+        if not await claim_action(self, interaction):  # Cardinal Rule 7: before any await
+            return
         if not interaction.guild:
+            release_action(self)
+            await interaction.response.defer(thinking=False, ephemeral=False)
             return
 
         from qapbot.cache_manager import CACHE
@@ -7861,11 +7894,15 @@ class WelcomeMessageConfigView(discord.ui.View):
         # Consistency check before writing. Clan-link mode with zero clans/families selected
         # is allowed — the welcome message simply omits the clan-link line in that case.
         if self._pending_mode == "apply_channel" and not self._pending_channel_id:
+            release_action(self)
+            await interaction.response.defer(thinking=False, ephemeral=False)
             await self._push_update(
                 guild_id_int,
                 error=t('ui_components.basic_config.welcome_error_no_channel', guild_id=guild_id_int)
             )
             return
+
+        await lock_buttons(self, interaction)  # ack + greyed-out buttons in one call
 
         # Write to CACHE and DB
         if guild_id_str not in CACHE.server_config:
@@ -7891,6 +7928,8 @@ class WelcomeMessageConfigView(discord.ui.View):
 
     async def _on_cancel(self, interaction: discord.Interaction) -> None:
         """Discard all pending changes and close the dialog."""
+        if not await claim_action(self, interaction):  # never while the confirm action runs
+            return
         await interaction.response.defer(thinking=False, ephemeral=False)
         if self.config_message:
             try:

@@ -1108,6 +1108,7 @@
       "button_confirm_start_enrollment": "Ita, Incipe Inscriptionem",
       "start_enrollment_confirm_body": "⚠️ Incipere inscriptionem pro tempore **{season}**? Hoc ordinem temporis praecedentis ut exemplar copiat et omni sodali soluto nuntium privatum confirmationis/recusationis mittit. Hoc revocari non potest.",
       "start_enrollment_processing": "⏳ Inscriptio incipiens — nuntia privata mittens, hoc paucis secundis fieri potest…",
+      "delete_season_processing": "⏳ Tempus CWL **{season}** deletur et nuntii inscriptionis revocantur — hoc paucas secundas durare potest…",
       "dm_guard_report_header": "🛡️ Modus DEV — lusores a custode nuntii privati praeteriti ({count}), secundum gentem currentem:",
       "dm_guard_report_no_clan": "Nulla gens currens",
       "start_enrollment_summary": "✅ Inscriptio incepta.\nSeminati: {seeded}\nPraeassignati ex CWL mensis praecedentis: {assigned}\nContacti: {contacted}\nPraeteriti (recusaverunt): {skipped_optout}\nPraeteriti (sine ratione nexa): {skipped_unlinked}\nPraeteriti (custos nuntii privati): {skipped_dm_guard}{dm_issues}",

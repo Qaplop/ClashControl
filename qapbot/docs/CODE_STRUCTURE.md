@@ -334,9 +334,29 @@ async def _on_yes(self, interaction: discord.Interaction) -> None:
     await interaction.response.edit_message(view=self)  # NOT defer()-then-edit-separately
     # ... perform the side effect, then interaction.edit_original_response(...) for final content
 ```
-`qapbot/ui_tracker.py`'s `_consume_once(view, interaction)` is the shared helper implementing
-exactly this shape — reuse it for any new session-scoped confirm/select view rather than
-reinventing the flag.
+For new code use the module-agnostic helpers in `qapbot/ui_common.py` (2026-09-23) rather than
+reinventing the flag — `ui_tracker.py`'s older `_consume_once(view, interaction)` implements the
+same shape for the tracker views:
+```python
+from qapbot.ui_common import claim_action, lock_buttons, release_action, unlock_buttons
+
+async def _on_confirm(self, interaction: discord.Interaction) -> None:
+    if not await claim_action(self, interaction):  # FIRST statement; re-clicks ack'd silently
+        return
+    if not await _check_permission(interaction):
+        release_action(self)  # bailed out before acting — allow a legitimate retry
+        return
+    await lock_buttons(self, interaction, content="⏳ Working…")  # first response: all greyed out
+    # ... side effect, then interaction.edit_original_response(...) / followup
+    # dialogs that stay open afterwards: await unlock_buttons(self, interaction)
+
+async def _on_cancel(self, interaction: discord.Interaction) -> None:
+    if not await claim_action(self, interaction):  # can't overwrite a running confirm
+        return
+    ...
+```
+Every guarded handler is listed in `tests/discord/test_ui_double_click_guards.py`'s structural
+test (claim_action must be the first await) — add new confirm/apply steps there.
 
 **Persistent `DynamicItem`** (a fresh Python object reconstructed from its `custom_id` on every
 single click — no `self` state survives between clicks, so the flag trick above doesn't apply):

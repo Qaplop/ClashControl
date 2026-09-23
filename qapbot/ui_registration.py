@@ -14,6 +14,7 @@ from typing import List, Dict, Callable, Any, Optional, Set
 from qapbot.i18n import t  # type: ignore[reportUnusedImport]  # tests monkeypatch ui_registration.t
 from qapbot.cache_manager import CACHE
 from qapbot.ui_common import GenericSelectView, TrackedView, update_user_metadata_from_interaction
+from qapbot.ui_common import claim_action, lock_buttons
 from qapbot.ui_notifications import WarNotificationPromptView
 
 # Discord's hard cap on a message's `content` field. Exceeding it raises
@@ -1764,6 +1765,8 @@ class UnlinkConfirmView(discord.ui.View):
     
     async def _on_confirm(self, interaction: discord.Interaction):
         """Handle Confirm button - unlink the player and update view."""
+        if not await claim_action(self, interaction):  # Cardinal Rule 7: before any await
+            return
         from qapbot.QBdiscocmdshelper import unlink_player
         from qapbot.i18n import t
 
@@ -1772,7 +1775,7 @@ class UnlinkConfirmView(discord.ui.View):
         # Discord's 3s ack window for a bare interaction.response call. Confirmed live on PROD:
         # a CWL DM blast's load caused this exact handler to blow the window and throw
         # "Unknown interaction" (10062) on every edit_message() call below.
-        await interaction.response.defer(thinking=False, ephemeral=True)
+        await lock_buttons(self, interaction)  # ack + greyed-out buttons in one call
 
         player_tag = self.player_data.get("player_tag", "")
         player_name = self.player_data.get("player_name", "Unknown")
@@ -1824,6 +1827,8 @@ class UnlinkConfirmView(discord.ui.View):
     
     async def _on_cancel(self, interaction: discord.Interaction):
         """Handle Cancel button - restore parent view."""
+        if not await claim_action(self, interaction):  # never while the confirm action runs
+            return
         # Restore parent view with current selection state preserved
         overview_text = self.parent_view._build_message_content()  # type: ignore[attr-defined]
         await interaction.response.edit_message(content=overview_text, view=self.parent_view)
@@ -1878,12 +1883,14 @@ class UnlinkAllConfirmView(discord.ui.View):
 
     async def _on_confirm(self, interaction: discord.Interaction):
         """Handle Confirm button - unlink every account and show the empty-state message."""
+        if not await claim_action(self, interaction):  # Cardinal Rule 7: before any await
+            return
         from qapbot.QBdiscocmdshelper import unlink_all_players
         from qapbot.i18n import t
 
         # Defer immediately (mirrors UnlinkConfirmView._on_confirm — 2026-08-21 incident fix):
         # unlink_all_players() + role sync below can take longer than Discord's 3s ack window.
-        await interaction.response.defer(thinking=False, ephemeral=True)
+        await lock_buttons(self, interaction)  # ack + greyed-out buttons in one call
 
         count = await unlink_all_players(self.user_id)
 
@@ -1903,6 +1910,8 @@ class UnlinkAllConfirmView(discord.ui.View):
 
     async def _on_cancel(self, interaction: discord.Interaction):
         """Handle Cancel button - restore parent view."""
+        if not await claim_action(self, interaction):  # never while the confirm action runs
+            return
         overview_text = self.parent_view._build_message_content()  # type: ignore[attr-defined]
         await interaction.response.edit_message(content=overview_text, view=self.parent_view)
 

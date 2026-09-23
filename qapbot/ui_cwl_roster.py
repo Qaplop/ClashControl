@@ -23,6 +23,7 @@ import discord
 from qapbot.cache_manager import CACHE
 from qapbot.constants import CWL_LEAGUE_ORDER
 from qapbot.db_manager import CWL_RETENTION_MONTHS_NEW_GUILD
+from qapbot.ui_common import action_in_flight, claim_action, lock_buttons, release_action
 
 # CoC's real league ladder, used for target_league_rank / preferred_league_rank pickers
 # throughout this feature (Phase 1's per-clan target tier, Phase 2's sign-up preference).
@@ -1052,9 +1053,16 @@ class CwlCarryOverPromptView(discord.ui.View):
         await CACHE.persist_server_config(guild_id_str)
 
     async def _finish(self, interaction: discord.Interaction, apply_carry_over: bool) -> None:
+        # Claimed before any await (Cardinal Rule 7): a second Yes/No click would create the season
+        # twice. No lock_buttons() here — _launch_cwl_activity below must be this interaction's
+        # FIRST response, so the buttons can't be greyed out; later clicks are acked silently.
+        if not await claim_action(self, interaction):
+            return
         if not await _check_cwl_admin_permission(interaction):
+            release_action(self)
             return
         if not interaction.guild:
+            release_action(self)
             return
         await self._create_season(interaction.user.id, apply_carry_over)
         # Refresh the screen that originally hosted "Add New Season" (self.parent_view) — same
@@ -2107,9 +2115,21 @@ class CwlDeleteSeasonConfirmView(discord.ui.View):
         return content
 
     async def _on_confirm(self, interaction: discord.Interaction) -> None:
-        if not await _check_cwl_admin_permission(interaction):
+        # Cardinal Rule 7 / Pitfall 41: claim before ANY await — a second click landing during
+        # the permission check would otherwise run the whole action twice.
+        if not await claim_action(self, interaction):
             return
-        await interaction.response.defer(thinking=False, ephemeral=True)
+        if not await _check_cwl_admin_permission(interaction):
+            release_action(self)
+            return
+        from qapbot.i18n import t
+
+        # Buttons greyed out and a "deleting…" line shown at once (2026-09-23, project owner:
+        # the Yes button stayed clickable through the whole multi-second deletion).
+        await lock_buttons(
+            self, interaction,
+            content=t('cwl.management.delete_season_processing', guild_id=self.guild_id, season=self.season),
+        )
         db = CACHE.db_manager
         # War-phase delete block (2026-08-30, project owner's spec: "Seasons should generally be
         # un-deletable as soon as the first clan started the cwl season"). Re-checked here rather
@@ -2185,6 +2205,9 @@ class CwlDeleteSeasonConfirmView(discord.ui.View):
         await bump_enrollment_version(None)
 
     async def _on_cancel(self, interaction: discord.Interaction) -> None:
+        # Claims the view too: Cancel must not overwrite a confirm that is already running.
+        if not await claim_action(self, interaction):
+            return
         await interaction.response.defer(thinking=False, ephemeral=True)
         try:
             await interaction.delete_original_response()
@@ -2281,7 +2304,12 @@ class CwlStartEnrollmentConfirmView(discord.ui.View):
         return t('cwl.management.start_enrollment_confirm_body', guild_id=self.guild_id, season=self.season)
 
     async def _on_confirm(self, interaction: discord.Interaction) -> None:
+        # Cardinal Rule 7 / Pitfall 41: claim before ANY await — a second click landing during
+        # the permission check would otherwise run the whole action twice.
+        if not await claim_action(self, interaction):
+            return
         if not await _check_cwl_admin_permission(interaction):
+            release_action(self)
             return
         from qapbot.i18n import t
 
@@ -2373,6 +2401,9 @@ class CwlStartEnrollmentConfirmView(discord.ui.View):
                     await bump_enrollment_version(int(other_guild_id))
 
     async def _on_cancel(self, interaction: discord.Interaction) -> None:
+        # Claims the view too: Cancel must not overwrite a confirm that is already running.
+        if not await claim_action(self, interaction):
+            return
         await interaction.response.defer(thinking=False, ephemeral=True)
         try:
             await interaction.delete_original_response()
@@ -2471,7 +2502,12 @@ class CwlNotifyNewMembersConfirmView(discord.ui.View):
         return t('cwl.management.notify_new_members_confirm_body', guild_id=self.guild_id, season=self.season)
 
     async def _on_confirm(self, interaction: discord.Interaction) -> None:
+        # Cardinal Rule 7 / Pitfall 41: claim before ANY await — a second click landing during
+        # the permission check would otherwise run the whole action twice.
+        if not await claim_action(self, interaction):
+            return
         if not await _check_cwl_admin_permission(interaction):
+            release_action(self)
             return
         from qapbot.i18n import t
 
@@ -2527,6 +2563,9 @@ class CwlNotifyNewMembersConfirmView(discord.ui.View):
             await bump_enrollment_version(self.guild_id)
 
     async def _on_cancel(self, interaction: discord.Interaction) -> None:
+        # Claims the view too: Cancel must not overwrite a confirm that is already running.
+        if not await claim_action(self, interaction):
+            return
         await interaction.response.defer(thinking=False, ephemeral=True)
         try:
             await interaction.delete_original_response()
@@ -2637,7 +2676,12 @@ class CwlSendRosterUpdatesConfirmView(discord.ui.View):
         return t('cwl.management.send_updates_confirm_body', guild_id=self.guild_id, season=self.season)
 
     async def _on_confirm(self, interaction: discord.Interaction) -> None:
+        # Cardinal Rule 7 / Pitfall 41: claim before ANY await — a second click landing during
+        # the permission check would otherwise run the whole action twice.
+        if not await claim_action(self, interaction):
+            return
         if not await _check_cwl_admin_permission(interaction):
+            release_action(self)
             return
         from qapbot.i18n import t
 
@@ -2670,6 +2714,9 @@ class CwlSendRosterUpdatesConfirmView(discord.ui.View):
             await _refresh_parent(self.parent_view, interaction, "cwl_management")
 
     async def _on_cancel(self, interaction: discord.Interaction) -> None:
+        # Claims the view too: Cancel must not overwrite a confirm that is already running.
+        if not await claim_action(self, interaction):
+            return
         from qapbot.i18n import t
 
         await interaction.response.edit_message(
@@ -2847,7 +2894,12 @@ class CwlAnnounceRostersConfirmView(discord.ui.View):
         return content
 
     async def _on_confirm(self, interaction: discord.Interaction) -> None:
+        # Cardinal Rule 7 / Pitfall 41: claim before ANY await — a second click landing during
+        # the permission check would otherwise run the whole action twice.
+        if not await claim_action(self, interaction):
+            return
         if not await _check_cwl_admin_permission(interaction):
+            release_action(self)
             return
         from qapbot.i18n import t
 
@@ -2916,6 +2968,9 @@ class CwlAnnounceRostersConfirmView(discord.ui.View):
             await _refresh_parent(self.parent_view, interaction, "cwl_management")
 
     async def _on_cancel(self, interaction: discord.Interaction) -> None:
+        # Claims the view too: Cancel must not overwrite a confirm that is already running.
+        if not await claim_action(self, interaction):
+            return
         from qapbot.i18n import t
 
         await interaction.response.edit_message(
@@ -2958,7 +3013,12 @@ class CwlRemindPendingConfirmView(discord.ui.View):
         return t('cwl.management.remind_pending_confirm_body', guild_id=self.guild_id, season=self.season)
 
     async def _on_confirm(self, interaction: discord.Interaction) -> None:
+        # Cardinal Rule 7 / Pitfall 41: claim before ANY await — a second click landing during
+        # the permission check would otherwise run the whole action twice.
+        if not await claim_action(self, interaction):
+            return
         if not await _check_cwl_admin_permission(interaction):
+            release_action(self)
             return
         from qapbot.i18n import t
 
@@ -3014,6 +3074,9 @@ class CwlRemindPendingConfirmView(discord.ui.View):
             await bump_enrollment_version(self.guild_id)
 
     async def _on_cancel(self, interaction: discord.Interaction) -> None:
+        # Claims the view too: Cancel must not overwrite a confirm that is already running.
+        if not await claim_action(self, interaction):
+            return
         await interaction.response.defer(thinking=False, ephemeral=True)
         try:
             await interaction.delete_original_response()

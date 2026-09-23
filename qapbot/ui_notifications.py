@@ -14,6 +14,7 @@ from qapbot.i18n import t
 from qapbot.cache_manager import CACHE
 from qapbot.emojis import BotEmojis
 from qapbot.ui_common import TrackedView
+from qapbot.ui_common import claim_action, lock_buttons, unlock_buttons
 
 
 class WarNotificationPromptView(TrackedView):
@@ -43,6 +44,8 @@ class WarNotificationPromptView(TrackedView):
     @discord.ui.button(label="🔔 Activate Notifications", style=discord.ButtonStyle.primary)
     async def activate_button(self, interaction: discord.Interaction, button: discord.ui.Button):  # type: ignore[type-arg]
         """Handle Activate Notifications button click."""
+        if not await claim_action(self, interaction):  # Cardinal Rule 7: before any await
+            return
         user_id = str(interaction.user.id)
         user_data = CACHE.user_accounts.get(user_id)
         
@@ -85,6 +88,8 @@ class WarNotificationPromptView(TrackedView):
     @discord.ui.button(label="⏭️ Skip", style=discord.ButtonStyle.secondary)
     async def skip_button(self, interaction: discord.Interaction, button: discord.ui.Button):  # type: ignore[type-arg]
         """Handle Skip button click."""
+        if not await claim_action(self, interaction):  # never while the confirm action runs
+            return
         from qapbot.i18n import t
         guild_id = interaction.guild.id if interaction.guild else None
         # Edit the original message to replace it with skip message (remove buttons)
@@ -1368,8 +1373,17 @@ class NotificationSettingsView(discord.ui.View):
         await interaction.edit_original_response(view=self)
     
     async def _on_apply(self, interaction: discord.Interaction) -> None:
+        """Apply selected settings — buttons greyed out while it runs (Cardinal Rule 7)."""
+        if not await claim_action(self, interaction):  # Cardinal Rule 7: before any await
+            return
+        await lock_buttons(self, interaction)  # ack + greyed-out buttons in one call
+        try:
+            await self._apply_settings(interaction)
+        finally:
+            await unlock_buttons(self, interaction)  # the settings dialog stays open
+
+    async def _apply_settings(self, interaction: discord.Interaction) -> None:
         """Apply selected settings (scope-specific logic)."""
-        await interaction.response.defer(thinking=False, ephemeral=True)
         
         from qapbot.cache_manager import CACHE
         from qapbot.QBdiscocmdshelper import format_clan_management_message

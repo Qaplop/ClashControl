@@ -1,6 +1,31 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-23 (9)  Build 74.
+- Fixed: "Yes, Delete Season" stayed clickable for the whole multi-second deletion. The click now
+  greys every button out at once and shows "Deleting the <season> CWL season and withdrawing its
+  sign-up DMs…" until it is done (new key cwl.management.delete_season_processing, 5 languages).
+- Fixed: every other follow-up confirm / apply / save step had the same gap (or a flag set only
+  after an awaited permission check, which a fast second click could still slip past):
+  CWL Start Enrollment / Notify New Members / Send Roster Updates / Announce Rosters / Remind
+  Pending and the carry-over Yes/No prompt; clan management's delete-roles / keep-roles,
+  role-feature disable, CWL line-up removal, unlink player, admin override (both), import data,
+  "switched the view – continue", delete family, and the Apply/Save of channels, roles,
+  custodians, member clans, edit family and welcome message; self-service Unlink / Unlink All;
+  tracker Bot Setup save; notification settings Apply and the war-notification prompt. A second
+  click is now acknowledged silently and does nothing; Cancel/No can't overwrite a confirm that
+  is already running. Dialogs that stay open (custodians, notification settings, Bot Setup) get
+  their buttons back when the save is done. The carry-over prompt can't grey its buttons out (the
+  Activity launch needs the click's first response) but ignores the second click.
+- Fixed: import-data / admin-override confirms greyed their buttons out via message.edit(), which
+  silently fails on ephemeral messages — they stayed clickable.
+- Internal: shared helpers claim_action / release_action / lock_buttons / unlock_buttons in
+  qapbot/ui_common.py; a structural test pins every guarded handler (claim before the first
+  await). Docs: Cardinal Rule 7, Pitfall 41, CODE_STRUCTURE.md § Double-Click Guard.
+  Files: qapbot/ui_common.py, ui_cwl_roster.py, ui_clan_management.py, ui_registration.py,
+  ui_tracker.py, ui_notifications.py, translations (5), QBcore.py (+ tests, docs).
+  3467 tests pass.
+
 2026-09-23 (8)  Build 73 (translations only, no code change).
 - Changed: the CWL Management button "Add New Season" is now "Start New Season" (de: "Neue Saison
   starten", es: "Iniciar Nueva Temporada", zh: "开始新赛季", la: "Incipe Novum Tempus"), together with

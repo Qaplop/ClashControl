@@ -1637,6 +1637,128 @@ async def test_cwl_delete_season_confirm_view_cancel_does_not_delete(db, mock_in
     parent.refresh_cwl_view.assert_not_awaited()
 
 
+def _second_click() -> AsyncMock:
+    click = AsyncMock()
+    click.response = AsyncMock()
+    click.response.is_done = MagicMock(return_value=False)
+    click.guild = MagicMock()
+    return click
+
+
+@pytest.mark.discord
+@pytest.mark.asyncio
+async def test_cwl_delete_season_confirm_greys_out_buttons_immediately(db, mock_interaction):
+    """2026-09-23, project owner: "Yes, Delete" stayed clickable during the multi-second
+    deletion. The click's own response now shows every button disabled plus a "deleting…" line."""
+    from qapbot.cache_manager import CACHE
+    from qapbot.ui_cwl_roster import CwlDeleteSeasonConfirmView
+
+    await _seed_guild_and_clans(db, "556", {"#CLAN1": "Alpha"})
+    CACHE.db_manager = db
+    CACHE.server_config["556"] = {}
+    event_id = db.create_cwl_event_sync("556", "2026-09", "discordid1")
+    parent = MagicMock()
+    parent.refresh_cwl_view = AsyncMock()
+    confirm_view = CwlDeleteSeasonConfirmView(parent_view=parent, guild_id=556, event_id=event_id, season="2026-09")
+
+    await confirm_view._on_confirm(mock_interaction)
+
+    mock_interaction.response.edit_message.assert_awaited_once()
+    kwargs = mock_interaction.response.edit_message.await_args.kwargs
+    assert "2026-09" in kwargs["content"]
+    assert all(getattr(c, "disabled") for c in kwargs["view"].children)
+    mock_interaction.response.defer.assert_not_awaited()
+
+
+@pytest.mark.discord
+@pytest.mark.asyncio
+async def test_cwl_delete_season_second_click_and_cancel_do_nothing(db, mock_interaction, monkeypatch):
+    from qapbot.cache_manager import CACHE
+    from qapbot.ui_cwl_roster import CwlDeleteSeasonConfirmView
+
+    await _seed_guild_and_clans(db, "557", {"#CLAN1": "Alpha"})
+    CACHE.db_manager = db
+    CACHE.server_config["557"] = {}
+    event_id = db.create_cwl_event_sync("557", "2026-09", "discordid1")
+    parent = MagicMock()
+    parent.refresh_cwl_view = AsyncMock()
+    confirm_view = CwlDeleteSeasonConfirmView(parent_view=parent, guild_id=557, event_id=event_id, season="2026-09")
+    second, cancel = _second_click(), _second_click()
+
+    # Both extra clicks land while the first one is still running.
+    await asyncio.gather(
+        confirm_view._on_confirm(mock_interaction),
+        confirm_view._on_confirm(second),
+        confirm_view._on_cancel(cancel),
+    )
+
+    assert db.get_cwl_event_sync("557", "2026-09") is None
+    parent.refresh_cwl_view.assert_awaited_once()
+    for extra in (second, cancel):
+        extra.response.defer.assert_awaited_once()
+        extra.response.edit_message.assert_not_awaited()
+        extra.delete_original_response.assert_not_awaited()
+
+
+@pytest.mark.discord
+@pytest.mark.asyncio
+async def test_cwl_confirm_permission_failure_releases_the_claim(db, mock_interaction, monkeypatch):
+    """A denied click must not block a later, legitimate one."""
+    import qapbot.QBdiscocmdshelper as helper
+    from qapbot.cache_manager import CACHE
+    from qapbot.ui_common import action_in_flight
+    from qapbot.ui_cwl_roster import CwlDeleteSeasonConfirmView
+
+    await _seed_guild_and_clans(db, "558", {"#CLAN1": "Alpha"})
+    CACHE.db_manager = db
+    CACHE.server_config["558"] = {}
+    event_id = db.create_cwl_event_sync("558", "2026-09", "discordid1")
+    parent = MagicMock()
+    parent.refresh_cwl_view = AsyncMock()
+    confirm_view = CwlDeleteSeasonConfirmView(parent_view=parent, guild_id=558, event_id=event_id, season="2026-09")
+
+    async def _not_admin(*args, **kwargs):
+        return False
+
+    monkeypatch.setattr(helper, "check_admin_permissions", _not_admin)
+    await confirm_view._on_confirm(_second_click())
+    assert action_in_flight(confirm_view) is False
+    assert db.get_cwl_event_sync("558", "2026-09") is not None
+
+    async def _admin(*args, **kwargs):
+        return True
+
+    monkeypatch.setattr(helper, "check_admin_permissions", _admin)
+    await confirm_view._on_confirm(mock_interaction)
+    assert db.get_cwl_event_sync("558", "2026-09") is None
+
+
+@pytest.mark.discord
+@pytest.mark.asyncio
+async def test_cwl_carry_over_prompt_creates_season_once_on_double_click(monkeypatch, mock_interaction):
+    """Yes and No both create the season — a second click (either button) must not create it
+    again. The prompt can't grey its buttons out (the Activity launch needs the first response),
+    so the claim alone stops it."""
+    import qapbot.ui_cwl_roster as roster
+    import qapbot.web_bridge as web_bridge
+    from qapbot.ui_cwl_roster import CwlCarryOverPromptView
+
+    monkeypatch.setattr(roster, "_refresh_parent", AsyncMock())
+    monkeypatch.setattr(roster, "_launch_cwl_activity", AsyncMock())
+    monkeypatch.setattr(web_bridge, "bump_enrollment_version", AsyncMock())
+    view = CwlCarryOverPromptView.__new__(CwlCarryOverPromptView)
+    discord.ui.View.__init__(view, timeout=60)
+    view.parent_view = MagicMock()
+    view.guild_id = 987654321
+    create_mock = AsyncMock()
+    monkeypatch.setattr(view, "_create_season", create_mock)
+
+    await asyncio.gather(view._on_yes(mock_interaction), view._on_no(_second_click()))
+
+    create_mock.assert_awaited_once()
+    assert create_mock.await_args.args[1] is True  # the first click (Yes) won
+
+
 # ---------------------------------------------------------------------------
 # "Open Clan Config (Web)" — LAUNCH_ACTIVITY interaction-response callback
 # ---------------------------------------------------------------------------

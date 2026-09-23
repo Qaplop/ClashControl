@@ -249,3 +249,98 @@ class LanguageSelectView(TrackedView):
         
         self.stop()
 
+
+
+# ---------------------------------------------------------------------------
+# Double-click guard for side-effecting buttons (Cardinal Rule 7 / Pitfall 41)
+# ---------------------------------------------------------------------------
+#
+# discord.py dispatches every click as its own task, so a second click on a Yes/Save button can
+# start running while the first one is still working — deleting a season twice, sending a DM batch
+# twice. The rule: the FIRST statement of such a handler claims the view (no await before it), and
+# the buttons are shown disabled as soon as possible. 2026-09-23: applied to every confirm/apply
+# step after the project owner found "Yes, Delete Season" clickable while it ran.
+
+_IN_FLIGHT_ATTR = "_action_in_flight"
+
+
+async def claim_action(view: discord.ui.View, interaction: discord.Interaction) -> bool:
+    """Claim `view` for this click. Returns True for the first click; False for any click that
+    arrives while an action on this view is already running (or has finished).
+
+    MUST be the first thing a side-effecting handler does — the flag is set synchronously, before
+    this coroutine awaits anything, so a racing second click always sees it. A rejected click is
+    acknowledged silently (a deferred update), so Discord shows no "This interaction failed" toast
+    for it. Call release_action() if the handler bails out before doing anything (e.g. a failed
+    permission check) so a legitimate retry isn't blocked.
+    """
+    if getattr(view, _IN_FLIGHT_ATTR, False):
+        try:
+            if not interaction.response.is_done():
+                await interaction.response.defer()
+        except discord.HTTPException:
+            pass
+        return False
+    setattr(view, _IN_FLIGHT_ATTR, True)
+    return True
+
+
+def release_action(view: discord.ui.View) -> None:
+    """Undo claim_action() — only for handlers that return before starting their action."""
+    setattr(view, _IN_FLIGHT_ATTR, False)
+
+
+def action_in_flight(view: discord.ui.View) -> bool:
+    """For Cancel/No buttons: True while the confirm action runs, so Cancel can't overwrite it."""
+    return bool(getattr(view, _IN_FLIGHT_ATTR, False))
+
+
+async def lock_buttons(
+    view: discord.ui.View, interaction: discord.Interaction, *, content: Optional[str] = None,
+) -> None:
+    """Disable every component of `view` and show that immediately.
+
+    As the interaction's FIRST response this is an edit of the message the buttons are on — the
+    click's acknowledgement and the visible "greyed out" state in one call. If the interaction was
+    already answered, it edits the original response instead. Afterwards handlers continue with
+    interaction.edit_original_response() / interaction.followup as usual.
+
+    Args:
+        view: the view whose buttons to disable (the handler's `self`).
+        interaction: the click.
+        content: optional "processing…" text to show while the action runs.
+    """
+    setattr(view, _PRE_LOCK_ATTR, {
+        id(item): bool(getattr(item, "disabled", False)) for item in view.children
+    })
+    for item in view.children:
+        if hasattr(item, "disabled"):
+            item.disabled = True  # type: ignore[attr-defined]
+    kwargs: Dict[str, Any] = {"view": view}
+    if content is not None:
+        kwargs["content"] = content
+    try:
+        if not interaction.response.is_done():
+            await interaction.response.edit_message(**kwargs)
+        else:
+            await interaction.edit_original_response(**kwargs)
+    except discord.HTTPException as e:
+        logging.info(f"[{type(view).__name__}] Could not show disabled buttons: {e}")
+
+
+_PRE_LOCK_ATTR = "_pre_lock_disabled"
+
+
+async def unlock_buttons(view: discord.ui.View, interaction: discord.Interaction) -> None:
+    """Undo lock_buttons() + claim_action() for views that stay open after their action ran
+    (or that bail out early after locking): restores each component's previous disabled state,
+    releases the claim and shows the result via interaction.edit_original_response()."""
+    before: Dict[int, bool] = getattr(view, _PRE_LOCK_ATTR, {})
+    for item in view.children:
+        if hasattr(item, "disabled"):
+            item.disabled = before.get(id(item), False)  # type: ignore[attr-defined]
+    release_action(view)
+    try:
+        await interaction.edit_original_response(view=view)
+    except discord.HTTPException as e:
+        logging.info(f"[{type(view).__name__}] Could not re-enable buttons: {e}")

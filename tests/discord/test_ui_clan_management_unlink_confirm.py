@@ -34,6 +34,7 @@ def _make_interaction():
     interaction.guild = None  # skip role-sync branch — irrelevant to this fix
     interaction.user = "AdminUser"
     interaction.response = AsyncMock()
+    interaction.response.is_done = MagicMock(return_value=False)  # sync in discord.py (Pitfall 45)
     interaction.edit_original_response = AsyncMock()
     return interaction
 
@@ -48,10 +49,12 @@ async def test_on_confirm_defers_before_any_slow_work(monkeypatch):
 
     await view._on_confirm(interaction)
 
-    interaction.response.defer.assert_awaited_once()
-    _, kwargs = interaction.response.defer.call_args
-    assert kwargs.get("thinking") is False
-    interaction.response.edit_message.assert_not_called()
+    # Acknowledged at once, as the click's own response, with every button greyed out
+    # (lock_buttons, 2026-09-23) — the slow unlink only runs afterwards.
+    interaction.response.edit_message.assert_awaited_once()
+    _, kwargs = interaction.response.edit_message.call_args
+    assert all(getattr(c, "disabled") for c in kwargs["view"].children)
+    interaction.response.defer.assert_not_called()
 
 
 @pytest.mark.discord
@@ -79,8 +82,7 @@ async def test_on_confirm_not_found_uses_edit_original_response(monkeypatch):
 
     await view._on_confirm(interaction)
 
-    interaction.response.defer.assert_awaited_once()
+    interaction.response.edit_message.assert_awaited_once()  # the lock_buttons() ack
     interaction.edit_original_response.assert_awaited_once()
     _, kwargs = interaction.edit_original_response.call_args
     assert kwargs["view"] is None
-    interaction.response.edit_message.assert_not_called()

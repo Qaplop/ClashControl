@@ -1108,6 +1108,7 @@
       "button_confirm_start_enrollment": "是，开始报名",
       "start_enrollment_confirm_body": "⚠️ 要为赛季 **{season}** 开始报名吗？这会将上赛季的阵容复制为模板，并向每位已解析的成员发送确认/退出私信。此操作无法撤销。",
       "start_enrollment_processing": "⏳ 正在开始报名 — 正在发送私信，这可能需要几秒钟…",
+      "delete_season_processing": "⏳ 正在删除部落战联赛赛季 **{season}** 并撤回其报名私信 — 这可能需要几秒钟…",
       "dm_guard_report_header": "🛡️ 开发模式 — 因私信保护而被跳过的玩家（{count} 人），按当前部落分组：",
       "dm_guard_report_no_clan": "无当前部落",
       "start_enrollment_summary": "✅ 报名已开始。\n已初始化：{seeded}\n从上月部落战联赛预分配：{assigned}\n已联系：{contacted}\n已跳过（已退出）：{skipped_optout}\n已跳过（无绑定账号）：{skipped_unlinked}\n已跳过（私信保护）：{skipped_dm_guard}{dm_issues}",

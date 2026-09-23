@@ -36,6 +36,7 @@ from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple, cast
 import discord
 
 from qapbot.i18n import t as _t_localized
+from qapbot.ui_common import claim_action, lock_buttons, unlock_buttons
 
 
 def t(key: str, **kwargs: Any) -> str:
@@ -342,13 +343,18 @@ class BotSetupView(discord.ui.View):
                 logging.error(f"Failed to update Bot Setup message: {e}")
 
     async def _on_save(self, interaction: discord.Interaction) -> None:
-        await interaction.response.defer(thinking=False, ephemeral=True)
+        if not await claim_action(self, interaction):  # Cardinal Rule 7: before any await
+            return
+        await lock_buttons(self, interaction)  # ack + greyed-out buttons in one call
         from qapbot.cache_manager import CACHE
-        for slot_key, setting_key, _label_key in self._SLOTS:
-            channel_id = self.selected_channel_ids.get(slot_key)
-            if channel_id:
-                await CACHE.set_tracker_setting(setting_key, channel_id)
-        await CACHE.set_tracker_setting(TRACKER_SETTING_GUILD_ID, str(self.guild.id))
+        try:
+            for slot_key, setting_key, _label_key in self._SLOTS:
+                channel_id = self.selected_channel_ids.get(slot_key)
+                if channel_id:
+                    await CACHE.set_tracker_setting(setting_key, channel_id)
+            await CACHE.set_tracker_setting(TRACKER_SETTING_GUILD_ID, str(self.guild.id))
+        finally:
+            await unlock_buttons(self, interaction)  # the setup message stays open
         logging.info(f"ADMIN ACTION: {interaction.user} saved tracker channel configuration")
         await self._refresh_message()
 

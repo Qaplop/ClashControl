@@ -1108,6 +1108,7 @@
       "button_confirm_start_enrollment": "Sí, Iniciar Inscripción",
       "start_enrollment_confirm_body": "⚠️ ¿Iniciar la inscripción para la temporada **{season}**? Esto copia la plantilla de la temporada anterior como base y envía a cada miembro resuelto un MD de confirmación/exclusión. No se puede deshacer.",
       "start_enrollment_processing": "⏳ Iniciando inscripción — enviando MD, esto puede tardar unos segundos…",
+      "delete_season_processing": "⏳ Eliminando la temporada de LGC **{season}** y retirando sus MD de inscripción; puede tardar unos segundos…",
       "dm_guard_report_header": "🛡️ Modo DEV — jugadores omitidos por el filtro de MD ({count}), por clan actual:",
       "dm_guard_report_no_clan": "Sin clan actual",
       "start_enrollment_summary": "✅ Inscripción iniciada.\nSembrados: {seeded}\nPreasignados del mes anterior de LGC: {assigned}\nContactados: {contacted}\nOmitidos (excluidos): {skipped_optout}\nOmitidos (sin cuenta vinculada): {skipped_unlinked}\nOmitidos (filtro de MD): {skipped_dm_guard}{dm_issues}",

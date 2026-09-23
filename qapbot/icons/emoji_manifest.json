@@ -1,0 +1,172 @@
+[
+  {
+    "attr": "ENABLED",
+    "name": "enabled",
+    "source": "enabled.svg"
+  },
+  {
+    "attr": "DISABLED",
+    "name": "disabled",
+    "source": "disabled.svg"
+  },
+  {
+    "attr": "VERIFIED",
+    "name": "verified",
+    "source": "verified.svg"
+  },
+  {
+    "attr": "GCHECK",
+    "name": "gcheck",
+    "source": "gcheck.svg"
+  },
+  {
+    "attr": "REDX",
+    "name": "redx",
+    "source": "redx.svg"
+  },
+  {
+    "attr": "ONCE",
+    "name": "once",
+    "source": "once.svg"
+  },
+  {
+    "attr": "REPEATED",
+    "name": "repeated",
+    "source": "repeated.svg"
+  },
+  {
+    "attr": "CWL",
+    "name": "cwl",
+    "source": "cwl.svg"
+  },
+  {
+    "attr": "ALLWARS",
+    "name": "allwars",
+    "source": "allwars.svg"
+  },
+  {
+    "attr": "TH01",
+    "name": "TH01",
+    "source": "TH01.webp"
+  },
+  {
+    "attr": "TH02",
+    "name": "TH02",
+    "source": "TH02.webp"
+  },
+  {
+    "attr": "TH03",
+    "name": "TH03",
+    "source": "TH03.webp"
+  },
+  {
+    "attr": "TH04",
+    "name": "TH04",
+    "source": "TH04.webp"
+  },
+  {
+    "attr": "TH05",
+    "name": "TH05",
+    "source": "TH05.webp"
+  },
+  {
+    "attr": "TH06",
+    "name": "TH06",
+    "source": "TH06.webp"
+  },
+  {
+    "attr": "TH07",
+    "name": "TH07",
+    "source": "TH07.webp"
+  },
+  {
+    "attr": "TH08",
+    "name": "TH08",
+    "source": "TH08.webp"
+  },
+  {
+    "attr": "TH09",
+    "name": "TH09",
+    "source": "TH09.webp"
+  },
+  {
+    "attr": "TH10",
+    "name": "TH10",
+    "source": "TH10.webp"
+  },
+  {
+    "attr": "TH11",
+    "name": "TH11",
+    "source": "TH11.webp"
+  },
+  {
+    "attr": "TH12",
+    "name": "TH12",
+    "source": "TH12.webp"
+  },
+  {
+    "attr": "TH13",
+    "name": "TH13",
+    "source": "TH13.webp"
+  },
+  {
+    "attr": "TH14",
+    "name": "TH14",
+    "source": "TH14.webp"
+  },
+  {
+    "attr": "TH15",
+    "name": "TH15",
+    "source": "TH15.webp"
+  },
+  {
+    "attr": "TH16",
+    "name": "TH16",
+    "source": "TH16.webp"
+  },
+  {
+    "attr": "TH17",
+    "name": "TH17",
+    "source": "TH17.webp"
+  },
+  {
+    "attr": "TH18",
+    "name": "TH18",
+    "source": "TH18.webp"
+  },
+  {
+    "attr": "HERO_KING",
+    "name": "hero_king",
+    "source": "Hero_King.webp"
+  },
+  {
+    "attr": "HERO_QUEEN",
+    "name": "hero_queen",
+    "source": "Hero_Queen.webp"
+  },
+  {
+    "attr": "HERO_WARDEN",
+    "name": "hero_warden",
+    "source": "Hero_Warden.webp"
+  },
+  {
+    "attr": "HERO_RC",
+    "name": "hero_RC",
+    "source": "Hero_RC.webp"
+  },
+  {
+    "attr": "HERO_MP",
+    "name": "hero_MP",
+    "source": "Hero_MP.webp"
+  },
+  {
+    "attr": "HERO_DD",
+    "name": "hero_DD",
+    "source": "Hero_DD.webp"
+  },
+  {
+    "attr": "CWL_BENCH",
+    "name": "cwl_bench",
+    "source": "cwl_bench.svg"
+  }
+]

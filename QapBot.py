@@ -4319,9 +4319,11 @@ async def _run_startup_initialization() -> None:
         # PROD mode: guild commands already cleared by _clear_dev_guild_commands_before_prod() before startup
         logging.info("[INIT-STEP-6] Done")
         
-        # Step 6b: Resolve (uploading once if needed) the application emojis the bot ships with
-        # (tracker #0117 — the CWL bench icon). Before the Hub reposts below, so the reposted
-        # messages already carry the real icon instead of the 🪑 fallback.
+        # Step 6b: Resolve the application emojis the bot ships with (every BotEmojis icon,
+        # plans/app-emoji-migration.md). One fetch resolves everything already uploaded, before
+        # the Hub reposts below so they carry the right icons; anything missing uploads in the
+        # background without blocking boot, and BotEmojis falls back to the old guild emoji (🪑
+        # for the bench) until it lands.
         logging.info("[INIT-STEP-6b] Resolving application emojis...")
         try:
             from qapbot.emojis import ensure_application_emojis

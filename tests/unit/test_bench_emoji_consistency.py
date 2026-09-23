@@ -1,9 +1,10 @@
 """Tracker #0117 — one bench icon everywhere.
 
-The Activity renders bench.svg, and Discord can't render an SVG at all, which is why the text used
-🪑: a brown chair sitting next to the board's blue bench. The bot now ships the icon as
-qapbot/assets/cwl_bench.png, uploads it once as an application emoji, and uses it in DMs, buttons
-and settings text, falling back to 🪑 only if that never resolves.
+The Activity renders cwl_bench.svg, and Discord can't render an SVG at all, which is why the text
+used 🪑: a brown chair sitting next to the board's blue bench. The bot now ships the icon as an
+application emoji (qapbot/icons/emoji/cwl_bench.webp, BotEmojis.CWL_BENCH) and uses it in DMs,
+buttons and settings text, falling back to 🪑 only if that never resolves. The upload/resolution
+machinery itself is covered by test_application_emojis.py.
 """
 from __future__ import annotations
 
@@ -21,10 +22,11 @@ def _reset_resolved_emoji():
     """Every test starts from "not resolved yet" and leaves no resolved id behind."""
     import qapbot.emojis as emojis
 
-    original = emojis._resolved_bench_emoji
-    emojis._resolved_bench_emoji = None
+    saved = dict(emojis._resolved)
+    emojis._resolved.clear()
     yield
-    emojis._resolved_bench_emoji = original
+    emojis._resolved.clear()
+    emojis._resolved.update(saved)
 
 
 # ---------------------------------------------------------------------------
@@ -71,62 +73,10 @@ def test_resolved_emoji_is_used_for_text_and_buttons():
 
     import qapbot.emojis as emojis
 
-    emojis._resolved_bench_emoji = "<:cwl_bench:1455513859715629076>"
+    emojis._resolved["CWL_BENCH"] = "<:cwl_bench:1455513859715629076>"
     assert emojis.bench_emoji() == "<:cwl_bench:1455513859715629076>"
     partial = emojis.bench_button_emoji()
     assert isinstance(partial, discord.PartialEmoji) and partial.id == 1455513859715629076
-
-
-@pytest.mark.asyncio
-async def test_existing_application_emoji_is_reused_not_reuploaded():
-    import qapbot.emojis as emojis
-
-    existing = MagicMock()
-    existing.name = emojis.BENCH_EMOJI_NAME
-    existing.id = 1455513859715629079
-    existing.__str__ = lambda self: "<:cwl_bench:1455513859715629079>"  # type: ignore[assignment]
-
-    bot = MagicMock()
-    bot.fetch_application_emojis = AsyncMock(return_value=[existing])
-    bot.create_application_emoji = AsyncMock()
-
-    await emojis.ensure_application_emojis(bot)
-
-    bot.create_application_emoji.assert_not_awaited()
-    assert emojis.bench_emoji() == "<:cwl_bench:1455513859715629079>"
-
-
-@pytest.mark.asyncio
-async def test_missing_application_emoji_is_uploaded_from_the_shipped_png():
-    import qapbot.emojis as emojis
-
-    created = MagicMock()
-    created.id = 1455513859715629078
-    created.__str__ = lambda self: "<:cwl_bench:1455513859715629078>"  # type: ignore[assignment]
-
-    bot = MagicMock()
-    bot.fetch_application_emojis = AsyncMock(return_value=[])
-    bot.create_application_emoji = AsyncMock(return_value=created)
-
-    await emojis.ensure_application_emojis(bot)
-
-    kwargs = bot.create_application_emoji.await_args.kwargs
-    assert kwargs["name"] == emojis.BENCH_EMOJI_NAME
-    assert kwargs["image"].startswith(b"\x89PNG"), "the shipped asset must be a real PNG"
-    assert emojis.bench_emoji() == "<:cwl_bench:1455513859715629078>"
-
-
-@pytest.mark.asyncio
-async def test_a_failing_upload_never_raises_and_keeps_the_fallback():
-    """The icon is cosmetic — it must never hold up or break the boot sequence."""
-    import qapbot.emojis as emojis
-
-    bot = MagicMock()
-    bot.fetch_application_emojis = AsyncMock(side_effect=RuntimeError("Discord is having a day"))
-
-    await emojis.ensure_application_emojis(bot)
-
-    assert emojis.bench_emoji() == CHAIR
 
 
 # ---------------------------------------------------------------------------
@@ -137,7 +87,7 @@ def test_only_the_bench_button_carries_an_emoji():
     import qapbot.emojis as emojis
     from qapbot.ui_cwl_roster import build_cwl_reminder_response_view, build_cwl_signup_response_view
 
-    emojis._resolved_bench_emoji = "<:cwl_bench:1455513859715629077>"
+    emojis._resolved["CWL_BENCH"] = "<:cwl_bench:1455513859715629077>"
 
     # These are DynamicItem wrappers; the real Button is on .item.
     signup = build_cwl_signup_response_view(1, "#P1", 5, bench=True)
@@ -160,7 +110,7 @@ def test_dm_body_and_finalize_text_render_the_resolved_emoji():
     import qapbot.emojis as emojis
     from qapbot.i18n import t
 
-    emojis._resolved_bench_emoji = "<:cwl_bench:1455513859715629077>"
+    emojis._resolved["CWL_BENCH"] = "<:cwl_bench:1455513859715629077>"
 
     body = t('cwl.template.dm_body_bench', guild_id=None, season="2026-10",
              player_name="Alpha", bench=emojis.bench_emoji())

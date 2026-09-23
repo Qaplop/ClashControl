@@ -8,33 +8,69 @@ Usage:
     from qapbot.emojis import BotEmojis
 
     message = f"{BotEmojis.ENABLED} Notifications enabled"
+
+Application emojis (2026-09-23, plans/app-emoji-migration.md): every icon below is now also an
+emoji the bot OWNS — uploaded by the bot itself from qapbot/icons/emoji/<name>.webp, listed in
+qapbot/icons/emoji_manifest.json. Attribute access on BotEmojis returns that application emoji
+once it is resolved at startup (ensure_application_emojis(), INIT-STEP-6b); the literal values
+written below are the FALLBACK — the original hand-uploaded guild emojis, which keep working, so
+nothing renders differently before the first resolution or if Discord can't be reached.
+
+To add an icon: put its master in qapbot/icons/, add one manifest entry and one BotEmojis
+fallback line here, run `npm run build:emoji` in activity/client, commit. The bot uploads it on
+its next start.
 """
+import json
+import logging
+import os
 import re
-from typing import Any, Optional
+from typing import Any, Dict, List, Optional
+
+# Resolved application emojis, BotEmojis attribute name -> "<:name:id>". Filled at startup.
+_resolved: Dict[str, str] = {}
 
 
-class BotEmojis:
+class _ResolvingEmojiMeta(type):
+    """Makes every upper-case BotEmojis attribute resolve at LOOKUP time: the application emoji
+    once it is known, else the class's own literal (the guild-emoji fallback).
+
+    Resolving on access rather than rewriting the class keeps all ~44 call sites — plain
+    `BotEmojis.X` and `getattr(BotEmojis, "THxx", default)` alike — unchanged. It relies on no
+    caller copying a value at import time or into a default argument; both were audited when this
+    was introduced (none existed).
+    """
+
+    def __getattribute__(cls, name: str) -> Any:
+        value = super().__getattribute__(name)
+        if name.isupper() and isinstance(value, str):
+            return _resolved.get(name, value)
+        return value
+
+
+class BotEmojis(metaclass=_ResolvingEmojiMeta):
     """Custom emoji constants for QapBot.
-    
+
     All Discord custom emoji strings are defined here. When Discord emojis need
     to be updated, changes only need to be made in this single location.
+
+    The literals are the guild-emoji fallbacks; see the module docstring.
     """
-    
+
     # Status indicators
     ENABLED = "<:enabled:1455513859715629076>"
     DISABLED = "<:disabled:1455509604145434705>"
     VERIFIED = "<:verified:1454869848206213226>"
     GCHECK = "<:gcheck:1455226636415930631>"
     REDX = "<:redx:1454442783128551424>"
-    
+
     # Notification frequency
     ONCE = "<:once:1455219555600171130>"
     REPEATED = "<:repeated:1455221464314679480>"
-    
+
     # War types
     CWL = "<:cwl:1455219160102473779>"
     ALLWARS = "<:allwars:1455283063432024125>"
-    
+
     # Town Hall levels
     TH01 = "<:TH01:1470128897160118272>"
     TH02 = "<:TH02:1470128859646136554>"
@@ -54,7 +90,7 @@ class BotEmojis:
     TH16 = "<:TH16:1470128189111009382>"
     TH17 = "<:TH17:1470128119833821487>"
     TH18 = "<:TH18:1470128059771257115>"
-    
+
     # Heroes
     HERO_KING = "<:hero_king:1470127404973428880>"
     HERO_QUEEN = "<:hero_queen:1470127547873235065>"
@@ -62,6 +98,10 @@ class BotEmojis:
     HERO_RC = "<:hero_RC:1470127680698712084>"
     HERO_MP = "<:hero_MP:1470127934084743211>"
     HERO_DD = "<:hero_DD:1499710549322240200>"
+
+    # CWL bench / "Ersatzbank" (tracker #0114/#0117). The first icon that was never a guild
+    # emoji, so its fallback is the unicode chair rather than a guild-emoji id.
+    CWL_BENCH = "🪑"
 
 
 _CUSTOM_EMOJI_RE = re.compile(r"^<a?:\w+:(\d+)>$")
@@ -72,7 +112,8 @@ def emoji_cdn_url(emoji: str) -> Optional[str]:
     BotEmojis constants above) — for contexts that can't render Discord's native emoji markup
     at all, e.g. plain HTML in the CWL "Manage Enrollment" web Activity board
     (CWL_ROSTER_PLANNING_PLAN.md). Returns None if `emoji` isn't a recognizable custom-emoji
-    string (a plain unicode emoji, for instance)."""
+    string (a plain unicode emoji, for instance). Works identically for guild and application
+    emojis — the CDN serves both by id."""
     match = _CUSTOM_EMOJI_RE.match(emoji)
     if not match:
         return None
@@ -87,74 +128,105 @@ def th_icon_url(th_level: int) -> Optional[str]:
 
 
 # ---------------------------------------------------------------------------
-# Application-owned emojis resolved at runtime (tracker #0117)
+# Bench helpers (tracker #0117) — thin wrappers kept for their call sites
 # ---------------------------------------------------------------------------
-#
-# Every BotEmojis constant above is a hand-uploaded GUILD emoji whose id someone pasted in, with
-# its source art in qapbot/icons/. The CWL bench icon is the first one the bot provisions itself:
-# qapbot/icons/cwl_bench.png (rendered from cwl_bench.svg, the same artwork the Activity board
-# bundles) is uploaded on first start and its id remembered for the session, so the board, the DMs
-# and the buttons all show one identical icon instead of a blue bench next to Discord's brown 🪑.
-#
-# Application emojis (discord.py 2.5+) belong to the app, not to a guild, so one upload works in
-# every server the bot is in — no per-guild emoji slots consumed.
-
-BENCH_EMOJI_NAME = "cwl_bench"
-BENCH_EMOJI_FALLBACK = "🪑"
-BENCH_EMOJI_ASSET = "icons/cwl_bench.png"
-
-_resolved_bench_emoji: Optional[str] = None
-
 
 def bench_emoji() -> str:
-    """The bench icon for Discord text: `<:cwl_bench:id>` once resolved, else the 🪑 fallback.
-
-    Safe to call before (or without) ensure_application_emojis() — every caller renders user-facing
-    text, so an unresolved emoji must degrade to something readable rather than raise or print raw
-    markup.
-    """
-    return _resolved_bench_emoji or BENCH_EMOJI_FALLBACK
+    """The bench icon for Discord text: the application emoji once resolved, else 🪑."""
+    return BotEmojis.CWL_BENCH
 
 
 def bench_button_emoji() -> Any:
-    """The same icon for a Button's `emoji=` parameter, which takes a PartialEmoji (or a plain
-    unicode string) — a custom emoji cannot be embedded in a button's label text, only passed
-    here."""
+    """The same icon for a Button's `emoji=` parameter. A custom emoji cannot be embedded in a
+    button's label text — it has to be passed here, as a PartialEmoji (a unicode emoji can stay
+    a plain string)."""
     import discord
 
-    resolved = _resolved_bench_emoji
-    return discord.PartialEmoji.from_str(resolved) if resolved else BENCH_EMOJI_FALLBACK
+    value = BotEmojis.CWL_BENCH
+    return discord.PartialEmoji.from_str(value) if _CUSTOM_EMOJI_RE.match(value) else value
 
 
-async def ensure_application_emojis(bot: Any) -> None:
-    """Make sure this application owns the bench emoji, uploading it once if it doesn't, and cache
-    its markup for bench_emoji()/bench_button_emoji().
+# ---------------------------------------------------------------------------
+# Application-emoji resolution and upload
+# ---------------------------------------------------------------------------
 
-    Called once at startup. Never raises: the icon is cosmetic, so any failure (missing asset,
-    permissions, a Discord hiccup) is logged and leaves the 🪑 fallback in place rather than
-    holding up the rest of the boot sequence.
+_ICONS_DIR = os.path.join(os.path.dirname(__file__), "icons")
+MANIFEST_PATH = os.path.join(_ICONS_DIR, "emoji_manifest.json")
+UPLOAD_PACING_SECONDS = 0.5
+
+
+def load_emoji_manifest() -> List[Dict[str, str]]:
+    """[{"attr", "name", "source"}] — the single list both the asset generator
+    (activity/client/scripts/build-emoji-assets.mjs) and the bot work from."""
+    with open(MANIFEST_PATH, encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def emoji_asset_path(name: str) -> str:
+    """Upload file for one manifest entry: qapbot/icons/emoji/<name>.webp (lossless, square)."""
+    return os.path.join(_ICONS_DIR, "emoji", f"{name}.webp")
+
+
+async def _upload_missing(bot: Any, missing: List[Dict[str, str]]) -> int:
+    """Upload each missing manifest entry, resolving it as soon as it lands. Paced and
+    per-entry fault tolerant: one failed upload is logged and skipped, never fatal."""
+    import asyncio
+
+    uploaded = 0
+    for entry in missing:
+        try:
+            with open(emoji_asset_path(entry["name"]), "rb") as handle:
+                image = handle.read()
+            created = await bot.create_application_emoji(name=entry["name"], image=image)
+            _resolved[entry["attr"]] = str(created)
+            uploaded += 1
+            logging.info(f"[EMOJI] Uploaded application emoji '{entry['name']}' ({created.id})")
+        except Exception as e:
+            logging.warning(
+                f"[EMOJI] Could not upload '{entry['name']}' — keeping its fallback: {e}"
+            )
+        await asyncio.sleep(UPLOAD_PACING_SECONDS)
+    if uploaded:
+        logging.info(f"[EMOJI] Uploaded {uploaded}/{len(missing)} missing application emoji(s)")
+    return uploaded
+
+
+async def ensure_application_emojis(bot: Any, *, background: bool = True) -> int:
+    """Resolve every manifest emoji the application already owns, and upload the missing ones.
+
+    One fetch_application_emojis() call resolves everything already uploaded — the normal case on
+    every start after the first, and fast. Missing entries are uploaded in a tracked BACKGROUND
+    task by default, so a first start with ~34 uploads never holds up the boot sequence; until
+    each one lands, its BotEmojis fallback (the old guild emoji, or 🪑 for the bench) keeps
+    rendering. `background=False` awaits the uploads inline (tests).
+
+    Never raises: the icons are cosmetic. Returns how many emojis were resolved from the
+    existing set (not counting background uploads still in flight).
     """
-    global _resolved_bench_emoji
-
-    import logging
-    import os
-
     try:
-        existing = await bot.fetch_application_emojis()
-        for emoji in existing:
-            if emoji.name == BENCH_EMOJI_NAME:
-                _resolved_bench_emoji = str(emoji)
-                logging.info(f"[EMOJI] Application emoji '{BENCH_EMOJI_NAME}' already present: {emoji.id}")
-                return
-
-        path = os.path.join(os.path.dirname(__file__), *BENCH_EMOJI_ASSET.split("/"))
-        with open(path, "rb") as handle:
-            image = handle.read()
-        created = await bot.create_application_emoji(name=BENCH_EMOJI_NAME, image=image)
-        _resolved_bench_emoji = str(created)
-        logging.info(f"[EMOJI] Uploaded application emoji '{BENCH_EMOJI_NAME}' ({created.id})")
+        manifest = load_emoji_manifest()
+        existing = {emoji.name: emoji for emoji in await bot.fetch_application_emojis()}
     except Exception as e:
-        logging.warning(
-            f"[EMOJI] Could not resolve the '{BENCH_EMOJI_NAME}' application emoji, "
-            f"falling back to {BENCH_EMOJI_FALLBACK}: {e}"
-        )
+        logging.warning(f"[EMOJI] Could not resolve application emojis, using fallbacks: {e}")
+        return 0
+
+    missing: List[Dict[str, str]] = []
+    for entry in manifest:
+        emoji = existing.get(entry["name"])
+        if emoji is not None:
+            _resolved[entry["attr"]] = str(emoji)
+        else:
+            missing.append(entry)
+    logging.info(
+        f"[EMOJI] Resolved {len(manifest) - len(missing)}/{len(manifest)} application emojis"
+        + (f"; uploading {len(missing)} in the background" if missing and background else "")
+    )
+
+    if missing:
+        if background:
+            import QBcore
+
+            QBcore.spawn_tracked("upload-application-emojis", _upload_missing(bot, missing))
+        else:
+            await _upload_missing(bot, missing)
+    return len(manifest) - len(missing)

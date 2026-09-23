@@ -1,6 +1,22 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-23 (1)  Build 67.
+- Changed: every custom emoji is now an application emoji the bot owns and uploads itself, not a
+  hand-uploaded guild emoji (plans/implemented/app-emoji-migration.md). Masters stay in
+  qapbot/icons/ (SVG for the vector icons, the TH/hero rasters as they are); a new manifest
+  (qapbot/icons/emoji_manifest.json) lists all 34, and `npm run build:emoji` (activity/client,
+  sharp now a declared devDependency) generates lossless square WebP upload files into
+  qapbot/icons/emoji/ — SVGs rasterised at 128px, rasters padded to square without resampling so
+  they look exactly as before. BotEmojis resolves each attribute at lookup time to the
+  application emoji, keeping the old guild-emoji ids as fallbacks, so none of the ~44 call sites
+  changed. INIT-STEP-6b resolves the existing set with one fetch; missing ones upload in the
+  background so a first start never blocks. Old guild emojis are left in place, so posted
+  messages keep rendering. cwl_bench joins the same mechanism (its fallback stays 🪑).
+  Files: qapbot/emojis.py, qapbot/icons/ (manifest + emoji/*.webp; cwl_bench.png removed),
+  activity/client (scripts/build-emoji-assets.mjs, package.json), QapBot.py, docs, playbook
+  (+ tests). 3430 tests pass.
+
 2026-09-22 (25)  Build 66.
 - Fixed (tracker #0117): one bench icon everywhere. The board showed its blue bench in the legend
   and on cards but the brown 🪑 emoji in the clan column counts, and Discord used 🪑 throughout

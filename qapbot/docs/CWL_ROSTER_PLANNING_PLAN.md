@@ -442,12 +442,14 @@ reminded. Auto-assignment is unchanged and status-agnostic. The clan column head
 count (`12 + 3<bench icon> / 15`) so an admin sees how many real attackers a roster has, and the roster
 announcement marks a bench player's line.
 
-**One icon everywhere** (tracker #0117): the Activity renders `bench.svg`; Discord can't render an
-SVG, so the bot ships the same artwork as `qapbot/assets/cwl_bench.png` and uploads it once as the
-**application emoji** `cwl_bench` (`emojis.ensure_application_emojis()`, INIT-STEP-6b). Text uses
-`bench_emoji()` through a `{bench}` placeholder in the translation strings; buttons pass
-`bench_button_emoji()` to `Button(emoji=...)`, since a custom emoji cannot live in label text. If
-the upload ever fails, everything falls back to 🪑 rather than breaking.
+**One icon everywhere** (tracker #0117): the Activity renders `cwl_bench.svg`; Discord can't render
+an SVG, so the bot ships the same artwork as the **application emoji** `cwl_bench`
+(`BotEmojis.CWL_BENCH`, generated to `qapbot/icons/emoji/cwl_bench.webp`) — part of the general
+application-emoji mechanism every custom icon now uses (see `plans/implemented/app-emoji-migration.md`
+and the Quick reference in `.github/copilot-instructions.md`). Text uses `bench_emoji()` through a
+`{bench}` placeholder in the translation strings; buttons pass `bench_button_emoji()` to
+`Button(emoji=...)`, since a custom emoji cannot live in label text. Until the emoji resolves,
+everything falls back to 🪑.
 
 **Switching a guild to extended mid-enrollment upgrades the DMs it already sent**
 (`upgrade_pending_cwl_dms_for_bench()`): every still-unanswered DM whose recipient is now

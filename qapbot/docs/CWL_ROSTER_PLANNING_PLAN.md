@@ -638,9 +638,10 @@ abandoned year-old `draft` is exactly as purgeable as a completed season. Future
 at risk, their month not being in the past at all.
 
 `cwl_events` deletion cascades to `cwl_event_clans` / `cwl_signups` / `cwl_assignments` /
-`cwl_shared_clan_guilds` / `cwl_dropped_notified_players`. The two **cross-guild** tables
-(`cwl_locked_clan_members`, `cwl_player_season_status`) are keyed by `cwl_season` alone with no FK
-to `cwl_events`, and hold data shared between guilds — purging them on one guild's retention would
+`cwl_shared_clan_guilds` / `cwl_dropped_notified_players`. The **cross-guild** tables
+(`cwl_locked_clan_members`, `cwl_player_season_status`, and since 2026-09-23 `cwl_shared_clans` —
+cascading to `cwl_shared_clan_players` — which was missed until then and left orphans behind) are
+keyed by `cwl_season` with no FK to `cwl_events`, and hold data shared between guilds — purging them on one guild's retention would
 destroy state another guild still keeps. They are therefore swept **referentially** instead: a
 season's rows go only once no `cwl_events` row anywhere still references that season. A guild set
 to "keep indefinitely" keeps its event, which keeps the shared rows alive for everyone.

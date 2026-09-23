@@ -1714,3 +1714,59 @@ async def test_purge_sweeps_cross_guild_rows_once_no_event_references_the_season
     assert result["events"] == 1
     assert result["locked_members"] == 1
     assert result["player_season_status"] == 1
+
+
+@pytest.mark.asyncio
+async def test_purge_sweeps_shared_clans_and_their_roster_once_the_season_is_gone(db):
+    """2026-09-23: cwl_shared_clans has no FK to cwl_events and was missing from the sweep, so a
+    purged season left its shared clans — and their cwl_shared_clan_players roster — behind."""
+    await _seed_guild_and_clan(db, "807")
+    await db._conn.execute("UPDATE guild_config SET cwl_retention_months = 1 WHERE guild_id = ?", ("807",))
+    await db._conn.commit()
+
+    from datetime import datetime, timezone
+    season = f"{datetime.now(timezone.utc).year - 3}-01"
+    event_id = db.create_cwl_event_sync("807", season, "u1")
+    cursor = await db._conn.execute(
+        "INSERT INTO cwl_shared_clans (clan_tag, cwl_season, owner_guild_id, owner_event_id, "
+        "owner_resolution_method) VALUES (?, ?, ?, ?, ?)",
+        ("#CLAN1", season, "807", event_id, "first_claim"),
+    )
+    shared_id = cursor.lastrowid
+    await db._conn.execute(
+        "INSERT INTO cwl_shared_clan_players (shared_clan_id, player_tag, source, added_by_guild_id) "
+        "VALUES (?, ?, ?, ?)",
+        (shared_id, "#P1", "auto_seeded", "807"),
+    )
+    await db._conn.commit()
+
+    result = await db.purge_expired_cwl_events()
+
+    assert result["events"] == 1
+    assert result["shared_clans"] == 1
+    cur = await db._conn.execute("SELECT COUNT(*) AS n FROM cwl_shared_clan_players")
+    assert (await cur.fetchone())["n"] == 0  # cascaded with its shared clan
+
+
+@pytest.mark.asyncio
+async def test_purge_keeps_shared_clans_another_guild_still_retains(db):
+    await _seed_guild_and_clan(db, "808")
+    await db._conn.execute("INSERT OR IGNORE INTO guild_config (guild_id) VALUES (?)", ("809",))
+    await db._conn.execute("UPDATE guild_config SET cwl_retention_months = 1 WHERE guild_id = ?", ("808",))
+    await db._conn.commit()
+
+    from datetime import datetime, timezone
+    season = f"{datetime.now(timezone.utc).year - 3}-01"
+    event_808 = db.create_cwl_event_sync("808", season, "u1")
+    db.create_cwl_event_sync("809", season, "u1")  # 809 keeps data indefinitely
+    await db._conn.execute(
+        "INSERT INTO cwl_shared_clans (clan_tag, cwl_season, owner_guild_id, owner_event_id, "
+        "owner_resolution_method) VALUES (?, ?, ?, ?, ?)",
+        ("#CLAN1", season, "808", event_808, "first_claim"),
+    )
+    await db._conn.commit()
+
+    result = await db.purge_expired_cwl_events()
+
+    assert result["events"] == 1
+    assert result["shared_clans"] == 0  # 809 still has that season

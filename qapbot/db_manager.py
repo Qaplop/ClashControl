@@ -5021,10 +5021,20 @@ class WarHistoryDB:
         that season any more. That self-corrects: a guild set to "keep indefinitely" keeps its
         event, which keeps the shared rows alive for everyone.
 
+        **cwl_shared_clans joins that sweep (2026-09-23).** Cross-guild shared clans are keyed by
+        (clan_tag, cwl_season) with no FK to cwl_events either, so a purged season left its shared
+        clans — and, through their own ON DELETE CASCADE, their cwl_shared_clan_players roster —
+        behind as orphans. Same referential rule as the two tables above: a season's shared clans
+        go only once no guild anywhere still has an event for that season.
+
         Returns:
-            {"events": n, "locked_members": n, "player_season_status": n, "guilds": n}
+            {"events": n, "locked_members": n, "player_season_status": n, "shared_clans": n,
+             "guilds": n}
         """
-        result = {"events": 0, "locked_members": 0, "player_season_status": 0, "guilds": 0}
+        result = {
+            "events": 0, "locked_members": 0, "player_season_status": 0, "shared_clans": 0,
+            "guilds": 0,
+        }
         if self._conn is None:
             return result
 
@@ -5055,6 +5065,8 @@ class WarHistoryDB:
         for table, key in (
             ("cwl_locked_clan_members", "locked_members"),
             ("cwl_player_season_status", "player_season_status"),
+            # Cascades to cwl_shared_clan_players (and any cwl_shared_clan_guilds left over).
+            ("cwl_shared_clans", "shared_clans"),
         ):
             orphaned = await self._conn.execute(
                 f"DELETE FROM {table} WHERE cwl_season NOT IN (SELECT cwl_season FROM cwl_events)"
@@ -5062,12 +5074,13 @@ class WarHistoryDB:
             if orphaned.rowcount and orphaned.rowcount > 0:
                 result[key] = orphaned.rowcount
 
-        if any(result[k] for k in ("events", "locked_members", "player_season_status")):
+        if any(result[k] for k in ("events", "locked_members", "player_season_status", "shared_clans")):
             await self._conn.commit()
             logging.info(
                 f"[CWL-PURGE] Done — events={result['events']} across {result['guilds']} guild(s), "
                 f"locked_members={result['locked_members']}, "
-                f"player_season_status={result['player_season_status']}"
+                f"player_season_status={result['player_season_status']}, "
+                f"shared_clans={result['shared_clans']}"
             )
         return result
 

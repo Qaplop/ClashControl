@@ -1208,7 +1208,8 @@
       "title": "🛡️ Tus Preferencias de LGC",
       "description": "Establece aquí tus preferencias personales de LGC — una liga preferida, y si quieres jugar siempre, no jugar nunca, o decidir de nuevo cada temporada. Se aplican individualmente a cada una de tus cuentas de Clash vinculadas, y a todos los servidores que te inviten, no solo a este. Una elección permanente todavía se puede anular para cualquier temporada concreta desde el MD de invitación de esa temporada.",
       "button_preferences": "Tus Preferencias de LGC",
-      "open_fallback": "⚠️ No se pudieron abrir tus preferencias de LGC directamente — prueba con el comando /cwl preferences en su lugar."
+      "open_fallback": "⚠️ No se pudieron abrir tus preferencias de LGC directamente — prueba con el comando /cwl preferences en su lugar.",
+      "dm_activity_unverified": "⏳ Todavía no se pueden abrir tus preferencias de LGC aquí en el MD: Discord aún tiene que verificar este bot, lo que suele tardar unos días. Hasta entonces, usa `/cwl preferences` en el servidor **{server}**."
     },
     "activity": {
       "prefs_title": "Tus preferencias generales de LGC",

@@ -1106,6 +1106,11 @@ async def _respond_or_log(interaction: discord.Interaction, content: str) -> Non
         logging.warning(f"[CWL] Interaction expired before response could be sent: {content!r}")
 
 
+# Discord error code on a refused LAUNCH_ACTIVITY: "You do not have access to the requested
+# activity". Seen for DM launches while the app is not verified yet (tracker #0128 follow-up).
+_DISCORD_ACTIVITY_NO_ACCESS = 50106
+
+
 async def _launch_cwl_activity(interaction: discord.Interaction, guild_id: int, screen: str) -> None:
     """Opens the CWL_CLAN_CONFIG_ACTIVITY_PLAN.md Discord Activity in-context via the
     LAUNCH_ACTIVITY interaction-response callback (type 12) — flagged in the plan as unverified
@@ -1143,20 +1148,38 @@ async def _launch_cwl_activity(interaction: discord.Interaction, guild_id: int, 
         )
     except Exception as e:
         logging.warning(f"[CWL] LAUNCH_ACTIVITY callback failed, falling back to a text hint: {e}")
-        if not interaction.response.is_done():
-            from qapbot.i18n import t
-            # Dict lookup rather than a two-way ternary (2026-08-23, plans/cwl-personal-hub.md
-            # Phase 5a) — a third screen ('player_prefs', the Player CWL Settings Hub button)
-            # needs its own fallback text distinct from the other two.
-            fallback_key = {
-                "clan_config": 'cwl.management.open_web_fallback',
-                "enrollment": 'cwl.management.open_enrollment_fallback',
-                "player_prefs": 'cwl.player_hub.open_fallback',
-            }.get(screen, 'cwl.management.open_web_fallback')
-            try:
-                await interaction.response.send_message(t(fallback_key, guild_id=guild_id), ephemeral=True)
-            except Exception:
-                pass
+        from qapbot.i18n import t
+        # Dict lookup rather than a two-way ternary (2026-08-23, plans/cwl-personal-hub.md
+        # Phase 5a) — a third screen ('player_prefs', the Player CWL Settings Hub button)
+        # needs its own fallback text distinct from the other two.
+        fallback_key = {
+            "clan_config": 'cwl.management.open_web_fallback',
+            "enrollment": 'cwl.management.open_enrollment_fallback',
+            "player_prefs": 'cwl.player_hub.open_fallback',
+        }.get(screen, 'cwl.management.open_web_fallback')
+        text = t(fallback_key, guild_id=guild_id)
+        if interaction.guild is None and getattr(e, "code", None) == _DISCORD_ACTIVITY_NO_ACCESS:
+            # Tracker #0128 follow-up (2026-09-24): until Discord verifies the app, a DM launch
+            # only works for the developer team and App Testers — everyone else gets 50106.
+            # Launches inside a server work for all members. Tell the user what's going on and
+            # where to go instead. `/cwl preferences` stays plain text on purpose: a clickable
+            # mention would run it right here in the DM again and hit the same refusal.
+            guild = interaction.client.get_guild(guild_id)
+            text = t('cwl.player_hub.dm_activity_unverified', user_id=str(interaction.user.id),
+                     guild_id=guild_id, server=guild.name if guild else str(guild_id))
+        # A refused LAUNCH_ACTIVITY may or may not count as the interaction's response on
+        # Discord's side (2026-09-24: only Discord's own red error showed up, not this text),
+        # so fall back to a followup when the initial response slot is no longer usable.
+        try:
+            if not interaction.response.is_done():
+                await interaction.response.send_message(text, ephemeral=True)
+                return
+        except Exception:
+            pass
+        try:
+            await interaction.followup.send(text, ephemeral=True)
+        except Exception:
+            pass
 
 
 def _make_cwl_management_open_web_callback(view: discord.ui.View):

@@ -1208,7 +1208,8 @@
       "title": "🛡️ 你的部落战联赛偏好",
       "description": "在此设置你的个人部落战联赛偏好 — 偏好联赛等级，以及你想始终参加、从不参加，还是每个赛季重新决定。这些设置单独应用于你绑定的每一个部落冲突账号，并适用于邀请你的每一个服务器，不仅限于本服务器。常设选择仍可从该赛季自己的邀请私信中针对任意单个赛季被覆盖。",
       "button_preferences": "你的部落战联赛偏好",
-      "open_fallback": "⚠️ 无法直接打开你的部落战联赛偏好 — 请改用 /cwl preferences 命令。"
+      "open_fallback": "⚠️ 无法直接打开你的部落战联赛偏好 — 请改用 /cwl preferences 命令。",
+      "dm_activity_unverified": "⏳ 暂时还无法在私信中打开你的部落战联赛设置：Discord 仍需验证此机器人，通常需要几天时间。在此之前，请在服务器 **{server}** 中使用 `/cwl preferences`。"
     },
     "activity": {
       "prefs_title": "你的通用部落战联赛偏好",

@@ -1209,7 +1209,8 @@
       "title": "🛡️ Your CWL Preferences",
       "description": "Set your personal CWL preferences here — a preferred league tier, and whether you want to always play, never play, or decide fresh each season. These apply to every one of your linked Clash accounts individually, and to every server that invites you, not just this one. A standing choice can still be overridden for any single season from that season's own invitation DM.",
       "button_preferences": "Your CWL Preferences",
-      "open_fallback": "⚠️ Could not open your CWL preferences directly — try the /cwl preferences command instead."
+      "open_fallback": "⚠️ Could not open your CWL preferences directly — try the /cwl preferences command instead.",
+      "dm_activity_unverified": "⏳ Opening your CWL preferences here in the DM isn't available yet: Discord still has to verify this bot, which usually takes a few days. Until then, please use `/cwl preferences` on the server **{server}** instead."
     },
     "activity": {
       "prefs_title": "Your general CWL preferences",

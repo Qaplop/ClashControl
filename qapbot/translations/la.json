@@ -1208,7 +1208,8 @@
       "title": "🛡️ Praeferentiae Tuae CWL",
       "description": "Constitue hic praeferentias tuas personales CWL — gradum ligae praeferatum, et an semper ludere velis, numquam ludere, vel omni tempore de novo decernere. Haec singillatim ad omnem rationem tuam Clash iunctam applicantur, et ad omnem servitorem qui te invitat, non tantum ad hunc. Electio permanens adhuc pro quovis tempore singulo ex nuntio privato invitationis illius temporis abrogari potest.",
       "button_preferences": "Praeferentiae Tuae CWL",
-      "open_fallback": "⚠️ Praeferentiae tuae CWL directe aperiri non potuerunt — mandato /cwl preferences potius conare."
+      "open_fallback": "⚠️ Praeferentiae tuae CWL directe aperiri non potuerunt — mandato /cwl preferences potius conare.",
+      "dm_activity_unverified": "⏳ Praeferentiae tuae CWL hic in nuntio privato nondum aperiri possunt: Discord hunc bot adhuc verificare debet, quod plerumque paucos dies durat. Interea `/cwl preferences` in servitore **{server}** utere."
     },
     "activity": {
       "prefs_title": "Praeferentiae Tuae Generales CWL",

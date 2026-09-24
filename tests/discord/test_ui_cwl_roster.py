@@ -3914,6 +3914,73 @@ async def test_launch_cwl_activity_fallback_uses_player_hub_key_for_player_prefs
     assert "CWL preferences" in args[0]
 
 
+class _FakeHTTPError(Exception):
+    """Stands in for discord.HTTPException: only .code matters to the safeguard."""
+
+    def __init__(self, code: int) -> None:
+        super().__init__(f"403 Forbidden (error code: {code})")
+        self.code = code
+
+
+@pytest.mark.discord
+@pytest.mark.asyncio
+async def test_launch_cwl_activity_dm_refusal_explains_pending_verification(mock_interaction):
+    """Tracker #0128 follow-up: Discord refuses a DM launch with 50106 until the app is verified
+    (only team/App Testers pass). The user gets the dedicated explanation naming the server —
+    with /cwl preferences as plain text, since a clickable mention would re-run it in the DM."""
+    from qapbot.ui_cwl_roster import _launch_cwl_activity
+
+    mock_interaction.guild = None
+    mock_interaction.response.is_done = MagicMock(return_value=False)
+    mock_interaction.client.http.request = AsyncMock(side_effect=_FakeHTTPError(50106))
+    guild = MagicMock()
+    guild.name = "The QCrew"
+    mock_interaction.client.get_guild = MagicMock(return_value=guild)
+
+    await _launch_cwl_activity(mock_interaction, 555, "player_prefs")
+
+    args, kwargs = mock_interaction.response.send_message.await_args
+    assert "The QCrew" in args[0]
+    assert "`/cwl preferences`" in args[0] and "</cwl" not in args[0]
+    assert kwargs.get("ephemeral") is True
+
+
+@pytest.mark.discord
+@pytest.mark.asyncio
+async def test_launch_cwl_activity_50106_in_server_keeps_generic_fallback(mock_interaction):
+    """Inside a server the verification explanation would be wrong (members can launch there),
+    so the same error code keeps the generic fallback text."""
+    from qapbot.i18n import t
+    from qapbot.ui_cwl_roster import _launch_cwl_activity
+
+    mock_interaction.response.is_done = MagicMock(return_value=False)
+    mock_interaction.client.http.request = AsyncMock(side_effect=_FakeHTTPError(50106))
+
+    await _launch_cwl_activity(mock_interaction, 555, "player_prefs")
+
+    args, _ = mock_interaction.response.send_message.await_args
+    assert args[0] == t('cwl.player_hub.open_fallback', guild_id=555)
+
+
+@pytest.mark.discord
+@pytest.mark.asyncio
+async def test_launch_cwl_activity_fallback_uses_followup_when_response_slot_is_gone(mock_interaction):
+    """If Discord counted the refused launch as the response, the text still arrives as a
+    followup instead of silently disappearing."""
+    from qapbot.ui_cwl_roster import _launch_cwl_activity
+
+    mock_interaction.guild = None
+    mock_interaction.response.is_done = MagicMock(return_value=False)
+    mock_interaction.response.send_message = AsyncMock(side_effect=Exception("already acknowledged"))
+    mock_interaction.client.http.request = AsyncMock(side_effect=_FakeHTTPError(50106))
+    mock_interaction.client.get_guild = MagicMock(return_value=None)
+
+    await _launch_cwl_activity(mock_interaction, 555, "player_prefs")
+
+    mock_interaction.followup.send.assert_awaited_once()
+    assert mock_interaction.followup.send.await_args.kwargs.get("ephemeral") is True
+
+
 # ---------------------------------------------------------------------------
 # /cwl preferences slash command — plans/cwl-personal-hub.md Phase 5a-bis, the second entry
 # point into the same player_prefs Activity screen as CwlPlayerHubView's button (above), for

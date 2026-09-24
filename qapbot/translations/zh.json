@@ -281,10 +281,15 @@
         "title": "📝 List 命令",
         "detailed": "列出各类数据：拥有已注册玩家的 Discord 账号、部落家族，或某个部落/家族中的所有玩家。\n\n**用法：**\n`/list action:<Accounts|Families|Players|Tracked Clans|Managed CWLs> [clan:<部落>] [family:<家族>] [season:<赛季>] [discord_user:<@用户>]`\n\n**操作：**\n\n**Accounts** - 列出所有 Discord 用户账号及其已注册玩家\n• 显示验证状态\n• 显示主账号\n• 包含大本营等级\n• `discord_user` 参数（可选）：仅显示该特定 Discord 用户的账号，而非所有人\n\n**Families** - 列出所有部落家族及其成员部落\n• 显示家族结构\n• 列出每个家族中的所有部落\n\n**Players** - 列出某个部落或家族中的所有玩家\n• `clan` 参数：指定部落标签或名称\n• `family` 参数：指定家族标签\n• 显示玩家名称、标签和大本营等级\n• 显示 Discord 绑定状态\n\n**Tracked Clans** - 按战争联赛分组的所有已跟踪部落的柱状图\n• 以图片形式发布到频道\n\n**Managed CWLs**（机器人管理员）- 列出每个为某赛季设置了受管理部落战联赛的服务器\n• `season` 参数：以 YYYY-MM 格式表示的部落战联赛赛季 — 省略时默认为下一个即将到来的赛季\n\n**示例：**\n`/list action:Accounts`\n`/list action:Accounts discord_user:@某用户`\n`/list action:Families`\n`/list action:Players clan:#L2J0C0PY`\n`/list action:Players family:#FAMILY123`\n`/list action:Tracked Clans`\n`/list action:Managed CWLs season:2026-09`"
       },
-      "whois": {
-        "short": "查询 Discord 用户的部落冲突账号，或某位玩家的战争历史",
-        "title": "🔍 Whois 命令",
-        "detailed": "查询某个 Discord 用户已注册的部落冲突账号，或显示任意部落冲突玩家的完整战争表现报告。\n\n**用法：**\n`/whois user:<@用户>` — 某个 Discord 用户已注册的部落冲突账号\n`/whois player:<#标签>` — 特定玩家标签的战争历史报告\n`/whois player:<名称>` — 按玩家名称搜索（不区分大小写的子字符串）；如有多个匹配则从列表中选择\n\n**右键菜单：**\n右键点击任意用户 → 应用 → **whois**\n右键点击任意消息 → 应用 → **whois**（查询消息作者）\n\n**用户查询（显示的信息）：**\n• 所有已注册的部落冲突玩家账号（按大本营等级排序）\n• 带图标的大本营等级\n• 英雄等级（野蛮人国王、弓箭手皇后、大法师、皇家champion、地精王子）\n• 部落身份组和部落名称\n• 验证状态（✅ 已验证 / 未验证）\n• 主账号标记\n\n**玩家报告（显示的信息）：**\n• 最后已知的部落（名称和标签）\n• 总战争数（普通部落战 / 部落战联赛）、胜负记录\n• 已用攻击次数与错过次数、可靠性百分比\n• 每次攻击平均星数、平均摧毁率\n• 完整星数分布（0★ / 1★ / 2★ / 3★）\n• 近期趋势（最近 10 场普通部落战对比总体）\n• 部落战联赛概况（赛季数、战争数、平均星数）\n• 最近 10 场战争的时间线\n\n**示例：**\n`/whois user:@某用户` - 查询某个特定用户的部落冲突账号\n`/whois player:#ABC123` - 某个部落冲突玩家标签的战争历史报告\n`/whois player:John` - 搜索所有名为 John 的玩家并选择一个"
+      "whois user": {
+        "short": "查询某个 Discord 用户已关联的部落冲突账号",
+        "title": "🔍 Whois 用户命令",
+        "detailed": "查询某个 Discord 用户已注册的部落冲突账号。\n\n**用法：**\n`/whois user user:<@用户>` — 某个 Discord 用户已注册的部落冲突账号\n\n**右键菜单：**\n右键点击任意用户 → 应用 → **whois**\n右键点击任意消息 → 应用 → **whois**（查询消息作者）\n\n**用户查询（显示的信息）：**\n• 所有已注册的部落冲突玩家账号（按大本营等级排序）\n• 带图标的大本营等级\n• 英雄等级（野蛮人国王、弓箭手皇后、大法师、皇家champion、地精王子）\n• 部落身份组和部落名称\n• 验证状态（✅ 已验证 / 未验证）\n• 主账号标记\n\n**示例：**\n`/whois user user:@某用户` - 查询某个特定用户的部落冲突账号"
+      },
+      "whois player": {
+        "short": "部落冲突玩家的战争历史报告",
+        "title": "🔍 Whois 玩家命令",
+        "detailed": "按标签或名称显示任意部落冲突玩家的完整战争表现报告。\n\n**用法：**\n`/whois player player:<#标签>` — 特定玩家标签的战争历史报告\n`/whois player player:<名称>` — 按玩家名称搜索（不区分大小写的子字符串）；如有多个匹配则从列表中选择\n\n**玩家报告（显示的信息）：**\n• 最后已知的部落（名称和标签）\n• 总战争数（普通部落战 / 部落战联赛）、胜负记录\n• 已用攻击次数与错过次数、可靠性百分比\n• 每次攻击平均星数、平均摧毁率\n• 完整星数分布（0★ / 1★ / 2★ / 3★）\n• 近期趋势（最近 10 场普通部落战对比总体）\n• 部落战联赛概况（赛季数、战争数、平均星数）\n• 最近 10 场战争的时间线\n\n**示例：**\n`/whois player player:#ABC123` - 某个部落冲突玩家标签的战争历史报告\n`/whois player player:John` - 搜索所有名为 John 的玩家并选择一个"
       },
       "link clan": {
         "short": "发布某个部落资料的游戏内链接",

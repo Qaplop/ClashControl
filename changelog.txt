@@ -1,6 +1,17 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-24 (19)  Build 94.
+- Changed (tracker #0130): /whois is now two subcommands, /whois user <user> and
+  /whois player <player>, each with a REQUIRED option. Discord only opens an option field
+  automatically for required options, so clicking /whois in /help used to insert a bare
+  "/whois " with nothing to fill in; the new /help entries open the command with its field
+  ready. Shared body is _whois_slash_logic(); the right-click "whois" menu entries are
+  unchanged. /help has separate "whois user" / "whois player" entries (5 languages, split from
+  the old one, usage lines use the new syntax). Leaves room for #0120's /whois clan.
+  Files: QBdiscordcmds.py, QapBot.py, qapbot/translations/*.json, QBcore.py, README.md,
+  qapbot/docs/CODE_STRUCTURE.md (+ tests). 3524 tests pass.
+
 2026-09-24 (18)  Build 93.
 - Changed (tracker #0127): DM free-text reply's tracker line is now qaplop's wording "🐞 Melde
   Fehler mit /bug oder wenn du einen Verbesserungsvorschlag hast, schlage ihn mit /feature vor,

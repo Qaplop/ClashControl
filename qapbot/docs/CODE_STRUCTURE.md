@@ -524,7 +524,9 @@ all rebuild/button-handler paths so the reference is never lost.
 🟪 QBdiscordcmds.py (~4320 lines)
 - Discord command handlers (/leaderboard, /subscribe, /admin, /clan management, /whois, /list, /help, etc.)
 - /analyse command group: analyse_group containing `/analyse leaguegroup` to rank all CWL group players
-- /whois slash command + two right-click context menus (user and message) sharing _whois_logic()
+- /whois user + /whois player subcommands (whois_group, each with one required option so Discord
+  shows its field when the command is clicked; tracker #0130) sharing _whois_slash_logic(), plus two
+  right-click context menus (user and message) sharing _whois_logic()
 - Unified message ID logic for all commands
 - Imports UI components from split UI modules (ui_common/ui_registration/ui_notifications/ui_clan_management)
 - Imports helpers from qapbot/QBdiscocmdshelper.py

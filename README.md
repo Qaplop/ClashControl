@@ -191,6 +191,10 @@ action. There is no separate `/clans`, `/list_families`, `/list_players`, `/list
   a message)
 - `/link clan` / `/link player` - Post an in-game link (`Name: https://link.clashofclans.com/...`)
   to a clan or player profile; pick by tag or name substring like `/analyse` and `/whois`
+- `/registration` - Open the registration hub (link accounts, war notifications, API
+  verification, my accounts): ephemeral in a server channel, a normal message in the bot DM for
+  a server you share with the bot (server picker if several)
+- `/cwl preferences` - Open your personal CWL settings (Activity); also works in the bot DM
 - `/status` - Show bot status: uptime, memory usage, cache statistics
 - `/ping` - Check bot latency
 - `/help` - Show help information

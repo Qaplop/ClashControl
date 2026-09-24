@@ -453,6 +453,11 @@ class CacheManager:
         # discordSdk.guildId, so it fetches this through GET /api/cwl/dm-guild instead. Same
         # launch-hint semantics as the dict above: in-memory only, read non-destructively.
         self.pending_cwl_dm_guild: Dict[str, int] = {}
+        # Tracker #0129: discord_user_id_str -> guild_id a DM /registration resolved to. Lets the
+        # registration flow, run from the bot DM, search that server's clans and assign its roles
+        # (QBdiscocmdshelper.get_interaction_guild()). In-memory only: after a restart a DM click
+        # re-resolves the shared server, or asks the user to run /registration again.
+        self.pending_registration_dm_guild: Dict[str, int] = {}
         # Tracker #0070 (2026-08-29): the most recently opened/refreshed /clan management
         # ClanManagementView currently showing a cwl_settings or cwl_management screen, one slot
         # per guild — lets a mutation made from the ANCHORED CWL Management Hub message push a

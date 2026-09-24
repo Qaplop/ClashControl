@@ -1586,12 +1586,15 @@ async def complete_account_linking_flow(
     import logging
     
     account_tag = str(target_user_id)
+    # Tracker #0129: in the bot DM this is the server the DM /registration resolved to, so a
+    # link made there gets that server's roles; everywhere else it is just interaction.guild.
+    guild = get_interaction_guild(interaction)
     
     # Fetch display name (try guild member first, then fall back to user object)
     display_name = f"UserID:{target_user_id}"
     try:
-        if interaction.guild:
-            member = await interaction.guild.fetch_member(target_user_id)
+        if guild:
+            member = await guild.fetch_member(target_user_id)
             if member:
                 display_name = member.display_name
     except Exception:
@@ -1617,7 +1620,7 @@ async def complete_account_linking_flow(
         if interaction.response.is_done():
             # Cannot show modal after response is used - send followup message instead
             from qapbot.i18n import t
-            guild_id = interaction.guild.id if interaction.guild else None
+            guild_id = guild.id if guild else None
             user_id = str(interaction.user.id)
             
             # Verified accounts are API-protected (re-link requires proof of ownership);
@@ -1641,7 +1644,7 @@ async def complete_account_linking_flow(
         # Show modal asking for API token (only works if response not yet used)
         from qapbot.ui_registration import ApiTokenOwnershipModal
         from qapbot.i18n import t
-        guild_id = interaction.guild.id if interaction.guild else None
+        guild_id = guild.id if guild else None
         
         modal = ApiTokenOwnershipModal(
             player_tag=normalized_tag,
@@ -1672,7 +1675,7 @@ async def complete_account_linking_flow(
         if not is_valid:
             # API token validation failed
             from qapbot.i18n import t
-            error_msg = t('playerregistration.api_token_invalid', guild_id=interaction.guild.id if interaction.guild else None, message=validation_msg)
+            error_msg = t('playerregistration.api_token_invalid', guild_id=guild.id if guild else None, message=validation_msg)
             
             if send_success_message:
                 if use_followup:
@@ -1695,7 +1698,7 @@ async def complete_account_linking_flow(
         admin_override=admin_override,
         api_token_override=api_token_override,
         api_token_user_id=api_token_user_id,
-        guild_name=interaction.guild.name if interaction.guild else None
+        guild_name=guild.name if guild else None
     )
     
     if not ok:
@@ -1730,12 +1733,12 @@ async def complete_account_linking_flow(
     user_entry = CACHE.user_accounts.get(account_tag)
     if not user_entry:
         from qapbot.i18n import t
-        return False, t('playerregistration.failed_retrieve_user_entry', guild_id=interaction.guild.id if interaction.guild else None)
+        return False, t('playerregistration.failed_retrieve_user_entry', guild_id=guild.id if guild else None)
     
     player_entry = get_user_player(user_entry, player_tag)
     if not player_entry:
         from qapbot.i18n import t
-        return False, t('playerregistration.failed_retrieve_player_entry', guild_id=interaction.guild.id if interaction.guild else None, player_tag=player_tag)
+        return False, t('playerregistration.failed_retrieve_player_entry', guild_id=guild.id if guild else None, player_tag=player_tag)
     
     player_name = player_entry.get("player_name", "Unknown")
     is_verified = player_entry.get("verified", False)
@@ -1749,10 +1752,10 @@ async def complete_account_linking_flow(
         normal (no-prompt) path. Safe to call twice: assign_member_role/sync_roles_for_user
         are idempotent.
         """
-        if not interaction.guild:
+        if not guild:
             return
         should_assign_member_role = False
-        _linking_guild_id_str = str(interaction.guild.id)
+        _linking_guild_id_str = str(guild.id)
         _member_role_strict: bool = CACHE.server_config.get(_linking_guild_id_str, {}).get("member_role_strict", False)
 
         if not _member_role_strict:
@@ -1765,13 +1768,13 @@ async def complete_account_linking_flow(
         if should_assign_member_role:
             player_clan_tag = player_entry.get("current_clan_tag")
             try:
-                await assign_member_role(interaction.guild, target_user_id, player_name, player_clan_tag)
+                await assign_member_role(guild, target_user_id, player_name, player_clan_tag)
             except Exception as e:
                 logging.error(f"Failed to assign member role to user {target_user_id}: {e}")
 
         try:
             from qapbot.guild_role_manager import sync_roles_for_user
-            await sync_roles_for_user(interaction.guild, _linking_guild_id_str, target_user_id)
+            await sync_roles_for_user(guild, _linking_guild_id_str, target_user_id)
         except Exception as _role_sync_e:
             logging.warning(f"[ROLE-SYNC] Post-link role sync failed for {target_user_id}: {_role_sync_e}")
 
@@ -1783,27 +1786,27 @@ async def complete_account_linking_flow(
         player_entry["verified"] = True
         await CACHE.persist_user(account_tag)
         from qapbot.i18n import t
-        verification_message = t('playerregistration.api_token_verified_success', guild_id=interaction.guild.id if interaction.guild else None, player_name=player_name, player_tag=normalized_tag)
+        verification_message = t('playerregistration.api_token_verified_success', guild_id=guild.id if guild else None, player_name=player_name, player_tag=normalized_tag)
         logging.info(f"USER ACTION: Verified player {player_name} ({normalized_tag}) for user {target_user_id} via API token ownership proof")
     elif is_verified:
         from qapbot.i18n import t
-        verification_message = t('playerregistration.player_already_verified', guild_id=interaction.guild.id if interaction.guild else None)
+        verification_message = t('playerregistration.player_already_verified', guild_id=guild.id if guild else None)
     elif api_token:
         # API token provided - attempt verification
-        guild_id = interaction.guild.id if interaction.guild else None
+        guild_id = guild.id if guild else None
         verified, verify_msg = await verify_and_update_player(
             player_entry, player_tag, api_token, guild_id=guild_id
         )
         if verified:
             await CACHE.persist_user(account_tag)
             from qapbot.i18n import t
-            verification_message = t('playerregistration.player_verified_success', guild_id=interaction.guild.id if interaction.guild else None, message=verify_msg)
+            verification_message = t('playerregistration.player_verified_success', guild_id=guild.id if guild else None, message=verify_msg)
             logging.info(f"USER ACTION: Verified player {player_name} ({player_tag}) for user {target_user_id}")
             logging.debug(f"[VERIFICATION-SUCCESS] verification_message={verification_message}")
         else:
             # Verification FAILED - send error message immediately and return
             from qapbot.i18n import t
-            verification_message = t('playerregistration.player_verification_failed', guild_id=interaction.guild.id if interaction.guild else None, message=verify_msg)
+            verification_message = t('playerregistration.player_verification_failed', guild_id=guild.id if guild else None, message=verify_msg)
             logging.warning(f"Verification failed for player {player_name} ({player_tag})")
             
             # Send error message to user immediately
@@ -1824,7 +1827,7 @@ async def complete_account_linking_flow(
         # Notification check will happen in the button callbacks (verify/skip)
         from qapbot.ui_registration import ApiVerificationPromptView
         from qapbot.i18n import t
-        guild_id = interaction.guild.id if interaction.guild else None
+        guild_id = guild.id if guild else None
         view = ApiVerificationPromptView(player_tag, player_name, player_selection_interaction=player_selection_interaction, guild_id=guild_id)
         prompt_text = t('playerregistration.api_prompt_full', guild_id=guild_id, link_msg=link_msg)
         
@@ -1842,7 +1845,7 @@ async def complete_account_linking_flow(
                 from qapbot.i18n import t
                 try:
                     await interaction.response.send_message(
-                        t('playerregistration.webhook_expired', guild_id=interaction.guild.id if interaction.guild else None),
+                        t('playerregistration.webhook_expired', guild_id=guild.id if guild else None),
                         ephemeral=True
                     )
                 except:
@@ -2065,6 +2068,37 @@ def get_dm_caller_matched_guild_ids(discord_id: str) -> List[int]:
         if guild_clans & clan_tags:
             matched_guild_ids.append(guild_id_int)
     return matched_guild_ids
+
+
+def get_dm_registration_guild_ids(client: discord.Client, discord_id: int) -> List[int]:
+    """
+    Tracker #0129: the servers a DM /registration can register for — every server the bot and
+    this user are both members of that has at least one clan configured (registration searches
+    that server's clans). Unlike get_dm_caller_matched_guild_ids(), this needs no linked
+    account, which a brand-new user doesn't have yet. Relies on the member cache (members
+    intent), like every other get_member() caller.
+    """
+    return [
+        guild.id
+        for guild in client.guilds
+        if guild.get_member(discord_id) is not None and get_guild_clans_including_member_config(guild.id)
+    ]
+
+
+def get_interaction_guild(interaction: discord.Interaction) -> Optional[discord.Guild]:
+    """
+    interaction.guild, or — in the bot DM — the server this user's DM /registration resolved to
+    (CACHE.pending_registration_dm_guild, tracker #0129). Used where the registration flow needs
+    a real Guild object (member lookup, role assignment), so a link made from the DM gets the
+    same roles as one made from the server's hub message. None in a DM without such a server,
+    which keeps the old "no roles in a DM" behavior.
+    """
+    if interaction.guild is not None:
+        return interaction.guild
+    guild_id = CACHE.pending_registration_dm_guild.get(str(interaction.user.id))
+    if guild_id is None:
+        return None
+    return interaction.client.get_guild(guild_id)
 
 
 async def resolve_guild_context(interaction: discord.Interaction) -> Optional[int]:

@@ -14,6 +14,7 @@
   },
   "playerregistration": {
     "welcome_title": "欢迎来到 {server_name}",
+    "dm_rerun_registration": "⚠️ 我已无法确定这条注册消息属于哪个服务器。请再次运行 `/registration`。",
     "invalid_player_tag_format": "❌ 这看起来不是有效的玩家标签。标签的格式如：`#2PP0JCCL`。",
     "welcome_body": "在这里你可以将你的部落冲突玩家账号与该 Discord 服务器关联，从而获得特定部落身份组和战争通知。\n\n点击下方的“绑定账号”按钮开始。",
     "button_link_account": "🔗 绑定账号",
@@ -289,6 +290,11 @@
         "title": "🔗 Link Clan 命令",
         "detailed": "发布一个可在游戏内直接打开某个部落资料的部落冲突链接。\n\n**用法：**\n`/link clan clan:<标签或名称>` — 从列表中选择一个部落，或输入一个标签（例如 `#ABC123`）或部落名称的一部分\n\n**输出：**\n在频道中发布“`部落名称: https://link.clashofclans.com/...`”\n\n**示例：**\n`/link clan clan:#L2J0C0PY`\n`/link clan clan:QCrew`"
       },
+      "registration": {
+        "short": "打开注册中心，关联和管理你的账号",
+        "title": "📝 注册命令",
+        "detailed": "打开注册中心，按钮与服务器的注册消息相同：关联部落冲突账号、战争通知、API 验证以及你已关联的账号。\n\n**用法：**\n`/registration`\n\n**说明：**\n• 在服务器频道中只有你能看到注册中心，避免频道被注册消息刷屏\n• 在与机器人的私信中会作为普通消息发送；如果你与机器人共同所在多个服务器，需要先选择要注册的服务器\n• 在私信中关联账号也会获得该服务器的身份组，与服务器的注册消息完全相同"
+      },
       "link player": {
         "short": "发布某位玩家资料的游戏内链接",
         "title": "🔗 Link Player 命令",
@@ -397,7 +403,10 @@
       "unexpected_error": "💥 **发生了意外错误！**\n此问题已被记录以供调查。请重试，如问题持续存在请联系支持。",
       "unexpected_error_fallback": "运行此命令时发生了意外错误。",
       "debug_continued": "**...续（{current}/{total}）**",
-      "dm_not_linked": "❌ 你没有任何已绑定的部落冲突账号，因此我无法判断此命令应作用于哪个服务器。请先绑定一个账号，或在该服务器内运行此命令。"
+      "dm_not_linked": "❌ 你没有已关联的部落冲突账号，因此我无法判断此命令应作用于哪个服务器。请先使用 `/registration` 关联账号，或在服务器内运行此命令。"
+    },
+    "registration": {
+      "dm_no_shared_server": "❌ 我没有找到我们共同所在、且已设置部落用于注册的服务器。请先加入你部落的 Discord 服务器，然后再次运行 `/registration`。"
     },
     "dm": {
       "fallback_reply": "👋 我无法理解自由文本消息——试试使用 `/help` 查看我能做什么，或在此私信中直接使用斜杠命令。",

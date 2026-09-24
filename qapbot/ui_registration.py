@@ -17,6 +17,14 @@ from qapbot.ui_common import GenericSelectView, TrackedView, update_user_metadat
 from qapbot.ui_common import claim_action, lock_buttons
 from qapbot.ui_notifications import WarNotificationPromptView
 
+
+def _role_guild(interaction: discord.Interaction) -> Optional[discord.Guild]:
+    """The server whose roles a registration step assigns: interaction.guild, or in the bot DM the
+    server the DM /registration resolved to (tracker #0129, get_interaction_guild())."""
+    from qapbot.QBdiscocmdshelper import get_interaction_guild
+    return get_interaction_guild(interaction)
+
+
 # Discord's hard cap on a message's `content` field. Exceeding it raises
 # HTTPException 400 / error code 50035 ("Must be 2000 or fewer in length").
 _DISCORD_MESSAGE_CHAR_LIMIT = 2000
@@ -312,11 +320,29 @@ class RegistrationView(TrackedView):
 
     def _resolve_guild_id(self, interaction: discord.Interaction) -> int:
         """Guild ID for this click — from the interaction when this is the generic
-        add_view() instance (self.guild_id is None). Registration messages only live
-        in guild channels, so interaction.guild is always set for real clicks."""
+        add_view() instance (self.guild_id is None).
+
+        Tracker #0129: a /registration message can also live in the bot DM. There the server
+        comes from CACHE.pending_registration_dm_guild; after a restart (in-memory, so empty)
+        it is re-resolved when the user shares exactly one server with clans. 0 = unresolvable,
+        which link_account_button turns into "run /registration again"."""
+        if interaction.guild is not None:
+            return self.guild_id if self.guild_id is not None else interaction.guild.id
+        user_id = str(interaction.user.id)
         if self.guild_id is not None:
+            # This DM message's own server wins over a newer /registration for another server —
+            # and becomes the pending one, so the role steps (get_interaction_guild()) agree.
+            CACHE.pending_registration_dm_guild[user_id] = self.guild_id
             return self.guild_id
-        return interaction.guild.id if interaction.guild else 0
+        pending = CACHE.pending_registration_dm_guild.get(user_id)
+        if pending is not None:
+            return pending
+        from qapbot.QBdiscocmdshelper import get_dm_registration_guild_ids
+        guild_ids = get_dm_registration_guild_ids(interaction.client, interaction.user.id)
+        if len(guild_ids) == 1:
+            CACHE.pending_registration_dm_guild[user_id] = guild_ids[0]
+            return guild_ids[0]
+        return 0
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         """Block every button until CACHE is fully loaded from the DB.
@@ -363,6 +389,13 @@ class RegistrationView(TrackedView):
         # Check if user has unverified accounts
         user_id = str(interaction.user.id)
         guild_id = self._resolve_guild_id(interaction)
+        if guild_id == 0 and interaction.guild is None:
+            # Tracker #0129: a DM registration message whose server can't be resolved any more
+            # (bot restarted and the user shares several servers) — a fresh /registration asks.
+            await interaction.response.send_message(
+                t('playerregistration.dm_rerun_registration', user_id=user_id), ephemeral=True
+            )
+            return
         user_entry = CACHE.user_accounts.get(user_id, {"players": []})
         user_players: List[Dict[str, Any]] = user_entry.get("players", [])  # type: ignore[assignment]
         
@@ -853,20 +886,20 @@ class VerifyAccountModal(discord.ui.Modal, title="Verify Account"):
             logging.info(f"USER ACTION: {interaction.user} verified player {player_name} ({player_id}) via welcome screen")
             
             # Assign member role if player is in member clans/families
-            if interaction.guild:
+            if (role_guild := _role_guild(interaction)) is not None:
                 from qapbot.QBdiscocmdshelper import assign_member_role
                 player_clan_tag = existing_player.get("current_clan_tag")
                 try:
-                    await assign_member_role(interaction.guild, interaction.user.id, player_name, player_clan_tag)  # type: ignore[arg-type]
+                    await assign_member_role(role_guild, interaction.user.id, player_name, player_clan_tag)  # type: ignore[arg-type]
                 except Exception as e:
                     logging.error(f"Failed to assign member role after verification: {e}")
 
             # Sync CoC + clan roles immediately (mirrors ApiTokenEntryModal.on_submit /
             # ApiVerificationPromptView.skip_button, which perform the same sync)
-            if interaction.guild:
+            if (role_guild := _role_guild(interaction)) is not None:
                 try:
                     from qapbot.guild_role_manager import sync_roles_for_user
-                    await sync_roles_for_user(interaction.guild, str(interaction.guild.id), interaction.user.id)
+                    await sync_roles_for_user(role_guild, str(role_guild.id), interaction.user.id)
                 except Exception as _role_sync_e:
                     logging.warning(f"[ROLE-SYNC] Post-verify role sync failed for {interaction.user.id}: {_role_sync_e}")
 
@@ -1787,10 +1820,10 @@ class UnlinkConfirmView(discord.ui.View):
             # STEP: ROLE SYNC
             # Recheck clan/member/CoC roles immediately after unlinking, mirroring
             # the post-link role sync in complete_account_linking_flow (STEP 3.5).
-            if interaction.guild:
+            if (role_guild := _role_guild(interaction)) is not None:
                 try:
                     from qapbot.guild_role_manager import sync_roles_for_user
-                    await sync_roles_for_user(interaction.guild, str(interaction.guild.id), int(self.user_id))
+                    await sync_roles_for_user(role_guild, str(role_guild.id), int(self.user_id))
                 except Exception as _role_sync_e:
                     logging.warning(f"[ROLE-SYNC] Post-unlink role sync failed for {self.user_id}: {_role_sync_e}")
 
@@ -1896,10 +1929,10 @@ class UnlinkAllConfirmView(discord.ui.View):
         count = await unlink_all_players(self.user_id)
 
         # STEP: ROLE SYNC — one sync covering every unlinked account, not one per account.
-        if interaction.guild:
+        if (role_guild := _role_guild(interaction)) is not None:
             try:
                 from qapbot.guild_role_manager import sync_roles_for_user
-                await sync_roles_for_user(interaction.guild, str(interaction.guild.id), int(self.user_id))
+                await sync_roles_for_user(role_guild, str(role_guild.id), int(self.user_id))
             except Exception as _role_sync_e:
                 logging.warning(f"[ROLE-SYNC] Post-unlink-all role sync failed for {self.user_id}: {_role_sync_e}")
 
@@ -1989,10 +2022,10 @@ class ApiVerificationPromptView(discord.ui.View):
 
         # Sync CoC + clan roles immediately (complete_account_linking_flow returned early
         # before STEP 3.5 when the API prompt was shown)
-        if interaction.guild:
+        if (role_guild := _role_guild(interaction)) is not None:
             try:
                 from qapbot.guild_role_manager import sync_roles_for_user
-                await sync_roles_for_user(interaction.guild, str(interaction.guild.id), interaction.user.id)
+                await sync_roles_for_user(role_guild, str(role_guild.id), interaction.user.id)
             except Exception as _role_sync_e:
                 logging.warning(f"[ROLE-SYNC] Post-skip role sync failed for {interaction.user.id}: {_role_sync_e}")
 
@@ -2086,20 +2119,20 @@ class ApiTokenEntryModal(discord.ui.Modal, title="Enter API Token"):
             logging.info(f"USER ACTION: {interaction.user} verified player {self.player_name} ({self.player_tag}) via API prompt")
             
             # Assign member role if player is in member clans/families
-            if interaction.guild:
+            if (role_guild := _role_guild(interaction)) is not None:
                 from qapbot.QBdiscocmdshelper import assign_member_role
                 player_clan_tag = existing_player.get("current_clan_tag")
                 try:
-                    await assign_member_role(interaction.guild, interaction.user.id, self.player_name, player_clan_tag)  # type: ignore[arg-type]
+                    await assign_member_role(role_guild, interaction.user.id, self.player_name, player_clan_tag)  # type: ignore[arg-type]
                 except Exception as e:
                     logging.error(f"Failed to assign member role after verification: {e}")
             
             # Sync CoC + clan roles immediately (complete_account_linking_flow returned early
             # before STEP 3.5 when the API prompt was shown)
-            if interaction.guild:
+            if (role_guild := _role_guild(interaction)) is not None:
                 try:
                     from qapbot.guild_role_manager import sync_roles_for_user
-                    await sync_roles_for_user(interaction.guild, str(interaction.guild.id), interaction.user.id)
+                    await sync_roles_for_user(role_guild, str(role_guild.id), interaction.user.id)
                 except Exception as _role_sync_e:
                     logging.warning(f"[ROLE-SYNC] Post-verify role sync failed for {interaction.user.id}: {_role_sync_e}")
 

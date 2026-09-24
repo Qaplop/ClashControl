@@ -3608,6 +3608,7 @@ async def _setup_hook():
         QBdiscordcmds.list,  # type: ignore[misc]
         QBdiscordcmds.admin,  # type: ignore[misc]
         QBdiscordcmds.whois_slash,  # type: ignore[misc]
+        QBdiscordcmds.registration,  # type: ignore[misc]
     ]
 
     # Bug/feature tracker (BUG_FEATURE_TRACKER_PLAN.md §3.1) — PROD-only, no env var: DEV must

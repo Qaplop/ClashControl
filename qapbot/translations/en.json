@@ -14,6 +14,7 @@
   },
   "playerregistration": {
     "welcome_title": "Welcome to {server_name}",
+    "dm_rerun_registration": "⚠️ I can't tell which server this registration message belongs to any more. Please run `/registration` again.",
     "invalid_player_tag_format": "❌ That doesn't look like a valid player tag. A tag looks like `#2PP0JCCL`.",
     "welcome_body": "Here you can register your Clash of Clans player accounts with this Discord server to get access to clan-specific roles and war notifications.\n\nClick the \"Link Account\" button below to start the process.",
     "button_link_account": "🔗 Link Accounts",
@@ -289,6 +290,11 @@
         "title": "🔗 Link Clan Command",
         "detailed": "Post a Clash of Clans in-game link that opens a clan's profile directly in the game.\n\n**Usage:**\n`/link clan clan:<tag or name>` — pick a clan from the list, or type a tag (e.g. `#ABC123`) or part of a clan name\n\n**Output:**\n`Clan Name: https://link.clashofclans.com/...` posted in the channel\n\n**Examples:**\n`/link clan clan:#L2J0C0PY`\n`/link clan clan:QCrew`"
       },
+      "registration": {
+        "short": "Open the registration hub to link and manage your accounts",
+        "title": "📝 Registration Command",
+        "detailed": "Opens the registration hub with the same buttons as the server's registration message: link a Clash of Clans account, war notifications, API verification and your linked accounts.\n\n**Usage:**\n`/registration`\n\n**Notes:**\n• In a server channel only you can see the hub, so channels don't fill up with registration messages\n• In your DM with the bot it's posted as a normal message; if you share several servers with the bot, you first pick the server you're registering for\n• Linking from the DM gives you that server's roles, just like the server's registration message"
+      },
       "link player": {
         "short": "Post an in-game link to a player's profile",
         "title": "🔗 Link Player Command",
@@ -397,7 +403,10 @@
       "unexpected_error": "💥 **An unexpected error occurred!**\nThis has been logged for investigation. Please try again or contact support if the issue persists.",
       "unexpected_error_fallback": "An unexpected error occurred while running this command.",
       "debug_continued": "**...continued ({current}/{total})**",
-      "dm_not_linked": "❌ You don't have any linked Clash of Clans accounts, so I can't tell which server this command should apply to. Link an account first, or run this command inside the server."
+      "dm_not_linked": "❌ You don't have any linked Clash of Clans accounts, so I can't tell which server this command should apply to. Link an account first with `/registration`, or run this command inside the server."
+    },
+    "registration": {
+      "dm_no_shared_server": "❌ I couldn't find a server we're both in that has clans set up for registration. Join your clan's Discord server first, then run `/registration` again."
     },
     "dm": {
       "fallback_reply": "👋 I don't understand free text messages — try `/help` to see what I can do, or use a slash command right here in this DM.",

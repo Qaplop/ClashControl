@@ -1,6 +1,21 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-24 (7)  Build 85.
+- Added (tracker #0129): /registration opens the registration hub. In a server channel it is
+  ephemeral (no user-created hub messages in channels); in the bot DM it is a normal message for
+  a server the user shares with the bot and that has clans (server picker if several). The DM
+  server is recorded (CACHE.pending_registration_dm_guild); get_interaction_guild() hands it to
+  complete_account_linking_flow() and the verify/role paths, so linking from the DM assigns that
+  server's roles like the server hub. After a restart a DM click re-resolves a single shared
+  server, else asks to run /registration again. The DM "no linked accounts" reply points to
+  /registration. Help (5 languages), README, REGISTRATION_MESSAGE_WORKFLOWS.md updated.
+- Deployed: Activity Worker + Pages to PROD for #0128 (bot Build 84 by qaplop).
+  Files: QBdiscordcmds.py, QapBot.py, qapbot/QBdiscocmdshelper.py, qapbot/ui_registration.py,
+  qapbot/cache_manager.py, qapbot/translations/*.json, QBcore.py, README.md, docs
+  (+ tests/discord/test_registration_command.py, two unlink tests' fake user gets an id).
+  3510 tests pass.
+
 2026-09-24 (6)  Build 84.
 - Added (tracker #0128): /cwl preferences works in the bot DM. The Build 83 test showed Discord
   opens the Activity there, just without a server. The bot now resolves the server from the

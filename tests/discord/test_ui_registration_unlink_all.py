@@ -138,7 +138,8 @@ def _make_view(user_id="111", guild_id=987654321, account_count=60):
 def _make_interaction():
     interaction = MagicMock()
     interaction.guild = None  # skip role-sync branch — covered separately below
-    interaction.user = "TestUser"
+    interaction.user = MagicMock(id=123456789)  # a real user always has an id (get_interaction_guild reads it)
+    interaction.user.__str__.return_value = "TestUser"
     interaction.response = AsyncMock()
     interaction.response.is_done = MagicMock(return_value=False)  # sync in discord.py (Pitfall 45)
     interaction.edit_original_response = AsyncMock()

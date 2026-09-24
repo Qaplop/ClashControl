@@ -1061,6 +1061,7 @@ def _get_help_command_dm_status() -> Dict[str, bool]:
         "whois": whois_slash.guild_only,
         "link clan": link_clan.guild_only,
         "link player": link_player.guild_only,
+        "registration": registration.guild_only,
         "ping": ping.guild_only,
         "status": status.guild_only,
         "help": help.guild_only,
@@ -1080,7 +1081,7 @@ def _get_help_command_names() -> List[str]:
     names = [
         "subscribe", "unsubscribe", "subscriptions", "leaderboard", "highlightme", "analyse cwl_league_group",
         "analyse cwl_opponent", "clan management", "cwl preferences", "admin", "list", "whois", "link clan", "link player",
-        "ping", "status", "help"
+        "registration", "ping", "status", "help"
     ]
     if CONFIG.tracker_enabled:
         names += ["bug", "feature"]
@@ -1197,7 +1198,7 @@ async def help(interaction: discord.Interaction, command: Optional[str] = None):
     # Organize commands by category (reorganized per user request)
     categories = {
         t('commands.help.category_leaderboards', user_id=user_id, guild_id=guild_id): ["subscribe", "unsubscribe", "subscriptions", "leaderboard", "highlightme"],
-        t('commands.help.category_clan_player_info', user_id=user_id, guild_id=guild_id): ["analyse cwl_league_group", "analyse cwl_opponent", "whois", "link clan", "link player", "cwl preferences"],
+        t('commands.help.category_clan_player_info', user_id=user_id, guild_id=guild_id): ["registration", "analyse cwl_league_group", "analyse cwl_opponent", "whois", "link clan", "link player", "cwl preferences"],
         t('commands.help.category_administration', user_id=user_id, guild_id=guild_id): ["clan management", "admin", "list"],
         t('commands.help.category_bot_info', user_id=user_id, guild_id=guild_id): ["ping", "status", "help"],
     }
@@ -3490,6 +3491,68 @@ async def cwl_preferences(interaction: discord.Interaction) -> None:
             )
         except discord.HTTPException:
             pass
+
+    await _prompt_dm_guild_picker(interaction, guild_ids, on_pick=_on_pick)
+
+
+@app_commands.command(name="registration", description=dev_mode+"Open the registration hub to link and manage your Clash of Clans accounts.")
+@app_commands.checks.cooldown(1, 5.0, key=lambda i: i.user.id)
+async def registration(interaction: discord.Interaction) -> None:
+    """Tracker #0129 (plans/implemented/tracker-0129-registration-command.md): opens the
+    registration hub message (RegistrationView: Link Account / War Notifications / API
+    Verification / My Accounts) on demand.
+
+    In a server: ephemeral, so users can't fill channels with their own hub messages.
+    In the bot DM: a normal DM message for a server the user shares with the bot (and that has
+    clans) — directly for one, via the DM server picker for several. The pick is recorded in
+    CACHE.pending_registration_dm_guild, which lets the registration flow search that server's
+    clans and assign its roles from the DM (get_interaction_guild()). Deliberately not based on
+    linked accounts like other DM commands: a new user has none yet.
+    """
+    from qapbot.QBdiscocmdshelper import (
+        _prompt_dm_guild_picker,  # pyright: ignore[reportPrivateUsage]
+        get_dm_registration_guild_ids,
+        get_playerregistration_message,
+    )
+    from qapbot.ui_registration import RegistrationView
+
+    _log_cmd(interaction, "registration")
+    user_id = str(interaction.user.id)
+
+    if interaction.guild is not None:
+        guild_id = interaction.guild.id
+        await interaction.response.send_message(
+            get_playerregistration_message(interaction.guild.name, guild_id=guild_id),
+            view=RegistrationView(guild_id),
+            ephemeral=True,
+        )
+        return
+
+    guild_ids = get_dm_registration_guild_ids(interaction.client, interaction.user.id)
+    if not guild_ids:
+        await interaction.response.send_message(
+            t('commands.registration.dm_no_shared_server', user_id=user_id), ephemeral=True
+        )
+        return
+
+    async def _post_hub(guild_id: int, send: Any) -> None:
+        CACHE.pending_registration_dm_guild[user_id] = guild_id
+        guild = interaction.client.get_guild(guild_id)
+        await send(
+            get_playerregistration_message(guild.name if guild else str(guild_id), guild_id=guild_id),
+            view=RegistrationView(guild_id),
+        )
+
+    if len(guild_ids) == 1:
+        await _post_hub(guild_ids[0], interaction.response.send_message)
+        return
+
+    async def _on_pick(pick_interaction: discord.Interaction, guild_id: int) -> None:
+        await pick_interaction.response.edit_message(
+            content=t('commands.dm.guild_picker_selected', user_id=user_id), view=None
+        )
+        # A normal (non-ephemeral) DM message, so the hub stays in the chat like the server one.
+        await _post_hub(guild_id, interaction.followup.send)
 
     await _prompt_dm_guild_picker(interaction, guild_ids, on_pick=_on_pick)
 

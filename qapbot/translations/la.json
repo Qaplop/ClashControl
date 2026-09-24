@@ -14,6 +14,7 @@
   },
   "playerregistration": {
     "welcome_title": "Salve in {server_name}",
+    "dm_rerun_registration": "⚠️ Iam cognoscere non possum ad quem servitorem hoc nuntium inscriptionis pertineat. Quaeso `/registration` iterum age.",
     "invalid_player_tag_format": "❌ Hoc titulus lusoris validus non videtur. Titulus talis est: `#2PP0JCCL`.",
     "welcome_body": "Hic rationes tuas lusoris Clash of Clans cum hoc servitore Discord iungere potes, ut ordines proprios gentis et nuntiationes belli accipias.\n\nPremito bullam \"Iungere Rationem\" infra ut incipias.",
     "button_link_account": "🔗 Iungere Rationes",
@@ -289,6 +290,11 @@
         "title": "🔗 Mandatum Link Clan",
         "detailed": "Publica nexum Clash of Clans qui profilum gentis directe intra ludum aperit.\n\n**Usus:**\n`/link clan clan:<nota vel nomen>` — elige gentem ex indice, vel scribe notam (e.g. `#ABC123`) vel partem nominis gentis\n\n**Exitus:**\n`Nomen Gentis: https://link.clashofclans.com/...` in canali publicatur\n\n**Exempla:**\n`/link clan clan:#L2J0C0PY`\n`/link clan clan:QCrew`"
       },
+      "registration": {
+        "short": "Centrum inscriptionis aperi ut rationes tuas coniungas et administres",
+        "title": "📝 Mandatum inscriptionis",
+        "detailed": "Centrum inscriptionis aperit cum eisdem bullis ac nuntium inscriptionis servitoris: rationem Clash of Clans coniunge, nuntii belli, verificatio API et rationes tuae coniunctae.\n\n**Usus:**\n`/registration`\n\n**Notae:**\n• In canali servitoris solus tu centrum vides, ne canales nuntiis inscriptionis impleantur\n• In nuntio privato cum bot ut nuntium commune mittitur; si plures servitores cum bot communes habes, primum servitorem eligis pro quo te inscribis\n• Coniunctio ex nuntio privato tibi munera illius servitoris dat, sicut nuntium inscriptionis servitoris"
+      },
       "link player": {
         "short": "Publica nexum intra ludum ad profilum lusoris",
         "title": "🔗 Mandatum Link Player",
@@ -397,7 +403,10 @@
       "unexpected_error": "💥 **Error inexspectatus accidit!**\nHoc ad investigandum notatum est. Quaeso rursus conare vel sustentationem roga si res perseverat.",
       "unexpected_error_fallback": "Error inexspectatus in hoc mandato agendo accidit.",
       "debug_continued": "**...continuatum ({current}/{total})**",
-      "dm_not_linked": "❌ Nullam rationem Clash of Clans iunctam habes, ergo scire non possum ad quem servitorem hoc mandatum applicari debeat. Rationem primum iunge, vel hoc mandatum intra servitorem age."
+      "dm_not_linked": "❌ Nullas rationes Clash of Clans coniunctas habes, itaque scire non possum ad quem servitorem hoc mandatum pertineat. Primum rationem per `/registration` coniunge, aut hoc mandatum intra servitorem age."
+    },
+    "registration": {
+      "dm_no_shared_server": "❌ Nullum servitorem communem inveni in quo gentes ad inscriptionem paratae sint. Primum servitori Discord gentis tuae adiunge, deinde `/registration` iterum age."
     },
     "dm": {
       "fallback_reply": "👋 Nuntia textus liberi non intellego — `/help` conare ut videas quid facere possim, vel mandato barrae hic in hoc nuntio privato directe utere.",

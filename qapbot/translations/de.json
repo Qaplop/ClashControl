@@ -14,6 +14,7 @@
   },
   "playerregistration": {
     "welcome_title": "Willkommen bei {server_name}",
+    "dm_rerun_registration": "⚠️ Ich kann nicht mehr erkennen, zu welchem Server diese Registrierungsnachricht gehört. Bitte führe `/registration` erneut aus.",
     "invalid_player_tag_format": "❌ Das sieht nicht nach einem gültigen Spieler-Tag aus. Ein Tag sieht so aus: `#2PP0JCCL`.",
     "welcome_body": "Hier kannst du deine Clash of Clans Spielerkonten mit diesem Discord-Server registrieren, um Zugang zu clan-spezifischen Rollen und Erinnerungen für CK/CWL Angriffe zu erhalten.\n\nKlicke auf den Button \"Konten verknüpfen\" unten, um den Vorgang zu starten.",
     "button_link_account": "🔗 Konten verknüpfen",
@@ -289,6 +290,11 @@
         "title": "🔗 Link-Clan-Befehl",
         "detailed": "Postet einen Clash-of-Clans-Link, der das Profil eines Clans direkt im Spiel öffnet.\n\n**Verwendung:**\n`/link clan clan:<Tag oder Name>` — Clan aus der Liste wählen, oder einen Tag (z.B. `#ABC123`) bzw. einen Teil des Clan-Namens eingeben\n\n**Ausgabe:**\n`Clan-Name: https://link.clashofclans.com/...` wird im Kanal gepostet\n\n**Beispiele:**\n`/link clan clan:#L2J0C0PY`\n`/link clan clan:QCrew`"
       },
+      "registration": {
+        "short": "Registrierungs-Hub öffnen, um deine Accounts zu verknüpfen und zu verwalten",
+        "title": "📝 Registrierungs-Befehl",
+        "detailed": "Öffnet den Registrierungs-Hub mit denselben Buttons wie die Registrierungsnachricht des Servers: Clash-of-Clans-Account verknüpfen, Kriegsbenachrichtigungen, API-Verifizierung und deine verknüpften Accounts.\n\n**Verwendung:**\n`/registration`\n\n**Hinweise:**\n• In einem Server-Kanal siehst nur du den Hub, damit sich die Kanäle nicht mit Registrierungsnachrichten füllen\n• In deiner DM mit dem Bot wird er als normale Nachricht gepostet; teilst du mehrere Server mit dem Bot, wählst du zuerst den Server aus, für den du dich registrierst\n• Eine Verknüpfung aus der DM gibt dir die Rollen dieses Servers, genau wie die Registrierungsnachricht des Servers"
+      },
       "link player": {
         "short": "Spiel-Link zum Profil eines Spielers posten",
         "title": "🔗 Link-Spieler-Befehl",
@@ -397,7 +403,10 @@
       "unexpected_error": "💥 **Ein unerwarteter Fehler ist aufgetreten!**\nDies wurde protokolliert. Bitte versuche es erneut oder kontaktiere den Support, wenn das Problem weiterhin besteht.",
       "unexpected_error_fallback": "Ein unerwarteter Fehler ist aufgetreten, während dieser Befehl ausgeführt wurde.",
       "debug_continued": "**...Fortsetzung ({current}/{total})**",
-      "dm_not_linked": "❌ Du hast keine verknüpften Clash of Clans-Accounts, daher kann ich nicht erkennen, auf welchen Server sich dieser Befehl beziehen soll. Verknüpfe zuerst einen Account oder nutze diesen Befehl direkt auf dem Server."
+      "dm_not_linked": "❌ Du hast keine verknüpften Clash-of-Clans-Accounts, daher kann ich nicht erkennen, für welchen Server dieser Befehl gelten soll. Verknüpfe zuerst einen Account mit `/registration` oder führe den Befehl auf dem Server aus."
+    },
+    "registration": {
+      "dm_no_shared_server": "❌ Ich habe keinen gemeinsamen Server gefunden, auf dem Clans für die Registrierung eingerichtet sind. Tritt zuerst dem Discord-Server deines Clans bei und führe dann `/registration` erneut aus."
     },
     "dm": {
       "fallback_reply": "👋 Ich verstehe keine Freitext-Nachrichten — probiere `/help`, um zu sehen, was ich kann, oder nutze direkt hier in der DM einen Slash-Befehl.",

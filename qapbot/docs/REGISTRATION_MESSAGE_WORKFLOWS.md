@@ -8,6 +8,32 @@ This document provides comprehensive flowcharts for all registration message but
 3. [API Verification Workflow](#api-verification-workflow)
 4. [My Accounts Workflow](#my-accounts-workflow)
 5. [Key Decision Points](#key-decision-points)
+6. [/registration: the hub on demand](#registration-the-hub-on-demand-2026-09-24-tracker-0129)
+
+---
+
+## /registration: the hub on demand (2026-09-24, tracker #0129)
+
+`/registration` (`QBdiscordcmds.registration`) sends the same text and `RegistrationView` as the
+anchored registration message, so every workflow below applies unchanged.
+
+- **In a server channel:** sent **ephemeral**, so users can't fill channels with their own hub
+  messages. Buttons behave exactly like on the anchored message.
+- **In the bot DM:** a normal DM message for a server the user shares with the bot and that has
+  clans (`get_dm_registration_guild_ids()`): directly for one, via the DM server picker
+  (`_prompt_dm_guild_picker(on_pick=...)`) for several. Not based on linked accounts, unlike
+  other DM commands, because a new user has none.
+- **The DM server:** recorded in `CACHE.pending_registration_dm_guild` (in-memory).
+  `RegistrationView._resolve_guild_id()` uses it for the clan search, and
+  `get_interaction_guild()` returns that server's `Guild` wherever the flow assigns roles
+  (`complete_account_linking_flow()`, the verify paths in `ui_registration.py` via
+  `_role_guild()`). A link made in the DM therefore gets the same roles as one made in the
+  server. Inside a server both helpers just return `interaction.guild`.
+- **After a restart:** the dict is empty. A DM click re-resolves when the user shares exactly one
+  such server; otherwise Link answers "run `/registration` again"
+  (`playerregistration.dm_rerun_registration`).
+- The DM "no linked accounts" reply (`commands.errors.dm_not_linked`, e.g. from
+  `/cwl preferences`) points to `/registration`.
 
 ---
 

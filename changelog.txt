@@ -1,6 +1,14 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-24 (1)
+- Fixed (tracker #0124): in the Activity's CWL preferences, only the Bench button showed its
+  status icon. "I'm in" and "I'm out" now show theirs too (green check / red X, the same icons
+  as the status column), built by one shared helper so they can't drift apart again. The
+  Discord invite buttons already had all three emojis. Client typecheck + build clean; no
+  Python change, no build bump.
+  Files: activity/client/src/playerPrefs.ts, activity/client/index.html.
+
 2026-09-23 (17)
 - Security: Activity dependencies updated to clear all `npm audit` findings. Server: hono
   4.13.8 (moderate advisory, runs in the live Worker) and wrangler 4.137.0. Client: wrangler

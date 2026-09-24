@@ -471,9 +471,20 @@ function buildSeasonRow(
     // a row to confirm/decline against.
     const notInvited = currentStatus === null
 
-    const imInButton = document.createElement('button')
-    imInButton.textContent = t('button_im_in')
-    imInButton.className = 'status-action-button'
+    // Tracker #0124: every status button carries its status's icon (the same one the status
+    // cell shows), not just Bench — one shared builder so they can't drift apart again.
+    const makeStatusActionButton = (iconUrl: string, label: string): HTMLButtonElement => {
+      const button = document.createElement('button')
+      const buttonIcon = document.createElement('img')
+      buttonIcon.className = 'status-action-icon'
+      buttonIcon.src = iconUrl
+      buttonIcon.alt = ''
+      button.append(buttonIcon, label)
+      button.className = 'status-action-button'
+      return button
+    }
+
+    const imInButton = makeStatusActionButton(STATUS_ICON.confirmed, t('button_im_in'))
     // auto_confirmed is left CLICKABLE, unlike a real 'confirmed' (tracker #0051, live bug
     // report): it was seeded automatically by a standing opt-in preference, not a genuine click,
     // so the member can still turn it into a real confirmation — which the tooltip below explains
@@ -489,9 +500,7 @@ function buildSeasonRow(
       imInButton.title = t('confirm_tooltip_default')
     }
 
-    const imOutButton = document.createElement('button')
-    imOutButton.textContent = t('button_im_out')
-    imOutButton.className = 'status-action-button'
+    const imOutButton = makeStatusActionButton(STATUS_ICON.declined, t('button_im_out'))
     imOutButton.disabled = notInvited || currentStatus === 'declined'
     if (notInvited) {
       imOutButton.title = t('status_action_tooltip_not_invited')
@@ -532,15 +541,9 @@ function buildSeasonRow(
     // auto_passive stays clickable, like auto_confirmed: a standing preference seeded it, and a
     // deliberate click turns it into a real answer.
     if (benchEnabled) {
-      const benchButton = document.createElement('button')
       // Tracker #0117: the blue bench icon, same as the status cell and the board — the label
       // itself no longer carries the 🪑 emoji.
-      const benchButtonIcon = document.createElement('img')
-      benchButtonIcon.className = 'bench-icon'
-      benchButtonIcon.src = STATUS_ICON.passive
-      benchButtonIcon.alt = ''
-      benchButton.append(benchButtonIcon, t('button_bench'))
-      benchButton.className = 'status-action-button'
+      const benchButton = makeStatusActionButton(STATUS_ICON.passive, t('button_bench'))
       benchButton.disabled = notInvited || currentStatus === 'passive'
       if (notInvited) {
         benchButton.title = t('status_action_tooltip_not_invited')

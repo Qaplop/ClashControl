@@ -3517,9 +3517,10 @@ async def registration(interaction: discord.Interaction) -> None:
     registration hub message (RegistrationView: Link Account / War Notifications / API
     Verification / My Accounts) on demand.
 
-    In a server: ephemeral, so users can't fill channels with their own hub messages.
-    In the bot DM: a normal DM message for a server the user shares with the bot (and that has
-    clans) — directly for one, via the DM server picker for several. The pick is recorded in
+    Always ephemeral (qaplop, 2026-09-24): in a server so users can't fill channels with their
+    own hub messages, and in the bot DM too. In the DM the hub is for a server the user shares
+    with the bot (and that has clans) — directly for one; for several, the DM server picker's
+    own message turns into the hub once a server is picked. The pick is recorded in
     CACHE.pending_registration_dm_guild, which lets the registration flow search that server's
     clans and assign its roles from the DM (get_interaction_guild()). Deliberately not based on
     linked accounts like other DM commands: a new user has none yet.
@@ -3550,24 +3551,21 @@ async def registration(interaction: discord.Interaction) -> None:
         )
         return
 
-    async def _post_hub(guild_id: int, send: Any) -> None:
+    def _hub_for(guild_id: int) -> Tuple[str, RegistrationView]:
         CACHE.pending_registration_dm_guild[user_id] = guild_id
         guild = interaction.client.get_guild(guild_id)
-        await send(
-            get_playerregistration_message(guild.name if guild else str(guild_id), guild_id=guild_id),
-            view=RegistrationView(guild_id),
-        )
+        text = get_playerregistration_message(guild.name if guild else str(guild_id), guild_id=guild_id)
+        return text, RegistrationView(guild_id)
 
     if len(guild_ids) == 1:
-        await _post_hub(guild_ids[0], interaction.response.send_message)
+        text, view = _hub_for(guild_ids[0])
+        await interaction.response.send_message(text, view=view, ephemeral=True)
         return
 
     async def _on_pick(pick_interaction: discord.Interaction, guild_id: int) -> None:
-        await pick_interaction.response.edit_message(
-            content=t('commands.dm.guild_picker_selected', user_id=user_id), view=None
-        )
-        # A normal (non-ephemeral) DM message, so the hub stays in the chat like the server one.
-        await _post_hub(guild_id, interaction.followup.send)
+        # The (ephemeral) picker message itself becomes the hub — one message, not two.
+        text, view = _hub_for(guild_id)
+        await pick_interaction.response.edit_message(content=text, view=view)
 
     await _prompt_dm_guild_picker(interaction, guild_ids, on_pick=_on_pick)
 

@@ -294,7 +294,7 @@
       "registration": {
         "short": "Rationes lusoris CoC tuas coniunge et administra",
         "title": "📝 Mandatum inscriptionis",
-        "detailed": "Centrum inscriptionis aperit cum eisdem bullis ac nuntium inscriptionis servitoris: rationem Clash of Clans coniunge, nuntii belli, verificatio API et rationes tuae coniunctae.\n\n**Usus:**\n`/registration`\n\n**Notae:**\n• In canali servitoris solus tu centrum vides, ne canales nuntiis inscriptionis impleantur\n• In nuntio privato cum bot ut nuntium commune mittitur; si plures servitores cum bot communes habes, primum servitorem eligis pro quo te inscribis\n• Coniunctio ex nuntio privato tibi munera illius servitoris dat, sicut nuntium inscriptionis servitoris"
+        "detailed": "Centrum inscriptionis aperit cum eisdem bullis ac nuntium inscriptionis servitoris: rationem Clash of Clans coniunge, nuntii belli, verificatio API et rationes tuae coniunctae.\n\n**Usus:**\n`/registration`\n\n**Notae:**\n• Solus tu centrum vides, tam in canali servitoris quam in nuntio privato cum bot, ne canales nuntiis inscriptionis impleantur\n• In nuntio privato, si plures servitores cum bot communes habes, primum servitorem eligis pro quo te inscribis\n• Coniunctio ex nuntio privato tibi munera illius servitoris dat, sicut nuntium inscriptionis servitoris"
       },
       "link player": {
         "short": "Publica nexum intra ludum ad profilum lusoris",

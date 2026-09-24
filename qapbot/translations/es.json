@@ -294,7 +294,7 @@
       "registration": {
         "short": "Vincula y gestiona tus cuentas de jugador de CoC",
         "title": "📝 Comando de registro",
-        "detailed": "Abre el centro de registro con los mismos botones que el mensaje de registro del servidor: vincular una cuenta de Clash of Clans, notificaciones de guerra, verificación por API y tus cuentas vinculadas.\n\n**Uso:**\n`/registration`\n\n**Notas:**\n• En un canal del servidor solo tú ves el centro, para que los canales no se llenen de mensajes de registro\n• En tu MD con el bot se publica como un mensaje normal; si compartes varios servidores con el bot, primero eliges el servidor para el que te registras\n• Vincular desde el MD te da los roles de ese servidor, igual que el mensaje de registro del servidor"
+        "detailed": "Abre el centro de registro con los mismos botones que el mensaje de registro del servidor: vincular una cuenta de Clash of Clans, notificaciones de guerra, verificación por API y tus cuentas vinculadas.\n\n**Uso:**\n`/registration`\n\n**Notas:**\n• Solo tú ves el centro, tanto en un canal del servidor como en tu MD con el bot, para que los canales no se llenen de mensajes de registro\n• En el MD, si compartes varios servidores con el bot, primero eliges el servidor para el que te registras\n• Vincular desde el MD te da los roles de ese servidor, igual que el mensaje de registro del servidor"
       },
       "link player": {
         "short": "Publicar un enlace en el juego al perfil de un jugador",

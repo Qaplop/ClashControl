@@ -19,10 +19,11 @@ anchored registration message, so every workflow below applies unchanged.
 
 - **In a server channel:** sent **ephemeral**, so users can't fill channels with their own hub
   messages. Buttons behave exactly like on the anchored message.
-- **In the bot DM:** a normal DM message for a server the user shares with the bot and that has
-  clans (`get_dm_registration_guild_ids()`): directly for one, via the DM server picker
-  (`_prompt_dm_guild_picker(on_pick=...)`) for several. Not based on linked accounts, unlike
-  other DM commands, because a new user has none.
+- **In the bot DM:** also ephemeral (qaplop, 2026-09-24), for a server the user shares with the
+  bot and that has clans (`get_dm_registration_guild_ids()`): directly for one; for several the
+  DM server picker (`_prompt_dm_guild_picker(on_pick=...)`) comes first and its message turns
+  into the hub. Not based on linked accounts, unlike other DM commands, because a new user has
+  none.
 - **The DM server:** recorded in `CACHE.pending_registration_dm_guild` (in-memory).
   `RegistrationView._resolve_guild_id()` uses it for the clan search, and
   `get_interaction_guild()` returns that server's `Guild` wherever the flow assigns roles

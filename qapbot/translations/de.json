@@ -294,7 +294,7 @@
       "registration": {
         "short": "Verknüpfen und verwalten deiner CoC Spieler-Accounts",
         "title": "📝 Registrierungs-Befehl",
-        "detailed": "Öffnet den Registrierungs-Hub mit denselben Buttons wie die Registrierungsnachricht des Servers: Clash-of-Clans-Account verknüpfen, Kriegsbenachrichtigungen, API-Verifizierung und deine verknüpften Accounts.\n\n**Verwendung:**\n`/registration`\n\n**Hinweise:**\n• In einem Server-Kanal siehst nur du den Hub, damit sich die Kanäle nicht mit Registrierungsnachrichten füllen\n• In deiner DM mit dem Bot wird er als normale Nachricht gepostet; teilst du mehrere Server mit dem Bot, wählst du zuerst den Server aus, für den du dich registrierst\n• Eine Verknüpfung aus der DM gibt dir die Rollen dieses Servers, genau wie die Registrierungsnachricht des Servers"
+        "detailed": "Öffnet den Registrierungs-Hub mit denselben Buttons wie die Registrierungsnachricht des Servers: Clash-of-Clans-Account verknüpfen, Kriegsbenachrichtigungen, API-Verifizierung und deine verknüpften Accounts.\n\n**Verwendung:**\n`/registration`\n\n**Hinweise:**\n• Nur du siehst den Hub, im Server-Kanal wie auch in deiner DM mit dem Bot, damit sich die Kanäle nicht mit Registrierungsnachrichten füllen\n• Teilst du in der DM mehrere Server mit dem Bot, wählst du zuerst den Server aus, für den du dich registrierst\n• Eine Verknüpfung aus der DM gibt dir die Rollen dieses Servers, genau wie die Registrierungsnachricht des Servers"
       },
       "link player": {
         "short": "Spiel-Link zum Profil eines Spielers posten",

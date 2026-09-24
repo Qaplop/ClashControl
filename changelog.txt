@@ -1,6 +1,14 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-24 (13)  Build 88.
+- Changed (tracker #0129, qaplop): /registration is ephemeral in the bot DM too, not only in a
+  server channel. With several shared servers the DM server picker's own message now turns into
+  the hub (one message instead of "Got it" + a separate post). /help detail text (5 languages),
+  README and REGISTRATION_MESSAGE_WORKFLOWS.md updated.
+  Files: QBdiscordcmds.py, qapbot/translations/*.json, QBcore.py, README.md, docs
+  (+ tests/discord/test_registration_command.py). 3512 tests pass.
+
 2026-09-24 (12)  Build 87.
 - Changed: /help has a new top-most block "👤 Basic Player Configuration" (de: "Grundlegende
   Spieler-Konfiguration", all 5 languages, key commands.help.category_player_setup) holding

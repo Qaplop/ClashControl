@@ -294,7 +294,7 @@
       "registration": {
         "short": "Link and manage your CoC player accounts",
         "title": "📝 Registration Command",
-        "detailed": "Opens the registration hub with the same buttons as the server's registration message: link a Clash of Clans account, war notifications, API verification and your linked accounts.\n\n**Usage:**\n`/registration`\n\n**Notes:**\n• In a server channel only you can see the hub, so channels don't fill up with registration messages\n• In your DM with the bot it's posted as a normal message; if you share several servers with the bot, you first pick the server you're registering for\n• Linking from the DM gives you that server's roles, just like the server's registration message"
+        "detailed": "Opens the registration hub with the same buttons as the server's registration message: link a Clash of Clans account, war notifications, API verification and your linked accounts.\n\n**Usage:**\n`/registration`\n\n**Notes:**\n• Only you can see the hub, in a server channel as well as in your DM with the bot, so channels don't fill up with registration messages\n• In the DM, if you share several servers with the bot, you first pick the server you're registering for\n• Linking from the DM gives you that server's roles, just like the server's registration message"
       },
       "link player": {
         "short": "Post an in-game link to a player's profile",

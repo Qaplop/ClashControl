@@ -1,7 +1,7 @@
 """Tracker #0129 — /registration and the DM server it resolves to.
 
-- QBdiscordcmds.registration: ephemeral hub in a server; a normal DM message for a shared
-  server in the bot DM (directly for one, via the DM server picker for several).
+- QBdiscordcmds.registration: always an ephemeral hub; in the bot DM for a shared server
+  (directly for one; for several the DM server picker's message turns into the hub).
 - QBdiscocmdshelper.get_dm_registration_guild_ids(): shared servers that have clans.
 - QBdiscocmdshelper.get_interaction_guild(): interaction.guild, or the recorded DM server.
 - RegistrationView._resolve_guild_id() + link_account_button in the DM.
@@ -70,7 +70,7 @@ async def test_registration_in_dm_without_shared_server_explains(mock_interactio
 
 @pytest.mark.discord
 @pytest.mark.asyncio
-async def test_registration_in_dm_with_one_server_posts_normal_message(mock_interaction, monkeypatch, pending):
+async def test_registration_in_dm_with_one_server_sends_ephemeral_hub(mock_interaction, monkeypatch, pending):
     import QBdiscordcmds
     import qapbot.QBdiscocmdshelper as helper
     from qapbot.ui_registration import RegistrationView
@@ -84,14 +84,14 @@ async def test_registration_in_dm_with_one_server_posts_normal_message(mock_inte
 
     args, kwargs = mock_interaction.response.send_message.await_args
     assert "Home Base" in args[0]  # the hub greets with the chosen server's name
-    assert kwargs.get("ephemeral") is not True  # stays in the DM like the server hub
+    assert kwargs.get("ephemeral") is True  # ephemeral in the DM too (qaplop, 2026-09-24)
     assert isinstance(kwargs["view"], RegistrationView) and kwargs["view"].guild_id == 777
     assert pending == {"555": 777}
 
 
 @pytest.mark.discord
 @pytest.mark.asyncio
-async def test_registration_in_dm_with_several_servers_posts_after_pick(mock_interaction, monkeypatch, pending):
+async def test_registration_in_dm_with_several_servers_turns_picker_into_hub(mock_interaction, monkeypatch, pending):
     import QBdiscordcmds
     import qapbot.QBdiscocmdshelper as helper
     from qapbot.ui_registration import RegistrationView
@@ -117,11 +117,12 @@ async def test_registration_in_dm_with_several_servers_posts_after_pick(mock_int
     pick_interaction = AsyncMock()
     await captured["on_pick"](pick_interaction, 222)
 
-    pick_interaction.response.edit_message.assert_awaited_once()  # picker closes
-    args, kwargs = mock_interaction.followup.send.await_args
-    assert "Second" in args[0]
-    assert kwargs.get("ephemeral") is not True
+    # The ephemeral picker message itself becomes the hub — no second message.
+    pick_interaction.response.edit_message.assert_awaited_once()
+    kwargs = pick_interaction.response.edit_message.await_args.kwargs
+    assert "Second" in kwargs["content"]
     assert isinstance(kwargs["view"], RegistrationView) and kwargs["view"].guild_id == 222
+    mock_interaction.followup.send.assert_not_awaited()
     assert pending == {"555": 222}
 
 

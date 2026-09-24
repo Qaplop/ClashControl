@@ -220,6 +220,7 @@
       "server_only_detail_note": "{marker} Dieser Befehl funktioniert nur auf einem Server, nicht hier in der DM.",
       "command_not_found_title": "Befehl nicht gefunden",
       "command_not_found_desc": "Keine detaillierte Hilfe verfügbar für `/{command}`. Verwende `/help` ohne Parameter, um alle Befehle anzuzeigen.",
+      "category_player_setup": "👤 Grundlegende Spieler-Konfiguration",
       "category_leaderboards": "📊 Ranglisten & Abos",
       "category_clan_player_info": "🔎 Clan / Spieler-Info & Analyse",
       "category_administration": "⚙️ Bot Einrichtung & Administration",

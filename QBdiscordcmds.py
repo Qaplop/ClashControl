@@ -1079,9 +1079,10 @@ def _get_help_command_names() -> List[str]:
     """Every command /help knows about, in listing order — shared by help() and its
     autocomplete so the two can't disagree. bug/feature only exist where the tracker is on."""
     names = [
+        "registration", "cwl preferences",
         "subscribe", "unsubscribe", "subscriptions", "leaderboard", "highlightme", "analyse cwl_league_group",
-        "analyse cwl_opponent", "clan management", "cwl preferences", "admin", "list", "whois", "link clan", "link player",
-        "registration", "ping", "status", "help"
+        "analyse cwl_opponent", "clan management", "admin", "list", "whois", "link clan", "link player",
+        "ping", "status", "help"
     ]
     if CONFIG.tracker_enabled:
         names += ["bug", "feature"]
@@ -1197,8 +1198,10 @@ async def help(interaction: discord.Interaction, command: Optional[str] = None):
 
     # Organize commands by category (reorganized per user request)
     categories = {
+        # Top-most (2026-09-24, qaplop): what every player sets up first — before any other block.
+        t('commands.help.category_player_setup', user_id=user_id, guild_id=guild_id): ["registration", "cwl preferences"],
         t('commands.help.category_leaderboards', user_id=user_id, guild_id=guild_id): ["subscribe", "unsubscribe", "subscriptions", "leaderboard", "highlightme"],
-        t('commands.help.category_clan_player_info', user_id=user_id, guild_id=guild_id): ["registration", "analyse cwl_league_group", "analyse cwl_opponent", "whois", "link clan", "link player", "cwl preferences"],
+        t('commands.help.category_clan_player_info', user_id=user_id, guild_id=guild_id): ["analyse cwl_league_group", "analyse cwl_opponent", "whois", "link clan", "link player"],
         t('commands.help.category_administration', user_id=user_id, guild_id=guild_id): ["clan management", "admin", "list"],
         t('commands.help.category_bot_info', user_id=user_id, guild_id=guild_id): ["ping", "status", "help"],
     }

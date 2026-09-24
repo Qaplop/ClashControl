@@ -220,6 +220,7 @@
       "server_only_detail_note": "{marker} 此命令仅在服务器内可用，无法在此私信中使用。",
       "command_not_found_title": "未找到命令",
       "command_not_found_desc": "没有关于 `/{command}` 的详细帮助。不带参数使用 `/help` 可查看所有命令。",
+      "category_player_setup": "👤 玩家基础配置",
       "category_leaderboards": "📊 排行榜与订阅",
       "category_clan_player_info": "🔎 部落/玩家信息与分析",
       "category_administration": "⚙️ 机器人设置与管理",

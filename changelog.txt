@@ -1,6 +1,14 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-24 (12)  Build 87.
+- Changed: /help has a new top-most block "👤 Basic Player Configuration" (de: "Grundlegende
+  Spieler-Konfiguration", all 5 languages, key commands.help.category_player_setup) holding
+  /registration and /cwl preferences, which leave the Clan / Player Info block. The
+  /help command: autocomplete lists them first too.
+  Files: QBdiscordcmds.py, qapbot/translations/*.json, QBcore.py
+  (+ tests/discord/test_dm_command_invocation.py). 3512 tests pass.
+
 2026-09-24 (11)
 - Changed: /help short text for /cwl preferences is now "Lege deine persönlichen CWL- /
   Liga-Präferenzen fest" (qaplop's wording), reworded the same way in all 5 languages (en: "Set

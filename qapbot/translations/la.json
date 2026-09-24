@@ -220,6 +220,7 @@
       "server_only_detail_note": "{marker} Hoc mandatum tantum intra servitorem functionat, non in hoc nuntio privato.",
       "command_not_found_title": "Mandatum Non Inventum",
       "command_not_found_desc": "Nullum auxilium detaliatum pro `/{command}` praesto est. Utere `/help` sine parametris ut omnia mandata videas.",
+      "category_player_setup": "👤 Configuratio fundamentalis lusoris",
       "category_leaderboards": "📊 Tabulae Principum et Subscriptiones",
       "category_clan_player_info": "🔎 Informatio et Analysis Gentis/Lusoris",
       "category_administration": "⚙️ Institutio et Administratio Automati",

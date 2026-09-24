@@ -793,3 +793,23 @@ async def test_clan_management_in_dm_answers_server_only(mock_interaction):
     args, kwargs = mock_interaction.response.send_message.await_args
     assert QBdiscordcmds.HELP_SERVER_ONLY_MARKER in args[0]
     assert kwargs.get("ephemeral") is True
+
+
+@pytest.mark.discord
+@pytest.mark.asyncio
+async def test_help_listing_starts_with_player_setup_block(mock_interaction):
+    """2026-09-24 (qaplop): /registration and /cwl preferences get their own top-most block,
+    not the Clan / Player Info block."""
+    from qapbot.i18n import t
+
+    mock_interaction.client = MagicMock()
+    mock_interaction.client.application_id = 0
+
+    await QBdiscordcmds.help.callback(mock_interaction)  # type: ignore[arg-type]
+
+    embed = mock_interaction.followup.send.await_args.kwargs["embed"]
+    named = [f for f in embed.fields if f.name != "​"]
+    assert named[0].name == t("commands.help.category_player_setup", guild_id=mock_interaction.guild_id)
+    assert "/registration" in named[0].value and "/cwl preferences" in named[0].value
+    info = next(f for f in named if f.name == t("commands.help.category_clan_player_info", guild_id=mock_interaction.guild_id))
+    assert "/registration" not in info.value and "/cwl preferences" not in info.value

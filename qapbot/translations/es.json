@@ -220,6 +220,7 @@
       "server_only_detail_note": "{marker} Este comando solo funciona dentro de un servidor, no en este MD.",
       "command_not_found_title": "Comando No Encontrado",
       "command_not_found_desc": "No hay ayuda detallada disponible para `/{command}`. Usa `/help` sin parámetros para ver todos los comandos.",
+      "category_player_setup": "👤 Configuración básica del jugador",
       "category_leaderboards": "📊 Clasificaciones y Suscripciones",
       "category_clan_player_info": "🔎 Información y Análisis de Clan/Jugador",
       "category_administration": "⚙️ Configuración y Administración del Bot",

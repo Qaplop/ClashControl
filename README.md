@@ -186,7 +186,7 @@ action. There is no separate `/clans`, `/list_families`, `/list_players`, `/list
   - **FAMILIES** - All clan families and their member clans
   - **PLAYERS** - All players for a given clan or family (`clan`/`family` parameter)
   - **TRACKED_CLANS** - Chart of tracked clans per war league
-- `/whois` - Pick `lookup` (user or player): a Discord user's linked CoC accounts, or a player's war history (by tag/name
+- `/whois` - Show a Discord user's linked CoC accounts, or a player's war history (by tag/name
   substring); also available as two right-click context-menu entries ("whois" on a user, and on
   a message)
 - `/link clan` / `/link player` - Post an in-game link (`Name: https://link.clashofclans.com/...`)

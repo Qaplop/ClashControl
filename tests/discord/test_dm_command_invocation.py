@@ -838,39 +838,3 @@ async def test_help_listing_mentions_come_from_command_mention(mock_interaction,
     assert "`/ping`" in values  # id unknown -> plain code formatting
     mock_interaction.client.http.get_global_commands.assert_not_awaited()
     mock_interaction.client.http.get_guild_commands.assert_not_awaited()
-
-
-@pytest.mark.discord
-def test_whois_lookup_is_a_required_choice_like_admin():
-    """Tracker #0130: Discord only opens a field by itself for a REQUIRED option, so /whois gets
-    a required `lookup` choice (user/player) — clicking it in /help shows that list, like /admin.
-    user and player stay optional options of the same single command."""
-    params = {p.name: p for p in QBdiscordcmds.whois_slash.parameters}
-    assert params["lookup"].required
-    assert {c.value for c in params["lookup"].choices} == {"user", "player"}
-    assert not params["user"].required and not params["player"].required
-
-
-@pytest.mark.discord
-@pytest.mark.asyncio
-async def test_whois_lookup_without_its_field_explains_what_to_add(mock_interaction):
-    await QBdiscordcmds.whois_slash.callback(mock_interaction, lookup="player", user=None, player=None)  # type: ignore[arg-type]
-
-    args, kwargs = mock_interaction.followup.send.await_args
-    assert "`player`" in args[0]
-    assert kwargs.get("ephemeral") is True
-
-
-@pytest.mark.discord
-@pytest.mark.asyncio
-async def test_whois_lookup_user_wins_when_both_fields_are_filled(mock_interaction, monkeypatch):
-    user_lookup = AsyncMock()
-    player_report = AsyncMock()
-    monkeypatch.setattr(QBdiscordcmds, "_whois_logic", user_lookup)
-    monkeypatch.setattr(QBdiscordcmds, "_player_report_logic", player_report)
-    target = MagicMock()
-
-    await QBdiscordcmds.whois_slash.callback(mock_interaction, lookup="user", user=target, player="#ABC123")  # type: ignore[arg-type]
-
-    user_lookup.assert_awaited_once_with(mock_interaction, target)
-    player_report.assert_not_awaited()

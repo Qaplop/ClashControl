@@ -2077,9 +2077,15 @@ def remember_app_command_ids(synced_commands: Any) -> None:
     ids: Dict[str, str] = {}
     for cmd in synced_commands or []:
         if isinstance(cmd, dict):
-            name, cmd_id = cmd.get("name"), cmd.get("id")
+            name, cmd_id, cmd_type = cmd.get("name"), cmd.get("id"), cmd.get("type", 1)
         else:
-            name, cmd_id = getattr(cmd, "name", None), getattr(cmd, "id", None)
+            name, cmd_id, cmd_type = getattr(cmd, "name", None), getattr(cmd, "id", None), getattr(cmd, "type", 1)
+        # Slash commands (CHAT_INPUT = 1) only. Tracker #0130: "whois" is also the name of two
+        # right-click context-menu commands (types 2 and 3) with their own ids; letting the last
+        # one win made /help link </whois:id> to the MESSAGE context menu, so a click inserted
+        # "/whois " without ever showing its options (a unique name like /leaderboard was fine).
+        if int(getattr(cmd_type, "value", cmd_type)) != 1:
+            continue
         if name and cmd_id:
             ids[str(name)] = str(cmd_id)
     CACHE.app_command_ids = ids

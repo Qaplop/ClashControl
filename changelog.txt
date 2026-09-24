@@ -1,6 +1,18 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-24 (23)  Build 98.
+- Fixed (tracker #0130, root cause): clicking /whois in /help never showed its options while
+  e.g. /leaderboard did. "whois" is the name of three commands on Discord: the slash command
+  (type 1) and the two right-click menus (user = type 2, message = type 3), each with its own
+  id. The name -> id map kept the last one, so /help linked </whois:id> to the MESSAGE context
+  menu; Discord inserted "/whois " but couldn't offer slash-command options for it. The same
+  bug existed in the old per-call /help fetch. remember_app_command_ids() now only maps slash
+  commands (type 1). Verified against the live command list (PROD: whois ids ...664 type 2,
+  ...703 type 1, ...704 type 3). Playbook quick reference updated.
+  Files: qapbot/QBdiscocmdshelper.py, QBcore.py, .github/copilot-instructions.md
+  (+ tests/discord/test_registration_command.py). 3524 tests pass.
+
 2026-09-24 (22)  Build 97.
 - Reverted (21) (qaplop: the required `lookup` choice is confusing): /whois is back to its
   original form, one command with the optional user and player options, exactly as before

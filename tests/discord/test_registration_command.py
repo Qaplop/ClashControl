@@ -267,3 +267,24 @@ async def test_cwl_preferences_dm_not_linked_reply_links_registration(mock_inter
     args, _ = mock_interaction.response.send_message.await_args
     assert "</registration:123>" in args[0]
     assert "inside the server" not in args[0]
+
+
+@pytest.mark.discord
+def test_command_ids_ignore_context_menus_with_the_same_name(monkeypatch):
+    """Tracker #0130: /whois shares its name with two context-menu commands (types 2 and 3).
+    Live order from Discord: user menu, slash command, message menu — the mention must use the
+    slash command's id, or clicking it in /help never shows the options."""
+    import discord
+    from qapbot.cache_manager import CACHE
+    import qapbot.QBdiscocmdshelper as helper
+
+    monkeypatch.setattr(CACHE, "app_command_ids", {})
+    message_menu = MagicMock()
+    message_menu.name, message_menu.id, message_menu.type = "whois", 3, discord.AppCommandType.message
+    helper.remember_app_command_ids([
+        {"name": "whois", "id": "1", "type": 2},
+        {"name": "whois", "id": "2", "type": 1},
+        message_menu,
+    ])
+
+    assert helper.command_mention("whois") == "</whois:2>"

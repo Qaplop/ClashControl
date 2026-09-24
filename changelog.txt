@@ -1,6 +1,16 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-24 (16)  Build 91.
+- Fixed (tracker #0128 follow-up): the Build 90 safeguard's message never arrived in the live
+  test; only Discord's own red refusal showed. Both of its send attempts (ephemeral response,
+  followup) evidently failed after the refused launch and were swallowed silently. Each failure
+  is now logged ([CWL] Launch fallback: ...), and in a DM the explanation finally goes out as a
+  plain DM message (interaction.user.send), which doesn't depend on the dead interaction.
+  Inside a server nothing is DMed.
+  Files: qapbot/ui_cwl_roster.py, QBcore.py (+ tests/discord/test_ui_cwl_roster.py).
+  3520 tests pass.
+
 2026-09-24 (15)  Build 90.
 - Added (tracker #0128 follow-up): safeguard for DM Activity launches while the app isn't
   verified by Discord yet. Such launches only work for the developer team and App Testers;

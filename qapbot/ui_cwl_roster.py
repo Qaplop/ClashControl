@@ -1167,19 +1167,27 @@ async def _launch_cwl_activity(interaction: discord.Interaction, guild_id: int, 
             guild = interaction.client.get_guild(guild_id)
             text = t('cwl.player_hub.dm_activity_unverified', user_id=str(interaction.user.id),
                      guild_id=guild_id, server=guild.name if guild else str(guild_id))
-        # A refused LAUNCH_ACTIVITY may or may not count as the interaction's response on
-        # Discord's side (2026-09-24: only Discord's own red error showed up, not this text),
-        # so fall back to a followup when the initial response slot is no longer usable.
+        # A refused LAUNCH_ACTIVITY can leave the interaction unusable on Discord's side
+        # (2026-09-24, Build 90 live test: Discord showed its own red error and neither an
+        # ephemeral response nor a followup arrived). Try both, log why each failed, and in a DM
+        # finish with a plain DM message — the DM is private anyway, so nothing leaks.
         try:
             if not interaction.response.is_done():
                 await interaction.response.send_message(text, ephemeral=True)
                 return
-        except Exception:
-            pass
+        except Exception as send_error:
+            logging.warning(f"[CWL] Launch fallback: initial response failed: {send_error}")
         try:
             await interaction.followup.send(text, ephemeral=True)
-        except Exception:
-            pass
+            return
+        except Exception as followup_error:
+            logging.warning(f"[CWL] Launch fallback: followup failed: {followup_error}")
+        if interaction.guild is None:
+            try:
+                await interaction.user.send(text)
+                logging.info(f"[CWL] Launch fallback delivered as a DM message to user {interaction.user.id}")
+            except Exception as dm_error:
+                logging.warning(f"[CWL] Launch fallback: DM message failed too: {dm_error}")
 
 
 def _make_cwl_management_open_web_callback(view: discord.ui.View):

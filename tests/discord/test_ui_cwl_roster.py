@@ -3972,6 +3972,7 @@ async def test_launch_cwl_activity_fallback_uses_followup_when_response_slot_is_
     mock_interaction.guild = None
     mock_interaction.response.is_done = MagicMock(return_value=False)
     mock_interaction.response.send_message = AsyncMock(side_effect=Exception("already acknowledged"))
+    mock_interaction.user.send = AsyncMock()
     mock_interaction.client.http.request = AsyncMock(side_effect=_FakeHTTPError(50106))
     mock_interaction.client.get_guild = MagicMock(return_value=None)
 
@@ -3979,6 +3980,47 @@ async def test_launch_cwl_activity_fallback_uses_followup_when_response_slot_is_
 
     mock_interaction.followup.send.assert_awaited_once()
     assert mock_interaction.followup.send.await_args.kwargs.get("ephemeral") is True
+    mock_interaction.user.send.assert_not_awaited()
+
+
+@pytest.mark.discord
+@pytest.mark.asyncio
+async def test_launch_cwl_activity_dm_fallback_ends_with_plain_dm_when_interaction_is_dead(mock_interaction):
+    """Build 90 live test: after Discord's own refusal neither the response nor a followup got
+    through. In a DM the explanation then goes out as a normal DM message."""
+    from qapbot.ui_cwl_roster import _launch_cwl_activity
+
+    mock_interaction.guild = None
+    mock_interaction.response.is_done = MagicMock(return_value=False)
+    mock_interaction.response.send_message = AsyncMock(side_effect=Exception("unknown interaction"))
+    mock_interaction.followup.send = AsyncMock(side_effect=Exception("unknown webhook"))
+    mock_interaction.user.send = AsyncMock()
+    mock_interaction.client.http.request = AsyncMock(side_effect=_FakeHTTPError(50106))
+    guild = MagicMock()
+    guild.name = "The QCrew"
+    mock_interaction.client.get_guild = MagicMock(return_value=guild)
+
+    await _launch_cwl_activity(mock_interaction, 555, "player_prefs")
+
+    mock_interaction.user.send.assert_awaited_once()
+    assert "The QCrew" in mock_interaction.user.send.await_args.args[0]
+
+
+@pytest.mark.discord
+@pytest.mark.asyncio
+async def test_launch_cwl_activity_server_fallback_never_dms(mock_interaction):
+    """Inside a server a dead interaction just logs — no unsolicited DM for a server click."""
+    from qapbot.ui_cwl_roster import _launch_cwl_activity
+
+    mock_interaction.response.is_done = MagicMock(return_value=False)
+    mock_interaction.response.send_message = AsyncMock(side_effect=Exception("unknown interaction"))
+    mock_interaction.followup.send = AsyncMock(side_effect=Exception("unknown webhook"))
+    mock_interaction.user.send = AsyncMock()
+    mock_interaction.client.http.request = AsyncMock(side_effect=Exception("simulated failure"))
+
+    await _launch_cwl_activity(mock_interaction, 555, "player_prefs")
+
+    mock_interaction.user.send.assert_not_awaited()
 
 
 # ---------------------------------------------------------------------------

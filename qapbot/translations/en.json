@@ -404,7 +404,7 @@
       "unexpected_error": "💥 **An unexpected error occurred!**\nThis has been logged for investigation. Please try again or contact support if the issue persists.",
       "unexpected_error_fallback": "An unexpected error occurred while running this command.",
       "debug_continued": "**...continued ({current}/{total})**",
-      "dm_not_linked": "❌ You don't have any linked Clash of Clans accounts, so I can't tell which server this command should apply to. Link an account first with `/registration`, or run this command inside the server."
+      "dm_not_linked": "❌ You don't have any linked Clash of Clans accounts, so I can't tell which server this command should apply to. Link an account first with {registration}."
     },
     "registration": {
       "dm_no_shared_server": "❌ I couldn't find a server we're both in that has clans set up for registration. Join your clan's Discord server first, then run `/registration` again."

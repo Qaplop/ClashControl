@@ -2070,6 +2070,30 @@ def get_dm_caller_matched_guild_ids(discord_id: str) -> List[int]:
     return matched_guild_ids
 
 
+def remember_app_command_ids(synced_commands: Any) -> None:
+    """Store name -> id of every top-level command from the startup command sync, for
+    command_mention(). Accepts both sync result shapes: discord.py AppCommand objects
+    (tree.sync, guild mode) and raw API dicts (bulk_sync_global_commands, global mode)."""
+    ids: Dict[str, str] = {}
+    for cmd in synced_commands or []:
+        if isinstance(cmd, dict):
+            name, cmd_id = cmd.get("name"), cmd.get("id")
+        else:
+            name, cmd_id = getattr(cmd, "name", None), getattr(cmd, "id", None)
+        if name and cmd_id:
+            ids[str(name)] = str(cmd_id)
+    CACHE.app_command_ids = ids
+
+
+def command_mention(name: str) -> str:
+    """A clickable Discord command mention (</registration:123>, </cwl preferences:456>) for use
+    in message text; falls back to plain `/name` code formatting when the id isn't known (the
+    startup sync hasn't run, or the command isn't registered in this environment). A subcommand
+    mention uses its top-level command's id, like /help's listing does."""
+    cmd_id = CACHE.app_command_ids.get(name.split()[0])
+    return f"</{name}:{cmd_id}>" if cmd_id else f"`/{name}`"
+
+
 def get_dm_registration_guild_ids(client: discord.Client, discord_id: int) -> List[int]:
     """
     Tracker #0129: the servers a DM /registration can register for — every server the bot and

@@ -67,7 +67,7 @@ from qapbot.QBdiscocmdshelper import (  # type: ignore[attr-defined]
     check_admin_permissions, get_clan_display_name, get_family_display_name, get_clan_or_family_display_name,
     resolve_clan_or_family_tag, get_user_player, restore_player_from_unassigned,  # type: ignore[attr-defined]
     verify_and_update_player, is_already_subscribed, cleanup_stale_messages_for_channel,  # type: ignore[attr-defined]
-    validate_and_add_clan_to_cache, resolve_guild_context
+    validate_and_add_clan_to_cache, resolve_guild_context, command_mention
 )
 from qapbot.i18n import t  # type: ignore[attr-defined]
 
@@ -1154,44 +1154,16 @@ async def help(interaction: discord.Interaction, command: Optional[str] = None):
         await send_and_track(interaction, embed=embed, command_name='help', ephemeral=True)
         return
     
-    # Build command ID mapping from registered commands
-    command_ids = {}
-    help_command_id = None
-    try:
-        # Get commands from the app's command tree
-        app_id = interaction.client.application_id
-        if not app_id:
-            logging.warning("Application ID not available")
-            app_id = 0
-        
-        # Use guild commands for DEV mode, global commands for PROD
-        if CONFIG.discord_guild_id > 0:
-            # DEV mode: fetch guild-specific commands
-            commands = await interaction.client.http.get_guild_commands(app_id, CONFIG.discord_guild_id)
-        else:
-            # PROD mode: fetch global commands
-            commands = await interaction.client.http.get_global_commands(app_id)
-        
-        # Map command names to their IDs and find help command
-        for cmd in commands:
-            command_ids[cmd['name']] = cmd['id']
-            if cmd['name'] == 'help':
-                help_command_id = cmd['id']
-    except Exception as e:
-        logging.warning(f"Failed to fetch command IDs: {e}")
-    
+    # Clickable </name:id> mentions come from command_mention(), which reads the ids the startup
+    # command sync already returned (CACHE.app_command_ids): one mechanism for every message
+    # with a clickable command, instead of re-fetching the command list on every /help.
+
     # Show list of all commands with short descriptions
     embed = discord.Embed(
         title=t('commands.help.list_title', user_id=user_id, guild_id=guild_id),
         color=discord.Color.blue()
     )
-    
-    # Build description with clickable help command mention
-    if help_command_id:
-        description = t('commands.help.list_description', user_id=user_id, guild_id=guild_id)
-        embed.description = description
-    else:
-        embed.description = t('commands.help.list_description', user_id=user_id, guild_id=guild_id)
+    embed.description = t('commands.help.list_description', user_id=user_id, guild_id=guild_id)
     if is_dm:
         embed.description = (embed.description or "") + "\n" + t('commands.help.dm_server_only_legend', user_id=user_id,
                                                                  guild_id=guild_id, marker=HELP_SERVER_ONLY_MARKER)
@@ -1216,27 +1188,14 @@ async def help(interaction: discord.Interaction, command: Optional[str] = None):
         for cmd in commands_list:
             short_desc = t(f'commands.help.{cmd}.short', user_id=user_id, guild_id=guild_id)
             
-            # Map subcommand display names to their parent command IDs
-            cmd_key = cmd
-            if cmd == "clan management":
-                cmd_key = "clan"
-            elif cmd == "cwl preferences":
-                cmd_key = "cwl"
-            elif cmd in ("analyse cwl_league_group", "analyse cwl_opponent"):
-                cmd_key = "analyse"
-            elif cmd in ("link clan", "link player"):
-                cmd_key = "link"
-            
             # Server-only in a DM: marker + plain code formatting, never a clickable mention —
             # clicking it here couldn't run the command anyway.
             if cmd in server_only_commands:
                 field_value += f"{HELP_SERVER_ONLY_MARKER} `/{cmd}` - {short_desc}\n"
-            # Use clickable command mention if ID is available, otherwise use code formatting
-            elif cmd_key in command_ids:
-                cmd_id = command_ids[cmd_key]  # type: ignore[has-type]
-                field_value += f"</{cmd}:{cmd_id}> - {short_desc}\n"
             else:
-                field_value += f"`/{cmd}` - {short_desc}\n"
+                # Clickable when the id is known (a subcommand uses its top-level command's id),
+                # plain `/cmd` otherwise — see command_mention().
+                field_value += f"{command_mention(cmd)} - {short_desc}\n"
         
         if field_value.strip():
             embed.add_field(name=category, value=field_value, inline=False)
@@ -3485,7 +3444,10 @@ async def cwl_preferences(interaction: discord.Interaction) -> None:
     user_id = str(interaction.user.id)
     guild_ids = get_dm_caller_matched_guild_ids(user_id)
     if not guild_ids:
-        await interaction.response.send_message(t('commands.errors.dm_not_linked', user_id=user_id), ephemeral=True)
+        await interaction.response.send_message(
+            t('commands.errors.dm_not_linked', user_id=user_id, registration=command_mention("registration")),
+            ephemeral=True,
+        )
         return
 
     async def _launch_for_guild(launch_interaction: discord.Interaction, guild_id: int) -> None:
@@ -3596,7 +3558,8 @@ async def subscriptions(interaction: discord.Interaction, server_wide: bool = Fa
         # ambiguous multi-guild DM picker) — must run before _safe_defer(), not after.
         resolved_guild_id = await resolve_guild_context(interaction)
         if resolved_guild_id is None:
-            msg = t('commands.errors.dm_not_linked', user_id=str(interaction.user.id))
+            msg = t('commands.errors.dm_not_linked', user_id=str(interaction.user.id),
+                    registration=command_mention("registration"))
             if interaction.response.is_done():
                 await interaction.followup.send(msg, ephemeral=True)
             else:

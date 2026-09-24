@@ -1,6 +1,18 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-24 (14)  Build 89.
+- Changed (qaplop): the DM "no linked accounts" reply (commands.errors.dm_not_linked, all 5
+  languages) drops "or run this command inside the server" and its /registration is now a
+  clickable command mention.
+- Added: command_mention(name) / remember_app_command_ids() (QBdiscocmdshelper.py). The startup
+  command sync's result (ids) is kept in CACHE.app_command_ids, and command_mention() renders
+  </name:id> (subcommands with their top-level id), else plain `/name`. /help now uses the same
+  helper instead of fetching the whole command list from Discord on every /help call.
+  Convention added to copilot-instructions.md's quick reference.
+  Files: QapBot.py, QBdiscordcmds.py, qapbot/QBdiscocmdshelper.py, qapbot/cache_manager.py,
+  qapbot/translations/*.json, QBcore.py, .github/copilot-instructions.md (+ tests). 3515 tests pass.
+
 2026-09-24 (13)  Build 88.
 - Changed (tracker #0129, qaplop): /registration is ephemeral in the bot DM too, not only in a
   server channel. With several shared servers the DM server picker's own message now turns into

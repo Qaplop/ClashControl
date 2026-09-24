@@ -458,6 +458,10 @@ class CacheManager:
         # (QBdiscocmdshelper.get_interaction_guild()). In-memory only: after a restart a DM click
         # re-resolves the shared server, or asks the user to run /registration again.
         self.pending_registration_dm_guild: Dict[str, int] = {}
+        # Top-level slash command name -> its Discord command id, captured from the startup
+        # command sync (QapBot._setup_hook). Lets message text contain clickable </name:id>
+        # mentions (QBdiscocmdshelper.command_mention()). Empty until the sync has run.
+        self.app_command_ids: Dict[str, str] = {}
         # Tracker #0070 (2026-08-29): the most recently opened/refreshed /clan management
         # ClanManagementView currently showing a cwl_settings or cwl_management screen, one slot
         # per guild — lets a mutation made from the ANCHORED CWL Management Hub message push a

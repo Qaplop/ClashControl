@@ -404,7 +404,7 @@
       "unexpected_error": "💥 **¡Ha ocurrido un error inesperado!**\nEsto se ha registrado para su investigación. Inténtalo de nuevo o contacta con soporte si el problema persiste.",
       "unexpected_error_fallback": "Ocurrió un error inesperado al ejecutar este comando.",
       "debug_continued": "**...continuación ({current}/{total})**",
-      "dm_not_linked": "❌ No tienes cuentas de Clash of Clans vinculadas, así que no sé a qué servidor debe aplicarse este comando. Vincula primero una cuenta con `/registration` o ejecuta este comando dentro del servidor."
+      "dm_not_linked": "❌ No tienes cuentas de Clash of Clans vinculadas, así que no sé a qué servidor debe aplicarse este comando. Vincula primero una cuenta con {registration}."
     },
     "registration": {
       "dm_no_shared_server": "❌ No encontré ningún servidor que compartamos con clanes configurados para el registro. Únete primero al servidor de Discord de tu clan y luego ejecuta `/registration` de nuevo."

@@ -228,3 +228,42 @@ async def test_link_button_in_dm_without_server_asks_to_rerun(monkeypatch, pendi
     assert "/registration" in args[0]
     assert kwargs.get("ephemeral") is True
     interaction.response.send_modal.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------------
+# Clickable command mentions (command_mention) in the DM "not linked" reply
+# ---------------------------------------------------------------------------
+
+@pytest.mark.discord
+def test_command_mention_uses_synced_ids_for_both_sync_shapes(monkeypatch):
+    from qapbot.cache_manager import CACHE
+    import qapbot.QBdiscocmdshelper as helper
+
+    monkeypatch.setattr(CACHE, "app_command_ids", {})
+    assert helper.command_mention("registration") == "`/registration`"  # before the sync
+
+    app_command = MagicMock()
+    app_command.name, app_command.id = "cwl", 456
+    helper.remember_app_command_ids([{"name": "registration", "id": "123"}, app_command])
+
+    assert helper.command_mention("registration") == "</registration:123>"
+    assert helper.command_mention("cwl preferences") == "</cwl preferences:456>"  # top-level id
+    assert helper.command_mention("unknown") == "`/unknown`"
+
+
+@pytest.mark.discord
+@pytest.mark.asyncio
+async def test_cwl_preferences_dm_not_linked_reply_links_registration(mock_interaction, monkeypatch):
+    from qapbot.cache_manager import CACHE
+    import QBdiscordcmds
+    import qapbot.QBdiscocmdshelper as helper
+
+    monkeypatch.setattr(CACHE, "app_command_ids", {"registration": "123"})
+    monkeypatch.setattr(helper, "get_dm_caller_matched_guild_ids", lambda _uid: [])
+    mock_interaction.guild = None
+
+    await QBdiscordcmds.cwl_preferences.callback(mock_interaction)  # type: ignore[arg-type]
+
+    args, _ = mock_interaction.response.send_message.await_args
+    assert "</registration:123>" in args[0]
+    assert "inside the server" not in args[0]

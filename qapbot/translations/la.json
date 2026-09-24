@@ -404,7 +404,7 @@
       "unexpected_error": "💥 **Error inexspectatus accidit!**\nHoc ad investigandum notatum est. Quaeso rursus conare vel sustentationem roga si res perseverat.",
       "unexpected_error_fallback": "Error inexspectatus in hoc mandato agendo accidit.",
       "debug_continued": "**...continuatum ({current}/{total})**",
-      "dm_not_linked": "❌ Nullas rationes Clash of Clans coniunctas habes, itaque scire non possum ad quem servitorem hoc mandatum pertineat. Primum rationem per `/registration` coniunge, aut hoc mandatum intra servitorem age."
+      "dm_not_linked": "❌ Nullas rationes Clash of Clans coniunctas habes, itaque scire non possum ad quem servitorem hoc mandatum pertineat. Primum rationem per {registration} coniunge."
     },
     "registration": {
       "dm_no_shared_server": "❌ Nullum servitorem communem inveni in quo gentes ad inscriptionem paratae sint. Primum servitori Discord gentis tuae adiunge, deinde `/registration` iterum age."

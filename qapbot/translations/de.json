@@ -404,7 +404,7 @@
       "unexpected_error": "💥 **Ein unerwarteter Fehler ist aufgetreten!**\nDies wurde protokolliert. Bitte versuche es erneut oder kontaktiere den Support, wenn das Problem weiterhin besteht.",
       "unexpected_error_fallback": "Ein unerwarteter Fehler ist aufgetreten, während dieser Befehl ausgeführt wurde.",
       "debug_continued": "**...Fortsetzung ({current}/{total})**",
-      "dm_not_linked": "❌ Du hast keine verknüpften Clash-of-Clans-Accounts, daher kann ich nicht erkennen, für welchen Server dieser Befehl gelten soll. Verknüpfe zuerst einen Account mit `/registration` oder führe den Befehl auf dem Server aus."
+      "dm_not_linked": "❌ Du hast keine verknüpften Clash-of-Clans-Accounts, daher kann ich nicht erkennen, für welchen Server dieser Befehl gelten soll. Verknüpfe zuerst einen Account mit {registration}."
     },
     "registration": {
       "dm_no_shared_server": "❌ Ich habe keinen gemeinsamen Server gefunden, auf dem Clans für die Registrierung eingerichtet sind. Tritt zuerst dem Discord-Server deines Clans bei und führe dann `/registration` erneut aus."

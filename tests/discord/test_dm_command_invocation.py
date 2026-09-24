@@ -114,6 +114,7 @@ class _FakeCache:
         self.clan_families: Dict[str, Dict[str, Any]] = {}
         self.clan_name_cache: Dict[str, Dict[str, Any]] = {}
         self.temp_war_metadata: Dict[str, Dict[str, Any]] = {}
+        self.app_command_ids: Dict[str, str] = {}  # command_mention() in the dm_not_linked reply
 
     def get_all_subscriptions_flat(self) -> Dict[str, Any]:
         return {}
@@ -813,3 +814,27 @@ async def test_help_listing_starts_with_player_setup_block(mock_interaction):
     assert "/registration" in named[0].value and "/cwl preferences" in named[0].value
     info = next(f for f in named if f.name == t("commands.help.category_clan_player_info", guild_id=mock_interaction.guild_id))
     assert "/registration" not in info.value and "/cwl preferences" not in info.value
+
+
+@pytest.mark.discord
+@pytest.mark.asyncio
+async def test_help_listing_mentions_come_from_command_mention(mock_interaction, monkeypatch):
+    """/help's clickable </name:id> mentions use the ids from the startup sync
+    (CACHE.app_command_ids via command_mention()), subcommands with their top-level id, and it no
+    longer fetches the command list itself."""
+    from qapbot.cache_manager import CACHE
+
+    monkeypatch.setattr(CACHE, "app_command_ids", {"registration": "11", "cwl": "22", "status": "33"})
+    mock_interaction.client = MagicMock()
+    mock_interaction.client.http.get_global_commands = AsyncMock()
+    mock_interaction.client.http.get_guild_commands = AsyncMock()
+
+    await QBdiscordcmds.help.callback(mock_interaction)  # type: ignore[arg-type]
+
+    values = " ".join(f.value for f in mock_interaction.followup.send.await_args.kwargs["embed"].fields)
+    assert "</registration:11>" in values
+    assert "</cwl preferences:22>" in values
+    assert "</status:33>" in values
+    assert "`/ping`" in values  # id unknown -> plain code formatting
+    mock_interaction.client.http.get_global_commands.assert_not_awaited()
+    mock_interaction.client.http.get_guild_commands.assert_not_awaited()

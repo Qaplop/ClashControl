@@ -3650,7 +3650,7 @@ async def _setup_hook():
         async def _sync_guild_commands():
             return await QBcore.bot.tree.sync(guild=discord.Object(id=GLOBAL_GUILD_ID))
         
-        await discord_retry(
+        synced_commands = await discord_retry(
             _sync_guild_commands,
             "guild_command_sync"
         )
@@ -3670,12 +3670,17 @@ async def _setup_hook():
             payload = [cmd.to_dict(QBcore.bot.tree) for cmd in QBcore.bot.tree.get_commands(guild=None)]
             return await bulk_sync_global_commands(QBcore.bot, payload)
 
-        await discord_retry(
+        synced_commands = await discord_retry(
             _sync_global_commands,
             "global_command_sync"
         )
         logging.info(f"[SETUP_HOOK] Successfully registered {len(COMMANDS)} commands, {len(COMMAND_GROUPS)} command groups, and {len(CONTEXT_MENUS)} context menus globally")
     
+    # Keep the command ids for clickable </name:id> mentions in message text (command_mention()).
+    from qapbot.QBdiscocmdshelper import remember_app_command_ids
+    remember_app_command_ids(synced_commands)
+    logging.info(f"[SETUP_HOOK] Remembered {len(CACHE.app_command_ids)} command ids for clickable mentions")
+
     # Register the generic RegistrationView so buttons on registration messages posted
     # BEFORE this process started keep working immediately after a restart, instead of
     # being dead until the next repost cycle re-attaches a fresh view. Requires

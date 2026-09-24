@@ -1,6 +1,13 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-24 (5)  Build 83.
+- Changed: the DM Activity-launch experiment from (4) is gated on the bot admin
+  (SERVER_ADMIN) instead of DEV. DEV registers its commands per guild, so no DEV command is
+  reachable from a DM and the test has to run on PROD. Everyone else still gets the "only
+  works inside a server" reply.
+  Files: QBdiscordcmds.py, QBcore.py (+ tests/discord/test_ui_cwl_roster.py). 3494 tests pass.
+
 2026-09-24 (4)  Build 82.
 - Fixed: /cwl preferences in a DM failed silently ("the application did not respond").
   Its @app_commands.guild_only() is a no-op on a subcommand (discord.py ignores it there), so

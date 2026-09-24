@@ -3944,13 +3944,14 @@ async def test_cwl_preferences_command_launches_activity_with_player_prefs_scree
 
 @pytest.mark.discord
 @pytest.mark.asyncio
-async def test_cwl_preferences_command_in_dm_on_prod_says_server_only(mock_interaction, monkeypatch):
+async def test_cwl_preferences_command_in_dm_says_server_only_for_non_admin(mock_interaction, monkeypatch):
     """@app_commands.guild_only() is a no-op on a subcommand, so a DM really reaches this
-    callback. On PROD it answers "server only" instead of failing silently."""
+    callback. It answers "server only" instead of failing silently."""
     import dataclasses
     import QBdiscordcmds
 
-    monkeypatch.setattr(QBdiscordcmds, "CONFIG", dataclasses.replace(QBdiscordcmds.CONFIG, is_dev_mode=False))
+    monkeypatch.setattr(QBdiscordcmds, "CONFIG", dataclasses.replace(QBdiscordcmds.CONFIG, server_admin="111"))
+    mock_interaction.user.id = 222
     mock_interaction.guild = None
 
     await QBdiscordcmds.cwl_preferences.callback(mock_interaction)  # type: ignore[arg-type]
@@ -3962,12 +3963,13 @@ async def test_cwl_preferences_command_in_dm_on_prod_says_server_only(mock_inter
 
 @pytest.mark.discord
 @pytest.mark.asyncio
-async def test_cwl_preferences_command_in_dm_on_dev_tries_activity_launch(mock_interaction, monkeypatch):
-    """DEV-only experiment: whether Discord allows LAUNCH_ACTIVITY in the bot DM at all."""
+async def test_cwl_preferences_command_in_dm_tries_activity_launch_for_bot_admin(mock_interaction, monkeypatch):
+    """Bot-admin-only experiment: whether Discord allows LAUNCH_ACTIVITY in the bot DM at all."""
     import dataclasses
     import QBdiscordcmds
 
-    monkeypatch.setattr(QBdiscordcmds, "CONFIG", dataclasses.replace(QBdiscordcmds.CONFIG, is_dev_mode=True))
+    monkeypatch.setattr(QBdiscordcmds, "CONFIG", dataclasses.replace(QBdiscordcmds.CONFIG, server_admin="111"))
+    mock_interaction.user.id = 111
     mock_interaction.guild = None
     mock_interaction.id = 987654321
     mock_interaction.token = "test-token"

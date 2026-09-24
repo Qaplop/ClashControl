@@ -3456,10 +3456,13 @@ async def cwl_preferences(interaction: discord.Interaction) -> None:
     # contexts on the top-level `cwl` group), so this IS reachable from a DM — it used to return
     # silently here, leaving "the application did not respond".
     if interaction.guild is None:
-        if CONFIG.is_dev_mode:
-            # DEV-only experiment (2026-09-24): does Discord allow LAUNCH_ACTIVITY in the bot DM at
-            # all? Success = the Activity opens (and stops at its "launched from inside a guild"
-            # check, since discordSdk.guildId is null); failure = _launch_cwl_activity logs
+        from qapbot.QBdiscocmdshelper import check_bot_admin_only
+        if check_bot_admin_only(interaction, CONFIG.server_admin):
+            # Bot-admin-only experiment (2026-09-24): does Discord allow LAUNCH_ACTIVITY in the bot
+            # DM at all? Admin-gated rather than DEV-gated because DEV registers its commands per
+            # guild, so no DEV command is reachable from a DM — the test has to run on PROD.
+            # Success = the Activity opens (and stops at its "launched from inside a guild" check,
+            # since discordSdk.guildId is null); failure = _launch_cwl_activity logs
             # "LAUNCH_ACTIVITY callback failed" and answers with its text fallback.
             logging.info(f"[CWL] DM LAUNCH_ACTIVITY experiment for user {interaction.user.id}")
             await _launch_cwl_activity(interaction, 0, "player_prefs")

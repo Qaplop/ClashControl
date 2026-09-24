@@ -291,7 +291,7 @@
         "detailed": "Postet einen Clash-of-Clans-Link, der das Profil eines Clans direkt im Spiel öffnet.\n\n**Verwendung:**\n`/link clan clan:<Tag oder Name>` — Clan aus der Liste wählen, oder einen Tag (z.B. `#ABC123`) bzw. einen Teil des Clan-Namens eingeben\n\n**Ausgabe:**\n`Clan-Name: https://link.clashofclans.com/...` wird im Kanal gepostet\n\n**Beispiele:**\n`/link clan clan:#L2J0C0PY`\n`/link clan clan:QCrew`"
       },
       "registration": {
-        "short": "Registrierungs-Hub öffnen, um deine Accounts zu verknüpfen und zu verwalten",
+        "short": "Verknüpfen und verwalten deiner CoC Spieler-Accounts",
         "title": "📝 Registrierungs-Befehl",
         "detailed": "Öffnet den Registrierungs-Hub mit denselben Buttons wie die Registrierungsnachricht des Servers: Clash-of-Clans-Account verknüpfen, Kriegsbenachrichtigungen, API-Verifizierung und deine verknüpften Accounts.\n\n**Verwendung:**\n`/registration`\n\n**Hinweise:**\n• In einem Server-Kanal siehst nur du den Hub, damit sich die Kanäle nicht mit Registrierungsnachrichten füllen\n• In deiner DM mit dem Bot wird er als normale Nachricht gepostet; teilst du mehrere Server mit dem Bot, wählst du zuerst den Server aus, für den du dich registrierst\n• Eine Verknüpfung aus der DM gibt dir die Rollen dieses Servers, genau wie die Registrierungsnachricht des Servers"
       },

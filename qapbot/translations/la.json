@@ -400,6 +400,7 @@
     },
     "dm": {
       "fallback_reply": "👋 Nuntia textus liberi non intellego — `/help` conare ut videas quid facere possim, vel mandato barrae hic in hoc nuntio privato directe utere.",
+      "fallback_tracker_hint": "🐞 Vitium invenisti aut consilium habes? Id per `/bug` nuntia aut per `/feature` propone, hic in hoc nuntio privato.",
       "guild_picker_prompt": "In pluribus quam uno servitore rationibus iunctus es. Cui servitori hoc applicari debet?",
       "guild_picker_placeholder": "Elige servitorem...",
       "guild_picker_selected": "✅ Intellexi — cum illo servitore continuamus."

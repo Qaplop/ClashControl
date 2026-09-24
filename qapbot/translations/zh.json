@@ -400,6 +400,7 @@
     },
     "dm": {
       "fallback_reply": "👋 我无法理解自由文本消息——试试使用 `/help` 查看我能做什么，或在此私信中直接使用斜杠命令。",
+      "fallback_tracker_hint": "🐞 发现了错误或有新想法？可直接在此私信中使用 `/bug` 报告错误，或使用 `/feature` 提出功能建议。",
       "guild_picker_prompt": "你在多个服务器中都绑定了账号。这应作用于哪个服务器？",
       "guild_picker_placeholder": "选择一个服务器...",
       "guild_picker_selected": "✅ 好的——将继续使用该服务器。"

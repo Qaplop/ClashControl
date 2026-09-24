@@ -400,6 +400,7 @@
     },
     "dm": {
       "fallback_reply": "👋 No entiendo mensajes de texto libre — prueba `/help` para ver qué puedo hacer, o usa un comando de barra aquí mismo en este MD.",
+      "fallback_tracker_hint": "🐞 ¿Encontraste un error o tienes una idea? Infórmalo con `/bug` o propónla con `/feature`, aquí mismo en este MD.",
       "guild_picker_prompt": "Estás vinculado a cuentas en más de un servidor. ¿A qué servidor debería aplicarse esto?",
       "guild_picker_placeholder": "Selecciona un servidor...",
       "guild_picker_selected": "✅ Entendido — continuando con ese servidor."

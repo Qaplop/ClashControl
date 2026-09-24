@@ -1,6 +1,14 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-24 (2)  Build 80.
+- Added (tracker #0122, part 1): the DM reply to free-text messages now also points to `/bug`
+  and `/feature`. The hint is a separate key (commands.dm.fallback_tracker_hint, all 5
+  languages) appended only when CONFIG.tracker_enabled, i.e. PROD only, since DEV doesn't
+  register those commands. Part 2 (tutorial hint) waits for #0121.
+  Files: QapBot.py, qapbot/translations/*.json, QBcore.py
+  (+ tests/unit/test_dm_interaction_foundation.py). 3491 tests pass.
+
 2026-09-24 (1)
 - Fixed (tracker #0124): in the Activity's CWL preferences, only the Bench button showed its
   status icon. "I'm in" and "I'm out" now show theirs too (green check / red X, the same icons

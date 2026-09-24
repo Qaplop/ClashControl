@@ -13,6 +13,7 @@ Covers:
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import os
 from typing import Any, Dict
 from unittest.mock import AsyncMock, MagicMock
@@ -329,6 +330,25 @@ async def test_on_message_dm_free_text_sends_fallback_reply(qapbot_module, fake_
     sent_text = message.channel.send.await_args.args[0]
     assert isinstance(sent_text, str) and sent_text
     fake_bot.process_commands.assert_awaited_once_with(message)
+
+
+@pytest.mark.discord
+@pytest.mark.asyncio
+@pytest.mark.parametrize("tracker_enabled", [True, False])
+async def test_on_message_dm_fallback_tracker_hint_only_when_tracker_enabled(
+    qapbot_module, fake_bot, monkeypatch, tracker_enabled
+):
+    """Tracker #0122: the /bug + /feature hint is appended only where those commands exist."""
+    # CONFIG is a frozen dataclass — swap in a modified copy instead of setting the field.
+    monkeypatch.setattr(
+        qapbot_module, "CONFIG", dataclasses.replace(qapbot_module.CONFIG, tracker_enabled=tracker_enabled)
+    )
+    message = _make_message(guild=None, is_bot=False)
+
+    await qapbot_module.on_message(message)
+
+    sent_text = message.channel.send.await_args.args[0]
+    assert ("/bug" in sent_text and "/feature" in sent_text) is tracker_enabled
 
 
 @pytest.mark.discord

@@ -4642,8 +4642,13 @@ async def on_message(message: discord.Message) -> None:
         from qapbot.i18n import t
 
         logging.debug(f"[DM] Received DM from user {message.author.id}: {message.content[:80]!r}")
+        reply = t('commands.dm.fallback_reply', user_id=str(message.author.id))
+        # Tracker #0122: point at /bug and /feature — only where they're actually registered
+        # (tracker_enabled is PROD-only), so DEV never advertises commands that don't exist there.
+        if CONFIG.tracker_enabled:
+            reply += "\n" + t('commands.dm.fallback_tracker_hint', user_id=str(message.author.id))
         try:
-            await message.channel.send(t('commands.dm.fallback_reply', user_id=str(message.author.id)))
+            await message.channel.send(reply)
         except discord.Forbidden:
             logging.warning(f"[DM] Could not reply to DM from user {message.author.id} — forbidden (blocked/closed DMs)")
         except Exception as e:

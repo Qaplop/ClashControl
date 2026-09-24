@@ -400,6 +400,7 @@
     },
     "dm": {
       "fallback_reply": "👋 I don't understand free text messages — try `/help` to see what I can do, or use a slash command right here in this DM.",
+      "fallback_tracker_hint": "🐞 Found a bug or have an idea? Report it with `/bug` or suggest it with `/feature`, right here in this DM.",
       "guild_picker_prompt": "You're linked to accounts in more than one server. Which server should this apply to?",
       "guild_picker_placeholder": "Select a server...",
       "guild_picker_selected": "✅ Got it — continuing with that server."

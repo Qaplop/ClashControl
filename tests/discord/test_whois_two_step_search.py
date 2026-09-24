@@ -132,7 +132,7 @@ class TestBuildGuildPlayerNameMatches:
 
 
 # ---------------------------------------------------------------------------
-# /whois player's name-search branch (_whois_slash_logic) — integration-level behavior
+# whois_slash's name-search branch — integration-level behavior
 # ---------------------------------------------------------------------------
 
 @pytest.fixture
@@ -152,7 +152,7 @@ class TestWhoisSlashTwoStepSearch:
         db.search_player_names_full_sync = MagicMock(return_value=[])
         monkeypatch.setattr(QBdiscordcmds.CACHE, "db_manager", db)
 
-        await QBdiscordcmds.whois_player.callback(mock_interaction, player="Al")  # type: ignore[arg-type]
+        await QBdiscordcmds.whois_slash.callback(mock_interaction, user=None, player="Al")  # type: ignore[arg-type]
 
         mock_interaction.followup.send.assert_awaited_once()
         sent_text = mock_interaction.followup.send.await_args.args[0]
@@ -182,7 +182,7 @@ class TestWhoisSlashTwoStepSearch:
         report_mock = AsyncMock()
         monkeypatch.setattr(QBdiscordcmds, "_player_report_logic", report_mock)
 
-        await QBdiscordcmds.whois_player.callback(mock_interaction, player="Al")  # type: ignore[arg-type]
+        await QBdiscordcmds.whois_slash.callback(mock_interaction, user=None, player="Al")  # type: ignore[arg-type]
 
         db.search_player_names_full_sync.assert_not_called()
         # Single match auto-resolves via _player_report_logic — proves a result was found,
@@ -196,7 +196,7 @@ class TestWhoisSlashTwoStepSearch:
         db.search_player_names_full_sync = MagicMock(return_value=[])
         monkeypatch.setattr(QBdiscordcmds.CACHE, "db_manager", db)
 
-        await QBdiscordcmds.whois_player.callback(mock_interaction, player="Al")  # type: ignore[arg-type]
+        await QBdiscordcmds.whois_slash.callback(mock_interaction, user=None, player="Al")  # type: ignore[arg-type]
 
         mock_interaction.followup.send.assert_awaited_once()
         db.search_player_names_full_sync.assert_not_called()
@@ -208,7 +208,7 @@ class TestWhoisSlashTwoStepSearch:
         db.search_player_names_full_sync = MagicMock(return_value=[])
         monkeypatch.setattr(QBdiscordcmds.CACHE, "db_manager", db)
 
-        await QBdiscordcmds.whois_player.callback(mock_interaction, player="Ali")  # type: ignore[arg-type]
+        await QBdiscordcmds.whois_slash.callback(mock_interaction, user=None, player="Ali")  # type: ignore[arg-type]
 
         db.search_player_names_full_sync.assert_called_once_with("ali")
 
@@ -249,7 +249,7 @@ class TestWhoisSlashTwoStepSearch:
 
         monkeypatch.setattr("qapbot.ui_common.GenericSelectView", _capture_view)
 
-        await QBdiscordcmds.whois_player.callback(mock_interaction, player="alphabet")  # type: ignore[arg-type]
+        await QBdiscordcmds.whois_slash.callback(mock_interaction, user=None, player="alphabet")  # type: ignore[arg-type]
 
         option_tags = [opt.value for opt in captured["options"]]
         assert "#GUILDMATCH" in option_tags

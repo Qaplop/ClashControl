@@ -76,15 +76,14 @@ def test_whois_family_is_dm_invokable():
     actual blocker was a separate, unnecessary `if not interaction.guild: reject` guard."""
     assert QBdiscordcmds.whois.guild_only is False
     assert QBdiscordcmds.whois_message.guild_only is False
-    assert QBdiscordcmds.whois_user.guild_only is False
-    assert QBdiscordcmds.whois_player.guild_only is False
+    assert QBdiscordcmds.whois_slash.guild_only is False
 
 
 @pytest.mark.discord
-def test_whois_user_param_is_user_typed_not_member_typed():
+def test_whois_slash_user_param_is_user_typed_not_member_typed():
     """discord.Member-typed options can't resolve outside a guild — must be discord.User for
     the user= path to even be selectable from a DM."""
-    annotation = QBdiscordcmds.whois_user.callback.__annotations__["user"]
+    annotation = QBdiscordcmds.whois_slash.callback.__annotations__["user"]
     assert "Member" not in str(annotation)
     assert "User" in str(annotation)
 
@@ -514,7 +513,7 @@ async def test_help_command_autocomplete_dm_marks_guild_only(mock_interaction):
     by_value = {c.value: c.name for c in choices}
     marker = QBdiscordcmds.HELP_SERVER_ONLY_MARKER
     assert by_value["status"] == "status"
-    assert by_value["whois user"] == "whois user"  # whois is DM-invokable now — see test_whois_family_is_dm_invokable
+    assert by_value["whois"] == "whois"  # whois is DM-invokable now — see test_whois_family_is_dm_invokable
     assert by_value["subscribe"] == f"{marker} subscribe"
     assert by_value["highlightme"] == f"{marker} highlightme"
 
@@ -839,15 +838,3 @@ async def test_help_listing_mentions_come_from_command_mention(mock_interaction,
     assert "`/ping`" in values  # id unknown -> plain code formatting
     mock_interaction.client.http.get_global_commands.assert_not_awaited()
     mock_interaction.client.http.get_guild_commands.assert_not_awaited()
-
-
-@pytest.mark.discord
-def test_whois_subcommands_have_required_options():
-    """Tracker #0130: Discord only shows an option field automatically for REQUIRED options, so
-    each /whois subcommand's single option must be required (clicking it in /help then opens the
-    field). The old single /whois with two optional options is gone."""
-    user_param = {p.name: p for p in QBdiscordcmds.whois_user.parameters}["user"]
-    player_param = {p.name: p for p in QBdiscordcmds.whois_player.parameters}["player"]
-    assert user_param.required and player_param.required
-    assert {c.name for c in QBdiscordcmds.whois_group.commands} == {"user", "player"}
-    assert "whois" not in QBdiscordcmds._get_help_command_names()

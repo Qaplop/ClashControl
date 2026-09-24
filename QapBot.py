@@ -3607,6 +3607,7 @@ async def _setup_hook():
         QBdiscordcmds.ping,  # type: ignore[misc]
         QBdiscordcmds.list,  # type: ignore[misc]
         QBdiscordcmds.admin,  # type: ignore[misc]
+        QBdiscordcmds.whois_slash,  # type: ignore[misc]
         QBdiscordcmds.registration,  # type: ignore[misc]
     ]
 
@@ -3625,7 +3626,6 @@ async def _setup_hook():
         QBdiscordcmds.analyse_group,
         QBdiscordcmds.cwl_group,
         QBdiscordcmds.link_group,
-        QBdiscordcmds.whois_group,  # /whois user + /whois player (tracker #0130)
     ]
     
     # Context menu commands

@@ -1058,8 +1058,7 @@ def _get_help_command_dm_status() -> Dict[str, bool]:
         "cwl preferences": cwl_preferences.guild_only,
         "admin": admin.guild_only,
         "list": list.guild_only,
-        "whois user": whois_user.guild_only,
-        "whois player": whois_player.guild_only,
+        "whois": whois_slash.guild_only,
         "link clan": link_clan.guild_only,
         "link player": link_player.guild_only,
         "registration": registration.guild_only,
@@ -1082,7 +1081,7 @@ def _get_help_command_names() -> List[str]:
     names = [
         "registration", "cwl preferences",
         "subscribe", "unsubscribe", "subscriptions", "leaderboard", "highlightme", "analyse cwl_league_group",
-        "analyse cwl_opponent", "clan management", "admin", "list", "whois user", "whois player", "link clan", "link player",
+        "analyse cwl_opponent", "clan management", "admin", "list", "whois", "link clan", "link player",
         "ping", "status", "help"
     ]
     if CONFIG.tracker_enabled:
@@ -1174,7 +1173,7 @@ async def help(interaction: discord.Interaction, command: Optional[str] = None):
         # Top-most (2026-09-24, qaplop): what every player sets up first — before any other block.
         t('commands.help.category_player_setup', user_id=user_id, guild_id=guild_id): ["registration", "cwl preferences"],
         t('commands.help.category_leaderboards', user_id=user_id, guild_id=guild_id): ["subscribe", "unsubscribe", "subscriptions", "leaderboard", "highlightme"],
-        t('commands.help.category_clan_player_info', user_id=user_id, guild_id=guild_id): ["analyse cwl_league_group", "analyse cwl_opponent", "whois user", "whois player", "link clan", "link player"],
+        t('commands.help.category_clan_player_info', user_id=user_id, guild_id=guild_id): ["analyse cwl_league_group", "analyse cwl_opponent", "whois", "link clan", "link player"],
         t('commands.help.category_administration', user_id=user_id, guild_id=guild_id): ["clan management", "admin", "list"],
         t('commands.help.category_bot_info', user_id=user_id, guild_id=guild_id): ["ping", "status", "help"],
     }
@@ -5157,7 +5156,7 @@ def _build_guild_player_name_matches(guild_id: Optional[int], needle_lower: str)
     old post-search reorder step used (CACHE.user_accounts, CACHE.temp_war_stats,
     CACHE.coc_clan_cache for the guild's own clans). A guild's own roster tops out in the
     hundreds, so this runs directly on the event loop — no asyncio.to_thread() needed here,
-    unlike the capped global SQL fallback in _whois_slash_logic()'s own caller.
+    unlike the capped global SQL fallback in whois_slash's own caller.
 
     Guarantees completeness for guild members specifically: unlike the global FTS5 fallback
     (search_player_names_full_sync), a guild member can never be excluded here just because a
@@ -5258,6 +5257,11 @@ async def _search_player_name_matches(
     return all_matches[:25], len(all_matches)
 
 
+@app_commands.command(name="whois", description=dev_mode+"Show CoC accounts for a Discord user, or war history for a player.")
+@app_commands.describe(
+    user="The Discord user to look up",
+    player="Player tag (e.g. #ABC123) or name substring to search",
+)
 # DM-invokable (Phase 0b follow-up, CWL_ROSTER_PLANNING_PLAN.md) — correction against the original
 # draft: _whois_logic()'s guild dependency was cosmetic-only (see whois/whois_message, above), and
 # `user` is now typed discord.User instead of discord.Member — Member-typed options can only
@@ -5265,14 +5269,12 @@ async def _search_player_name_matches(
 # to any Discord user regardless of context. _whois_logic() already accepted
 # Union[discord.User, discord.Member], so no change needed on that side. The player= path
 # (_player_report_logic) was already guild-agnostic.
-async def _whois_slash_logic(
+async def whois_slash(
     interaction: discord.Interaction,
     user: Optional[discord.User] = None,
     player: Optional[str] = None,
 ) -> None:
-    """Shared body of /whois user and /whois player — look up a Discord user's CoC accounts, or a
-    player's war history. (Was the single /whois command with two optional options until
-    tracker #0130; see whois_group below.)"""
+    """Slash command: /whois — look up a Discord user's CoC accounts, or a player's war history."""
     if not await _safe_defer(interaction, thinking=True, ephemeral=True):
         return
     _log_cmd(interaction, "whois", user=str(user) if user else None, player=player)
@@ -5337,26 +5339,6 @@ async def _whois_slash_logic(
             t('commands.whois.player_report_no_args', guild_id=interaction.guild_id),
             ephemeral=True,
         )
-
-
-# Tracker #0130: /whois is a group of two subcommands, each with a REQUIRED option, instead of one
-# command with two optional ones. Discord only shows an option field automatically for required
-# options, so clicking /whois in /help used to insert a bare "/whois " with no field; clicking
-# </whois user:id> or </whois player:id> now opens the command with its field ready. Also leaves
-# room for #0120's planned /whois clan.
-whois_group = app_commands.Group(name="whois", description=dev_mode+"Show CoC accounts for a Discord user, or war history for a player.")
-
-
-@whois_group.command(name="user", description=dev_mode+"Show the CoC accounts linked to a Discord user.")
-@app_commands.describe(user="The Discord user to look up")
-async def whois_user(interaction: discord.Interaction, user: discord.User) -> None:
-    await _whois_slash_logic(interaction, user=user)
-
-
-@whois_group.command(name="player", description=dev_mode+"Show the war history report for a CoC player.")
-@app_commands.describe(player="Player tag (e.g. #ABC123) or name substring to search")
-async def whois_player(interaction: discord.Interaction, player: str) -> None:
-    await _whois_slash_logic(interaction, player=player)
 
 
 # =============================================================================

@@ -1,6 +1,12 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-24 (11)
+- Changed: /help short text for /cwl preferences is now "Lege deine persönlichen CWL- /
+  Liga-Präferenzen fest" (qaplop's wording), reworded the same way in all 5 languages (en: "Set
+  your personal CWL / league preferences"), keeping each language's existing CWL term.
+  Translation only, no Python change, no build bump. Files: qapbot/translations/*.json.
+
 2026-09-24 (10)
 - Changed: /help short text for /clan management is now "Zentrale Server- und
   Clan-Konfiguration" (qaplop's wording), reworded the same way in all 5 languages (en: "Central

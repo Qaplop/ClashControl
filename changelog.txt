@@ -1,6 +1,24 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-24 (22)  Build 97.
+- Reverted (21) (qaplop: the required `lookup` choice is confusing): /whois is back to its
+  original form, one command with the optional user and player options, exactly as before
+  (19). The lookup_*_missing texts and the new help syntax are gone again. #0130 stays a
+  Discord limitation: optional options are never opened by a click on the command.
+  Files: same as (21), reverted. BOT_BUILD bumped, not rolled back.
+
+2026-09-24 (21)  Build 96.
+- Changed (tracker #0130, qaplop's choice): /whois stays one command, but gets a REQUIRED
+  `lookup` choice (user / player) as its first option, like /admin's required `action`.
+  Discord only opens a field by itself for a required option, so clicking /whois in /help now
+  shows the user/player list right away. The chosen lookup's field (user or player) is then
+  added as "+1 option". If it's missing, a translated hint says which field to add
+  (commands.whois.lookup_user_missing / lookup_player_missing); if both are filled, the chosen
+  lookup wins. /help usage lines use the new syntax (`/whois lookup:user user:@...`).
+  Files: QBdiscordcmds.py, qapbot/translations/*.json, QBcore.py, README.md (+ tests).
+  3526 tests pass.
+
 2026-09-24 (20)  Build 95.
 - Reverted (19) (qaplop, after testing on DEV): /whois is one command again with the optional
   user and player options; /whois user / /whois player are gone, /help has a single "whois"

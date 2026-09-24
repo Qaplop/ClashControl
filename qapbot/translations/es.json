@@ -291,7 +291,7 @@
         "detailed": "Publica un enlace de Clash of Clans que abre el perfil de un clan directamente en el juego.\n\n**Uso:**\n`/link clan clan:<tag o nombre>` — elige un clan de la lista, o escribe un tag (p. ej. `#ABC123`) o parte de un nombre de clan\n\n**Salida:**\n`Nombre del Clan: https://link.clashofclans.com/...` publicado en el canal\n\n**Ejemplos:**\n`/link clan clan:#L2J0C0PY`\n`/link clan clan:QCrew`"
       },
       "registration": {
-        "short": "Abre el centro de registro para vincular y gestionar tus cuentas",
+        "short": "Vincula y gestiona tus cuentas de jugador de CoC",
         "title": "📝 Comando de registro",
         "detailed": "Abre el centro de registro con los mismos botones que el mensaje de registro del servidor: vincular una cuenta de Clash of Clans, notificaciones de guerra, verificación por API y tus cuentas vinculadas.\n\n**Uso:**\n`/registration`\n\n**Notas:**\n• En un canal del servidor solo tú ves el centro, para que los canales no se llenen de mensajes de registro\n• En tu MD con el bot se publica como un mensaje normal; si compartes varios servidores con el bot, primero eliges el servidor para el que te registras\n• Vincular desde el MD te da los roles de ese servidor, igual que el mensaje de registro del servidor"
       },

@@ -291,7 +291,7 @@
         "detailed": "Publica nexum Clash of Clans qui profilum gentis directe intra ludum aperit.\n\n**Usus:**\n`/link clan clan:<nota vel nomen>` — elige gentem ex indice, vel scribe notam (e.g. `#ABC123`) vel partem nominis gentis\n\n**Exitus:**\n`Nomen Gentis: https://link.clashofclans.com/...` in canali publicatur\n\n**Exempla:**\n`/link clan clan:#L2J0C0PY`\n`/link clan clan:QCrew`"
       },
       "registration": {
-        "short": "Centrum inscriptionis aperi ut rationes tuas coniungas et administres",
+        "short": "Rationes lusoris CoC tuas coniunge et administra",
         "title": "📝 Mandatum inscriptionis",
         "detailed": "Centrum inscriptionis aperit cum eisdem bullis ac nuntium inscriptionis servitoris: rationem Clash of Clans coniunge, nuntii belli, verificatio API et rationes tuae coniunctae.\n\n**Usus:**\n`/registration`\n\n**Notae:**\n• In canali servitoris solus tu centrum vides, ne canales nuntiis inscriptionis impleantur\n• In nuntio privato cum bot ut nuntium commune mittitur; si plures servitores cum bot communes habes, primum servitorem eligis pro quo te inscribis\n• Coniunctio ex nuntio privato tibi munera illius servitoris dat, sicut nuntium inscriptionis servitoris"
       },

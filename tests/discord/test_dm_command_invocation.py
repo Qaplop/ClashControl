@@ -775,3 +775,21 @@ def test_log_filters_are_attached_to_every_handler(qapbot_module_for_filters):
         filter_types = {type(f) for f in handler.filters}
         assert qapbot_module_for_filters._DiscordReconnectFilter in filter_types
         assert qapbot_module_for_filters._AutocompleteExpiredInteractionFilter in filter_types
+
+
+@pytest.mark.discord
+@pytest.mark.asyncio
+async def test_clan_management_in_dm_answers_server_only(mock_interaction):
+    """/clan management stays server-only (2026-09-24) but a DM does reach the subcommand
+    (guild_only() is a no-op there, Pitfall 40): it must answer ephemerally and translated,
+    before the non-ephemeral defer, instead of the old hardcoded English followup."""
+    mock_interaction.guild = None
+    mock_interaction.guild_id = None
+
+    await QBdiscordcmds.clan_management.callback(mock_interaction)  # type: ignore[arg-type]
+
+    mock_interaction.response.defer.assert_not_awaited()
+    mock_interaction.response.send_message.assert_awaited_once()
+    args, kwargs = mock_interaction.response.send_message.await_args
+    assert QBdiscordcmds.HELP_SERVER_ONLY_MARKER in args[0]
+    assert kwargs.get("ephemeral") is True

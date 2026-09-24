@@ -2747,9 +2747,10 @@ clan_group = app_commands.Group(name="clan", description=dev_mode+"Clan manageme
 # NOT converted in Phase 0b (CWL_ROSTER_PLANNING_PLAN.md): needs a real discord.Guild object for
 # member lookups (format_clan_management_message) and posts a non-ephemeral, persistent
 # interactive view via interaction.channel.send(), guarded on isinstance(interaction.channel,
-# (TextChannel, Thread)) — a DM channel fails that guard. Revisit only with a real Guild-object
-# substitution (interaction.client.get_guild(resolved_guild_id)) and a decision on where a
-# DM-invoked instance of this view would actually post.
+# (TextChannel, Thread)) — a DM channel fails that guard. Re-assessed 2026-09-24 after the DM
+# server picker existed (#0128/#0129): picking the server isn't the blocker, the six native
+# Channel/Role/User selects are (Discord fills them from the message's own server; see
+# Pitfall 40). Kept server-only by decision; the callback answers DMs itself.
 @app_commands.guild_only()
 @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))
 async def clan_management(interaction: discord.Interaction):
@@ -2770,6 +2771,17 @@ async def clan_management(interaction: discord.Interaction):
     Args:
         interaction: Discord interaction object
     """
+    # @app_commands.guild_only() above is a no-op on a subcommand (Pitfall 40), so a DM does reach
+    # this. Deliberately stays server-only (2026-09-24, qaplop): its Channel/Role/User selects are
+    # filled by Discord from the server the message is in, which a DM doesn't have. Answer before
+    # the non-ephemeral defer below, so the reply can be ephemeral and translated.
+    if interaction.guild is None:
+        await interaction.response.send_message(
+            t('commands.help.server_only_detail_note', user_id=str(interaction.user.id),
+              marker=HELP_SERVER_ONLY_MARKER),
+            ephemeral=True,
+        )
+        return
     if not await _safe_defer(interaction, thinking=True, ephemeral=False):
         return
     _log_cmd(interaction, "clan management")

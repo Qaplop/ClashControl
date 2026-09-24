@@ -1,6 +1,16 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-24 (9)  Build 86.
+- Fixed: /clan management in a DM answered with a hardcoded English "This command must be used
+  in a guild." (guild_only() is a no-op on the subcommand, so DMs reach it). It now answers
+  ephemerally and translated that it only works inside a server, before its non-ephemeral defer.
+- Decision (qaplop): /clan management stays server-only. The DM server picker would solve
+  choosing the server, but its six native Channel/Role/User selects are filled by Discord from
+  the message's own server, which a DM lacks. Recorded in Pitfall 40.
+  Files: QBdiscordcmds.py, QBcore.py, .github/copilot-instructions.md
+  (+ tests/discord/test_dm_command_invocation.py). 3511 tests pass.
+
 2026-09-24 (8)
 - Changed: /help short text for /registration reworded in all 5 languages after qaplop's German
   wording "Verknüpfen und verwalten deiner CoC Spieler-Accounts" (en: "Link and manage your CoC

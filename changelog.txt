@@ -1,6 +1,16 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-24 (4)  Build 82.
+- Fixed: /cwl preferences in a DM failed silently ("the application did not respond").
+  Its @app_commands.guild_only() is a no-op on a subcommand (discord.py ignores it there), so
+  Discord offers the command in DMs, and the callback just returned. PROD now answers "only
+  works inside a server" (ephemeral).
+- Experiment (DEV only): in a DM, DEV instead tries to launch the CWL Activity, to find out
+  whether Discord allows LAUNCH_ACTIVITY in the bot DM at all (option A for making the
+  preferences DM-capable). Logged as "[CWL] DM LAUNCH_ACTIVITY experiment".
+  Files: QBdiscordcmds.py, QBcore.py (+ tests/discord/test_ui_cwl_roster.py). 3494 tests pass.
+
 2026-09-24 (3)  Build 81.
 - Changed (tracker #0118): /help in a DM lists every command instead of hiding the
   server-only ones. Those are marked with 🟠, shown as plain `/cmd` (no clickable mention,

@@ -3452,7 +3452,23 @@ async def cwl_preferences(interaction: discord.Interaction) -> None:
     """
     from qapbot.ui_cwl_roster import _launch_cwl_activity  # pyright: ignore[reportPrivateUsage]  # deliberately shared, see docstring above
 
+    # @guild_only() above is a no-op on a subcommand (discord.py ignores it; Discord only takes
+    # contexts on the top-level `cwl` group), so this IS reachable from a DM — it used to return
+    # silently here, leaving "the application did not respond".
     if interaction.guild is None:
+        if CONFIG.is_dev_mode:
+            # DEV-only experiment (2026-09-24): does Discord allow LAUNCH_ACTIVITY in the bot DM at
+            # all? Success = the Activity opens (and stops at its "launched from inside a guild"
+            # check, since discordSdk.guildId is null); failure = _launch_cwl_activity logs
+            # "LAUNCH_ACTIVITY callback failed" and answers with its text fallback.
+            logging.info(f"[CWL] DM LAUNCH_ACTIVITY experiment for user {interaction.user.id}")
+            await _launch_cwl_activity(interaction, 0, "player_prefs")
+            return
+        await interaction.response.send_message(
+            t('commands.help.server_only_detail_note', user_id=str(interaction.user.id),
+              marker=HELP_SERVER_ONLY_MARKER),
+            ephemeral=True,
+        )
         return
     await _launch_cwl_activity(interaction, interaction.guild.id, "player_prefs")
 

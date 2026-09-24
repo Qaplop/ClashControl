@@ -3944,17 +3944,39 @@ async def test_cwl_preferences_command_launches_activity_with_player_prefs_scree
 
 @pytest.mark.discord
 @pytest.mark.asyncio
-async def test_cwl_preferences_command_does_nothing_outside_a_guild(mock_interaction):
-    """Guild-only (declared via @app_commands.guild_only()), but the callback body also guards
-    directly since Discord's guild-only enforcement is client-side only for some invocation
-    paths — matches the same defensive pattern as every other guild-scoped CWL callback."""
+async def test_cwl_preferences_command_in_dm_on_prod_says_server_only(mock_interaction, monkeypatch):
+    """@app_commands.guild_only() is a no-op on a subcommand, so a DM really reaches this
+    callback. On PROD it answers "server only" instead of failing silently."""
+    import dataclasses
     import QBdiscordcmds
 
+    monkeypatch.setattr(QBdiscordcmds, "CONFIG", dataclasses.replace(QBdiscordcmds.CONFIG, is_dev_mode=False))
     mock_interaction.guild = None
 
     await QBdiscordcmds.cwl_preferences.callback(mock_interaction)  # type: ignore[arg-type]
 
     mock_interaction.client.http.request.assert_not_awaited()
+    mock_interaction.response.send_message.assert_awaited_once()
+    assert mock_interaction.response.send_message.await_args.kwargs.get("ephemeral") is True
+
+
+@pytest.mark.discord
+@pytest.mark.asyncio
+async def test_cwl_preferences_command_in_dm_on_dev_tries_activity_launch(mock_interaction, monkeypatch):
+    """DEV-only experiment: whether Discord allows LAUNCH_ACTIVITY in the bot DM at all."""
+    import dataclasses
+    import QBdiscordcmds
+
+    monkeypatch.setattr(QBdiscordcmds, "CONFIG", dataclasses.replace(QBdiscordcmds.CONFIG, is_dev_mode=True))
+    mock_interaction.guild = None
+    mock_interaction.id = 987654321
+    mock_interaction.token = "test-token"
+
+    await QBdiscordcmds.cwl_preferences.callback(mock_interaction)  # type: ignore[arg-type]
+
+    mock_interaction.client.http.request.assert_awaited_once()
+    _, kwargs = mock_interaction.client.http.request.await_args
+    assert kwargs["json"] == {"type": 12, "data": {}}
 
 
 # ---------------------------------------------------------------------------

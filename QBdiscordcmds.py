@@ -5259,9 +5259,18 @@ async def _search_player_name_matches(
 
 @app_commands.command(name="whois", description=dev_mode+"Show CoC accounts for a Discord user, or war history for a player.")
 @app_commands.describe(
+    lookup="What to look up: a Discord user's accounts, or a player's war history",
     user="The Discord user to look up",
     player="Player tag (e.g. #ABC123) or name substring to search",
 )
+# Tracker #0130: `lookup` is REQUIRED with fixed choices, like /admin's `action` — Discord only
+# opens a field by itself for a required option, so clicking /whois in /help now shows the
+# user/player choice list right away. `user` and `player` stay optional; the chosen lookup
+# decides which one counts, with the other accepted as a fallback.
+@app_commands.choices(lookup=[
+    app_commands.Choice(name="user - CoC accounts of a Discord user", value="user"),
+    app_commands.Choice(name="player - war history of a CoC player", value="player"),
+])
 # DM-invokable (Phase 0b follow-up, CWL_ROSTER_PLANNING_PLAN.md) — correction against the original
 # draft: _whois_logic()'s guild dependency was cosmetic-only (see whois/whois_message, above), and
 # `user` is now typed discord.User instead of discord.Member — Member-typed options can only
@@ -5271,13 +5280,21 @@ async def _search_player_name_matches(
 # (_player_report_logic) was already guild-agnostic.
 async def whois_slash(
     interaction: discord.Interaction,
+    lookup: str,
     user: Optional[discord.User] = None,
     player: Optional[str] = None,
 ) -> None:
     """Slash command: /whois — look up a Discord user's CoC accounts, or a player's war history."""
     if not await _safe_defer(interaction, thinking=True, ephemeral=True):
         return
-    _log_cmd(interaction, "whois", user=str(user) if user else None, player=player)
+    _log_cmd(interaction, "whois", lookup=lookup, user=str(user) if user else None, player=player)
+    if user is None and not player:
+        # The chosen lookup's field was never added (Discord lists it as "+1 option").
+        missing_key = 'commands.whois.lookup_user_missing' if lookup == "user" else 'commands.whois.lookup_player_missing'
+        await interaction.followup.send(t(missing_key, user_id=str(interaction.user.id), guild_id=interaction.guild_id), ephemeral=True)
+        return
+    if lookup == "user" and user is not None:
+        player = None  # both filled: the chosen lookup wins (player is otherwise checked first below)
     if player:
         player_stripped = player.strip()
         if player_stripped.startswith('#'):

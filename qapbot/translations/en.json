@@ -267,7 +267,7 @@
       "cwl preferences": {
         "short": "Set your personal CWL opt-in/opt-out and league preferences",
         "title": "🛡️ CWL Preferences Command",
-        "detailed": "Opens your personal CWL preferences screen — set whether you want to always play CWL, never play, or decide fresh each season, plus a preferred league tier. Applies to every one of your linked Clash accounts individually, and to every server that invites you, not just this one.\n\n**Usage:**\n`/cwl preferences`\n\n**Notes:**\n• Works even if this server hasn't set up its Player CWL Settings Hub message — this command is always available\n• A standing choice can still be overridden for any single season, either here or from that season's own invitation DM"
+        "detailed": "Opens your personal CWL preferences screen — set whether you want to always play CWL, never play, or decide fresh each season, plus a preferred league tier. Applies to every one of your linked Clash accounts individually, and to every server that invites you, not just this one.\n\n**Usage:**\n`/cwl preferences`\n\n**Notes:**\n• Works even if this server hasn't set up its Player CWL Settings Hub message — this command is always available\n• A standing choice can still be overridden for any single season, either here or from that season's own invitation DM\n• Also works in your DM with the bot: if your accounts belong to several servers, you first pick the server"
       },
       "admin": {
         "short": "Administrative actions and utilities",

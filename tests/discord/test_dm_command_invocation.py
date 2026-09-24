@@ -452,6 +452,7 @@ async def test_help_dm_lists_all_commands_and_marks_server_only(mock_interaction
     assert "/status" in field_values
     assert f"{marker} `/status`" not in field_values
     assert f"{marker} `/whois`" not in field_values
+    assert f"{marker} `/cwl preferences`" not in field_values  # DM-capable since tracker #0128
     # ...and the description explains the marker.
     assert marker in (embed.description or "")
 

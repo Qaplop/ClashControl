@@ -1449,6 +1449,28 @@ async def handle_get_cwl_screen(request: web.Request) -> web.Response:
     return web.json_response({"screen": screen})
 
 
+async def handle_get_cwl_dm_guild(request: web.Request) -> web.Response:
+    """GET /api/cwl/dm-guild?discord_user_id= — tracker #0128. An Activity launched in the bot
+    DM has no discordSdk.guildId; this returns the guild that user's DM /cwl preferences
+    resolved to (CACHE.pending_cwl_dm_guild), or 404 when there is none (e.g. the Activity was
+    started from Discord's own app launcher rather than the command, or the bot restarted).
+
+    The guild id goes out as a STRING: Discord snowflakes exceed JavaScript's safe integer range.
+    Read non-destructively, like handle_get_cwl_screen, for Discord's pop-out re-run. Reveals
+    nothing sensitive — only the caller's own last pick, keyed by the Worker-verified user id."""
+    if not _check_secret(request):
+        return web.json_response({"error": "forbidden"}, status=403)
+    try:
+        discord_user_id_str = str(int(request.query["discord_user_id"]))
+    except (KeyError, ValueError):
+        return web.json_response({"error": "missing/invalid discord_user_id"}, status=400)
+
+    guild_id = CACHE.pending_cwl_dm_guild.get(discord_user_id_str)
+    if guild_id is None:
+        return web.json_response({"error": "no pending DM guild"}, status=404)
+    return web.json_response({"guild_id": str(guild_id)})
+
+
 async def handle_get_i18n(request: web.Request) -> web.Response:
     """GET /api/i18n?guild_id=&discord_user_id=&ns=cwl.activity — plans/cwl-personal-hub.md
     Phase 6c. Bulk-fetch translation endpoint for the Discord Activity, which has no server-side
@@ -3639,6 +3661,7 @@ def create_app() -> web.Application:
     app.router.add_get("/api/cwl/clan-config", handle_get_clan_config)
     app.router.add_post("/api/cwl/clan-config", handle_post_clan_config)
     app.router.add_get("/api/cwl/screen", handle_get_cwl_screen)
+    app.router.add_get("/api/cwl/dm-guild", handle_get_cwl_dm_guild)
     app.router.add_get("/api/cwl/enrollment", handle_get_cwl_enrollment)
     app.router.add_get("/api/cwl/enrollment/wait", handle_get_cwl_enrollment_wait)
     app.router.add_get("/api/cwl/clan-names", handle_get_cwl_clan_names)

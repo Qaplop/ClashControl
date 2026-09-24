@@ -29,7 +29,7 @@ import logging
 import re
 import discord
 from discord import app_commands
-from typing import List, Dict, Any, Optional, Tuple, Set, Callable, Union
+from typing import List, Dict, Any, Optional, Tuple, Set, Callable, Union, Awaitable
 
 from qapbot.emojis import BotEmojis
 from qapbot.cache_manager import CACHE
@@ -2101,11 +2101,19 @@ async def resolve_guild_context(interaction: discord.Interaction) -> Optional[in
     return await _prompt_dm_guild_picker(interaction, matched_guild_ids)
 
 
-async def _prompt_dm_guild_picker(interaction: discord.Interaction, guild_ids: List[int]) -> Optional[int]:
+async def _prompt_dm_guild_picker(
+    interaction: discord.Interaction,
+    guild_ids: List[int],
+    on_pick: Optional[Callable[[discord.Interaction, int], Awaitable[None]]] = None,
+) -> Optional[int]:
     """
     Send an ephemeral guild-picker Select for a DM caller linked to multiple guilds'
     clans, and wait for their choice (or the view's timeout). Sends the interaction's
     first response — only call when interaction.response.is_done() is False.
+
+    on_pick (tracker #0128): replaces the default "Got it" edit as the selection's response —
+    for a caller whose selection must answer with something else first (LAUNCH_ACTIVITY has
+    to be an interaction's very first response). It owns pick_interaction's response.
     """
     from qapbot.i18n import t
     from qapbot.ui_common import GenericSelectView
@@ -2117,6 +2125,9 @@ async def _prompt_dm_guild_picker(interaction: discord.Interaction, guild_ids: L
     async def _on_pick(pick_interaction: discord.Interaction, selected_value: str) -> None:
         if not result.done():
             result.set_result(int(selected_value))
+        if on_pick is not None:
+            await on_pick(pick_interaction, int(selected_value))
+            return
         await pick_interaction.response.edit_message(
             content=t('commands.dm.guild_picker_selected', user_id=user_id),
             view=None,

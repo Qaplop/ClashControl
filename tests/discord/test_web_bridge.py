@@ -1848,6 +1848,46 @@ async def test_screen_get_reflects_a_new_click_overwriting_an_older_one(bridge_c
     assert (await resp.json())["screen"] == "clan_config"
 
 
+# ---------------------------------------------------------------------------
+# GET /api/cwl/dm-guild — tracker #0128: the guild a DM /cwl preferences resolved to
+# ---------------------------------------------------------------------------
+
+@pytest.mark.discord
+@pytest.mark.asyncio
+async def test_dm_guild_get_returns_recorded_guild_as_string_without_clearing(bridge_config, client, monkeypatch):
+    from qapbot.cache_manager import CACHE
+
+    # A real-sized snowflake: above JS's safe integer range, hence the string in the response.
+    monkeypatch.setitem(CACHE.pending_cwl_dm_guild, "42", 1145641080621109312)
+
+    for _ in range(2):  # the original launch's fetch, then Discord's pop-out re-run
+        resp = await client.get(
+            "/api/cwl/dm-guild",
+            params={"discord_user_id": "42"},
+            headers={"X-Bridge-Secret": "test-secret"},
+        )
+        assert resp.status == 200
+        assert await resp.json() == {"guild_id": "1145641080621109312"}
+
+
+@pytest.mark.discord
+@pytest.mark.asyncio
+async def test_dm_guild_get_404_when_nothing_recorded(bridge_config, client):
+    resp = await client.get(
+        "/api/cwl/dm-guild",
+        params={"discord_user_id": "999000999"},
+        headers={"X-Bridge-Secret": "test-secret"},
+    )
+    assert resp.status == 404
+
+
+@pytest.mark.discord
+@pytest.mark.asyncio
+async def test_dm_guild_get_requires_bridge_secret(bridge_config, client):
+    resp = await client.get("/api/cwl/dm-guild", params={"discord_user_id": "42"})
+    assert resp.status == 403
+
+
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_screen_get_defaults_to_clan_config_when_nothing_recorded(bridge_config, client):

@@ -123,11 +123,27 @@ async function setup(): Promise<void> {
       sessionStorage.setItem(CACHED_TOKEN_KEY, accessToken)
     }
 
-    const guildId = discordSdk.guildId
-    if (!guildId) {
+    // Tracker #0128: in the bot DM Discord gives no guild — the bot recorded which server the
+    // user's DM /cwl preferences resolved to, so ask it. Only if that fails too (e.g. started from
+    // Discord's own app launcher instead of the command) is there no way to continue.
+    let resolvedGuildId = discordSdk.guildId
+    if (!resolvedGuildId) {
+      try {
+        const dmGuildResponse = await fetch('/api/cwl/dm-guild', {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        })
+        if (dmGuildResponse.ok) {
+          resolvedGuildId = ((await dmGuildResponse.json()) as { guild_id?: string }).guild_id ?? null
+        }
+      } catch (err) {
+        console.error('[cwl-activity] dm-guild lookup failed:', err)
+      }
+    }
+    if (!resolvedGuildId) {
       root.textContent = 'This Activity must be launched from inside a guild.'
       return
     }
+    const guildId: string = resolvedGuildId
 
     const closeActivity = async (reason: string): Promise<void> => {
       // Notify the bot BEFORE actually closing (2026-08-16, live-testing feedback: on iPad, the

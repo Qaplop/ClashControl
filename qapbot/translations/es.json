@@ -267,7 +267,7 @@
       "cwl preferences": {
         "short": "Configura tu preferencia personal de participación en LGC y de liga",
         "title": "🛡️ Comando CWL Preferences",
-        "detailed": "Abre tu pantalla personal de preferencias de LGC — decide si quieres jugar siempre la LGC, no jugarla nunca, o decidir de nuevo cada temporada, además de un nivel de liga preferido. Se aplica individualmente a cada una de tus cuentas de Clash vinculadas, y a todos los servidores que te inviten, no solo a este.\n\n**Uso:**\n`/cwl preferences`\n\n**Notas:**\n• Funciona incluso si este servidor no ha configurado su mensaje del Centro de Ajustes de LGC para Jugadores — este comando siempre está disponible\n• Una elección permanente todavía se puede anular para cualquier temporada concreta, ya sea aquí o desde el MD de invitación de esa temporada"
+        "detailed": "Abre tu pantalla personal de preferencias de LGC — decide si quieres jugar siempre la LGC, no jugarla nunca, o decidir de nuevo cada temporada, además de un nivel de liga preferido. Se aplica individualmente a cada una de tus cuentas de Clash vinculadas, y a todos los servidores que te inviten, no solo a este.\n\n**Uso:**\n`/cwl preferences`\n\n**Notas:**\n• Funciona incluso si este servidor no ha configurado su mensaje del Centro de Ajustes de LGC para Jugadores — este comando siempre está disponible\n• Una elección permanente todavía se puede anular para cualquier temporada concreta, ya sea aquí o desde el MD de invitación de esa temporada\n• También funciona en tu MD con el bot: si tus cuentas pertenecen a varios servidores, primero eliges el servidor"
       },
       "admin": {
         "short": "Acciones administrativas y utilidades",

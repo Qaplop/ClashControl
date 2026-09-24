@@ -1,6 +1,22 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-24 (6)  Build 84.
+- Added (tracker #0128): /cwl preferences works in the bot DM. The Build 83 test showed Discord
+  opens the Activity there, just without a server. The bot now resolves the server from the
+  caller's linked accounts (directly for one match, via the DM server picker for several, whose
+  selection itself launches the Activity through a new on_pick hook), records it in
+  CACHE.pending_cwl_dm_guild, and the Activity fetches it via the new GET /api/cwl/dm-guild
+  (bridge + Worker route) when discordSdk.guildId is null. Replaces the Build 82/83 experiment
+  and the "server only" reply; the no-op guild_only() is gone, so /help no longer marks the
+  command 🟠. Help text (5 languages) and CWL_ROSTER_PLANNING_PLAN.md updated.
+- Docs: Pitfall 40 in copilot-instructions.md (guild_only no-op on subcommands, Activities in
+  the bot DM, DEV can't test DMs).
+  Files: QBdiscordcmds.py, qapbot/QBdiscocmdshelper.py, qapbot/cache_manager.py,
+  qapbot/web_bridge.py, qapbot/translations/*.json, activity/server/src/index.ts,
+  activity/client/src/main.ts, QBcore.py, docs (+ tests). 3499 tests pass.
+  Deploy: bot, then Worker, then Pages.
+
 2026-09-24 (5)  Build 83.
 - Changed: the DM Activity-launch experiment from (4) is gated on the bot admin
   (SERVER_ADMIN) instead of DEV. DEV registers its commands per guild, so no DEV command is

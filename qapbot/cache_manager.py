@@ -448,6 +448,11 @@ class CacheManager:
         # restart just falls back to the "clan_config" default, same as an entry that was never
         # recorded at all.
         self.pending_cwl_activity_screen: Dict[Tuple[str, str], str] = {}
+        # Tracker #0128: discord_user_id_str -> guild_id the user's DM /cwl preferences resolved
+        # to (directly, or via the DM server picker). An Activity launched in the bot DM has no
+        # discordSdk.guildId, so it fetches this through GET /api/cwl/dm-guild instead. Same
+        # launch-hint semantics as the dict above: in-memory only, read non-destructively.
+        self.pending_cwl_dm_guild: Dict[str, int] = {}
         # Tracker #0070 (2026-08-29): the most recently opened/refreshed /clan management
         # ClanManagementView currently showing a cwl_settings or cwl_management screen, one slot
         # per guild — lets a mutation made from the ANCHORED CWL Management Hub message push a

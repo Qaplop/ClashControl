@@ -3432,7 +3432,6 @@ cwl_group = app_commands.Group(name="cwl", description=dev_mode+"Personal CWL co
 
 
 @cwl_group.command(name="preferences", description=dev_mode+"View and change your personal CWL settings.")
-@app_commands.guild_only()
 async def cwl_preferences(interaction: discord.Interaction) -> None:
     """Second entry point into the Player CWL Settings Hub's Activity screen
     (plans/cwl-personal-hub.md Phase 5a-bis) — reachable even when a guild has the anchored hub
@@ -3442,38 +3441,57 @@ async def cwl_preferences(interaction: discord.Interaction) -> None:
     `/cwl signup`) without a second rename later.
 
     Deliberately NOT gated on cwl_player_hub_message_enabled, and NOT permission-gated at all —
-    this screen is for every member, same as CwlPlayerHubView's own button. @guild_only() is the
-    only gate: the callback needs a real guild_id to resolve the season/language.
+    this screen is for every member, same as CwlPlayerHubView's own button.
+
+    Works in the bot DM too (tracker #0128, plans/implemented/tracker-0128-cwl-preferences-in-dm.md): Discord
+    opens the Activity there, but without a guild, so the server is resolved here from the
+    caller's linked accounts (directly for one match, via the DM server picker for several) and
+    recorded in CACHE.pending_cwl_dm_guild, which the Activity fetches via GET /api/cwl/dm-guild.
+    No @app_commands.guild_only(): it's a no-op on a subcommand anyway (Pitfall 40).
 
     Must NOT defer()/send_message() before _launch_cwl_activity() — LAUNCH_ACTIVITY (type 12)
     has to be this interaction's very first response, per that function's own hard-constraint
     docstring (ui_cwl_roster.py) — a slash-command interaction is subject to the exact same rule
-    every component-click caller of it already follows.
+    every component-click caller of it already follows. In the picker case the launch is the
+    first response of the picker's selection interaction instead.
     """
     from qapbot.ui_cwl_roster import _launch_cwl_activity  # pyright: ignore[reportPrivateUsage]  # deliberately shared, see docstring above
 
-    # @guild_only() above is a no-op on a subcommand (discord.py ignores it; Discord only takes
-    # contexts on the top-level `cwl` group), so this IS reachable from a DM — it used to return
-    # silently here, leaving "the application did not respond".
-    if interaction.guild is None:
-        from qapbot.QBdiscocmdshelper import check_bot_admin_only
-        if check_bot_admin_only(interaction, CONFIG.server_admin):
-            # Bot-admin-only experiment (2026-09-24): does Discord allow LAUNCH_ACTIVITY in the bot
-            # DM at all? Admin-gated rather than DEV-gated because DEV registers its commands per
-            # guild, so no DEV command is reachable from a DM — the test has to run on PROD.
-            # Success = the Activity opens (and stops at its "launched from inside a guild" check,
-            # since discordSdk.guildId is null); failure = _launch_cwl_activity logs
-            # "LAUNCH_ACTIVITY callback failed" and answers with its text fallback.
-            logging.info(f"[CWL] DM LAUNCH_ACTIVITY experiment for user {interaction.user.id}")
-            await _launch_cwl_activity(interaction, 0, "player_prefs")
-            return
-        await interaction.response.send_message(
-            t('commands.help.server_only_detail_note', user_id=str(interaction.user.id),
-              marker=HELP_SERVER_ONLY_MARKER),
-            ephemeral=True,
-        )
+    if interaction.guild is not None:
+        await _launch_cwl_activity(interaction, interaction.guild.id, "player_prefs")
         return
-    await _launch_cwl_activity(interaction, interaction.guild.id, "player_prefs")
+
+    from qapbot.QBdiscocmdshelper import (
+        _prompt_dm_guild_picker,  # pyright: ignore[reportPrivateUsage]
+        get_dm_caller_matched_guild_ids,
+    )
+
+    user_id = str(interaction.user.id)
+    guild_ids = get_dm_caller_matched_guild_ids(user_id)
+    if not guild_ids:
+        await interaction.response.send_message(t('commands.errors.dm_not_linked', user_id=user_id), ephemeral=True)
+        return
+
+    async def _launch_for_guild(launch_interaction: discord.Interaction, guild_id: int) -> None:
+        CACHE.pending_cwl_dm_guild[user_id] = guild_id
+        await _launch_cwl_activity(launch_interaction, guild_id, "player_prefs")
+
+    if len(guild_ids) == 1:
+        await _launch_for_guild(interaction, guild_ids[0])
+        return
+
+    async def _on_pick(pick_interaction: discord.Interaction, guild_id: int) -> None:
+        await _launch_for_guild(pick_interaction, guild_id)
+        # The selection's one response went to LAUNCH_ACTIVITY, so the picker message is cleared
+        # through the original command interaction instead.
+        try:
+            await interaction.edit_original_response(
+                content=t('commands.dm.guild_picker_selected', user_id=user_id), view=None
+            )
+        except discord.HTTPException:
+            pass
+
+    await _prompt_dm_guild_picker(interaction, guild_ids, on_pick=_on_pick)
 
 
 @app_commands.command(name="subscriptions", description=dev_mode+"Lists clan and family subscriptions for the current channel or entire discord server.")

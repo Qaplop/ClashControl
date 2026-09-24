@@ -163,6 +163,21 @@ api.get('/cwl/screen', async (c) => {
   return c.json(await upstream.json(), upstream.status as 200 | 400 | 403 | 500)
 })
 
+// Tracker #0128 — an Activity launched in the bot DM has no guild of its own; the bot recorded
+// which server the user's DM /cwl preferences resolved to. Keyed only by the verified user id.
+api.get('/cwl/dm-guild', async (c) => {
+  const discordUserId = await verifiedDiscordUserId(c)
+  if (!discordUserId) return c.json({ error: 'unauthorized' }, 401)
+
+  if (!c.env.BRIDGE_URL || !c.env.BRIDGE_SECRET) return bridgeNotConfigured(c)
+
+  const upstream = await fetch(
+    `${c.env.BRIDGE_URL}/api/cwl/dm-guild?discord_user_id=${encodeURIComponent(discordUserId)}`,
+    { headers: { 'X-Bridge-Secret': c.env.BRIDGE_SECRET } },
+  )
+  return c.json(await upstream.json(), upstream.status as 200 | 400 | 403 | 404 | 500)
+})
+
 // Player CWL Settings Hub (2026-08-23, plans/cwl-personal-hub.md Phase 5d) — three routes for
 // the player_prefs screen. Same verify-identity-then-proxy shape as everything above; account
 // protection for these (the bridge's first non-admin-gated CWL endpoints) happens entirely

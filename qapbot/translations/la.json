@@ -267,7 +267,7 @@
       "cwl preferences": {
         "short": "Constitue praeferentiam tuam personalem de participatione CWL et ligae",
         "title": "🛡️ Mandatum CWL Preferences",
-        "detailed": "Aperi visum tuum personalem praeferentiarum CWL — constitue an semper CWL ludere velis, numquam ludere, vel omni tempore de novo decernere, plus gradum ligae praeferatum. Applicatur singillatim ad omnem rationem tuam Clash iunctam, et ad omnem servitorem qui te invitat, non tantum ad hunc.\n\n**Usus:**\n`/cwl preferences`\n\n**Notae:**\n• Functionat etiam si hic servitor nuntium suum Centri Optionum CWL Lusoris nondum constituit — hoc mandatum semper praesto est\n• Electio permanens adhuc pro quovis tempore singulo abrogari potest, aut hic aut ex nuntio privato invitationis illius temporis"
+        "detailed": "Aperi visum tuum personalem praeferentiarum CWL — constitue an semper CWL ludere velis, numquam ludere, vel omni tempore de novo decernere, plus gradum ligae praeferatum. Applicatur singillatim ad omnem rationem tuam Clash iunctam, et ad omnem servitorem qui te invitat, non tantum ad hunc.\n\n**Usus:**\n`/cwl preferences`\n\n**Notae:**\n• Functionat etiam si hic servitor nuntium suum Centri Optionum CWL Lusoris nondum constituit — hoc mandatum semper praesto est\n• Electio permanens adhuc pro quovis tempore singulo abrogari potest, aut hic aut ex nuntio privato invitationis illius temporis\n• Etiam in nuntio privato cum bot functionat: si rationes tuae ad plures servitores pertinent, primum servitorem eligis"
       },
       "admin": {
         "short": "Actiones administrativae et instrumenta",

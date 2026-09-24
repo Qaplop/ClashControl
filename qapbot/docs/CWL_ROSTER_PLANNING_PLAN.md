@@ -410,7 +410,11 @@ renders with a ❓ icon (tracker #0078's fix, 2026-08-30).
 **Player self-service** is entirely `/cwl preferences` (the Player CWL Hub Activity screen,
 `plans/implemented/cwl-personal-hub.md`) plus the DM buttons — there is no standalone `/cwl
 signup`/`/cwl withdraw` slash command; an earlier design specified them but the player-facing
-surface was redesigned around the Hub before they were built.
+surface was redesigned around the Hub before they were built. `/cwl preferences` also works in
+the bot DM (tracker #0128): the bot resolves the server from the caller's linked accounts (DM
+server picker if several match), records it in `CACHE.pending_cwl_dm_guild`, and the Activity,
+which has no `discordSdk.guildId` there, fetches it via `GET /api/cwl/dm-guild`
+(`plans/implemented/tracker-0128-cwl-preferences-in-dm.md`).
 
 ### 6.1 Extended sign-up — the "Ersatzbank"/Bench status (tracker #0114)
 

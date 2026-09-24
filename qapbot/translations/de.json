@@ -267,7 +267,7 @@
       "cwl preferences": {
         "short": "Persönliche CWL-Opt-in/Opt-out- und Liga-Präferenzen festlegen",
         "title": "🛡️ CWL-Präferenzen-Befehl",
-        "detailed": "Öffnet deinen persönlichen CWL-Präferenzen-Bildschirm — lege fest, ob du immer, nie oder von Saison zu Saison neu entscheiden willst, ob du bei CWL teilnimmst, plus eine bevorzugte Liga-Stufe. Gilt für jedes deiner verknüpften Clash-Konten einzeln und für jeden Server, der dich einlädt, nicht nur für diesen.\n\n**Verwendung:**\n`/cwl preferences`\n\n**Hinweise:**\n• Funktioniert auch, wenn dieser Server keine Player-CWL-Settings-Hub-Nachricht eingerichtet hat — dieser Befehl ist immer verfügbar\n• Eine dauerhafte Wahl kann trotzdem für eine einzelne Saison überschrieben werden, entweder hier oder direkt aus der Einladungs-DM dieser Saison"
+        "detailed": "Öffnet deinen persönlichen CWL-Präferenzen-Bildschirm — lege fest, ob du immer, nie oder von Saison zu Saison neu entscheiden willst, ob du bei CWL teilnimmst, plus eine bevorzugte Liga-Stufe. Gilt für jedes deiner verknüpften Clash-Konten einzeln und für jeden Server, der dich einlädt, nicht nur für diesen.\n\n**Verwendung:**\n`/cwl preferences`\n\n**Hinweise:**\n• Funktioniert auch, wenn dieser Server keine Player-CWL-Settings-Hub-Nachricht eingerichtet hat — dieser Befehl ist immer verfügbar\n• Eine dauerhafte Wahl kann trotzdem für eine einzelne Saison überschrieben werden, entweder hier oder direkt aus der Einladungs-DM dieser Saison\n• Funktioniert auch in deiner DM mit dem Bot: Gehören deine Accounts zu mehreren Servern, wählst du zuerst den Server aus"
       },
       "admin": {
         "short": "Administrative Aktionen und Werkzeuge",

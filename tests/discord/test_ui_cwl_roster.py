@@ -3944,14 +3944,12 @@ async def test_cwl_preferences_command_launches_activity_with_player_prefs_scree
 
 @pytest.mark.discord
 @pytest.mark.asyncio
-async def test_cwl_preferences_command_in_dm_says_server_only_for_non_admin(mock_interaction, monkeypatch):
-    """@app_commands.guild_only() is a no-op on a subcommand, so a DM really reaches this
-    callback. It answers "server only" instead of failing silently."""
-    import dataclasses
+async def test_cwl_preferences_command_in_dm_without_linked_guild_says_not_linked(mock_interaction, monkeypatch):
+    """Tracker #0128: no linked account in any tracked clan -> nothing to launch against."""
     import QBdiscordcmds
+    import qapbot.QBdiscocmdshelper as helper
 
-    monkeypatch.setattr(QBdiscordcmds, "CONFIG", dataclasses.replace(QBdiscordcmds.CONFIG, server_admin="111"))
-    mock_interaction.user.id = 222
+    monkeypatch.setattr(helper, "get_dm_caller_matched_guild_ids", lambda _uid: [])
     mock_interaction.guild = None
 
     await QBdiscordcmds.cwl_preferences.callback(mock_interaction)  # type: ignore[arg-type]
@@ -3963,14 +3961,16 @@ async def test_cwl_preferences_command_in_dm_says_server_only_for_non_admin(mock
 
 @pytest.mark.discord
 @pytest.mark.asyncio
-async def test_cwl_preferences_command_in_dm_tries_activity_launch_for_bot_admin(mock_interaction, monkeypatch):
-    """Bot-admin-only experiment: whether Discord allows LAUNCH_ACTIVITY in the bot DM at all."""
-    import dataclasses
+async def test_cwl_preferences_command_in_dm_with_one_guild_launches_directly(mock_interaction, monkeypatch):
+    """One matching server: record it for the Activity and launch as the first response."""
+    from qapbot.cache_manager import CACHE
     import QBdiscordcmds
+    import qapbot.QBdiscocmdshelper as helper
 
-    monkeypatch.setattr(QBdiscordcmds, "CONFIG", dataclasses.replace(QBdiscordcmds.CONFIG, server_admin="111"))
-    mock_interaction.user.id = 111
+    monkeypatch.setattr(helper, "get_dm_caller_matched_guild_ids", lambda _uid: [333444])
+    monkeypatch.setattr(CACHE, "pending_cwl_dm_guild", {})
     mock_interaction.guild = None
+    mock_interaction.user.id = 555666
     mock_interaction.id = 987654321
     mock_interaction.token = "test-token"
 
@@ -3979,6 +3979,83 @@ async def test_cwl_preferences_command_in_dm_tries_activity_launch_for_bot_admin
     mock_interaction.client.http.request.assert_awaited_once()
     _, kwargs = mock_interaction.client.http.request.await_args
     assert kwargs["json"] == {"type": 12, "data": {}}
+    assert CACHE.pending_cwl_dm_guild["555666"] == 333444
+    assert CACHE.pending_cwl_activity_screen[("333444", "555666")] == "player_prefs"
+
+
+@pytest.mark.discord
+@pytest.mark.asyncio
+async def test_cwl_preferences_command_in_dm_with_several_guilds_launches_from_picker(mock_interaction, monkeypatch):
+    """Several matching servers: the picker's selection answers with LAUNCH_ACTIVITY (its first
+    response), and the picker message is cleared through the original command interaction."""
+    from qapbot.cache_manager import CACHE
+    import QBdiscordcmds
+    import qapbot.QBdiscocmdshelper as helper
+
+    captured = {}
+
+    async def fake_picker(interaction, guild_ids, on_pick=None):
+        captured["guild_ids"] = guild_ids
+        captured["on_pick"] = on_pick
+        return None
+
+    monkeypatch.setattr(helper, "get_dm_caller_matched_guild_ids", lambda _uid: [111, 222])
+    monkeypatch.setattr(helper, "_prompt_dm_guild_picker", fake_picker)
+    monkeypatch.setattr(CACHE, "pending_cwl_dm_guild", {})
+    mock_interaction.guild = None
+    mock_interaction.user.id = 555666
+
+    await QBdiscordcmds.cwl_preferences.callback(mock_interaction)  # type: ignore[arg-type]
+
+    assert captured["guild_ids"] == [111, 222]
+    mock_interaction.client.http.request.assert_not_awaited()  # nothing launched before the pick
+
+    pick_interaction = AsyncMock()
+    pick_interaction.id = 123
+    pick_interaction.token = "pick-token"
+    pick_interaction.user.id = 555666
+    await captured["on_pick"](pick_interaction, 222)
+
+    pick_interaction.client.http.request.assert_awaited_once()
+    _, kwargs = pick_interaction.client.http.request.await_args
+    assert kwargs["json"] == {"type": 12, "data": {}}
+    assert CACHE.pending_cwl_dm_guild["555666"] == 222
+    mock_interaction.edit_original_response.assert_awaited_once()
+
+
+@pytest.mark.discord
+@pytest.mark.asyncio
+async def test_dm_guild_picker_on_pick_replaces_default_edit(mock_interaction, monkeypatch):
+    """_prompt_dm_guild_picker's on_pick hook owns the selection's response: the default
+    "Got it" edit_message must not run, or it would consume the slot LAUNCH_ACTIVITY needs."""
+    import qapbot.QBdiscocmdshelper as helper
+    import qapbot.ui_common as ui_common
+
+    views = []
+    real_view_cls = ui_common.GenericSelectView
+
+    def capture_view(*args, **kwargs):
+        view = real_view_cls(*args, **kwargs)
+        views.append((view, kwargs["callback_fn"]))
+        return view
+
+    monkeypatch.setattr(ui_common, "GenericSelectView", capture_view)
+    mock_interaction.guild = None
+    mock_interaction.client.get_guild = MagicMock(return_value=None)
+    picked = []
+
+    async def on_pick(pick_interaction, guild_id):
+        picked.append(guild_id)
+
+    task = asyncio.ensure_future(helper._prompt_dm_guild_picker(mock_interaction, [111, 222], on_pick=on_pick))
+    while not views:
+        await asyncio.sleep(0)
+    pick_interaction = AsyncMock()
+    await views[0][1](pick_interaction, "222")
+
+    assert await task == 222
+    assert picked == [222]
+    pick_interaction.response.edit_message.assert_not_awaited()
 
 
 # ---------------------------------------------------------------------------

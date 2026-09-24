@@ -411,7 +411,7 @@
     },
     "dm": {
       "fallback_reply": "👋 No entiendo mensajes de texto libre — prueba `/help` para ver qué puedo hacer, o usa un comando de barra aquí mismo en este MD.",
-      "fallback_tracker_hint": "🐞 ¿Encontraste un error o tienes una idea? Infórmalo con `/bug` o propónla con `/feature`, aquí mismo en este MD.",
+      "fallback_tracker_hint": "🐞 Informa de errores con {bug} o, si tienes una sugerencia de mejora, propónla con {feature}, aquí mismo en el chat.",
       "guild_picker_prompt": "Estás vinculado a cuentas en más de un servidor. ¿A qué servidor debería aplicarse esto?",
       "guild_picker_placeholder": "Selecciona un servidor...",
       "guild_picker_selected": "✅ Entendido — continuando con ese servidor."
@@ -1297,7 +1297,7 @@
       "dm_line_green": "\n✅ **{player_name}** — ya estás en **{clan_name}**. Tu LGC empieza {start_full} ({start_rel}). Nada que hacer, quédate donde estás.",
       "dm_line_amber": "\n⚠️ **{player_name}** — actualmente estás en **{current_clan_name}** y necesitas mudarte a **{clan_name}** *bastante antes de* {start_full} ({start_rel}).\n➡️ <{clan_url}>",
       "dm_unknown_clan": "sin clan",
-      "dm_line_bench_suffix": "({bench} Banquillo: estás en la plantilla, atacar es cosa tuya.)"
+      "dm_line_bench_suffix": "({bench} Banquillo: estás en la plantilla, pero no atacas. ¿Quieres jugar? Háblalo con los líderes del clan.)"
     },
     "update": {
       "dm_intro": "📋 Hola **{display_name}**, tu alineación de LGC para la temporada **{season}** ha cambiado ({count} actualización(es)):",

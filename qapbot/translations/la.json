@@ -411,7 +411,7 @@
     },
     "dm": {
       "fallback_reply": "👋 Nuntia textus liberi non intellego — `/help` conare ut videas quid facere possim, vel mandato barrae hic in hoc nuntio privato directe utere.",
-      "fallback_tracker_hint": "🐞 Vitium invenisti aut consilium habes? Id per `/bug` nuntia aut per `/feature` propone, hic in hoc nuntio privato.",
+      "fallback_tracker_hint": "🐞 Vitia per {bug} nuntia, aut si emendationem proponere vis, eam per {feature} propone, hic in colloquio.",
       "guild_picker_prompt": "In pluribus quam uno servitore rationibus iunctus es. Cui servitori hoc applicari debet?",
       "guild_picker_placeholder": "Elige servitorem...",
       "guild_picker_selected": "✅ Intellexi — cum illo servitore continuamus."
@@ -1297,7 +1297,7 @@
       "dm_line_green": "\n✅ **{player_name}** — iam in **{clan_name}** es. CWL tua incipit {start_full} ({start_rel}). Nihil agendum, tantum mane.",
       "dm_line_amber": "\n⚠️ **{player_name}** — nunc in **{current_clan_name}** es et ad **{clan_name}** *multo ante* {start_full} ({start_rel}) moveri debes.\n➡️ <{clan_url}>",
       "dm_unknown_clan": "nulla gens",
-      "dm_line_bench_suffix": "({bench} Subsellium — in indice es, impetus tibi liberum est.)"
+      "dm_line_bench_suffix": "({bench} Subsellium — in indice es, sed non impetis. Si ludere vis, cum ducibus gentis constitue.)"
     },
     "update": {
       "dm_intro": "📋 Salve **{display_name}**, ordo tuus CWL pro tempore **{season}** mutatus est ({count} renovationes):",

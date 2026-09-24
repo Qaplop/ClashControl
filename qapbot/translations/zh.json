@@ -411,7 +411,7 @@
     },
     "dm": {
       "fallback_reply": "👋 我无法理解自由文本消息——试试使用 `/help` 查看我能做什么，或在此私信中直接使用斜杠命令。",
-      "fallback_tracker_hint": "🐞 发现了错误或有新想法？可直接在此私信中使用 `/bug` 报告错误，或使用 `/feature` 提出功能建议。",
+      "fallback_tracker_hint": "🐞 使用 {bug} 报告错误；如果你有改进建议，请使用 {feature} 提出，直接在此聊天中即可。",
       "guild_picker_prompt": "你在多个服务器中都绑定了账号。这应作用于哪个服务器？",
       "guild_picker_placeholder": "选择一个服务器...",
       "guild_picker_selected": "✅ 好的——将继续使用该服务器。"
@@ -1297,7 +1297,7 @@
       "dm_line_green": "\n✅ **{player_name}** — 你已经在 **{clan_name}** 中。你的部落战联赛将于 {start_full}（{start_rel}）开始。无需操作，留在原地即可。",
       "dm_line_amber": "\n⚠️ **{player_name}** — 你目前在 **{current_clan_name}**，需要在 {start_full}（{start_rel}）*之前尽早*转移到 **{clan_name}**。\n➡️ <{clan_url}>",
       "dm_unknown_clan": "无部落",
-      "dm_line_bench_suffix": "（{bench} 替补 — 你在名单中，是否进攻由你决定。）"
+      "dm_line_bench_suffix": "（{bench} 替补 — 你在名单中，但不参与进攻。想上场？请与部落管理层沟通。）"
     },
     "update": {
       "dm_intro": "📋 你好，**{display_name}**，你在赛季 **{season}** 的部落战联赛阵容已发生变化（共 {count} 处更新）：",

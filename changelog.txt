@@ -1,6 +1,21 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-24 (18)  Build 93.
+- Changed (tracker #0127): DM free-text reply's tracker line is now qaplop's wording "🐞 Melde
+  Fehler mit /bug oder wenn du einen Verbesserungsvorschlag hast, schlage ihn mit /feature vor,
+  direkt hier im Chat." (all 5 languages); /bug and /feature are clickable (command_mention()).
+- Fixed (tracker #0126): the CWL roster DM's bench line said "attacking is up to you", which is
+  wrong: only the war-day team attacks. Now (en): "Bench — you're on the roster but don't
+  attack. Want to play? Clear it with your clan leadership." (cwl.start.dm_line_bench_suffix,
+  all 5 languages).
+- Fixed (tracker #0131): a /bug or /feature file upload in a DM logged "Failed to delete
+  upload-window message: 403 (50003)". Bots can't delete a user's message in a DM, so no delete
+  is attempted there any more; the files were and are attached normally.
+  Files: QapBot.py, qapbot/ui_tracker.py, qapbot/translations/*.json, QBcore.py
+  (+ tests/unit/test_dm_interaction_foundation.py, tests/discord/test_ui_tracker_items.py).
+  3523 tests pass.
+
 2026-09-24 (17)  Build 92.
 - Changed (tracker #0128 follow-up, qaplop): the "app not verified yet" explanation for a
   refused DM Activity launch arrived ~17 s late. The Build 91 live log showed why: Discord's

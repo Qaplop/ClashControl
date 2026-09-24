@@ -411,7 +411,7 @@
     },
     "dm": {
       "fallback_reply": "👋 Ich verstehe keine Freitext-Nachrichten — probiere `/help`, um zu sehen, was ich kann, oder nutze direkt hier in der DM einen Slash-Befehl.",
-      "fallback_tracker_hint": "🐞 Einen Fehler gefunden oder eine Idee? Melde ihn mit `/bug` oder schlage sie mit `/feature` vor, direkt hier in der DM.",
+      "fallback_tracker_hint": "🐞 Melde Fehler mit {bug} oder wenn du einen Verbesserungsvorschlag hast, schlage ihn mit {feature} vor, direkt hier im Chat.",
       "guild_picker_prompt": "Du bist mit Accounts auf mehreren Servern verknüpft. Für welchen Server soll das gelten?",
       "guild_picker_placeholder": "Server auswählen...",
       "guild_picker_selected": "✅ Alles klar — weiter mit diesem Server."
@@ -1298,7 +1298,7 @@
       "dm_line_green": "\n\u2705 **{player_name}** \u2014 du bist bereits in **{clan_name}**. Deine CWL startet {start_full} ({start_rel}). Du musst nichts tun, bleib einfach dort.",
       "dm_line_amber": "\n\u26a0\ufe0f **{player_name}** \u2014 du bist aktuell in **{current_clan_name}** und musst *rechtzeitig vor* {start_full} ({start_rel}) zu **{clan_name}** wechseln.\n\u27a1\ufe0f <{clan_url}>",
       "dm_unknown_clan": "keinem Clan",
-      "dm_line_bench_suffix": "({bench} Ersatzbank — du bist im Kader, Angreifen ist dir überlassen.)"
+      "dm_line_bench_suffix": "({bench} Ersatzbank — du bist im Kader, greifst aber nicht an. Wenn du spielen willst, kläre das mit der Clanführung.)"
     },
     "update": {
       "dm_intro": "\ud83d\udccb Hallo **{display_name}**, deine CWL-Aufstellung f\u00fcr Saison **{season}** hat sich ge\u00e4ndert ({count} \u00c4nderung(en)):",

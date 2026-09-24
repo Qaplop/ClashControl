@@ -2226,6 +2226,32 @@ async def test_upload_window_consumes_message_with_attachments():
 
 
 @pytest.mark.asyncio
+async def test_upload_window_in_dm_keeps_message_but_takes_files():
+    """Tracker #0131: bots can't delete a user's message in a DM (403/50003), so no delete
+    attempt is made there — the files are still taken."""
+    received = []
+
+    async def _on_files(pending):
+        received.append(pending)
+
+    attachment = MagicMock(spec=discord.Attachment)
+    attachment.size = 100
+    attachment.filename = "shot.png"
+    attachment.content_type = "image/png"
+    attachment.read = AsyncMock(return_value=b"bytes")
+
+    _register_upload_window(1, 2, _on_files)
+    message = _fake_upload_message(attachments=[attachment])
+    message.guild = None
+
+    consumed = await handle_tracker_upload_message(message)
+
+    assert consumed is True
+    message.delete.assert_not_awaited()
+    assert received[0][0]["original_name"] == "shot.png"
+
+
+@pytest.mark.asyncio
 async def test_upload_window_expired_is_dropped():
     async def _on_files(pending):
         pass

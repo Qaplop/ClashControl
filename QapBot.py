@@ -4652,7 +4652,10 @@ async def on_message(message: discord.Message) -> None:
         # Tracker #0122: point at /bug and /feature — only where they're actually registered
         # (tracker_enabled is PROD-only), so DEV never advertises commands that don't exist there.
         if CONFIG.tracker_enabled:
-            reply += "\n" + t('commands.dm.fallback_tracker_hint', user_id=str(message.author.id))
+            # Tracker #0127: /bug and /feature clickable — the DM is exactly where they run.
+            from qapbot.QBdiscocmdshelper import command_mention
+            reply += "\n" + t('commands.dm.fallback_tracker_hint', user_id=str(message.author.id),
+                              bug=command_mention("bug"), feature=command_mention("feature"))
         try:
             await message.channel.send(reply)
         except discord.Forbidden:

@@ -372,3 +372,21 @@ async def test_on_message_guild_message_skips_dm_reply(qapbot_module, fake_bot):
 
     message.channel.send.assert_not_awaited()
     fake_bot.process_commands.assert_awaited_once_with(message)
+
+
+@pytest.mark.discord
+@pytest.mark.asyncio
+async def test_on_message_dm_tracker_hint_mentions_are_clickable(qapbot_module, fake_bot, monkeypatch):
+    """Tracker #0127: /bug and /feature in the free-text reply are clickable command mentions."""
+    from qapbot.cache_manager import CACHE
+
+    monkeypatch.setattr(
+        qapbot_module, "CONFIG", dataclasses.replace(qapbot_module.CONFIG, tracker_enabled=True)
+    )
+    monkeypatch.setattr(CACHE, "app_command_ids", {"bug": "101", "feature": "202"})
+    message = _make_message(guild=None, is_bot=False)
+
+    await qapbot_module.on_message(message)
+
+    sent_text = message.channel.send.await_args.args[0]
+    assert "</bug:101>" in sent_text and "</feature:202>" in sent_text

@@ -411,7 +411,7 @@
     },
     "dm": {
       "fallback_reply": "👋 I don't understand free text messages — try `/help` to see what I can do, or use a slash command right here in this DM.",
-      "fallback_tracker_hint": "🐞 Found a bug or have an idea? Report it with `/bug` or suggest it with `/feature`, right here in this DM.",
+      "fallback_tracker_hint": "🐞 Report bugs with {bug}, or if you have an idea for an improvement, suggest it with {feature}, right here in the chat.",
       "guild_picker_prompt": "You're linked to accounts in more than one server. Which server should this apply to?",
       "guild_picker_placeholder": "Select a server...",
       "guild_picker_selected": "✅ Got it — continuing with that server."
@@ -1298,7 +1298,7 @@
       "dm_line_green": "\n\u2705 **{player_name}** \u2014 you're already in **{clan_name}**. Your CWL starts {start_full} ({start_rel}). Nothing to do, just stay put.",
       "dm_line_amber": "\n\u26a0\ufe0f **{player_name}** \u2014 you're currently in **{current_clan_name}** and need to move to **{clan_name}** *well before* {start_full} ({start_rel}).\n\u27a1\ufe0f <{clan_url}>",
       "dm_unknown_clan": "no clan",
-      "dm_line_bench_suffix": "({bench} Bench — you're on the roster, attacking is up to you.)"
+      "dm_line_bench_suffix": "({bench} Bench — you're on the roster but don't attack. Want to play? Clear it with your clan leadership.)"
     },
     "update": {
       "dm_intro": "\ud83d\udccb Hi **{display_name}**, your CWL line-up for season **{season}** has changed ({count} update(s)):",

@@ -546,12 +546,16 @@ async def handle_tracker_upload_message(message: discord.Message) -> bool:
         else:
             pending.append(result)
 
-    try:
-        await message.delete()
-    except discord.NotFound:
-        pass
-    except Exception as e:
-        logging.warning(f"[TRACKER] Failed to delete upload-window message: {e}")
+    # Tracker #0131: a bot can't delete another user's message in a DM (403, code 50003 "Cannot
+    # execute action on a DM channel") — no permission or workaround exists. The files are
+    # already downloaded above, so the upload just stays visible in the user's own DM.
+    if message.guild is not None:
+        try:
+            await message.delete()
+        except discord.NotFound:
+            pass
+        except Exception as e:
+            logging.warning(f"[TRACKER] Failed to delete upload-window message: {e}")
 
     await window.on_files(pending)
     return True

@@ -1111,6 +1111,21 @@ async def _respond_or_log(interaction: discord.Interaction, content: str) -> Non
 _DISCORD_ACTIVITY_NO_ACCESS = 50106
 
 
+def _server_jump_link(client: discord.Client, guild_id: int) -> str:
+    """The server's name as a clickable Markdown link: to its Player CWL Hub message when that
+    is enabled and posted (its button opens the same settings), else to the server itself."""
+    guild = client.get_guild(guild_id)
+    name = guild.name if guild else str(guild_id)
+    config = CACHE.server_config.get(str(guild_id), {})
+    channel_id = config.get("cwl_player_hub_channel_id")
+    message_id = config.get("cwl_player_hub_message_id")
+    if config.get("cwl_player_hub_message_enabled") and channel_id and message_id:
+        url = f"https://discord.com/channels/{guild_id}/{channel_id}/{message_id}"
+    else:
+        url = f"https://discord.com/channels/{guild_id}"
+    return f"[{name}]({url})"
+
+
 async def _launch_cwl_activity(interaction: discord.Interaction, guild_id: int, screen: str) -> None:
     """Opens the CWL_CLAN_CONFIG_ACTIVITY_PLAN.md Discord Activity in-context via the
     LAUNCH_ACTIVITY interaction-response callback (type 12) — flagged in the plan as unverified
@@ -1157,20 +1172,30 @@ async def _launch_cwl_activity(interaction: discord.Interaction, guild_id: int, 
             "enrollment": 'cwl.management.open_enrollment_fallback',
             "player_prefs": 'cwl.player_hub.open_fallback',
         }.get(screen, 'cwl.management.open_web_fallback')
-        text = t(fallback_key, guild_id=guild_id)
         if interaction.guild is None and getattr(e, "code", None) == _DISCORD_ACTIVITY_NO_ACCESS:
             # Tracker #0128 follow-up (2026-09-24): until Discord verifies the app, a DM launch
             # only works for the developer team and App Testers — everyone else gets 50106.
             # Launches inside a server work for all members. Tell the user what's going on and
             # where to go instead. `/cwl preferences` stays plain text on purpose: a clickable
-            # mention would run it right here in the DM again and hit the same refusal.
-            guild = interaction.client.get_guild(guild_id)
+            # mention would run it right here in the DM again and hit the same refusal; the
+            # server name is a jump link instead.
+            #
+            # Sent straight as a DM message: Discord's refusal kills the interaction itself
+            # (Build 91 live log: response -> 10062 Unknown interaction, followup -> 10015 Unknown
+            # Webhook after ~17 s of retries), so trying either first only delays the message.
             text = t('cwl.player_hub.dm_activity_unverified', user_id=str(interaction.user.id),
-                     guild_id=guild_id, server=guild.name if guild else str(guild_id))
-        # A refused LAUNCH_ACTIVITY can leave the interaction unusable on Discord's side
-        # (2026-09-24, Build 90 live test: Discord showed its own red error and neither an
-        # ephemeral response nor a followup arrived). Try both, log why each failed, and in a DM
-        # finish with a plain DM message — the DM is private anyway, so nothing leaks.
+                     guild_id=guild_id, server=_server_jump_link(interaction.client, guild_id))
+            try:
+                await interaction.user.send(text)
+                logging.info(f"[CWL] DM launch refused (app not verified yet) — explained to user {interaction.user.id}")
+            except Exception as dm_error:
+                logging.warning(f"[CWL] DM launch refused, explanation DM failed: {dm_error}")
+            return
+
+        text = t(fallback_key, guild_id=guild_id)
+        # A refused LAUNCH_ACTIVITY can leave the interaction unusable on Discord's side (see the
+        # DM branch above). Try the response, then a followup, logging why each failed, and in a
+        # DM finish with a plain DM message — the DM is private anyway, so nothing leaks.
         try:
             if not interaction.response.is_done():
                 await interaction.response.send_message(text, ephemeral=True)

@@ -3924,14 +3924,18 @@ class _FakeHTTPError(Exception):
 
 @pytest.mark.discord
 @pytest.mark.asyncio
-async def test_launch_cwl_activity_dm_refusal_explains_pending_verification(mock_interaction):
+async def test_launch_cwl_activity_dm_refusal_explains_pending_verification(mock_interaction, monkeypatch):
     """Tracker #0128 follow-up: Discord refuses a DM launch with 50106 until the app is verified
-    (only team/App Testers pass). The user gets the dedicated explanation naming the server —
-    with /cwl preferences as plain text, since a clickable mention would re-run it in the DM."""
+    (only team/App Testers pass). Discord's refusal kills the interaction (live: 10062 / 10015
+    after ~17 s), so the explanation goes straight out as a DM message — no response/followup
+    attempt first. /cwl preferences stays plain text; the server name is a jump link."""
+    from qapbot.cache_manager import CACHE
     from qapbot.ui_cwl_roster import _launch_cwl_activity
 
+    monkeypatch.setattr(CACHE, "server_config", {})
     mock_interaction.guild = None
     mock_interaction.response.is_done = MagicMock(return_value=False)
+    mock_interaction.user.send = AsyncMock()
     mock_interaction.client.http.request = AsyncMock(side_effect=_FakeHTTPError(50106))
     guild = MagicMock()
     guild.name = "The QCrew"
@@ -3939,10 +3943,29 @@ async def test_launch_cwl_activity_dm_refusal_explains_pending_verification(mock
 
     await _launch_cwl_activity(mock_interaction, 555, "player_prefs")
 
-    args, kwargs = mock_interaction.response.send_message.await_args
-    assert "The QCrew" in args[0]
-    assert "`/cwl preferences`" in args[0] and "</cwl" not in args[0]
-    assert kwargs.get("ephemeral") is True
+    mock_interaction.response.send_message.assert_not_awaited()
+    mock_interaction.followup.send.assert_not_awaited()
+    text = mock_interaction.user.send.await_args.args[0]
+    assert "[The QCrew](https://discord.com/channels/555)" in text
+    assert "`/cwl preferences`" in text and "</cwl" not in text
+
+
+@pytest.mark.discord
+def test_server_jump_link_prefers_the_player_hub_message(monkeypatch):
+    from qapbot.cache_manager import CACHE
+    from qapbot.ui_cwl_roster import _server_jump_link
+
+    client = MagicMock()
+    guild = MagicMock()
+    guild.name = "The QCrew"
+    client.get_guild = MagicMock(return_value=guild)
+    hub = {"cwl_player_hub_message_enabled": True, "cwl_player_hub_channel_id": "77", "cwl_player_hub_message_id": "88"}
+    monkeypatch.setattr(CACHE, "server_config", {"555": hub})
+
+    assert _server_jump_link(client, 555) == "[The QCrew](https://discord.com/channels/555/77/88)"
+
+    hub["cwl_player_hub_message_enabled"] = False  # disabled hub: link the server itself
+    assert _server_jump_link(client, 555) == "[The QCrew](https://discord.com/channels/555)"
 
 
 @pytest.mark.discord
@@ -3965,7 +3988,7 @@ async def test_launch_cwl_activity_50106_in_server_keeps_generic_fallback(mock_i
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_launch_cwl_activity_fallback_uses_followup_when_response_slot_is_gone(mock_interaction):
-    """If Discord counted the refused launch as the response, the text still arrives as a
+    """Any other launch failure: if the response slot is gone, the text still arrives as a
     followup instead of silently disappearing."""
     from qapbot.ui_cwl_roster import _launch_cwl_activity
 
@@ -3973,8 +3996,7 @@ async def test_launch_cwl_activity_fallback_uses_followup_when_response_slot_is_
     mock_interaction.response.is_done = MagicMock(return_value=False)
     mock_interaction.response.send_message = AsyncMock(side_effect=Exception("already acknowledged"))
     mock_interaction.user.send = AsyncMock()
-    mock_interaction.client.http.request = AsyncMock(side_effect=_FakeHTTPError(50106))
-    mock_interaction.client.get_guild = MagicMock(return_value=None)
+    mock_interaction.client.http.request = AsyncMock(side_effect=Exception("simulated failure"))
 
     await _launch_cwl_activity(mock_interaction, 555, "player_prefs")
 
@@ -3986,8 +4008,8 @@ async def test_launch_cwl_activity_fallback_uses_followup_when_response_slot_is_
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_launch_cwl_activity_dm_fallback_ends_with_plain_dm_when_interaction_is_dead(mock_interaction):
-    """Build 90 live test: after Discord's own refusal neither the response nor a followup got
-    through. In a DM the explanation then goes out as a normal DM message."""
+    """Any other launch failure in a DM with a dead interaction: the generic text still goes
+    out as a normal DM message."""
     from qapbot.ui_cwl_roster import _launch_cwl_activity
 
     mock_interaction.guild = None
@@ -3995,15 +4017,11 @@ async def test_launch_cwl_activity_dm_fallback_ends_with_plain_dm_when_interacti
     mock_interaction.response.send_message = AsyncMock(side_effect=Exception("unknown interaction"))
     mock_interaction.followup.send = AsyncMock(side_effect=Exception("unknown webhook"))
     mock_interaction.user.send = AsyncMock()
-    mock_interaction.client.http.request = AsyncMock(side_effect=_FakeHTTPError(50106))
-    guild = MagicMock()
-    guild.name = "The QCrew"
-    mock_interaction.client.get_guild = MagicMock(return_value=guild)
+    mock_interaction.client.http.request = AsyncMock(side_effect=Exception("simulated failure"))
 
     await _launch_cwl_activity(mock_interaction, 555, "player_prefs")
 
     mock_interaction.user.send.assert_awaited_once()
-    assert "The QCrew" in mock_interaction.user.send.await_args.args[0]
 
 
 @pytest.mark.discord

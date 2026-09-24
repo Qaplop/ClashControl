@@ -1,6 +1,17 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-24 (17)  Build 92.
+- Changed (tracker #0128 follow-up, qaplop): the "app not verified yet" explanation for a
+  refused DM Activity launch arrived ~17 s late. The Build 91 live log showed why: Discord's
+  refusal kills the interaction (response -> 10062 Unknown interaction, followup -> 10015 Unknown
+  Webhook after retries). On 50106 in a DM the explanation now goes out immediately as a DM
+  message, without those attempts. The server name in it is a clickable jump link: to the
+  server's Player CWL Hub message when enabled and posted (its button opens the same settings),
+  else to the server (_server_jump_link()). Pitfall 40 updated.
+  Files: qapbot/ui_cwl_roster.py, QBcore.py, .github/copilot-instructions.md
+  (+ tests/discord/test_ui_cwl_roster.py). 3521 tests pass.
+
 2026-09-24 (16)  Build 91.
 - Fixed (tracker #0128 follow-up): the Build 90 safeguard's message never arrived in the live
   test; only Discord's own red refusal showed. Both of its send attempts (ephemeral response,

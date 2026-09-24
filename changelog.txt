@@ -1,6 +1,18 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-24 (3)  Build 81.
+- Changed (tracker #0118): /help in a DM lists every command instead of hiding the
+  server-only ones. Those are marked with 🟠, shown as plain `/cmd` (no clickable mention,
+  since it can't run in a DM), and explained by a legend line. An embed can't color single
+  lines, so the marker stands in for the requested orange. Detailed help for a server-only
+  command now works in a DM too (was "not found") and says it only works on a server. The
+  autocomplete marks the same commands and now also offers /bug and /feature where the
+  tracker is on. Command list shared via _get_help_command_names().
+  Translation key dm_filtered_note replaced by dm_server_only_legend + server_only_detail_note.
+  Files: QBdiscordcmds.py, qapbot/translations/*.json, QBcore.py
+  (+ tests/discord/test_dm_command_invocation.py). 3493 tests pass.
+
 2026-09-24 (2)  Build 80.
 - Added (tracker #0122, part 1): the DM reply to free-text messages now also points to `/bug`
   and `/feature`. The hint is a separate key (commands.dm.fallback_tracker_hint, all 5

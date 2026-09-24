@@ -215,7 +215,8 @@
     "help": {
       "list_title": "QapBot 命令",
       "list_description": "使用 `/help command:命令名称` 获取某个具体命令的详细帮助。",
-      "dm_filtered_note": "🏠 部分命令只能在服务器内使用，此处不显示——请在服务器中运行 `/help` 查看完整列表。",
+      "dm_server_only_legend": "{marker} = 仅在服务器内可用。此处显示是为了让你了解我的全部功能；请在服务器中使用。",
+      "server_only_detail_note": "{marker} 此命令仅在服务器内可用，无法在此私信中使用。",
       "command_not_found_title": "未找到命令",
       "command_not_found_desc": "没有关于 `/{command}` 的详细帮助。不带参数使用 `/help` 可查看所有命令。",
       "category_leaderboards": "📊 排行榜与订阅",

@@ -215,7 +215,8 @@
     "help": {
       "list_title": "Mandata QapBot",
       "list_description": "Utere `/help command:NomenMandati` ad auxilium detaliatum de mandato specifico obtinendum.",
-      "dm_filtered_note": "🏠 Quaedam mandata tantum intra servitorem functionant et hic non ostenduntur — ibi `/help` age ut indicem totum videas.",
+      "dm_server_only_legend": "{marker} = tantum intra servitorem functionat. Hic ostenditur ut omnia quae facere possim videas; in servitore age.",
+      "server_only_detail_note": "{marker} Hoc mandatum tantum intra servitorem functionat, non in hoc nuntio privato.",
       "command_not_found_title": "Mandatum Non Inventum",
       "command_not_found_desc": "Nullum auxilium detaliatum pro `/{command}` praesto est. Utere `/help` sine parametris ut omnia mandata videas.",
       "category_leaderboards": "📊 Tabulae Principum et Subscriptiones",

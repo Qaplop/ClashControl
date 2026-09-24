@@ -427,12 +427,12 @@ async def test_admin_cleanup_messages_works_from_dm_for_bot_admin(mock_interacti
 
 
 # ---------------------------------------------------------------------------
-# help() — DM-filtered command listing
+# help() — DM listing: every command, server-only ones marked (tracker #0118)
 # ---------------------------------------------------------------------------
 
 @pytest.mark.discord
 @pytest.mark.asyncio
-async def test_help_dm_filters_to_dm_available_commands(mock_interaction, monkeypatch):
+async def test_help_dm_lists_all_commands_and_marks_server_only(mock_interaction, monkeypatch):
     mock_interaction.guild = None
     mock_interaction.guild_id = None
     mock_interaction.client = MagicMock()
@@ -444,16 +444,38 @@ async def test_help_dm_filters_to_dm_available_commands(mock_interaction, monkey
     embed = mock_interaction.followup.send.await_args.kwargs.get("embed")
     assert embed is not None
     field_values = " ".join(f.value for f in embed.fields)
-    # DM-available commands appear...
-    assert "/status" in field_values or "status" in field_values
-    # ...guild-only commands (e.g. subscribe, highlightme, clan management) do not.
-    assert "/subscribe`" not in field_values
-    assert "/highlightme`" not in field_values
+    marker = QBdiscordcmds.HELP_SERVER_ONLY_MARKER
+    # Server-only commands are listed too, each carrying the marker...
+    assert f"{marker} `/subscribe`" in field_values
+    assert f"{marker} `/highlightme`" in field_values
+    # ...DM-invokable ones are listed without it...
+    assert "/status" in field_values
+    assert f"{marker} `/status`" not in field_values
+    assert f"{marker} `/whois`" not in field_values
+    # ...and the description explains the marker.
+    assert marker in (embed.description or "")
 
 
 @pytest.mark.discord
 @pytest.mark.asyncio
-async def test_help_dm_rejects_detail_request_for_guild_only_command(mock_interaction, monkeypatch):
+async def test_help_guild_listing_has_no_server_only_marker(mock_interaction, monkeypatch):
+    mock_interaction.guild = MagicMock()
+    mock_interaction.guild_id = 123
+    mock_interaction.client = MagicMock()
+    mock_interaction.client.application_id = 0
+
+    await QBdiscordcmds.help.callback(mock_interaction)  # type: ignore[arg-type]
+
+    embed = mock_interaction.followup.send.await_args.kwargs.get("embed")
+    assert embed is not None
+    marker = QBdiscordcmds.HELP_SERVER_ONLY_MARKER
+    assert marker not in " ".join(f.value for f in embed.fields)
+    assert marker not in (embed.description or "")
+
+
+@pytest.mark.discord
+@pytest.mark.asyncio
+async def test_help_dm_detail_for_server_only_command_shows_note(mock_interaction, monkeypatch):
     mock_interaction.guild = None
     mock_interaction.guild_id = None
 
@@ -462,21 +484,36 @@ async def test_help_dm_rejects_detail_request_for_guild_only_command(mock_intera
     mock_interaction.followup.send.assert_awaited_once()
     embed = mock_interaction.followup.send.await_args.kwargs.get("embed")
     assert embed is not None
-    assert embed.color == discord.Color.red()
+    assert embed.color == discord.Color.blue()
+    assert QBdiscordcmds.HELP_SERVER_ONLY_MARKER in (embed.description or "")
 
 
 @pytest.mark.discord
 @pytest.mark.asyncio
-async def test_help_command_autocomplete_dm_excludes_guild_only(mock_interaction):
+async def test_help_dm_detail_for_dm_command_has_no_note(mock_interaction, monkeypatch):
+    mock_interaction.guild = None
+    mock_interaction.guild_id = None
+
+    await QBdiscordcmds.help.callback(mock_interaction, command="status")  # type: ignore[arg-type]
+
+    embed = mock_interaction.followup.send.await_args.kwargs.get("embed")
+    assert embed is not None
+    assert QBdiscordcmds.HELP_SERVER_ONLY_MARKER not in (embed.description or "")
+
+
+@pytest.mark.discord
+@pytest.mark.asyncio
+async def test_help_command_autocomplete_dm_marks_guild_only(mock_interaction):
     mock_interaction.guild = None
 
     choices = await QBdiscordcmds.help_command_autocomplete(mock_interaction, "")  # type: ignore[arg-type]
 
-    values = {c.value for c in choices}
-    assert "status" in values
-    assert "subscribe" not in values
-    assert "highlightme" not in values
-    assert "whois" in values  # whois is DM-invokable now — see test_whois_family_is_dm_invokable
+    by_value = {c.value: c.name for c in choices}
+    marker = QBdiscordcmds.HELP_SERVER_ONLY_MARKER
+    assert by_value["status"] == "status"
+    assert by_value["whois"] == "whois"  # whois is DM-invokable now — see test_whois_family_is_dm_invokable
+    assert by_value["subscribe"] == f"{marker} subscribe"
+    assert by_value["highlightme"] == f"{marker} highlightme"
 
 
 @pytest.mark.discord
@@ -487,8 +524,8 @@ async def test_help_command_autocomplete_guild_includes_all():
 
     choices = await QBdiscordcmds.help_command_autocomplete(guild_interaction, "")  # type: ignore[arg-type]
 
-    values = {c.value for c in choices}
-    assert "subscribe" in values
+    by_value = {c.value: c.name for c in choices}
+    assert by_value["subscribe"] == "subscribe"
 
 
 # ---------------------------------------------------------------------------

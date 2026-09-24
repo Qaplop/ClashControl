@@ -1069,13 +1069,38 @@ def _get_help_command_dm_status() -> Dict[str, bool]:
     }
 
 
+# Tracker #0118: marks a server-only command in a DM's /help listing. An embed can't color
+# individual lines, so an orange marker plus a legend line stands in for "shown in orange".
+HELP_SERVER_ONLY_MARKER = "🟠"
+
+
+def _get_help_command_names() -> List[str]:
+    """Every command /help knows about, in listing order — shared by help() and its
+    autocomplete so the two can't disagree. bug/feature only exist where the tracker is on."""
+    names = [
+        "subscribe", "unsubscribe", "subscriptions", "leaderboard", "highlightme", "analyse cwl_league_group",
+        "analyse cwl_opponent", "clan management", "cwl preferences", "admin", "list", "whois", "link clan", "link player",
+        "ping", "status", "help"
+    ]
+    if CONFIG.tracker_enabled:
+        names += ["bug", "feature"]
+    return names
+
+
+def _get_help_server_only_commands(is_dm: bool) -> Set[str]:
+    """The /help commands to mark as server-only — empty outside a DM, where everything works."""
+    if not is_dm:
+        return set()
+    return {name for name, guild_only in _get_help_command_dm_status().items() if guild_only}
+
+
 @app_commands.command(name="help", description=dev_mode+"Display help information about the available bot commands.")
 @app_commands.describe(
     command="Optional: Select a specific command to get detailed help"
 )
 # DM-invokable (Phase 0b, CWL_ROSTER_PLANNING_PLAN.md) — display-only guild_id, no functional guild dependency.
-# Filters its own command listing to DM-available commands when invoked from a DM — see
-# _get_help_command_dm_status() above.
+# In a DM it lists every command and marks the server-only ones (tracker #0118) — see
+# _get_help_server_only_commands() above.
 @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.channel_id))
 async def help(interaction: discord.Interaction, command: Optional[str] = None):
     """
@@ -1088,21 +1113,10 @@ async def help(interaction: discord.Interaction, command: Optional[str] = None):
 
     is_dm = interaction.guild is None
 
-    # Command list for autocomplete and validation — in a DM, filtered down to only the
-    # commands that are actually invokable there (see _get_help_command_dm_status()). Lowercase
-    # (not the usual module-constant SCREAMING_CASE) since this is a plain local variable,
-    # reassigned below for the DM case — an all-caps name here reads as a real constant and
-    # trips static-analysis "constant redefinition" warnings for a completely legal reassignment.
-    available_commands = [
-        "subscribe", "unsubscribe", "subscriptions", "leaderboard", "highlightme", "analyse cwl_league_group",
-        "analyse cwl_opponent", "clan management", "cwl preferences", "admin", "list", "whois", "link clan", "link player",
-        "ping", "status", "help"
-    ]
-    if CONFIG.tracker_enabled:
-        available_commands += ["bug", "feature"]
-    if is_dm:
-        dm_status = _get_help_command_dm_status()
-        available_commands = [c for c in available_commands if not dm_status.get(c, True)]
+    # Tracker #0118: a DM lists every command too, not just the DM-invokable ones — the
+    # server-only ones are marked instead of hidden, so a new user sees what the bot can do.
+    available_commands = _get_help_command_names()
+    server_only_commands = _get_help_server_only_commands(is_dm)
 
     user_id = str(interaction.user.id)
     guild_id = interaction.guild_id
@@ -1126,7 +1140,10 @@ async def help(interaction: discord.Interaction, command: Optional[str] = None):
         # Get detailed help for the command
         title = t(f'commands.help.{command_lower}.title', user_id=user_id, guild_id=guild_id)
         description = t(f'commands.help.{command_lower}.detailed', user_id=user_id, guild_id=guild_id)
-        
+        if command_lower in server_only_commands:
+            description += "\n\n" + t('commands.help.server_only_detail_note', user_id=user_id, guild_id=guild_id,
+                                      marker=HELP_SERVER_ONLY_MARKER)
+
         embed = discord.Embed(
             title=title,
             description=description,
@@ -1174,7 +1191,8 @@ async def help(interaction: discord.Interaction, command: Optional[str] = None):
     else:
         embed.description = t('commands.help.list_description', user_id=user_id, guild_id=guild_id)
     if is_dm:
-        embed.description = (embed.description or "") + "\n" + t('commands.help.dm_filtered_note', user_id=user_id, guild_id=guild_id)
+        embed.description = (embed.description or "") + "\n" + t('commands.help.dm_server_only_legend', user_id=user_id,
+                                                                 guild_id=guild_id, marker=HELP_SERVER_ONLY_MARKER)
 
     # Organize commands by category (reorganized per user request)
     categories = {
@@ -1185,16 +1203,8 @@ async def help(interaction: discord.Interaction, command: Optional[str] = None):
     }
     if CONFIG.tracker_enabled:
         categories[t('commands.help.category_tracker', user_id=user_id, guild_id=guild_id)] = ["bug", "feature"]
-    if is_dm:
-        dm_status = _get_help_command_dm_status()
-        categories = {
-            category: [c for c in commands_list if not dm_status.get(c, True)]
-            for category, commands_list in categories.items()
-        }
 
     for category, commands_list in categories.items():
-        if not commands_list:
-            continue  # entire category filtered out in DM \u2014 skip it, including its blank-line spacer
         # Add blank line before category (except first)
         embed.add_field(name="\u200b", value="", inline=False)
 
@@ -1213,8 +1223,12 @@ async def help(interaction: discord.Interaction, command: Optional[str] = None):
             elif cmd in ("link clan", "link player"):
                 cmd_key = "link"
             
+            # Server-only in a DM: marker + plain code formatting, never a clickable mention —
+            # clicking it here couldn't run the command anyway.
+            if cmd in server_only_commands:
+                field_value += f"{HELP_SERVER_ONLY_MARKER} `/{cmd}` - {short_desc}\n"
             # Use clickable command mention if ID is available, otherwise use code formatting
-            if cmd_key in command_ids:
+            elif cmd_key in command_ids:
                 cmd_id = command_ids[cmd_key]  # type: ignore[has-type]
                 field_value += f"</{cmd}:{cmd_id}> - {short_desc}\n"
             else:
@@ -1228,21 +1242,17 @@ async def help(interaction: discord.Interaction, command: Optional[str] = None):
 
 @help.autocomplete('command')
 async def help_command_autocomplete(interaction: discord.Interaction, current: str):
-    """Autocomplete for help command parameter — filtered to DM-available commands when
-    invoked from a DM (see _get_help_command_dm_status())."""
-    commands_list = [
-        "subscribe", "unsubscribe", "subscriptions", "leaderboard", "highlightme", "analyse cwl_league_group",
-        "analyse cwl_opponent", "clan management", "cwl preferences", "admin", "list", "whois", "link clan", "link player",
-        "ping", "status", "help"
-    ]
-    if interaction.guild is None:
-        dm_status = _get_help_command_dm_status()
-        commands_list = [c for c in commands_list if not dm_status.get(c, True)]
+    """Autocomplete for help command parameter — every command, with the server-only ones
+    marked when invoked from a DM (tracker #0118, see _get_help_server_only_commands())."""
+    server_only_commands = _get_help_server_only_commands(interaction.guild is None)
 
     current_lower = (current or "").lower()
     choices = [
-        app_commands.Choice(name=cmd, value=cmd)
-        for cmd in commands_list
+        app_commands.Choice(
+            name=f"{HELP_SERVER_ONLY_MARKER} {cmd}" if cmd in server_only_commands else cmd,
+            value=cmd,
+        )
+        for cmd in _get_help_command_names()
         if not current_lower or current_lower in cmd
     ]
     return choices[:25]

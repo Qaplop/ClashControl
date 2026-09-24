@@ -215,7 +215,8 @@
     "help": {
       "list_title": "Comandos de QapBot",
       "list_description": "Usa `/help command:NombreComando` para obtener ayuda detallada sobre un comando específico.",
-      "dm_filtered_note": "🏠 Algunos comandos solo funcionan dentro de un servidor y no se muestran aquí — ejecuta `/help` allí para ver la lista completa.",
+      "dm_server_only_legend": "{marker} = solo funciona dentro de un servidor. Se muestra aquí para que veas todo lo que puedo hacer; ejecútalo en un servidor.",
+      "server_only_detail_note": "{marker} Este comando solo funciona dentro de un servidor, no en este MD.",
       "command_not_found_title": "Comando No Encontrado",
       "command_not_found_desc": "No hay ayuda detallada disponible para `/{command}`. Usa `/help` sin parámetros para ver todos los comandos.",
       "category_leaderboards": "📊 Clasificaciones y Suscripciones",

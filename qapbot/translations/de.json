@@ -1240,7 +1240,7 @@
       "col_status_tooltip": "Dein aktueller CWL-Anmeldestatus für diesen Account in dieser Saison — nutze die Buttons zum Bestätigen oder Absagen.",
       "col_invited_by": "Eingeladen von",
       "col_invited_by_tooltip": "Der Server bzw. die Server, die diesen Account in dieser Saison zur CWL eingeladen haben.",
-      "col_clan": "Clan",
+      "col_clan": "CWL Clan",
       "col_tier": "Liga-Stufe",
       "col_start": "CWL-Start",
       "mode_none": "Jede Saison neu fragen",

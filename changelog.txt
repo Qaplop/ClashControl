@@ -1,6 +1,11 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-25 (12)
+- Changed (tracker #0125 follow-up): /cwl preferences' season block header "Clan" is now
+  "CWL Clan" (all 5 languages), so it isn't confused with block I's new "Current clan" column.
+  Translations only, served by the bot: live after the next bot restart, no Activity deploy.
+
 2026-09-25 (11)  Build 109.
 - Fixed (tracker #0137): /cwl preferences said "no CWL season set up" on a server that hadn't
   started its season, even while another server had already invited the user's accounts. The

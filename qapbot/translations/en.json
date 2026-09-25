@@ -1240,7 +1240,7 @@
       "col_status_tooltip": "Your current CWL sign-up status for this account this season — use the buttons to confirm or opt out.",
       "col_invited_by": "Invited by",
       "col_invited_by_tooltip": "The server(s) that invited this account to CWL this season.",
-      "col_clan": "Clan",
+      "col_clan": "CWL clan",
       "col_tier": "League tier",
       "col_start": "CWL start",
       "mode_none": "Ask me each season",

@@ -1239,7 +1239,7 @@
       "col_status_tooltip": "Tu estado actual de inscripción a LGC para esta cuenta esta temporada — usa los botones para confirmar o excluirte.",
       "col_invited_by": "Invitado por",
       "col_invited_by_tooltip": "El servidor o los servidores que invitaron a esta cuenta a la LGC esta temporada.",
-      "col_clan": "Clan",
+      "col_clan": "Clan de LGC",
       "col_tier": "Liga",
       "col_start": "Inicio de LGC",
       "mode_none": "Preguntarme cada temporada",

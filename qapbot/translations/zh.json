@@ -1239,7 +1239,7 @@
       "col_status_tooltip": "本赛季该账号当前的部落战联赛报名状态 — 使用按钮确认或退出。",
       "col_invited_by": "邀请方",
       "col_invited_by_tooltip": "本赛季邀请此账号参加部落战联赛的服务器。",
-      "col_clan": "部落",
+      "col_clan": "联赛部落",
       "col_tier": "联赛等级",
       "col_start": "部落战联赛开始",
       "mode_none": "每个赛季都询问我",

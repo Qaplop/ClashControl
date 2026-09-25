@@ -498,6 +498,7 @@
       "button_test_cases": "🧪 Test cases",
       "button_grant_access": "🔓 Reply to requestor",
       "discarded": "🗑️ Draft discarded.",
+      "draft_expired": "⌛ This draft expired after 14 minutes without activity and was **not** submitted. Run {command} again to start a new one.",
       "submitted": "✅ Submitted as #{item_number}! {jump_link}",
       "tracker_disabled": "🚫 The bug/feature tracker is currently disabled.",
       "tracker_not_configured": "⚠️ The bug/feature tracker hasn't been configured yet — ask a bot admin to run `/admin` → Bot Setup.",

@@ -498,6 +498,7 @@
       "button_test_cases": "🧪 Casus probationis",
       "button_grant_access": "🔓 Responde petenti",
       "discarded": "🗑️ Exemplar reiectum.",
+      "draft_expired": "⌛ Hoc exemplar post 14 minuta sine actione exspiravit et **non** missum est. {command} iterum age ut novum incipias.",
       "submitted": "✅ Missum ut #{item_number}! {jump_link}",
       "tracker_disabled": "🚫 Notatio errorum/munerum nunc inactivata est.",
       "tracker_not_configured": "⚠️ Notatio errorum/munerum nondum configurata est — administratorem automati roga ut `/admin` → Bot Setup agat.",

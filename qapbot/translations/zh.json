@@ -498,6 +498,7 @@
       "button_test_cases": "🧪 测试用例",
       "button_grant_access": "🔓 回复申请人",
       "discarded": "🗑️ 草稿已丢弃。",
+      "draft_expired": "⌛ 此草稿因 14 分钟无操作已过期，**未**提交。请重新运行 {command} 以开始新的草稿。",
       "submitted": "✅ 已作为 #{item_number} 提交！{jump_link}",
       "tracker_disabled": "🚫 错误/功能跟踪器目前已禁用。",
       "tracker_not_configured": "⚠️ 错误/功能跟踪器尚未配置——请让机器人管理员运行 `/admin` → Bot Setup。",

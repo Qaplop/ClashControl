@@ -498,6 +498,7 @@
       "button_test_cases": "🧪 Testfälle",
       "button_grant_access": "🔓 Antwort an Melder",
       "discarded": "🗑️ Entwurf verworfen.",
+      "draft_expired": "⌛ Dieser Entwurf ist nach 14 Minuten ohne Aktivität abgelaufen und wurde **nicht** eingereicht. Führe {command} erneut aus, um einen neuen zu beginnen.",
       "submitted": "✅ Als #{item_number} eingereicht! {jump_link}",
       "tracker_disabled": "🚫 Der Fehler-/Feature-Tracker ist derzeit deaktiviert.",
       "tracker_not_configured": "⚠️ Der Fehler-/Feature-Tracker wurde noch nicht eingerichtet — bitte einen Bot-Administrator, `/admin` → Bot-Einrichtung auszuführen.",

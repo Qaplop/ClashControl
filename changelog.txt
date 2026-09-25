@@ -1,6 +1,25 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-25 (1)  Build 99.
+- Improved: an abandoned /bug or /feature draft preview now says it expired instead of keeping
+  buttons that only fail with "This interaction failed". After 14 minutes without activity the
+  draft is replaced by "⌛ This draft expired ... Run /bug again" (clickable command mention, new
+  key ui_components.tracker.draft_expired in all 5 languages) and its open "Add attachments"
+  upload window is closed. Nothing was ever persisted for an unsubmitted draft (no DB row, no
+  item number), that part is unchanged.
+  Why 14 min and an own timer instead of discord.py's View timeout: an ephemeral message can only
+  be edited with the token of an interaction that responded on it, valid 15 minutes. The View
+  timeout restarted on every click (incl. Edit, answered with a modal), so at expiry no valid
+  token was guaranteed. The timer now restarts only on clicks that respond on the draft; "Add
+  attachments" now answers by re-rendering the draft and sends its upload prompt as a followup.
+  Submit/Discard/refresh edit through the latest such interaction (previously the draft's
+  original followup token, which silently failed after 15 minutes).
+  Edit modal submitted after its draft expired: the typed text becomes a new draft (keeping the
+  old draft's attachments) instead of being lost. Edit modal submitted after Submit/Discard: ignored.
+  Files: qapbot/ui_tracker.py, qapbot/translations/*.json, QBcore.py
+  (+ tests/discord/test_ui_tracker_items.py).
+
 2026-09-24 (23)  Build 98.
 - Fixed (tracker #0130, root cause): clicking /whois in /help never showed its options while
   e.g. /leaderboard did. "whois" is the name of three commands on Discord: the slash command

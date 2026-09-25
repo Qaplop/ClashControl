@@ -170,6 +170,11 @@ MAX_ATTACHMENTS_PER_ITEM = 5
 MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024
 MAX_TOTAL_ATTACHMENT_BYTES = 20 * 1024 * 1024
 UPLOAD_WINDOW_SECONDS = 300
+# How long an untouched draft preview stays usable. Deliberately under Discord's 15-minute
+# interaction-token lifetime: the ephemeral draft can only be edited through the token of an
+# interaction that responded on it, so expiring any later would leave no valid token to show
+# the "expired" notice with.
+DRAFT_EXPIRY_SECONDS = 840
 
 
 def _now_iso() -> str:
@@ -737,20 +742,25 @@ class TrackerItemModal(discord.ui.Modal, title="Report an item"):
             )
             return
 
-        if self.draft_view is not None:
+        if self.draft_view is not None and not self.draft_view.expired:
             # Editing a still-open draft (Edit button on the draft preview).
             await interaction.response.defer(thinking=False, ephemeral=True)
+            if self.draft_view.is_finished():
+                return  # submitted/discarded while this modal was open
             self.draft_view.title_text = title_val
             self.draft_view.description_text = description_val
             self.draft_view.details_text = details_val
             self.draft_view.environment_text = environment_val
             self.draft_view.priority_text = priority_val
+            self.draft_view.touch(interaction)
             await self.draft_view.refresh()
             return
 
-        # Fresh submission -> build the draft preview.
+        # Fresh submission -> build the draft preview. Also reached when the draft this Edit
+        # modal belongs to expired while it was open: the typed text isn't thrown away, it
+        # becomes a new draft (carrying over the old draft's attachments).
         await interaction.response.defer(thinking=True, ephemeral=True)
-        pending_attachments: List[Dict[str, Any]] = []
+        pending_attachments: List[Dict[str, Any]] = list(self.draft_view.pending_attachments) if self.draft_view is not None else []
         if self.predownload_task is not None:
             try:
                 results = await self.predownload_task
@@ -775,20 +785,27 @@ class TrackerItemModal(discord.ui.Modal, title="Report an item"):
             user_id=self.user_id, pending_attachments=pending_attachments,
         )
         draft.message = await interaction.followup.send(draft.format_preview(), view=draft, ephemeral=True)
+        draft.touch()
 
 
 class TrackerDraftView(discord.ui.View):
     """Ephemeral draft preview shown after modal submit — Edit / Add attachments / Submit /
     Discard (plan §2.2 point 2). Short-lived, session-scoped, not restart-safe by design (an
-    abandoned draft simply expires — nothing was persisted to the DB yet)."""
+    abandoned draft simply expires — nothing was persisted to the DB yet).
+
+    Expiry is this view's own timer (touch()/expire()), not discord.py's View timeout: that one
+    restarts on EVERY click, including Edit (answered with a modal) and a cancelled modal, none
+    of which yields a token that can edit this ephemeral message. The timer restarts only on
+    interactions that did respond on the draft, so a valid token always remains to replace the
+    dead buttons with the "expired" notice."""
 
     def __init__(
         self, item_type: str, title: str, description: str, details: str, environment: str,
         reporter_id: str, reporter_name: str, guild_id: Optional[int], channel_id: int, user_id: str,
         priority: str = "",
-        pending_attachments: Optional[List[Dict[str, Any]]] = None, timeout: int = 900,
+        pending_attachments: Optional[List[Dict[str, Any]]] = None,
     ):
-        super().__init__(timeout=timeout)
+        super().__init__(timeout=None)
         self.item_type = item_type
         self.title_text = title
         self.description_text = description
@@ -803,6 +820,13 @@ class TrackerDraftView(discord.ui.View):
         self.pending_attachments: List[Dict[str, Any]] = list(pending_attachments or [])
         self.message: Optional[discord.Message] = None
         self.submitted = False
+        self.expired = False
+        # The latest interaction that responded ON the draft message; its edit_original_response()
+        # edits the draft. None until the first such click -> self.message.edit() (the followup
+        # webhook of the modal submit that created the draft) is used instead.
+        self._edit_interaction: Optional[discord.Interaction] = None
+        self._expiry_task: Optional[asyncio.Task[None]] = None
+        self._upload_on_files: Optional[Callable[[List[Dict[str, Any]]], Awaitable[None]]] = None
         self._build_buttons()
 
     def _build_buttons(self) -> None:
@@ -842,12 +866,54 @@ class TrackerDraftView(discord.ui.View):
             lines += ["", t('ui_components.tracker.draft_attachments_none', user_id=self.user_id, guild_id=self.guild_id)]
         return "\n".join(lines)
 
+    def touch(self, interaction: Optional[discord.Interaction] = None) -> None:
+        """(Re)start the expiry timer; `interaction` (if given) responded on the draft message and
+        becomes the one used for later edits."""
+        if interaction is not None:
+            self._edit_interaction = interaction
+        if self._expiry_task is not None:
+            self._expiry_task.cancel()
+        self._expiry_task = asyncio.create_task(self._expire_after(DRAFT_EXPIRY_SECONDS))
+
+    async def _expire_after(self, delay: float) -> None:
+        await asyncio.sleep(delay)
+        await self.expire()
+
+    async def expire(self) -> None:
+        """Replace the draft's dead buttons with an "expired, run /bug again" notice."""
+        if self.submitted or self.is_finished():
+            return
+        self.expired = True
+        self.stop()
+        key = (int(self.user_id), self.channel_id)
+        window = _upload_windows.get(key)
+        if window is not None and self._upload_on_files is not None and window.on_files is self._upload_on_files:
+            del _upload_windows[key]
+        from qapbot.QBdiscocmdshelper import command_mention
+        await self._edit_draft(
+            content=t('ui_components.tracker.draft_expired', user_id=self.user_id, guild_id=self.guild_id, command=command_mention(self.item_type)),
+            view=None,
+        )
+
+    def stop(self) -> None:
+        # expire() calls this from inside the expiry task itself -- don't cancel that.
+        if self._expiry_task is not None and self._expiry_task is not asyncio.current_task():
+            self._expiry_task.cancel()
+        super().stop()
+
+    async def _edit_draft(self, **kwargs: Any) -> None:
+        try:
+            if self._edit_interaction is not None:
+                await self._edit_interaction.edit_original_response(**kwargs)
+            elif self.message is not None:
+                await self.message.edit(**kwargs)
+        except Exception as e:
+            logging.warning(f"[TRACKER] Failed to edit draft message: {e}")
+
     async def refresh(self) -> None:
-        if self.message is not None:
-            try:
-                await self.message.edit(content=self.format_preview(), view=self)
-            except Exception as e:
-                logging.error(f"[TRACKER] Failed to refresh draft message: {e}")
+        if self.is_finished():
+            return
+        await self._edit_draft(content=self.format_preview(), view=self)
 
     async def _on_edit(self, interaction: discord.Interaction) -> None:
         modal = TrackerItemModal(
@@ -859,11 +925,18 @@ class TrackerDraftView(discord.ui.View):
         await interaction.response.send_modal(modal)
 
     async def _on_add_attachments(self, interaction: discord.Interaction) -> None:
-        await interaction.response.send_message(
+        # Respond ON the draft (an unchanged re-render) and send the prompt as a followup, so this
+        # click yields a token that can still edit the draft -- and restarts its expiry timer
+        # along with the 5-minute upload window it opens.
+        await interaction.response.edit_message(content=self.format_preview(), view=self)
+        self.touch(interaction)
+        await interaction.followup.send(
             t('ui_components.tracker.upload_window_prompt', user_id=self.user_id, guild_id=self.guild_id), ephemeral=True
         )
 
         async def _on_files(pending: List[Dict[str, Any]]) -> None:
+            if self.is_finished():
+                return
             room = MAX_ATTACHMENTS_PER_ITEM - len(self.pending_attachments)
             if room <= 0:
                 await interaction.followup.send(
@@ -873,6 +946,7 @@ class TrackerDraftView(discord.ui.View):
             self.pending_attachments.extend(pending[:room])
             await self.refresh()
 
+        self._upload_on_files = _on_files
         _register_upload_window(interaction.user.id, self.channel_id, _on_files)
 
     async def _on_submit(self, interaction: discord.Interaction) -> None:
@@ -891,6 +965,7 @@ class TrackerDraftView(discord.ui.View):
         # Editing the message AS the interaction response (not defer-then-edit) is the
         # fastest way to make the buttons visibly vanish (tracker item #0026).
         await interaction.response.edit_message(view=self)
+        self._edit_interaction = interaction
         from qapbot.cache_manager import CACHE
 
         db = CACHE.db_manager
@@ -930,22 +1005,15 @@ class TrackerDraftView(discord.ui.View):
             'ui_components.tracker.submitted', user_id=self.user_id, guild_id=self.guild_id,
             item_number=f"{item_number:04d}", jump_link=jump_link,
         )
-        if self.message is not None:
-            try:
-                await self.message.edit(content=text, view=None)
-            except Exception as e:
-                logging.warning(f"[TRACKER] Failed to update draft message after submit: {e}")
+        await self._edit_draft(content=text, view=None)
 
     async def _on_discard(self, interaction: discord.Interaction) -> None:
         await interaction.response.defer(thinking=False, ephemeral=True)
+        self._edit_interaction = interaction
         self.stop()
-        if self.message is not None:
-            try:
-                await self.message.edit(
-                    content=t('ui_components.tracker.discarded', user_id=self.user_id, guild_id=self.guild_id), view=None
-                )
-            except Exception as e:
-                logging.warning(f"[TRACKER] Failed to update draft message after discard: {e}")
+        await self._edit_draft(
+            content=t('ui_components.tracker.discarded', user_id=self.user_id, guild_id=self.guild_id), view=None
+        )
 
 
 async def start_tracker_item(

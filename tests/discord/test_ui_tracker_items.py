@@ -4,6 +4,7 @@ test-case sign-off loop (including the 👍-reaction shortcut), and the upload-w
 """
 from __future__ import annotations
 
+import asyncio
 import os
 from typing import Dict, cast
 from unittest.mock import AsyncMock, MagicMock
@@ -697,6 +698,145 @@ async def test_on_submit_disables_buttons_via_edit_message_response(db, monkeypa
 
     mock_interaction.response.edit_message.assert_awaited_once_with(view=draft)
     assert draft.children and all(child.disabled for child in draft.children)  # type: ignore[attr-defined]
+
+
+# -- abandoned draft expiry ---------------------------------------------------
+
+def _draft(**overrides):
+    kwargs = dict(
+        item_type="bug", title="T", description="D", details="", environment="",
+        reporter_id="111", reporter_name="A", guild_id=None, channel_id=5, user_id="111",
+    )
+    kwargs.update(overrides)
+    return TrackerDraftView(**kwargs)
+
+
+@pytest.mark.asyncio
+async def test_expired_draft_replaces_buttons_with_notice_and_closes_its_upload_window():
+    """An abandoned draft must not keep showing buttons that only fail when clicked: expiry edits
+    it to a notice (no view) and drops the upload window it opened, so a later file posted in
+    that channel is ordinary chat again."""
+    from qapbot import ui_tracker
+
+    draft = _draft()
+    draft.message = AsyncMock()
+
+    async def _on_files(pending):
+        pass
+    draft._upload_on_files = _on_files
+    ui_tracker._register_upload_window(111, 5, _on_files)
+
+    await draft.expire()
+
+    assert draft.expired is True
+    assert draft.is_finished()
+    draft.message.edit.assert_awaited_once()
+    kwargs = draft.message.edit.await_args.kwargs
+    assert kwargs["view"] is None
+    assert "expired" in kwargs["content"]
+    assert (111, 5) not in ui_tracker._upload_windows
+
+
+@pytest.mark.asyncio
+async def test_expire_prefers_the_latest_interaction_that_responded_on_the_draft(mock_interaction):
+    """The followup webhook token behind draft.message dies 15 minutes after the draft was
+    created; a later click that responded on the draft has a fresher one."""
+    draft = _draft()
+    draft.message = AsyncMock()
+    draft._edit_interaction = mock_interaction
+
+    await draft.expire()
+
+    mock_interaction.edit_original_response.assert_awaited_once()
+    draft.message.edit.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_expire_after_submit_is_a_no_op(db, monkeypatch, mock_interaction):
+    from qapbot.cache_manager import CACHE
+
+    _wire_bot(monkeypatch, channel=_fake_channel())
+    monkeypatch.setattr(CACHE, "tracker_settings", {TRACKER_SETTING_BUG_CHANNEL: "42"})
+    draft = _draft()
+    draft.message = AsyncMock()
+    await draft._on_submit(mock_interaction)
+    mock_interaction.edit_original_response.reset_mock()
+
+    await draft.expire()
+
+    assert draft.expired is False
+    mock_interaction.edit_original_response.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_touch_restarts_the_timer_and_stop_cancels_it(monkeypatch):
+    from qapbot import ui_tracker
+
+    monkeypatch.setattr(ui_tracker, "DRAFT_EXPIRY_SECONDS", 0.01)
+    draft = _draft()
+    draft.message = AsyncMock()
+
+    draft.touch()
+    first = draft._expiry_task
+    draft.touch()
+    await asyncio.sleep(0)
+    assert first is not None and first.cancelled()
+
+    draft.stop()
+    await asyncio.sleep(0.05)
+    assert draft.expired is False  # the stopped draft's timer never fired
+    draft.message.edit.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_timer_expires_an_untouched_draft(monkeypatch):
+    from qapbot import ui_tracker
+
+    monkeypatch.setattr(ui_tracker, "DRAFT_EXPIRY_SECONDS", 0.01)
+    draft = _draft()
+    draft.message = AsyncMock()
+
+    draft.touch()
+    await asyncio.sleep(0.05)
+
+    assert draft.expired is True
+    draft.message.edit.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_edit_modal_submitted_after_its_draft_expired_becomes_a_new_draft(mock_interaction):
+    """A user who sat in the Edit modal past the draft's expiry must not lose what they typed:
+    the submission opens a fresh draft, carrying the old draft's attachments."""
+    old = _draft()
+    old.message = AsyncMock()
+    old.pending_attachments = [{"original_name": "shot.png"}]
+    await old.expire()
+
+    modal = TrackerItemModal("bug", guild_id=None, user_id="111", draft_view=old)
+    cast(discord.ui.TextInput, modal.title_input.component)._value = "New title"
+    cast(discord.ui.TextInput, modal.description_input.component)._value = "New description"
+    cast(discord.ui.TextInput, modal.details_input.component)._value = ""
+    mock_interaction.followup.send = AsyncMock(return_value=AsyncMock())
+
+    await modal.on_submit(mock_interaction)
+
+    mock_interaction.followup.send.assert_awaited_once()
+    new_draft = mock_interaction.followup.send.await_args.kwargs["view"]
+    assert new_draft is not old
+    assert new_draft.title_text == "New title"
+    assert new_draft.pending_attachments == [{"original_name": "shot.png"}]
+    new_draft.stop()
+
+
+@pytest.mark.asyncio
+async def test_discard_edits_via_the_discard_click_itself(mock_interaction):
+    draft = _draft()
+    draft.message = AsyncMock()
+
+    await draft._on_discard(mock_interaction)
+
+    mock_interaction.edit_original_response.assert_awaited_once()
+    draft.message.edit.assert_not_awaited()
 
 
 # -- no cap on open items (removed 2026-08-22 per project owner request) ----

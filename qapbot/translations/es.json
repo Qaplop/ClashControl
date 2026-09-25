@@ -498,6 +498,7 @@
       "button_test_cases": "🧪 Casos de prueba",
       "button_grant_access": "🔓 Responder al solicitante",
       "discarded": "🗑️ Borrador descartado.",
+      "draft_expired": "⌛ Este borrador caducó tras 14 minutos sin actividad y **no** se envió. Ejecuta {command} de nuevo para empezar uno nuevo.",
       "submitted": "✅ ¡Enviado como #{item_number}! {jump_link}",
       "tracker_disabled": "🚫 El seguimiento de errores/funciones está actualmente desactivado.",
       "tracker_not_configured": "⚠️ El seguimiento de errores/funciones aún no se ha configurado — pide a un administrador del bot que ejecute `/admin` → Bot Setup.",

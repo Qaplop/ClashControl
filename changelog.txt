@@ -11,10 +11,9 @@ Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but
     the "Clans per War League" chart title, the health-check User-Agent.
   - Discord audit-log reasons of all role create/delete/assign/remove calls
     (guild_role_manager.py), e.g. "ClashControl role sync".
-  - Activity privacy.html and terms.html: "ClashControl (formerly QapBot; Discord application
-    "ClashControl", bot account currently still shown as "Qaps-CoC-Bot")", last updated
-    25 September 2026. The bot account part goes once Discord support renames the PROD bot
-    user (stuck at "Qaps-CoC-Bot" after verification started before the rename).
+  - Activity privacy.html and terms.html: every QapBot -> ClashControl. (A "formerly QapBot /
+    bot account still shown as Qaps-CoC-Bot / last updated" meta line added here was removed
+    again the same day at the project owner's request; deployed to DEV + PROD Pages.)
   Deliberately unchanged for now: log lines ("QapBot started" is what /admin's log scanner
   matches in older logs, phase 6), docs/comments (phase 4), package/file/folder names
   (phases 5-7).

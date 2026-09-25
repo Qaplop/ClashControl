@@ -213,6 +213,9 @@
       "player_not_found": "在部落冲突中找不到玩家 `{tag}`。"
     },
     "status": {},
+    "about": {
+      "fallback": "**ClashControl** — 你的 Clash of Clans 部落指挥中心。\n\n➕ 添加到你的服务器：{install_url}\n👤 已经在你的服务器上？从 {registration}（绑定账号）、{cwl_preferences} 和 {help} 开始。"
+    },
     "help": {
       "list_title": "QapBot 命令",
       "list_description": "使用 `/help command:命令名称` 获取某个具体命令的详细帮助。",
@@ -300,6 +303,11 @@
         "short": "发布某位玩家资料的游戏内链接",
         "title": "🔗 Link Player 命令",
         "detailed": "发布一个可在游戏内直接打开某位玩家资料的部落冲突链接。\n\n**用法：**\n`/link player player:<#标签>` — 特定的玩家标签\n`/link player player:<名称>` — 按玩家名称搜索（不区分大小写的子字符串）；如有多个匹配则从列表中选择\n\n**输出：**\n在频道中发布“`玩家名称: https://link.clashofclans.com/...`”\n\n**示例：**\n`/link player player:#ABC123`\n`/link player player:John`"
+      },
+      "about": {
+        "short": "了解 ClashControl 的功能以及如何开始",
+        "title": "ℹ️ About 命令",
+        "detailed": "以 Discord 活动的形式打开 ClashControl 的介绍页：机器人的功能、将其添加到你自己服务器的按钮，以及成员和管理员的入门命令。\n\n**用法：**\n`/about`\n\n**说明：**\n• 在服务器中和与机器人的私信中均可使用\n• 与 Discord 在机器人资料页上的 **Launch** 按钮打开的是同一页面"
       },
       "ping": {
         "short": "检查机器人延迟",

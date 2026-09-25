@@ -213,6 +213,9 @@
       "player_not_found": "Lusor `{tag}` in Clash of Clans inveniri non potuit."
     },
     "status": {},
+    "about": {
+      "fallback": "**ClashControl** — arx imperii gentis tuae in Clash of Clans.\n\n➕ Adde eum servitori tuo: {install_url}\n👤 Iam in servitore tuo est? Incipe cum {registration} (rationes tuas iunge), {cwl_preferences} et {help}."
+    },
     "help": {
       "list_title": "Mandata QapBot",
       "list_description": "Utere `/help command:NomenMandati` ad auxilium detaliatum de mandato specifico obtinendum.",
@@ -300,6 +303,11 @@
         "short": "Publica nexum intra ludum ad profilum lusoris",
         "title": "🔗 Mandatum Link Player",
         "detailed": "Publica nexum Clash of Clans qui profilum lusoris directe intra ludum aperit.\n\n**Usus:**\n`/link player player:<#NOTA>` — nota lusoris specifica\n`/link player player:<nomen>` — quaere secundum nomen lusoris (subchorda litteris indifferens); elige ex indice si plures congruunt\n\n**Exitus:**\n`Nomen Lusoris: https://link.clashofclans.com/...` in canali publicatur\n\n**Exempla:**\n`/link player player:#ABC123`\n`/link player player:Ioannes`"
+      },
+      "about": {
+        "short": "Quid ClashControl faciat et quomodo incipias",
+        "title": "ℹ️ Mandatum About",
+        "detailed": "Paginam initialem ClashControl ut Activitatem Discord aperit: quid bot faciat, globulum ad eum servitori tuo addendum, et prima mandata pro sodalibus et administratoribus.\n\n**Usus:**\n`/about`\n\n**Notae:**\n• Et in servitore et in nuntio privato cum bot operatur\n• Eadem pagina est quam globulus **Launch** Discord in profilo bot aperit"
       },
       "ping": {
         "short": "Verifica tarditatem automati",

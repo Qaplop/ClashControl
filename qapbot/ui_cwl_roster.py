@@ -1126,7 +1126,23 @@ def _server_jump_link(client: discord.Client, guild_id: int) -> str:
     return f"[{name}]({url})"
 
 
-async def _launch_cwl_activity(interaction: discord.Interaction, guild_id: int, screen: str) -> None:
+def _landing_fallback_text(interaction: discord.Interaction) -> str:
+    """Tracker #0136: what /about says when the Activity can't be opened (refused launch): the
+    landing page's essentials as text — install link and the first commands."""
+    from qapbot.i18n import t
+    from qapbot.QBdiscocmdshelper import command_mention
+    return t(
+        'commands.about.fallback',
+        guild_id=interaction.guild.id if interaction.guild else None,
+        user_id=str(interaction.user.id),
+        install_url=f"https://discord.com/oauth2/authorize?client_id={interaction.client.application_id}",
+        registration=command_mention("registration"),
+        cwl_preferences=command_mention("cwl preferences"),
+        help=command_mention("help"),
+    )
+
+
+async def _launch_cwl_activity(interaction: discord.Interaction, guild_id: Optional[int], screen: str) -> None:
     """Opens the CWL_CLAN_CONFIG_ACTIVITY_PLAN.md Discord Activity in-context via the
     LAUNCH_ACTIVITY interaction-response callback (type 12) — flagged in the plan as unverified
     from a plain component interaction (only confirmed working for the auto-created Entry Point
@@ -1147,8 +1163,12 @@ async def _launch_cwl_activity(interaction: discord.Interaction, guild_id: int, 
     is known — there is no Discord-API-legal way to defer a response and still launch the Activity
     once the slow work completes. Only genuinely fast, synchronous completions (season creation)
     can auto-launch this way; anything that needs a "please wait" state cannot.
+
+    guild_id=None (tracker #0136, /about in the DM): nothing to record — a DM launch without a
+    recorded server shows the landing page anyway.
     """
-    CACHE.pending_cwl_activity_screen[(str(guild_id), str(interaction.user.id))] = screen
+    if guild_id is not None:
+        CACHE.pending_cwl_activity_screen[(str(guild_id), str(interaction.user.id))] = screen
     from discord.http import Route
 
     try:
@@ -1183,8 +1203,12 @@ async def _launch_cwl_activity(interaction: discord.Interaction, guild_id: int, 
             # Sent straight as a DM message: Discord's refusal kills the interaction itself
             # (Build 91 live log: response -> 10062 Unknown interaction, followup -> 10015 Unknown
             # Webhook after ~17 s of retries), so trying either first only delays the message.
-            text = t('cwl.player_hub.dm_activity_unverified', user_id=str(interaction.user.id),
-                     guild_id=guild_id, server=_server_jump_link(interaction.client, guild_id))
+            # /about (tracker #0136) has no server to point at — the landing text instead.
+            if screen == "landing" or guild_id is None:
+                text = _landing_fallback_text(interaction)
+            else:
+                text = t('cwl.player_hub.dm_activity_unverified', user_id=str(interaction.user.id),
+                         guild_id=guild_id, server=_server_jump_link(interaction.client, guild_id))
             try:
                 await interaction.user.send(text)
                 logging.info(f"[CWL] DM launch refused (app not verified yet) — explained to user {interaction.user.id}")
@@ -1192,7 +1216,7 @@ async def _launch_cwl_activity(interaction: discord.Interaction, guild_id: int, 
                 logging.warning(f"[CWL] DM launch refused, explanation DM failed: {dm_error}")
             return
 
-        text = t(fallback_key, guild_id=guild_id)
+        text = _landing_fallback_text(interaction) if screen == "landing" else t(fallback_key, guild_id=guild_id)
         # A refused LAUNCH_ACTIVITY can leave the interaction unusable on Discord's side (see the
         # DM branch above). Try the response, then a followup, logging why each failed, and in a
         # DM finish with a plain DM message — the DM is private anyway, so nothing leaks.

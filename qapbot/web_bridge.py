@@ -1416,6 +1416,39 @@ async def handle_health(request: web.Request) -> web.Response:
     return web.json_response({"ok": True})
 
 
+# Tracker #0136: cap for CACHE.cwl_activity_instance_claims (oldest dropped first). One entry per
+# Activity launch that found a recorded hint; a pop-out reload only ever needs its own recent one.
+_MAX_ACTIVITY_INSTANCE_CLAIMS = 1000
+
+
+def _claim_launch_hint(
+    pending: Dict[Any, Any], pending_key: Any, instance_id: Optional[str], claim_key: Tuple[str, ...]
+) -> Any:
+    """Tracker #0136: hands a recorded launch hint (screen / DM server) to the Activity instance
+    that loads first after the click, and to nobody else.
+
+    - A recorded value exists -> pop it and remember it as this instance's claim. A fresh click
+      always wins, even over an older claim of the same instance (another CWL button clicked
+      while the Activity is already open).
+    - Nothing recorded, but this instance claimed one before -> that claim (Discord's pop-out
+      re-runs main.ts in the same instance).
+    - Neither -> None: a launch the bot didn't start (Discord's own Launch button).
+
+    No instance_id means an Activity client older than #0136: keep its non-destructive read, so
+    the bridge and the Activity can be deployed in either order."""
+    if not instance_id:
+        return pending.get(pending_key)
+    claims = CACHE.cwl_activity_instance_claims
+    if pending_key in pending:
+        value = pending.pop(pending_key)
+        claims.pop(claim_key, None)  # re-insert as newest
+        claims[claim_key] = value
+        while len(claims) > _MAX_ACTIVITY_INSTANCE_CLAIMS:
+            del claims[next(iter(claims))]
+        return value
+    return claims.get(claim_key)
+
+
 async def handle_get_cwl_screen(request: web.Request) -> web.Response:
     """Returns the screen hint recorded by whichever Discord button most recently fired
     LAUNCH_ACTIVITY for this (guild, user) (CACHE.pending_cwl_activity_screen — see its field
@@ -1442,6 +1475,10 @@ async def handle_get_cwl_screen(request: web.Request) -> web.Response:
     slot means the Activity was started from Discord's own Launch button (App Directory profile /
     app launcher) — show the getting-started page, not an admin screen. Trade-off: the dict is
     in-memory, so a pop-out re-run after a bot restart also lands there.
+
+    Tracker #0136: with `instance_id` the recorded value is claimed instead of read — see
+    _claim_launch_hint. Otherwise it lingered until the next click, and Discord's Launch button
+    kept reopening e.g. the preferences screen long after /cwl preferences.
     """
     if not _check_secret(request):
         return web.json_response({"error": "forbidden"}, status=403)
@@ -1451,7 +1488,13 @@ async def handle_get_cwl_screen(request: web.Request) -> web.Response:
     except (KeyError, ValueError):
         return web.json_response({"error": "missing/invalid guild_id or discord_user_id"}, status=400)
 
-    screen = CACHE.pending_cwl_activity_screen.get((guild_id_str, discord_user_id_str), "landing")
+    instance_id = request.query.get("instance_id")
+    screen = _claim_launch_hint(
+        CACHE.pending_cwl_activity_screen,
+        (guild_id_str, discord_user_id_str),
+        instance_id,
+        ("screen", instance_id or "", guild_id_str, discord_user_id_str),
+    ) or "landing"
     return web.json_response({"screen": screen})
 
 
@@ -1462,7 +1505,8 @@ async def handle_get_cwl_dm_guild(request: web.Request) -> web.Response:
     started from Discord's own app launcher rather than the command, or the bot restarted).
 
     The guild id goes out as a STRING: Discord snowflakes exceed JavaScript's safe integer range.
-    Read non-destructively, like handle_get_cwl_screen, for Discord's pop-out re-run. Reveals
+    Claimed per Activity instance like handle_get_cwl_screen (tracker #0136, _claim_launch_hint),
+    so a later launch from Discord's own Launch button in the DM gets the landing page. Reveals
     nothing sensitive — only the caller's own last pick, keyed by the Worker-verified user id."""
     if not _check_secret(request):
         return web.json_response({"error": "forbidden"}, status=403)
@@ -1471,7 +1515,13 @@ async def handle_get_cwl_dm_guild(request: web.Request) -> web.Response:
     except (KeyError, ValueError):
         return web.json_response({"error": "missing/invalid discord_user_id"}, status=400)
 
-    guild_id = CACHE.pending_cwl_dm_guild.get(discord_user_id_str)
+    instance_id = request.query.get("instance_id")
+    guild_id = _claim_launch_hint(
+        CACHE.pending_cwl_dm_guild,
+        discord_user_id_str,
+        instance_id,
+        ("dm_guild", instance_id or "", discord_user_id_str),
+    )
     if guild_id is None:
         return web.json_response({"error": "no pending DM guild"}, status=404)
     return web.json_response({"guild_id": str(guild_id)})

@@ -6492,3 +6492,93 @@ async def test_standard_guild_sees_the_real_bench_status_too(db, bridge_config, 
     player = next(p for p in body["players"] if p["player_tag"] == "#P1")
     assert body["signup_mode"] == "standard"
     assert player["signup_status"] == "passive"
+
+
+# ---------------------------------------------------------------------------
+# Tracker #0136: launch hints are claimed per Activity instance (_claim_launch_hint)
+# ---------------------------------------------------------------------------
+
+async def _get_screen(client, instance_id, guild_id="71", user_id="72"):
+    params = {"guild_id": guild_id, "discord_user_id": user_id}
+    if instance_id is not None:
+        params["instance_id"] = instance_id
+    resp = await client.get("/api/cwl/screen", params=params, headers={"X-Bridge-Secret": "test-secret"})
+    assert resp.status == 200
+    return (await resp.json())["screen"]
+
+
+@pytest.mark.discord
+@pytest.mark.asyncio
+async def test_screen_claimed_by_instance_survives_pop_out_but_not_a_new_launch(bridge_config, client, monkeypatch):
+    """The Launch-button bug: /cwl preferences once, and every later Launch reopened it."""
+    from qapbot.cache_manager import CACHE
+
+    monkeypatch.setattr(CACHE, "pending_cwl_activity_screen", {("71", "72"): "player_prefs"})
+    monkeypatch.setattr(CACHE, "cwl_activity_instance_claims", {})
+
+    assert await _get_screen(client, "inst-A") == "player_prefs"
+    assert ("71", "72") not in CACHE.pending_cwl_activity_screen
+    assert await _get_screen(client, "inst-A") == "player_prefs"  # pop-out reload, same instance
+    assert await _get_screen(client, "inst-B") == "landing"  # Discord's own Launch button later
+
+
+@pytest.mark.discord
+@pytest.mark.asyncio
+async def test_screen_fresh_click_wins_over_an_instance_claim(bridge_config, client, monkeypatch):
+    """Another CWL button clicked while the Activity is still open (same instance)."""
+    from qapbot.cache_manager import CACHE
+
+    monkeypatch.setattr(CACHE, "pending_cwl_activity_screen", {("71", "72"): "clan_config"})
+    monkeypatch.setattr(CACHE, "cwl_activity_instance_claims", {})
+
+    assert await _get_screen(client, "inst-A") == "clan_config"
+    CACHE.pending_cwl_activity_screen[("71", "72")] = "enrollment"
+    assert await _get_screen(client, "inst-A") == "enrollment"
+    assert await _get_screen(client, "inst-A") == "enrollment"
+
+
+@pytest.mark.discord
+@pytest.mark.asyncio
+async def test_screen_without_instance_id_keeps_the_old_non_destructive_read(bridge_config, client, monkeypatch):
+    """An Activity client older than #0136 (deploy order): nothing is popped."""
+    from qapbot.cache_manager import CACHE
+
+    monkeypatch.setattr(CACHE, "pending_cwl_activity_screen", {("71", "72"): "enrollment"})
+    monkeypatch.setattr(CACHE, "cwl_activity_instance_claims", {})
+
+    assert await _get_screen(client, None) == "enrollment"
+    assert CACHE.pending_cwl_activity_screen[("71", "72")] == "enrollment"
+
+
+@pytest.mark.discord
+@pytest.mark.asyncio
+async def test_dm_guild_claimed_by_instance(bridge_config, client, monkeypatch):
+    from qapbot.cache_manager import CACHE
+
+    monkeypatch.setattr(CACHE, "pending_cwl_dm_guild", {"73": 1145641080621109312})
+    monkeypatch.setattr(CACHE, "cwl_activity_instance_claims", {})
+    headers = {"X-Bridge-Secret": "test-secret"}
+
+    async def get(instance_id):
+        return await client.get("/api/cwl/dm-guild", params={"discord_user_id": "73", "instance_id": instance_id}, headers=headers)
+
+    resp = await get("inst-A")
+    assert await resp.json() == {"guild_id": "1145641080621109312"}
+    assert "73" not in CACHE.pending_cwl_dm_guild
+    assert (await (await get("inst-A")).json()) == {"guild_id": "1145641080621109312"}
+    assert (await get("inst-B")).status == 404
+
+
+@pytest.mark.discord
+def test_instance_claims_are_capped(monkeypatch):
+    from qapbot import web_bridge
+    from qapbot.cache_manager import CACHE
+
+    monkeypatch.setattr(CACHE, "cwl_activity_instance_claims", {})
+    monkeypatch.setattr(web_bridge, "_MAX_ACTIVITY_INSTANCE_CLAIMS", 3)
+    pending = {}
+    for n in range(5):
+        pending["k"] = f"v{n}"
+        web_bridge._claim_launch_hint(pending, "k", f"i{n}", ("screen", f"i{n}"))
+
+    assert list(CACHE.cwl_activity_instance_claims) == [("screen", "i2"), ("screen", "i3"), ("screen", "i4")]

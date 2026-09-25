@@ -213,6 +213,9 @@
       "player_not_found": "Spieler `{tag}` wurde in Clash of Clans nicht gefunden."
     },
     "status": {},
+    "about": {
+      "fallback": "**ClashControl** — die Kommandozentrale für deinen Clash of Clans Clan.\n\n➕ Zu deinem Server hinzufügen: {install_url}\n👤 Schon auf deinem Server? Starte mit {registration} (Accounts verknüpfen), {cwl_preferences} und {help}."
+    },
     "help": {
       "list_title": "QapBot Befehle",
       "list_description": "Verwende `/help command:BefehlName` für detaillierte Hilfe zu einem bestimmten Befehl.",
@@ -300,6 +303,11 @@
         "short": "Spiel-Link zum Profil eines Spielers posten",
         "title": "🔗 Link-Spieler-Befehl",
         "detailed": "Postet einen Clash-of-Clans-Link, der das Profil eines Spielers direkt im Spiel öffnet.\n\n**Verwendung:**\n`/link player player:<#TAG>` — ein bestimmter Spieler-Tag\n`/link player player:<Name>` — Suche nach Spielername (Teilstring, Groß-/Kleinschreibung egal); bei mehreren Treffern aus einer Liste auswählen\n\n**Ausgabe:**\n`Spielername: https://link.clashofclans.com/...` wird im Kanal gepostet\n\n**Beispiele:**\n`/link player player:#ABC123`\n`/link player player:John`"
+      },
+      "about": {
+        "short": "Was ClashControl kann und wie du loslegst",
+        "title": "ℹ️ About-Befehl",
+        "detailed": "Öffnet die Startseite von ClashControl als Discord-Aktivität: was der Bot kann, ein Button, um ihn deinem eigenen Server hinzuzufügen, und die ersten Befehle für Mitglieder und Admins.\n\n**Verwendung:**\n`/about`\n\n**Hinweise:**\n• Funktioniert auf einem Server und in deiner DM mit dem Bot\n• Es ist dieselbe Seite, die Discords **Launch**-Button im Profil des Bots öffnet"
       },
       "ping": {
         "short": "Bot-Latenz prüfen",

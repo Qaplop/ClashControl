@@ -4962,3 +4962,80 @@ async def test_notify_with_nothing_pending_does_not_dm_anyone(mock_interaction, 
 
     dm_mock.assert_not_awaited()
     mock_interaction.response.send_message.assert_awaited_once()
+
+
+# ---------------------------------------------------------------------------
+# Tracker #0136: /about opens the Activity's landing page
+# ---------------------------------------------------------------------------
+
+@pytest.mark.discord
+@pytest.mark.asyncio
+async def test_about_in_server_records_landing_and_launches(mock_interaction, monkeypatch):
+    from qapbot.cache_manager import CACHE
+    import QBdiscordcmds
+
+    monkeypatch.setattr(CACHE, "pending_cwl_activity_screen", {("4711", "555666"): "player_prefs"})
+    mock_interaction.guild.id = 4711
+    mock_interaction.user.id = 555666
+
+    await QBdiscordcmds.about.callback(mock_interaction)  # type: ignore[arg-type]
+
+    _, kwargs = mock_interaction.client.http.request.await_args
+    assert kwargs["json"] == {"type": 12, "data": {}}
+    assert CACHE.pending_cwl_activity_screen[("4711", "555666")] == "landing"
+
+
+@pytest.mark.discord
+@pytest.mark.asyncio
+async def test_about_in_dm_drops_the_recorded_dm_server(mock_interaction, monkeypatch):
+    """A DM launch that finds a recorded server opens CWL preferences for it — /about must not."""
+    from qapbot.cache_manager import CACHE
+    import QBdiscordcmds
+
+    monkeypatch.setattr(CACHE, "pending_cwl_dm_guild", {"555666": 333444})
+    monkeypatch.setattr(CACHE, "pending_cwl_activity_screen", {})
+    mock_interaction.guild = None
+    mock_interaction.user.id = 555666
+
+    await QBdiscordcmds.about.callback(mock_interaction)  # type: ignore[arg-type]
+
+    mock_interaction.client.http.request.assert_awaited_once()
+    assert CACHE.pending_cwl_dm_guild == {}
+    assert CACHE.pending_cwl_activity_screen == {}
+
+
+@pytest.mark.discord
+@pytest.mark.asyncio
+async def test_about_dm_refusal_sends_the_landing_text(mock_interaction, monkeypatch):
+    """Unverified app, DM launch refused with 50106: no server to point at, so the landing
+    essentials (install link + first commands) go out as a DM instead."""
+    from qapbot.cache_manager import CACHE
+    import QBdiscordcmds
+
+    monkeypatch.setattr(CACHE, "pending_cwl_dm_guild", {})
+    mock_interaction.guild = None
+    mock_interaction.user.id = 555666
+    mock_interaction.client.application_id = 1442060461783781479
+    mock_interaction.user.send = AsyncMock()
+    mock_interaction.client.http.request = AsyncMock(side_effect=_FakeHTTPError(50106))
+
+    await QBdiscordcmds.about.callback(mock_interaction)  # type: ignore[arg-type]
+
+    text = mock_interaction.user.send.await_args.args[0]
+    assert "https://discord.com/oauth2/authorize?client_id=1442060461783781479" in text
+    assert "{" not in text
+
+
+@pytest.mark.discord
+@pytest.mark.asyncio
+async def test_about_server_launch_failure_answers_with_the_landing_text(mock_interaction):
+    from qapbot.ui_cwl_roster import _launch_cwl_activity
+
+    mock_interaction.client.application_id = 42
+    mock_interaction.response.is_done = MagicMock(return_value=False)
+    mock_interaction.client.http.request = AsyncMock(side_effect=Exception("simulated failure"))
+
+    await _launch_cwl_activity(mock_interaction, 555, "landing")
+
+    args, kwargs = mock_interaction.response.send_message.await_args
+    assert "client_id=42" in args[0] and kwargs.get("ephemeral") is True

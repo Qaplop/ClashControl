@@ -445,14 +445,20 @@ class CacheManager:
         # 2026-08-14 — see web_bridge.py's handler docstring for why a plain pop broke Discord's
         # "pop out" button) by the bridge's GET /api/cwl/screen on the Activity's initial fetch.
         # Deliberately ephemeral/unpersisted (an in-memory launch hint, not real state) — a bot
-        # restart just falls back to the "clan_config" default, same as an entry that was never
-        # recorded at all.
+        # restart just falls back to the "landing" default (tracker #0135), same as an entry that
+        # was never recorded at all. Since tracker #0136 the first Activity instance to load after
+        # the click claims (pops) it — see cwl_activity_instance_claims below.
         self.pending_cwl_activity_screen: Dict[Tuple[str, str], str] = {}
         # Tracker #0128: discord_user_id_str -> guild_id the user's DM /cwl preferences resolved
         # to (directly, or via the DM server picker). An Activity launched in the bot DM has no
         # discordSdk.guildId, so it fetches this through GET /api/cwl/dm-guild instead. Same
-        # launch-hint semantics as the dict above: in-memory only, read non-destructively.
+        # launch-hint semantics as the dict above: in-memory only, claimed by the first instance.
         self.pending_cwl_dm_guild: Dict[str, int] = {}
+        # Tracker #0136: launch hints claimed by an Activity instance, keyed
+        # ("screen", instance_id, guild_id_str, user_id_str) / ("dm_guild", instance_id, user_id_str),
+        # so Discord's pop-out reload of that same instance still gets them after the pending
+        # entry above was popped. Capped in web_bridge._claim_launch_hint; in-memory only.
+        self.cwl_activity_instance_claims: Dict[Tuple[str, ...], Any] = {}
         # Tracker #0129: discord_user_id_str -> guild_id a DM /registration resolved to. Lets the
         # registration flow, run from the bot DM, search that server's clans and assign its roles
         # (QBdiscocmdshelper.get_interaction_guild()). In-memory only: after a restart a DM click

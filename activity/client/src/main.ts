@@ -153,7 +153,7 @@ async function setup(): Promise<void> {
     let resolvedGuildId = discordSdk.guildId
     if (!resolvedGuildId) {
       try {
-        const dmGuildResponse = await fetch('/api/cwl/dm-guild', {
+        const dmGuildResponse = await fetch(`/api/cwl/dm-guild?instance_id=${encodeURIComponent(discordSdk.instanceId)}`, {
           headers: { Authorization: `Bearer ${accessToken}` },
         })
         if (dmGuildResponse.ok) {
@@ -207,9 +207,12 @@ async function setup(): Promise<void> {
     // Which screen to render is decided by the bot, not by fetched event status — see
     // CWL_ROSTER_PLANNING_PLAN.md's "Manage Enrollment" architectural decision for why (the two
     // screens must stay independently reachable at any event status, not gated by it).
-    const screenResponse = await fetch(`/api/cwl/screen?guild_id=${encodeURIComponent(guildId)}`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    })
+    // instance_id (tracker #0136): this launch claims the screen the bot recorded, so a later
+    // launch from Discord's own Launch button can't reopen it; a pop-out of this instance still can.
+    const screenResponse = await fetch(
+      `/api/cwl/screen?guild_id=${encodeURIComponent(guildId)}&instance_id=${encodeURIComponent(discordSdk.instanceId)}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+    )
     if (!screenResponse.ok) {
       const body = await screenResponse.text()
       throw new Error(`failed to resolve screen (${screenResponse.status}): ${body}`)

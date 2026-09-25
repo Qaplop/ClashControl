@@ -1062,6 +1062,7 @@ def _get_help_command_dm_status() -> Dict[str, bool]:
         "link clan": link_clan.guild_only,
         "link player": link_player.guild_only,
         "registration": registration.guild_only,
+        "about": about.guild_only,
         "ping": ping.guild_only,
         "status": status.guild_only,
         "help": help.guild_only,
@@ -1082,7 +1083,7 @@ def _get_help_command_names() -> List[str]:
         "registration", "cwl preferences",
         "subscribe", "unsubscribe", "subscriptions", "leaderboard", "highlightme", "analyse cwl_league_group",
         "analyse cwl_opponent", "clan management", "admin", "list", "whois", "link clan", "link player",
-        "ping", "status", "help"
+        "about", "ping", "status", "help"
     ]
     if CONFIG.tracker_enabled:
         names += ["bug", "feature"]
@@ -1175,7 +1176,7 @@ async def help(interaction: discord.Interaction, command: Optional[str] = None):
         t('commands.help.category_leaderboards', user_id=user_id, guild_id=guild_id): ["subscribe", "unsubscribe", "subscriptions", "leaderboard", "highlightme"],
         t('commands.help.category_clan_player_info', user_id=user_id, guild_id=guild_id): ["analyse cwl_league_group", "analyse cwl_opponent", "whois", "link clan", "link player"],
         t('commands.help.category_administration', user_id=user_id, guild_id=guild_id): ["clan management", "admin", "list"],
-        t('commands.help.category_bot_info', user_id=user_id, guild_id=guild_id): ["ping", "status", "help"],
+        t('commands.help.category_bot_info', user_id=user_id, guild_id=guild_id): ["about", "ping", "status", "help"],
     }
     if CONFIG.tracker_enabled:
         categories[t('commands.help.category_tracker', user_id=user_id, guild_id=guild_id)] = ["bug", "feature"]
@@ -3900,6 +3901,27 @@ async def status(interaction: discord.Interaction, force_refresh: bool = False):
 
     _log_cmd_done(interaction, "status")
     await send_and_track(interaction, f"```{msg}```", 'status')
+
+@app_commands.command(name="about", description=dev_mode+"What ClashControl does and how to get started.")
+# DM-invokable (tracker #0136): opens the Activity's landing page in the DM too.
+@app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
+async def about(interaction: discord.Interaction) -> None:
+    """Opens the Activity's landing page (tracker #0135) on purpose — the same page Discord's own
+    Launch button shows: what ClashControl does, "Add to server", first commands.
+
+    Records 'landing' for (guild, user) in a server. In the DM it drops any recorded DM server
+    (pending_cwl_dm_guild) instead, since a DM launch that finds one opens CWL preferences for it.
+    Must NOT defer()/send_message() first — LAUNCH_ACTIVITY has to be the first response (see
+    _launch_cwl_activity's docstring); a refused launch falls back to the landing text there."""
+    _log_cmd(interaction, "about")
+    from qapbot.ui_cwl_roster import _launch_cwl_activity  # pyright: ignore[reportPrivateUsage]  # shared with /cwl preferences
+
+    guild_id = interaction.guild.id if interaction.guild else None
+    if guild_id is None:
+        CACHE.pending_cwl_dm_guild.pop(str(interaction.user.id), None)
+    await _launch_cwl_activity(interaction, guild_id, "landing")
+    _log_cmd_done(interaction, "about")
+
 
 @app_commands.command(name="ping", description=dev_mode+"Show bot latency and responsiveness.")
 # DM-invokable (Phase 0b, CWL_ROSTER_PLANNING_PLAN.md) — display-only guild_id, no functional guild dependency.

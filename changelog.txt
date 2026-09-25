@@ -1,6 +1,24 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-25 (3)  Build 101.
+- Fixed (tracker #0136): Discord's "Launch" button reopened the CWL preferences (or any CWL
+  screen) once that had been opened before, instead of the landing page. The screen / DM server
+  a bot button records was read non-destructively (for Discord's pop-out reload) and so lingered
+  until the next click. Now the Activity sends its instance id and the first instance to load
+  claims (removes) the recorded value; a pop-out reload of that instance keeps it, every new
+  launch gets the landing page. A new click always wins over an older claim. Activity clients
+  without an instance id keep the old read, so bridge and Activity deploy in either order.
+- New (tracker #0136): /about opens the landing page (what ClashControl does, add to server,
+  first commands), in a server and in the DM. If Discord refuses the launch (e.g. unverified
+  app in DMs) it answers with the same essentials as text (commands.about.fallback). Listed in
+  /help under Bot Info (commands.help.about), all 5 languages.
+  Files: qapbot/web_bridge.py, qapbot/cache_manager.py, qapbot/ui_cwl_roster.py,
+  QBdiscordcmds.py, QapBot.py, QBcore.py, qapbot/translations/*.json, README.md,
+  activity/client/src/main.ts, activity/server/src/index.ts
+  (+ tests/discord/test_web_bridge.py, tests/discord/test_ui_cwl_roster.py,
+  qapbot/docs/CWL_CLAN_CONFIG_ACTIVITY_PLAN.md).
+
 2026-09-25 (2)  Build 100.
 - New (tracker #0135): landing page in the Discord Activity for launches no bot button started,
   i.e. Discord's own "Launch" button on the App Directory profile / app launcher. Before, that

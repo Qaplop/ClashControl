@@ -195,6 +195,8 @@ action. There is no separate `/clans`, `/list_families`, `/list_players`, `/list
   verification, my accounts), always ephemeral; in the bot DM for a server you share with the
   bot (server picker if several)
 - `/cwl preferences` - Open your personal CWL settings (Activity); also works in the bot DM
+- `/about` - Open ClashControl's landing page (what it does, add it to a server, first commands)
+  as a Discord Activity; also works in the bot DM
 - `/status` - Show bot status: uptime, memory usage, cache statistics
 - `/ping` - Check bot latency
 - `/help` - Show help information

@@ -147,6 +147,11 @@ api.post('/cwl/clan-config', async (c) => {
 // nothing security-relevant by not checking BRIDGE_URL/BRIDGE_SECRET differently — it goes
 // through the exact same proxy path, just to a cheaper bridge endpoint.
 
+// `&instance_id=…` for the bridge, or '' when the Activity client didn't send one.
+function instanceIdParam(instanceId: string | undefined): string {
+  return instanceId ? `&instance_id=${encodeURIComponent(instanceId)}` : ''
+}
+
 api.get('/cwl/screen', async (c) => {
   const guildId = c.req.query('guild_id')
   if (!guildId) return c.json({ error: 'missing guild_id' }, 400)
@@ -156,8 +161,11 @@ api.get('/cwl/screen', async (c) => {
 
   if (!c.env.BRIDGE_URL || !c.env.BRIDGE_SECRET) return bridgeNotConfigured(c)
 
+  // Tracker #0136: the Activity instance claims the recorded screen (see the bridge's
+  // _claim_launch_hint), so the Launch button can't reopen a stale one.
+  const instanceParam = instanceIdParam(c.req.query('instance_id'))
   const upstream = await fetch(
-    `${c.env.BRIDGE_URL}/api/cwl/screen?guild_id=${encodeURIComponent(guildId)}&discord_user_id=${encodeURIComponent(discordUserId)}`,
+    `${c.env.BRIDGE_URL}/api/cwl/screen?guild_id=${encodeURIComponent(guildId)}&discord_user_id=${encodeURIComponent(discordUserId)}${instanceParam}`,
     { headers: { 'X-Bridge-Secret': c.env.BRIDGE_SECRET } },
   )
   return c.json(await upstream.json(), upstream.status as 200 | 400 | 403 | 500)
@@ -171,8 +179,9 @@ api.get('/cwl/dm-guild', async (c) => {
 
   if (!c.env.BRIDGE_URL || !c.env.BRIDGE_SECRET) return bridgeNotConfigured(c)
 
+  const instanceParam = instanceIdParam(c.req.query('instance_id'))
   const upstream = await fetch(
-    `${c.env.BRIDGE_URL}/api/cwl/dm-guild?discord_user_id=${encodeURIComponent(discordUserId)}`,
+    `${c.env.BRIDGE_URL}/api/cwl/dm-guild?discord_user_id=${encodeURIComponent(discordUserId)}${instanceParam}`,
     { headers: { 'X-Bridge-Secret': c.env.BRIDGE_SECRET } },
   )
   return c.json(await upstream.json(), upstream.status as 200 | 400 | 403 | 404 | 500)

@@ -21,7 +21,7 @@ import pytest
 
 @pytest.fixture
 async def db(tmp_path):  # type: ignore[no-untyped-def]
-    from qapbot.db_manager import WarHistoryDB
+    from clashcontrol.db_manager import WarHistoryDB
 
     manager = WarHistoryDB()
     await manager.initialize(str(tmp_path / "qapbot_test.db"))

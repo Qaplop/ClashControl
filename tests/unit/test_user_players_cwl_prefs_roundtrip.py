@@ -12,7 +12,7 @@ import sqlite3
 
 import pytest
 
-from qapbot.db_manager import USER_PLAYER_CWL_PREF_COLUMNS, WarHistoryDB
+from clashcontrol.db_manager import USER_PLAYER_CWL_PREF_COLUMNS, WarHistoryDB
 
 
 @pytest.fixture

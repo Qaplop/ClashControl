@@ -5,7 +5,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict
 
-from qapbot.QBdiscocmdshelper_admin_command import (
+from clashcontrol.QBdiscocmdshelper_admin_command import (
     _fmt_duration,  # pyright: ignore[reportPrivateUsage]
     check_current_wars_in_temp,
     extract_war_id_from_json_data,
@@ -241,7 +241,7 @@ def test_check_current_wars_in_temp_parses_valid_file(tmp_path: Path) -> None:
     }
     cache.clan_name_cache = {"#2AAA": "ClanA"}
 
-    with patch("qapbot.cache_manager.CACHE", cache):
+    with patch("clashcontrol.cache_manager.CACHE", cache):
         wars = check_current_wars_in_temp(str(data_dir))
 
     assert len(wars) == 1

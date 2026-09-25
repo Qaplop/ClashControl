@@ -49,7 +49,7 @@ class TestSourceFingerprint:
     def test_changes_when_a_shipped_source_changes(self, tmp_path: object) -> None:
         """The whole point: an edit without a BOT_BUILD bump must still be detectable."""
         before = QBcore.source_fingerprint()
-        probe = os.path.join(os.path.dirname(os.path.abspath(QBcore.__file__)), "qapbot", "_fp_probe.py")
+        probe = os.path.join(os.path.dirname(os.path.abspath(QBcore.__file__)), "clashcontrol", "_fp_probe.py")
         assert not os.path.exists(probe), "probe file leaked from a previous run"
         try:
             with open(probe, "w", encoding="utf-8") as fh:

@@ -16,7 +16,7 @@ import pytest
 
 def _wire(monkeypatch, *, event_status: str, signup_status: str) -> Dict[str, Any]:
     """Patch the DB reads _apply_cwl_signup_response makes, and capture what it writes."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     written: Dict[str, Any] = {}
     db = MagicMock()
@@ -35,9 +35,9 @@ def _wire(monkeypatch, *, event_status: str, signup_status: str) -> Dict[str, An
     db.upsert_cwl_signup_sync = MagicMock(side_effect=_upsert)
     monkeypatch.setattr(CACHE, "db_manager", db)
 
-    import qapbot.QBdiscocmdshelper_cwl as helper
+    import clashcontrol.QBdiscocmdshelper_cwl as helper
     monkeypatch.setattr(helper, "propagate_cwl_player_response", AsyncMock(return_value=[]))
-    import qapbot.web_bridge as wb
+    import clashcontrol.web_bridge as wb
     monkeypatch.setattr(wb, "bump_enrollment_version", AsyncMock())
     return written
 
@@ -45,7 +45,7 @@ def _wire(monkeypatch, *, event_status: str, signup_status: str) -> Dict[str, An
 @pytest.mark.asyncio
 @pytest.mark.parametrize("event_status", ["announced", "war"])
 async def test_pending_player_may_still_answer_after_enrollment_closed(monkeypatch, event_status):
-    from qapbot.ui_cwl_roster import _apply_cwl_signup_response
+    from clashcontrol.ui_cwl_roster import _apply_cwl_signup_response
 
     written = _wire(monkeypatch, event_status=event_status, signup_status="pending")
     result = await _apply_cwl_signup_response(7, "#P1", "confirm", "55")
@@ -56,7 +56,7 @@ async def test_pending_player_may_still_answer_after_enrollment_closed(monkeypat
 
 @pytest.mark.asyncio
 async def test_already_answered_player_cannot_change_it_after_rosters_went_out(monkeypatch):
-    from qapbot.ui_cwl_roster import _apply_cwl_signup_response
+    from clashcontrol.ui_cwl_roster import _apply_cwl_signup_response
 
     written = _wire(monkeypatch, event_status="announced", signup_status="confirmed")
     result = await _apply_cwl_signup_response(7, "#P1", "optout", "55")
@@ -68,7 +68,7 @@ async def test_already_answered_player_cannot_change_it_after_rosters_went_out(m
 @pytest.mark.asyncio
 @pytest.mark.parametrize("event_status", ["draft", "cancelled"])
 async def test_draft_and_cancelled_stay_closed_for_everyone(monkeypatch, event_status):
-    from qapbot.ui_cwl_roster import _apply_cwl_signup_response
+    from clashcontrol.ui_cwl_roster import _apply_cwl_signup_response
 
     written = _wire(monkeypatch, event_status=event_status, signup_status="pending")
     result = await _apply_cwl_signup_response(7, "#P1", "confirm", "55")
@@ -79,7 +79,7 @@ async def test_draft_and_cancelled_stay_closed_for_everyone(monkeypatch, event_s
 
 @pytest.mark.asyncio
 async def test_open_enrollment_is_unchanged(monkeypatch):
-    from qapbot.ui_cwl_roster import _apply_cwl_signup_response
+    from clashcontrol.ui_cwl_roster import _apply_cwl_signup_response
 
     written = _wire(monkeypatch, event_status="signup_open", signup_status="confirmed")
     result = await _apply_cwl_signup_response(7, "#P1", "optout", "55")
@@ -92,8 +92,8 @@ async def test_open_enrollment_is_unchanged(monkeypatch):
 async def test_roster_update_dm_records_its_message_id(monkeypatch):
     """Without the ids this one DM was unfindable: it could not be retracted by Delete Season,
     re-rendered after an answer, or upgraded when a guild switches on extended sign-up."""
-    import qapbot.QBdiscocmdshelper_cwl as helper
-    from qapbot.cache_manager import CACHE
+    import clashcontrol.QBdiscocmdshelper_cwl as helper
+    from clashcontrol.cache_manager import CACHE
 
     message = MagicMock()
     message.id = 4242
@@ -117,8 +117,8 @@ async def test_roster_update_dm_records_its_message_id(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_dm_chunks_without_a_view_report_no_message(monkeypatch):
-    import qapbot.QBdiscocmdshelper_cwl as helper
-    from qapbot.cache_manager import CACHE
+    import clashcontrol.QBdiscocmdshelper_cwl as helper
+    from clashcontrol.cache_manager import CACHE
 
     async def fake_send(discord_id, content, view=None, sent_message_out=None):
         assert sent_message_out is None

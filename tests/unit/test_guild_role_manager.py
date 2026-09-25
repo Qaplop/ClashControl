@@ -1,4 +1,4 @@
-"""Unit tests for qapbot.guild_role_manager.
+"""Unit tests for clashcontrol.guild_role_manager.
 
 Tests cover:
   - normalize_discord_role_name (pure function)
@@ -27,29 +27,29 @@ from unittest.mock import AsyncMock, MagicMock, patch
 @pytest.mark.smoke
 class TestNormalizeDiscordRoleName:
     def test_strips_special_chars(self):
-        from qapbot.guild_role_manager import normalize_discord_role_name
+        from clashcontrol.guild_role_manager import normalize_discord_role_name
 
         assert normalize_discord_role_name("Hello, World!") == "Hello World"
 
     def test_preserves_hyphens_and_underscores(self):
-        from qapbot.guild_role_manager import normalize_discord_role_name
+        from clashcontrol.guild_role_manager import normalize_discord_role_name
 
         assert normalize_discord_role_name("My-Clan_Role") == "My-Clan_Role"
 
     def test_truncates_to_100_chars(self):
-        from qapbot.guild_role_manager import normalize_discord_role_name
+        from clashcontrol.guild_role_manager import normalize_discord_role_name
 
         long_name = "A" * 200
         result = normalize_discord_role_name(long_name)
         assert len(result) == 100
 
     def test_empty_string(self):
-        from qapbot.guild_role_manager import normalize_discord_role_name
+        from clashcontrol.guild_role_manager import normalize_discord_role_name
 
         assert normalize_discord_role_name("") == ""
 
     def test_unicode_letters_kept(self):
-        from qapbot.guild_role_manager import normalize_discord_role_name
+        from clashcontrol.guild_role_manager import normalize_discord_role_name
 
         # Letters and digits should be preserved
         result = normalize_discord_role_name("Clàn Röle")
@@ -57,7 +57,7 @@ class TestNormalizeDiscordRoleName:
         assert "Cl" in result
 
     def test_hashtag_stripped(self):
-        from qapbot.guild_role_manager import normalize_discord_role_name
+        from clashcontrol.guild_role_manager import normalize_discord_role_name
 
         assert "#" not in normalize_discord_role_name("#CLAN123")
 
@@ -65,19 +65,19 @@ class TestNormalizeDiscordRoleName:
 @pytest.mark.smoke
 class TestConstants:
     def test_coc_role_config_key_has_all_four_roles(self):
-        from qapbot.guild_role_manager import COC_ROLE_CONFIG_KEY
+        from clashcontrol.guild_role_manager import COC_ROLE_CONFIG_KEY
 
         assert set(COC_ROLE_CONFIG_KEY.keys()) == {"member", "elder", "coLeader", "leader"}
 
     def test_coc_role_priority_ordering(self):
-        from qapbot.guild_role_manager import COC_ROLE_PRIORITY
+        from clashcontrol.guild_role_manager import COC_ROLE_PRIORITY
 
         assert COC_ROLE_PRIORITY["member"] < COC_ROLE_PRIORITY["elder"]
         assert COC_ROLE_PRIORITY["elder"] < COC_ROLE_PRIORITY["coLeader"]
         assert COC_ROLE_PRIORITY["coLeader"] < COC_ROLE_PRIORITY["leader"]
 
     def test_coc_role_display_names_populated(self):
-        from qapbot.guild_role_manager import COC_ROLE_DISPLAY_NAMES, COC_ROLE_CONFIG_KEY
+        from clashcontrol.guild_role_manager import COC_ROLE_DISPLAY_NAMES, COC_ROLE_CONFIG_KEY
 
         for coc_key in COC_ROLE_CONFIG_KEY:
             assert coc_key in COC_ROLE_DISPLAY_NAMES
@@ -85,7 +85,7 @@ class TestConstants:
             assert len(COC_ROLE_DISPLAY_NAMES[coc_key]) > 0
 
     def test_coc_role_field_is_string(self):
-        from qapbot.guild_role_manager import COC_ROLE_FIELD
+        from clashcontrol.guild_role_manager import COC_ROLE_FIELD
 
         assert isinstance(COC_ROLE_FIELD, str)
         assert len(COC_ROLE_FIELD) > 0
@@ -118,7 +118,7 @@ def _make_role(name: str, role_id: int):
 @pytest.mark.smoke
 class TestGetOrCreateDiscordRole:
     async def test_returns_existing_role_by_normalized_name(self):
-        from qapbot.guild_role_manager import get_or_create_discord_role
+        from clashcontrol.guild_role_manager import get_or_create_discord_role
 
         existing = _make_role("CoC Member", 99)
         guild = _make_guild(roles=[existing])
@@ -129,7 +129,7 @@ class TestGetOrCreateDiscordRole:
         guild.create_role.assert_not_called()
 
     async def test_creates_role_when_not_found(self):
-        from qapbot.guild_role_manager import get_or_create_discord_role
+        from clashcontrol.guild_role_manager import get_or_create_discord_role
 
         new_role = _make_role("CoC Member", 100)
         guild = _make_guild(roles=[])
@@ -142,7 +142,7 @@ class TestGetOrCreateDiscordRole:
 
     async def test_returns_none_on_forbidden(self):
         import discord
-        from qapbot.guild_role_manager import get_or_create_discord_role
+        from clashcontrol.guild_role_manager import get_or_create_discord_role
 
         guild = _make_guild(roles=[])
         guild.create_role.side_effect = discord.Forbidden(MagicMock(), "no perms")
@@ -155,7 +155,7 @@ class TestGetOrCreateDiscordRole:
 @pytest.mark.smoke
 class TestDeleteDiscordRoleSafe:
     async def test_deletes_existing_role(self):
-        from qapbot.guild_role_manager import delete_discord_role_safe
+        from clashcontrol.guild_role_manager import delete_discord_role_safe
 
         role = _make_role("CoC Member", 42)
         guild = _make_guild()
@@ -167,7 +167,7 @@ class TestDeleteDiscordRoleSafe:
         assert result is True
 
     async def test_returns_true_when_role_not_found(self):
-        from qapbot.guild_role_manager import delete_discord_role_safe
+        from clashcontrol.guild_role_manager import delete_discord_role_safe
 
         guild = _make_guild()
         guild.get_role.return_value = None
@@ -181,7 +181,7 @@ class TestDeleteDiscordRoleSafe:
 @pytest.mark.smoke
 class TestCreateCocIngameRoles:
     async def test_creates_four_roles_and_stores_ids(self):
-        from qapbot.guild_role_manager import create_coc_ingame_roles
+        from clashcontrol.guild_role_manager import create_coc_ingame_roles
 
         guild = _make_guild(roles=[])
 
@@ -200,7 +200,7 @@ class TestCreateCocIngameRoles:
         fake_cache.server_config = {"123456": fake_config}
         fake_cache.persist_server_config = AsyncMock()
 
-        with patch("qapbot.cache_manager.CACHE", fake_cache):
+        with patch("clashcontrol.cache_manager.CACHE", fake_cache):
             await create_coc_ingame_roles(guild, "123456")
 
         assert guild.create_role.call_count == 4
@@ -218,7 +218,7 @@ class TestGetHighestCocRole:
         return {"player_tag": tag, "coc_role": role, "current_clan_tag": clan_tag}
 
     async def test_returns_highest_priority_role(self):
-        from qapbot.guild_role_manager import _get_highest_coc_role_for_user  # type: ignore[reportPrivateUsage]
+        from clashcontrol.guild_role_manager import _get_highest_coc_role_for_user  # type: ignore[reportPrivateUsage]
 
         fake_cache = MagicMock()
         fake_cache.user_accounts = {
@@ -228,25 +228,25 @@ class TestGetHighestCocRole:
             ]}
         }
 
-        with patch("qapbot.cache_manager.CACHE", fake_cache):
+        with patch("clashcontrol.cache_manager.CACHE", fake_cache):
             result = _get_highest_coc_role_for_user("555")
 
         assert result == "coLeader"
 
     async def test_returns_none_when_no_accounts(self):
-        from qapbot.guild_role_manager import _get_highest_coc_role_for_user  # type: ignore[reportPrivateUsage]
+        from clashcontrol.guild_role_manager import _get_highest_coc_role_for_user  # type: ignore[reportPrivateUsage]
 
         fake_cache = MagicMock()
         fake_cache.user_accounts = {}
 
-        with patch("qapbot.cache_manager.CACHE", fake_cache):
+        with patch("clashcontrol.cache_manager.CACHE", fake_cache):
             result = _get_highest_coc_role_for_user("999")
 
         assert result is None
 
     async def test_guild_clans_filter_excludes_unrelated_clan(self):
         """Regression: user is Leader in a clan not tracked by this guild → no CoC role."""
-        from qapbot.guild_role_manager import _get_highest_coc_role_for_user  # type: ignore[reportPrivateUsage]
+        from clashcontrol.guild_role_manager import _get_highest_coc_role_for_user  # type: ignore[reportPrivateUsage]
 
         fake_cache = MagicMock()
         fake_cache.user_accounts = {
@@ -255,7 +255,7 @@ class TestGetHighestCocRole:
             ]}
         }
 
-        with patch("qapbot.cache_manager.CACHE", fake_cache):
+        with patch("clashcontrol.cache_manager.CACHE", fake_cache):
             # guild only tracks #STAY — foreign clan must not yield a role
             result = _get_highest_coc_role_for_user("111", guild_clans={"#STAY"})
 
@@ -263,7 +263,7 @@ class TestGetHighestCocRole:
 
     async def test_guild_clans_filter_includes_matching_clan(self):
         """User with an account in a tracked clan gets the correct CoC role."""
-        from qapbot.guild_role_manager import _get_highest_coc_role_for_user  # type: ignore[reportPrivateUsage]
+        from clashcontrol.guild_role_manager import _get_highest_coc_role_for_user  # type: ignore[reportPrivateUsage]
 
         fake_cache = MagicMock()
         fake_cache.user_accounts = {
@@ -273,14 +273,14 @@ class TestGetHighestCocRole:
             ]}
         }
 
-        with patch("qapbot.cache_manager.CACHE", fake_cache):
+        with patch("clashcontrol.cache_manager.CACHE", fake_cache):
             result = _get_highest_coc_role_for_user("111", guild_clans={"#STAY1"})
 
         assert result == "elder"
 
     async def test_guild_clans_filter_picks_highest_among_multiple_tracked(self):
         """Multiple accounts in tracked clans → highest role wins."""
-        from qapbot.guild_role_manager import _get_highest_coc_role_for_user  # type: ignore[reportPrivateUsage]
+        from clashcontrol.guild_role_manager import _get_highest_coc_role_for_user  # type: ignore[reportPrivateUsage]
 
         fake_cache = MagicMock()
         fake_cache.user_accounts = {
@@ -291,7 +291,7 @@ class TestGetHighestCocRole:
             ]}
         }
 
-        with patch("qapbot.cache_manager.CACHE", fake_cache):
+        with patch("clashcontrol.cache_manager.CACHE", fake_cache):
             result = _get_highest_coc_role_for_user("111", guild_clans={"#STAY1", "#STAY2"})
 
         assert result == "coLeader"
@@ -300,7 +300,7 @@ class TestGetHighestCocRole:
 @pytest.mark.smoke
 class TestCreateClanRole:
     async def test_creates_role_and_persists(self):
-        from qapbot.guild_role_manager import create_clan_role
+        from clashcontrol.guild_role_manager import create_clan_role
 
         new_role = _make_role("TestClan", 2001)
         guild = _make_guild(roles=[])
@@ -313,7 +313,7 @@ class TestCreateClanRole:
         fake_cache.db_manager = MagicMock()
         fake_cache.db_manager.save_guild_clan_role = AsyncMock()
 
-        with patch("qapbot.cache_manager.CACHE", fake_cache):
+        with patch("clashcontrol.cache_manager.CACHE", fake_cache):
             result = await create_clan_role(guild, "123", "#TAG", "TestClan")
 
         # Returns role ID string, not the Role object
@@ -325,7 +325,7 @@ class TestCreateClanRole:
 @pytest.mark.smoke
 class TestDeleteAllCocIngameRoles:
     async def test_deletes_all_four_and_clears_config(self):
-        from qapbot.guild_role_manager import delete_all_coc_ingame_roles
+        from clashcontrol.guild_role_manager import delete_all_coc_ingame_roles
 
         roles = {rid: _make_role(f"role{rid}", rid) for rid in (301, 302, 303, 304)}
 
@@ -342,7 +342,7 @@ class TestDeleteAllCocIngameRoles:
         fake_cache.server_config = {"99": fake_config}
         fake_cache.persist_server_config = AsyncMock()
 
-        with patch("qapbot.cache_manager.CACHE", fake_cache):
+        with patch("clashcontrol.cache_manager.CACHE", fake_cache):
             await delete_all_coc_ingame_roles(guild, "99")
 
         for r in roles.values():
@@ -362,8 +362,8 @@ class TestCocRoleBootstrap:
 
     async def test_bootstrap_fetches_uncached_clan(self):
         """First sync after startup should call coc_clan_cache.get_clan() for each member clan."""
-        import qapbot.guild_role_manager as grm
-        from qapbot.guild_role_manager import sync_all_roles_for_guild
+        import clashcontrol.guild_role_manager as grm
+        from clashcontrol.guild_role_manager import sync_all_roles_for_guild
 
         grm._coc_role_refreshed_clans.clear()  # simulate fresh startup
 
@@ -387,7 +387,7 @@ class TestCocRoleBootstrap:
         fake_cache.clan_families = {}
         fake_cache.coc_clan_cache = fake_coc_cache
 
-        with patch("qapbot.cache_manager.CACHE", fake_cache):
+        with patch("clashcontrol.cache_manager.CACHE", fake_cache):
             await sync_all_roles_for_guild(guild, "111")
 
         fake_coc_cache.get_clan.assert_called_once_with("#CLAN1")
@@ -395,8 +395,8 @@ class TestCocRoleBootstrap:
 
     async def test_bootstrap_skips_already_refreshed_clan(self):
         """Second sync should NOT re-fetch a clan already in _coc_role_refreshed_clans."""
-        import qapbot.guild_role_manager as grm
-        from qapbot.guild_role_manager import sync_all_roles_for_guild
+        import clashcontrol.guild_role_manager as grm
+        from clashcontrol.guild_role_manager import sync_all_roles_for_guild
 
         grm._coc_role_refreshed_clans.add("#CLAN1")  # simulate already-bootstrapped
 
@@ -420,7 +420,7 @@ class TestCocRoleBootstrap:
         fake_cache.clan_families = {}
         fake_cache.coc_clan_cache = fake_coc_cache
 
-        with patch("qapbot.cache_manager.CACHE", fake_cache):
+        with patch("clashcontrol.cache_manager.CACHE", fake_cache):
             await sync_all_roles_for_guild(guild, "111")
 
         fake_coc_cache.get_clan.assert_not_called()
@@ -444,7 +444,7 @@ class TestSyncRolesForClanMembersConcurrency:
     """Verify sync_roles_for_clan_members() uses bounded concurrency, not a serial loop."""
 
     async def test_all_users_synced_exactly_once(self):
-        import qapbot.guild_role_manager as grm
+        import clashcontrol.guild_role_manager as grm
 
         user_ids = list(range(1, 13))  # 12 users
         fake_cache = MagicMock()
@@ -459,7 +459,7 @@ class TestSyncRolesForClanMembersConcurrency:
 
         guild = _make_guild(roles=[])
 
-        with patch("qapbot.cache_manager.CACHE", fake_cache), \
+        with patch("clashcontrol.cache_manager.CACHE", fake_cache), \
              patch.object(grm, "sync_roles_for_user", _fake_sync):
             await grm.sync_roles_for_clan_members(guild, "111", "#CLAN1", [])
 
@@ -469,7 +469,7 @@ class TestSyncRolesForClanMembersConcurrency:
     async def test_concurrency_is_bounded(self):
         import asyncio as _asyncio
 
-        import qapbot.guild_role_manager as grm
+        import clashcontrol.guild_role_manager as grm
 
         user_ids = list(range(1, 21))  # 20 users
         fake_cache = MagicMock()
@@ -489,7 +489,7 @@ class TestSyncRolesForClanMembersConcurrency:
 
         guild = _make_guild(roles=[])
 
-        with patch("qapbot.cache_manager.CACHE", fake_cache), \
+        with patch("clashcontrol.cache_manager.CACHE", fake_cache), \
              patch.object(grm, "sync_roles_for_user", _fake_sync):
             await grm.sync_roles_for_clan_members(guild, "111", "#CLAN1", [])
 
@@ -497,7 +497,7 @@ class TestSyncRolesForClanMembersConcurrency:
         assert max_in_flight > 1  # proves it's no longer a serial loop
 
     async def test_one_failure_does_not_abort_batch(self, caplog):
-        import qapbot.guild_role_manager as grm
+        import clashcontrol.guild_role_manager as grm
 
         user_ids = list(range(1, 8))  # 7 users
         fake_cache = MagicMock()
@@ -514,7 +514,7 @@ class TestSyncRolesForClanMembersConcurrency:
 
         guild = _make_guild(roles=[])
 
-        with patch("qapbot.cache_manager.CACHE", fake_cache), \
+        with patch("clashcontrol.cache_manager.CACHE", fake_cache), \
              patch.object(grm, "sync_roles_for_user", _fake_sync), \
              caplog.at_level("WARNING"):
             await grm.sync_roles_for_clan_members(guild, "111", "#CLAN1", [])
@@ -525,7 +525,7 @@ class TestSyncRolesForClanMembersConcurrency:
         )
 
     async def test_empty_user_list_short_circuits(self):
-        import qapbot.guild_role_manager as grm
+        import clashcontrol.guild_role_manager as grm
 
         fake_cache = MagicMock()
         fake_cache.server_config = {"111": {"coc_role_enabled": True, "clan_role_enabled": False}}
@@ -533,7 +533,7 @@ class TestSyncRolesForClanMembersConcurrency:
 
         guild = _make_guild(roles=[])
 
-        with patch("qapbot.cache_manager.CACHE", fake_cache), \
+        with patch("clashcontrol.cache_manager.CACHE", fake_cache), \
              patch.object(grm, "sync_roles_for_user", AsyncMock()) as mock_sync:
             await grm.sync_roles_for_clan_members(guild, "111", "#CLAN1", [])
 
@@ -556,7 +556,7 @@ class TestSyncAllRolesForGuildConcurrency:
         return guild
 
     async def test_all_users_synced_exactly_once(self):
-        import qapbot.guild_role_manager as grm
+        import clashcontrol.guild_role_manager as grm
 
         user_ids = list(range(1, 13))  # 12 users
         fake_cache = MagicMock()
@@ -579,7 +579,7 @@ class TestSyncAllRolesForGuildConcurrency:
 
         guild = self._guild_with_members(user_ids)
 
-        with patch("qapbot.cache_manager.CACHE", fake_cache), \
+        with patch("clashcontrol.cache_manager.CACHE", fake_cache), \
              patch.object(grm, "sync_roles_for_user", _fake_sync):
             await grm.sync_all_roles_for_guild(guild, "111")
 
@@ -589,7 +589,7 @@ class TestSyncAllRolesForGuildConcurrency:
     async def test_concurrency_is_bounded(self):
         import asyncio as _asyncio
 
-        import qapbot.guild_role_manager as grm
+        import clashcontrol.guild_role_manager as grm
 
         user_ids = list(range(1, 21))  # 20 users
         fake_cache = MagicMock()
@@ -617,7 +617,7 @@ class TestSyncAllRolesForGuildConcurrency:
 
         guild = self._guild_with_members(user_ids)
 
-        with patch("qapbot.cache_manager.CACHE", fake_cache), \
+        with patch("clashcontrol.cache_manager.CACHE", fake_cache), \
              patch.object(grm, "sync_roles_for_user", _fake_sync):
             await grm.sync_all_roles_for_guild(guild, "111")
 
@@ -627,7 +627,7 @@ class TestSyncAllRolesForGuildConcurrency:
     async def test_counters_match_results(self, caplog):
         """The final 'N synced, M errors' tally must be correct once counting moves
         from in-loop increments to post-gather counting (see plan §3.4)."""
-        import qapbot.guild_role_manager as grm
+        import clashcontrol.guild_role_manager as grm
 
         user_ids = list(range(1, 8))  # 7 users
         fake_cache = MagicMock()
@@ -649,7 +649,7 @@ class TestSyncAllRolesForGuildConcurrency:
 
         guild = self._guild_with_members(user_ids)
 
-        with patch("qapbot.cache_manager.CACHE", fake_cache), \
+        with patch("clashcontrol.cache_manager.CACHE", fake_cache), \
              patch.object(grm, "sync_roles_for_user", _fake_sync), \
              caplog.at_level("INFO"):
             await grm.sync_all_roles_for_guild(guild, "111")

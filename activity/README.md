@@ -1,7 +1,7 @@
 # CWL Clan-Config Activity
 
 Phase A skeleton of the Discord Activity described in
-`../qapbot/docs/CWL_CLAN_CONFIG_ACTIVITY_PLAN.md`. Two independent Node/TypeScript projects,
+`../clashcontrol/docs/CWL_CLAN_CONFIG_ACTIVITY_PLAN.md`. Two independent Node/TypeScript projects,
 deployed to Cloudflare:
 
 - **`server/`** — Cloudflare Worker (Hono). OAuth2 code→token exchange, plus a thin proxy to
@@ -242,7 +242,7 @@ restarts, at the cost of needing one domain in the same Cloudflare account.
    start a service through the symlink immediately, in the same script — that's what makes the
    timing actually matter here.
 8. **Supervise it** (2026-08-14 incident + 2026-08-15 fix — see
-   `../qapbot/docs/CWL_CLAN_CONFIG_ACTIVITY_PLAN.md`'s Phase D section for the full narrative):
+   `../clashcontrol/docs/CWL_CLAN_CONFIG_ACTIVITY_PLAN.md`'s Phase D section for the full narrative):
    step 6's raw `cloudflared tunnel ... run ...` line dies silently whenever `cloudflared`'s own
    autoupdate replaces its binary and exits (on by default, ~daily) — DSM's Boot-up trigger
    doesn't notice or restart it, so a routine autoupdate meant 26h of downtime the one time it
@@ -318,5 +318,5 @@ restarts, at the cost of needing one domain in the same Cloudflare account.
 ## Status
 
 All phases (A-E, skeleton through PROD rollout and the workflow redesign) are shipped and
-verified live in both DEV and PROD — see `../qapbot/docs/CWL_CLAN_CONFIG_ACTIVITY_PLAN.md` for
+verified live in both DEV and PROD — see `../clashcontrol/docs/CWL_CLAN_CONFIG_ACTIVITY_PLAN.md` for
 the full phase-by-phase history. This file's "PROD rollout" section above is Phase D.

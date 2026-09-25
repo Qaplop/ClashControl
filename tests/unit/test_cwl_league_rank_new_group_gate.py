@@ -40,7 +40,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from qapbot.cache_manager import CacheManager
+from clashcontrol.cache_manager import CacheManager
 
 
 class _FakeClan:

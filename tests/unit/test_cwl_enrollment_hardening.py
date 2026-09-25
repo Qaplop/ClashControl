@@ -34,7 +34,7 @@ class TestStartEnrollmentConcurrency:
 
     @pytest.mark.asyncio
     async def test_same_guild_and_season_is_serialized(self, monkeypatch):
-        import qapbot.QBdiscocmdshelper_cwl as cwl
+        import clashcontrol.QBdiscocmdshelper_cwl as cwl
 
         events: List[str] = []
         monkeypatch.setattr(cwl, "_start_cwl_enrollment_locked", self._slow_impl(events))
@@ -53,7 +53,7 @@ class TestStartEnrollmentConcurrency:
 
     @pytest.mark.asyncio
     async def test_different_guilds_are_not_serialized(self, monkeypatch):
-        import qapbot.QBdiscocmdshelper_cwl as cwl
+        import clashcontrol.QBdiscocmdshelper_cwl as cwl
 
         events: List[str] = []
         monkeypatch.setattr(cwl, "_start_cwl_enrollment_locked", self._slow_impl(events))
@@ -68,7 +68,7 @@ class TestStartEnrollmentConcurrency:
 
     @pytest.mark.asyncio
     async def test_different_seasons_same_guild_are_not_serialized(self, monkeypatch):
-        import qapbot.QBdiscocmdshelper_cwl as cwl
+        import clashcontrol.QBdiscocmdshelper_cwl as cwl
 
         events: List[str] = []
         monkeypatch.setattr(cwl, "_start_cwl_enrollment_locked", self._slow_impl(events))
@@ -114,7 +114,7 @@ class TestRetractEnrollmentDms:
     async def test_retracts_only_the_purged_players_dms(self, monkeypatch):
         """A preserved player keeps their pool membership, so their DM is still live and must
         NOT be retracted — only the purged ones."""
-        import qapbot.QBdiscocmdshelper_cwl as cwl
+        import clashcontrol.QBdiscocmdshelper_cwl as cwl
         retract = self._wire(monkeypatch, cwl)
 
         await cwl._retract_enrollment_dms_for_tags(7, ["#PURGED"], context="test")
@@ -126,7 +126,7 @@ class TestRetractEnrollmentDms:
 
     @pytest.mark.asyncio
     async def test_no_matching_refs_is_a_noop(self, monkeypatch):
-        import qapbot.QBdiscocmdshelper_cwl as cwl
+        import clashcontrol.QBdiscocmdshelper_cwl as cwl
         retract = self._wire(monkeypatch, cwl)
 
         await cwl._retract_enrollment_dms_for_tags(7, ["#NOBODY"], context="test")
@@ -136,7 +136,7 @@ class TestRetractEnrollmentDms:
     @pytest.mark.asyncio
     async def test_missing_bot_is_a_noop(self, monkeypatch):
         """Best-effort: no client available (e.g. during shutdown) must not raise."""
-        import qapbot.QBdiscocmdshelper_cwl as cwl
+        import clashcontrol.QBdiscocmdshelper_cwl as cwl
         retract = self._wire(monkeypatch, cwl)
 
         import QBcore

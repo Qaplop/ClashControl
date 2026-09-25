@@ -48,7 +48,7 @@ def _t_clan_tag(key: str, **kwargs: Any) -> str:
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_get_clan_family_autocomplete_subscribed_only(monkeypatch: pytest.MonkeyPatch) -> None:
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.QBdiscocmdshelper as helper
 
     cache = _FakeCache()
     cache.clan_name_cache = {
@@ -67,7 +67,7 @@ async def test_get_clan_family_autocomplete_subscribed_only(monkeypatch: pytest.
     }
 
     monkeypatch.setattr(helper, "CACHE", cache)
-    import qapbot.cache_manager as cm
+    import clashcontrol.cache_manager as cm
 
     monkeypatch.setattr(cm, "CACHE", cache)
 
@@ -87,7 +87,7 @@ async def test_get_clan_family_autocomplete_subscribed_only(monkeypatch: pytest.
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_get_clan_family_autocomplete_clans_only_excludes_families(monkeypatch: pytest.MonkeyPatch) -> None:
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.QBdiscocmdshelper as helper
 
     cache = _FakeCache()
     cache.clan_name_cache = {
@@ -99,7 +99,7 @@ async def test_get_clan_family_autocomplete_clans_only_excludes_families(monkeyp
     }
 
     monkeypatch.setattr(helper, "CACHE", cache)
-    import qapbot.cache_manager as cm
+    import clashcontrol.cache_manager as cm
 
     monkeypatch.setattr(cm, "CACHE", cache)
 
@@ -117,7 +117,7 @@ async def test_get_clan_family_autocomplete_clans_only_excludes_families(monkeyp
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_cleanup_stale_messages_for_channel_deletes_only_fully_missing(monkeypatch: pytest.MonkeyPatch) -> None:
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.QBdiscocmdshelper as helper
 
     cache = _FakeCache()
     cache.leaderboard_messages = {
@@ -147,8 +147,8 @@ async def test_cleanup_stale_messages_for_channel_deletes_only_fully_missing(mon
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_validate_and_add_clan_to_cache_already_tracked(monkeypatch: pytest.MonkeyPatch) -> None:
-    import qapbot.QBdiscocmdshelper as helper
-    import qapbot.i18n as i18n
+    import clashcontrol.QBdiscocmdshelper as helper
+    import clashcontrol.i18n as i18n
 
     cache = _FakeCache()
     cache.clan_name_cache = {"#ABC123": {"name": "Known Clan"}}
@@ -165,8 +165,8 @@ async def test_validate_and_add_clan_to_cache_already_tracked(monkeypatch: pytes
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_validate_and_add_clan_to_cache_success(monkeypatch: pytest.MonkeyPatch) -> None:
-    import qapbot.QBdiscocmdshelper as helper
-    import qapbot.i18n as i18n
+    import clashcontrol.QBdiscocmdshelper as helper
+    import clashcontrol.i18n as i18n
 
     cache = _FakeCache()
     cache.coc_clan_cache.get_clan = AsyncMock(return_value=SimpleNamespace(name="Fetched Clan"))
@@ -187,8 +187,8 @@ async def test_validate_and_add_clan_to_cache_success(monkeypatch: pytest.Monkey
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_validate_and_add_clan_to_cache_failure(monkeypatch: pytest.MonkeyPatch) -> None:
-    import qapbot.QBdiscocmdshelper as helper
-    import qapbot.i18n as i18n
+    import clashcontrol.QBdiscocmdshelper as helper
+    import clashcontrol.i18n as i18n
 
     cache = _FakeCache()
     cache.coc_clan_cache.get_clan = AsyncMock(side_effect=RuntimeError("api down"))
@@ -204,7 +204,7 @@ async def test_validate_and_add_clan_to_cache_failure(monkeypatch: pytest.Monkey
 
 @pytest.mark.discord
 def test_is_player_in_member_clans_direct_and_family(monkeypatch: pytest.MonkeyPatch) -> None:
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.QBdiscocmdshelper as helper
 
     cache = _FakeCache()
     cache.server_config = {
@@ -227,7 +227,7 @@ def test_is_player_in_member_clans_direct_and_family(monkeypatch: pytest.MonkeyP
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_check_admin_permissions_member_admin_branch(monkeypatch: pytest.MonkeyPatch) -> None:
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.QBdiscocmdshelper as helper
 
     class _FakeMember:
         def __init__(self, is_admin: bool, name: str) -> None:

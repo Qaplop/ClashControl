@@ -1,4 +1,4 @@
-"""Control-flow tests for ``QapBot.periodic_main``.
+"""Control-flow tests for ``ClashControl.periodic_main``.
 
 The full periodic loop (and ``main()``) is a large, deeply side-effectful
 orchestrator that is exercised end-to-end by the live/smoke environment rather
@@ -16,11 +16,11 @@ from types import SimpleNamespace
 
 import pytest
 
-# QapBot's module-level code only configures logging and defines functions; the
+# ClashControl's module-level code only configures logging and defines functions; the
 # bot is started under an ``if __name__ == "__main__"`` guard, so importing it
 # here is side-effect-light.  A placeholder token avoids any env lookups failing.
 os.environ.setdefault("DISCORD_TOKEN", "test-token")
-import QapBot  # noqa: E402
+import ClashControl  # noqa: E402
 
 
 class _Event:
@@ -42,7 +42,7 @@ async def test_returns_immediately_when_shutdown_requested_before_init(monkeypat
         bot=fake_bot,
         shutdown_event=_Event(is_set=True),
     )
-    monkeypatch.setattr(QapBot, "QBcore", fake_qbcore)
+    monkeypatch.setattr(ClashControl, "QBcore", fake_qbcore)
 
     # Guard: if the early-exit path is broken, the function would fall through to
     # asyncio.sleep / the main loop.  Make sleep explode so any fall-through fails
@@ -50,10 +50,10 @@ async def test_returns_immediately_when_shutdown_requested_before_init(monkeypat
     async def _boom(*_a, **_k):  # pragma: no cover - only hit on regression
         raise AssertionError("periodic_main fell through to the update loop")
 
-    monkeypatch.setattr(QapBot.asyncio, "sleep", _boom)
+    monkeypatch.setattr(ClashControl.asyncio, "sleep", _boom)
 
     # Should return promptly without raising.
-    await QapBot.periodic_main()
+    await ClashControl.periodic_main()
 
 
 @pytest.mark.asyncio
@@ -64,11 +64,11 @@ async def test_returns_when_shutdown_set_while_uninitialised_flag_false(monkeypa
         bot=fake_bot,
         shutdown_event=_Event(is_set=True),
     )
-    monkeypatch.setattr(QapBot, "QBcore", fake_qbcore)
+    monkeypatch.setattr(ClashControl, "QBcore", fake_qbcore)
 
     async def _boom(*_a, **_k):  # pragma: no cover - only hit on regression
         raise AssertionError("periodic_main fell through to the update loop")
 
-    monkeypatch.setattr(QapBot.asyncio, "sleep", _boom)
+    monkeypatch.setattr(ClashControl.asyncio, "sleep", _boom)
 
-    await QapBot.periodic_main()
+    await ClashControl.periodic_main()

@@ -15,7 +15,7 @@ import pytest
 
 os.environ.setdefault("DISCORD_TOKEN", "test-token")
 
-from qapbot.QBdiscocmdshelper_cwl import cleanup_stale_cwl_enrollment_dms
+from clashcontrol.QBdiscocmdshelper_cwl import cleanup_stale_cwl_enrollment_dms
 
 
 def _make_bot(user_by_id: dict) -> MagicMock:

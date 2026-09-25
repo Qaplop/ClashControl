@@ -14,7 +14,7 @@ os.environ.setdefault("DISCORD_TOKEN", "test-token")
 
 
 def _make_view(player_tag="#P1", player_name="Ace"):
-    from qapbot.ui_registration import UnlinkConfirmView
+    from clashcontrol.ui_registration import UnlinkConfirmView
 
     parent_view = MagicMock()
     parent_view._build_message_content = MagicMock(return_value="parent overview")
@@ -41,9 +41,9 @@ def _make_interaction():
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_on_confirm_defers_before_any_slow_work(monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
-    monkeypatch.setattr("qapbot.QBdiscocmdshelper.unlink_player", AsyncMock(return_value=True))
+    monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.unlink_player", AsyncMock(return_value=True))
     monkeypatch.setattr(CACHE, "user_accounts", {"111": {"players": []}})
 
     view = _make_view()
@@ -62,9 +62,9 @@ async def test_on_confirm_defers_before_any_slow_work(monkeypatch):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_on_confirm_success_no_remaining_accounts_uses_edit_original_response(monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
-    monkeypatch.setattr("qapbot.QBdiscocmdshelper.unlink_player", AsyncMock(return_value=True))
+    monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.unlink_player", AsyncMock(return_value=True))
     monkeypatch.setattr(CACHE, "user_accounts", {"111": {"players": []}})
 
     view = _make_view()
@@ -80,7 +80,7 @@ async def test_on_confirm_success_no_remaining_accounts_uses_edit_original_respo
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_on_confirm_player_not_found_uses_edit_original_response(monkeypatch):
-    monkeypatch.setattr("qapbot.QBdiscocmdshelper.unlink_player", AsyncMock(return_value=False))
+    monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.unlink_player", AsyncMock(return_value=False))
 
     view = _make_view()
     interaction = _make_interaction()

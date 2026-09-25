@@ -53,25 +53,25 @@ def _make_cache(**overrides) -> MagicMock:
 
 class TestIsPlayerInMemberClans:
     def _fn(self):
-        from qapbot.QBdiscocmdshelper import is_player_in_member_clans
+        from clashcontrol.QBdiscocmdshelper import is_player_in_member_clans
         return is_player_in_member_clans
 
     def test_none_clan_tag_returns_false(self, monkeypatch):
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", _make_cache())
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", _make_cache())
         assert self._fn()(None, 123) is False
 
     def test_empty_clan_tag_returns_false(self, monkeypatch):
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", _make_cache())
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", _make_cache())
         assert self._fn()("", 123) is False
 
     def test_direct_member_clan(self, monkeypatch):
         cache = _make_cache(server_config={"123": {"member_clans": ["#ABC12345"]}})
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         assert self._fn()("#ABC12345", 123) is True
 
     def test_not_in_member_clans(self, monkeypatch):
         cache = _make_cache(server_config={"123": {"member_clans": ["#OTHER1234"]}})
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         assert self._fn()("#ABC12345", 123) is False
 
     def test_via_member_family(self, monkeypatch):
@@ -79,7 +79,7 @@ class TestIsPlayerInMemberClans:
             server_config={"123": {"member_clans": [], "member_families": ["fam1"]}},
             clan_families={"fam1": {"clans": ["#ABC12345", "#DEF67890"]}},
         )
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         assert self._fn()("#DEF67890", 123) is True
 
     def test_family_no_match(self, monkeypatch):
@@ -87,12 +87,12 @@ class TestIsPlayerInMemberClans:
             server_config={"123": {"member_clans": [], "member_families": ["fam1"]}},
             clan_families={"fam1": {"clans": ["#OTHER1234"]}},
         )
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         assert self._fn()("#ABC12345", 123) is False
 
     def test_no_config_for_guild(self, monkeypatch):
         cache = _make_cache(server_config={})
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         assert self._fn()("#ABC12345", 999) is False
 
 
@@ -102,12 +102,12 @@ class TestIsPlayerInMemberClans:
 
 class TestGetGuildSubscribedClans:
     def _fn(self):
-        from qapbot.QBdiscocmdshelper import get_guild_subscribed_clans
+        from clashcontrol.QBdiscocmdshelper import get_guild_subscribed_clans
         return get_guild_subscribed_clans
 
     def test_empty_subscriptions(self, monkeypatch):
         cache = _make_cache(subscriptions={})
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         assert self._fn()(123) == []
 
     def test_direct_clan_sub(self, monkeypatch):
@@ -115,7 +115,7 @@ class TestGetGuildSubscribedClans:
             subscriptions={"123": {"ch1": [{"clan_tag": "#CLAN1234", "subscription_type": "war"}]}},
             clan_families={},
         )
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         assert self._fn()(123) == ["#CLAN1234"]
 
     def test_skips_playerregistration(self, monkeypatch):
@@ -126,7 +126,7 @@ class TestGetGuildSubscribedClans:
             ]}},
             clan_families={},
         )
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         result = self._fn()(123)
         assert "#REG12345" not in result
         assert "#CLAN1234" in result
@@ -136,7 +136,7 @@ class TestGetGuildSubscribedClans:
             subscriptions={"123": {"ch1": [{"clan_tag": "fam1", "subscription_type": "war"}]}},
             clan_families={"fam1": {"clans": ["#CLAN1234", "#CLAN5678"]}},
         )
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         result = self._fn()(123)
         assert "#CLAN1234" in result
         assert "#CLAN5678" in result
@@ -146,7 +146,7 @@ class TestGetGuildSubscribedClans:
             subscriptions={"123": {"ch1": [{"clan_tag": "#CLAN1234", "subscription_type": "war"}]}},
             clan_families={"fam1": {"clans": ["#CLAN1234", "#SIBLING12"]}},
         )
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         result = self._fn()(123)
         assert "#CLAN1234" in result
         assert "#SIBLING12" in result
@@ -156,7 +156,7 @@ class TestGetGuildSubscribedClans:
             subscriptions={"123": {"ch1": [None, {}, {"clan_tag": "#CLAN1234", "subscription_type": "war"}]}},
             clan_families={},
         )
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         result = self._fn()(123)
         assert result == ["#CLAN1234"]
 
@@ -168,7 +168,7 @@ class TestGetGuildSubscribedClans:
             ]}},
             clan_families={},
         )
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         result = self._fn()(123)
         assert result == ["#AAA123456", "#ZZZ123456"]
 
@@ -179,7 +179,7 @@ class TestGetGuildSubscribedClans:
 
 class TestGetGuildClansIncludingMemberConfig:
     def _fn(self):
-        from qapbot.QBdiscocmdshelper import get_guild_clans_including_member_config
+        from clashcontrol.QBdiscocmdshelper import get_guild_clans_including_member_config
         return get_guild_clans_including_member_config
 
     def test_includes_subscribed_and_member_clans(self, monkeypatch):
@@ -188,7 +188,7 @@ class TestGetGuildClansIncludingMemberConfig:
             server_config={"123": {"member_clans": ["#MEM12345"], "member_families": []}},
             clan_families={},
         )
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         result = self._fn()(123)
         assert "#SUB12345" in result
         assert "#MEM12345" in result
@@ -199,7 +199,7 @@ class TestGetGuildClansIncludingMemberConfig:
             server_config={"123": {"member_clans": [], "member_families": ["fam1"]}},
             clan_families={"fam1": {"clans": ["#FAM12345"]}},
         )
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         result = self._fn()(123)
         assert "#FAM12345" in result
 
@@ -209,7 +209,7 @@ class TestGetGuildClansIncludingMemberConfig:
             server_config={"123": {"member_clans": ["#DUP123456"], "member_families": []}},
             clan_families={},
         )
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         result = self._fn()(123)
         assert result.count("#DUP123456") == 1
 
@@ -220,12 +220,12 @@ class TestGetGuildClansIncludingMemberConfig:
 
 class TestGatherPlayersFromCache:
     def _fn(self):
-        from qapbot.QBdiscocmdshelper import _gather_players_from_cache
+        from clashcontrol.QBdiscocmdshelper import _gather_players_from_cache
         return _gather_players_from_cache
 
     def test_gathers_from_temp_stats(self, monkeypatch):
         cache = _make_cache(temp_stats={"#P1": {"Player": "Alice"}, "#P2": {"Player": "Bob"}})
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         result = {}
         self._fn()("#CLAN1234", result)
         assert result == {"#P1": "Alice", "#P2": "Bob"}
@@ -235,7 +235,7 @@ class TestGatherPlayersFromCache:
             temp_stats={},
             clan_history=[{"PlayerID": "#P1", "Player": "Alice"}],
         )
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         result = {}
         self._fn()("#CLAN1234", result)
         assert result == {"#P1": "Alice"}
@@ -245,7 +245,7 @@ class TestGatherPlayersFromCache:
             temp_stats={"#P1": {"Player": "NewName"}},
             clan_history=[{"PlayerID": "#P1", "Player": "OldName"}],
         )
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         result = {}
         self._fn()("#CLAN1234", result)
         assert result["#P1"] == "NewName"
@@ -254,7 +254,7 @@ class TestGatherPlayersFromCache:
         cache = _make_cache(
             temp_stats={"": {"Player": "Ghost"}, "#P1": {"Player": "Real"}},
         )
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         result = {}
         self._fn()("#CLAN1234", result)
         assert "" not in result
@@ -265,7 +265,7 @@ class TestGatherPlayersFromCache:
             temp_stats={},
             clan_history=["bad_row", None, {"PlayerID": "#P1", "Player": "Ok"}],
         )
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         result = {}
         self._fn()("#CLAN1234", result)
         assert result == {"#P1": "Ok"}
@@ -277,7 +277,7 @@ class TestGatherPlayersFromCache:
 
 class TestGetRegisteredPlayerIds:
     def _fn(self):
-        from qapbot.QBdiscocmdshelper import _get_registered_player_ids
+        from clashcontrol.QBdiscocmdshelper import _get_registered_player_ids
         return _get_registered_player_ids
 
     def test_returns_all_player_tags(self, monkeypatch):
@@ -285,7 +285,7 @@ class TestGetRegisteredPlayerIds:
             "U1": {"players": [{"player_tag": "#P1"}, {"player_tag": "#P2"}]},
             "U2": {"players": [{"player_tag": "#P3"}]},
         })
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         assert self._fn()() == {"#P1", "#P2", "#P3"}
 
     def test_skips_unassigned(self, monkeypatch):
@@ -293,7 +293,7 @@ class TestGetRegisteredPlayerIds:
             "UNASSIGNED": {"players": [{"player_tag": "#P1"}]},
             "U1": {"players": [{"player_tag": "#P2"}]},
         })
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         assert self._fn()() == {"#P2"}
 
     def test_skips_empty_entries(self, monkeypatch):
@@ -301,19 +301,19 @@ class TestGetRegisteredPlayerIds:
             "U1": None,
             "U2": {"players": [{"player_tag": "#P1"}]},
         })
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         assert self._fn()() == {"#P1"}
 
     def test_skips_empty_tags(self, monkeypatch):
         cache = _make_cache(user_accounts={
             "U1": {"players": [{"player_tag": ""}, None, {"player_tag": "#P1"}]},
         })
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         assert self._fn()() == {"#P1"}
 
     def test_empty_accounts(self, monkeypatch):
         cache = _make_cache(user_accounts={})
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         assert self._fn()() == set()
 
 
@@ -323,7 +323,7 @@ class TestGetRegisteredPlayerIds:
 
 class TestCalculateActivityScore:
     def _fn(self):
-        from qapbot.QBdiscocmdshelper import _calculate_activity_score
+        from clashcontrol.QBdiscocmdshelper import _calculate_activity_score
         return _calculate_activity_score
 
     def test_counts_recent_history_attacks(self, monkeypatch):
@@ -334,7 +334,7 @@ class TestCalculateActivityScore:
             ],
             temp_stats={},
         )
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         assert self._fn()("#P1", ["#CLAN1234"]) == 2
 
     def test_ignores_old_history(self, monkeypatch):
@@ -345,7 +345,7 @@ class TestCalculateActivityScore:
             ],
             temp_stats={},
         )
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         assert self._fn()("#P1", ["#CLAN1234"]) == 0
 
     def test_adds_temp_attacks(self, monkeypatch):
@@ -353,7 +353,7 @@ class TestCalculateActivityScore:
             clan_history=[],
             temp_stats={"#P1": {"Attacks": 3}},
         )
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         assert self._fn()("#P1", ["#CLAN1234"]) == 3
 
     def test_combines_history_and_temp(self, monkeypatch):
@@ -362,7 +362,7 @@ class TestCalculateActivityScore:
             clan_history=[{"PlayerID": "#P1", "Date": recent, "Attacks": 2}],
             temp_stats={"#P1": {"Attacks": 1}},
         )
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         assert self._fn()("#P1", ["#CLAN1234"]) == 3
 
     def test_handles_bad_dates(self, monkeypatch):
@@ -372,12 +372,12 @@ class TestCalculateActivityScore:
             ],
             temp_stats={},
         )
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         assert self._fn()("#P1", ["#CLAN1234"]) == 0
 
     def test_handles_non_dict_rows(self, monkeypatch):
         cache = _make_cache(clan_history=["bad", None], temp_stats={})
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         assert self._fn()("#P1", ["#CLAN1234"]) == 0
 
     def test_no_matching_player(self, monkeypatch):
@@ -386,7 +386,7 @@ class TestCalculateActivityScore:
             clan_history=[{"PlayerID": "#OTHER1234", "Date": recent, "Attacks": 10}],
             temp_stats={},
         )
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         assert self._fn()("#P1", ["#CLAN1234"]) == 0
 
     def test_multiple_clans(self, monkeypatch):
@@ -406,7 +406,7 @@ class TestCalculateActivityScore:
         def mock_temp(tag):
             return {}
         cache.get_temp_war_stats = MagicMock(side_effect=mock_temp)
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         assert self._fn()("#P1", ["#C1", "#C2"]) == 5
 
 
@@ -416,17 +416,17 @@ class TestCalculateActivityScore:
 
 class TestGetPlayerregistrationMessage:
     def _fn(self):
-        from qapbot.QBdiscocmdshelper import get_playerregistration_message
+        from clashcontrol.QBdiscocmdshelper import get_playerregistration_message
         return get_playerregistration_message
 
     def test_returns_formatted_string(self, monkeypatch):
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", _make_cache())
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", _make_cache())
         result = self._fn()("TestServer", guild_id=123)
         assert isinstance(result, str)
         assert len(result) > 0
 
     def test_contains_bold_title(self, monkeypatch):
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", _make_cache())
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", _make_cache())
         result = self._fn()("TestServer", guild_id=123)
         assert "**" in result
 
@@ -437,11 +437,11 @@ class TestGetPlayerregistrationMessage:
 
 class TestFormatNotificationSettings:
     def _fn(self):
-        from qapbot.QBdiscocmdshelper import format_notification_settings
+        from clashcontrol.QBdiscocmdshelper import format_notification_settings
         return format_notification_settings
 
     def test_basic_format(self, monkeypatch):
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", _make_cache())
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", _make_cache())
         user_data = {
             "notification_settings": {"war_reminders": True, "notification_mode": "repeated", "notification_type": "all_wars", "hours_before_end": 4},
             "user_language": "en",
@@ -452,7 +452,7 @@ class TestFormatNotificationSettings:
         assert "✅" in result
 
     def test_disabled_notifications(self, monkeypatch):
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", _make_cache())
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", _make_cache())
         user_data = {
             "notification_settings": {"war_reminders": False},
             "user_language": "en",
@@ -462,7 +462,7 @@ class TestFormatNotificationSettings:
         assert "❌" in result
 
     def test_cwl_only_type(self, monkeypatch):
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", _make_cache())
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", _make_cache())
         user_data = {
             "notification_settings": {"war_reminders": True, "notification_type": "cwl_only", "notification_mode": "once", "hours_before_end": 2},
             "user_language": "en",
@@ -472,7 +472,7 @@ class TestFormatNotificationSettings:
         assert isinstance(result, str)
 
     def test_locked_language(self, monkeypatch):
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", _make_cache())
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", _make_cache())
         user_data = {
             "notification_settings": {"war_reminders": True},
             "user_language": "de",
@@ -483,7 +483,7 @@ class TestFormatNotificationSettings:
         assert isinstance(result, str)
 
     def test_with_buddies(self, monkeypatch):
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", _make_cache())
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", _make_cache())
         user_data = {
             "notification_settings": {"war_reminders": True},
             "user_language": "en",
@@ -494,7 +494,7 @@ class TestFormatNotificationSettings:
         assert "👥" in result
 
     def test_no_players_no_buddies(self, monkeypatch):
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", _make_cache())
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", _make_cache())
         user_data = {
             "notification_settings": {},
             "players": [],
@@ -504,7 +504,7 @@ class TestFormatNotificationSettings:
         assert "Nobody" in result
 
     def test_unknown_mode_fallback(self, monkeypatch):
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", _make_cache())
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", _make_cache())
         user_data = {
             "notification_settings": {"war_reminders": True, "notification_mode": "unknown_mode"},
             "user_language": "en",
@@ -520,27 +520,27 @@ class TestFormatNotificationSettings:
 
 class TestGetMostActiveClanForGuild:
     def _fn(self):
-        from qapbot.QBdiscocmdshelper import get_most_active_clan_for_guild
+        from clashcontrol.QBdiscocmdshelper import get_most_active_clan_for_guild
         return get_most_active_clan_for_guild
 
     def test_empty_clan_tags(self, monkeypatch):
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", _make_cache())
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", _make_cache())
         assert self._fn()(123, []) == ""
 
     def test_returns_most_subscribed(self, monkeypatch):
         cache = _make_cache(subs_flat={
             "ch1": [{"clan_tag": "#A1234567"}, {"clan_tag": "#A1234567"}, {"clan_tag": "#B1234567"}],
         })
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         # Need to also patch inside the function since it re-imports
-        with patch("qapbot.QBdiscocmdshelper.CACHE", cache):
+        with patch("clashcontrol.QBdiscocmdshelper.CACHE", cache):
             result = self._fn()(123, ["#A1234567", "#B1234567"])
             assert result == "#A1234567"
 
     def test_no_subscriptions_returns_first(self, monkeypatch):
         cache = _make_cache(subs_flat={})
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
-        with patch("qapbot.cache_manager.CACHE", cache):
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
+        with patch("clashcontrol.cache_manager.CACHE", cache):
             result = self._fn()(123, ["#FIRST1234", "#SECOND123"])
             assert result == "#FIRST1234"
 
@@ -551,7 +551,7 @@ class TestGetMostActiveClanForGuild:
 
 class TestSplitContentIntoEmbeds:
     def _fn(self):
-        from qapbot.QBdiscocmdshelper import _split_content_into_embeds
+        from clashcontrol.QBdiscocmdshelper import _split_content_into_embeds
         return _split_content_into_embeds
 
     def test_single_embed_short_content(self):
@@ -587,7 +587,7 @@ class TestSplitContentIntoEmbeds:
 
 class TestSplitContentIntoTwoEmbeds:
     def _fn(self):
-        from qapbot.QBdiscocmdshelper import _split_content_into_two_embeds
+        from clashcontrol.QBdiscocmdshelper import _split_content_into_two_embeds
         return _split_content_into_two_embeds
 
     def test_short_content_single_embed(self):
@@ -647,7 +647,7 @@ class TestFormatClanManagementRolesPruning:
         member_clans/member_families -- even once the underlying Discord role was itself
         deleted (shown as "deleted" but the clan line stayed). Pruning must key off actual
         current clan coverage, not just whether the stored role id still resolves."""
-        from qapbot.QBdiscocmdshelper import _format_clan_management_roles
+        from clashcontrol.QBdiscocmdshelper import _format_clan_management_roles
 
         cache = _make_cache(
             server_config={
@@ -671,7 +671,7 @@ class TestFormatClanManagementRolesPruning:
         covered_role.mention = "<@&111>"
         guild.get_role = MagicMock(side_effect=lambda rid: covered_role if rid == 111 else None)
 
-        with patch("qapbot.cache_manager.CACHE", cache), patch("qapbot.QBdiscocmdshelper.CACHE", cache):
+        with patch("clashcontrol.cache_manager.CACHE", cache), patch("clashcontrol.QBdiscocmdshelper.CACHE", cache):
             embed, _, _, _ = await _format_clan_management_roles(guild)
 
         clan_roles_field_value = embed.fields[-1].value or ""
@@ -684,7 +684,7 @@ class TestFormatClanManagementRolesPruning:
     @pytest.mark.asyncio
     async def test_no_pruning_or_persist_when_all_entries_still_covered(self, monkeypatch):
         """No orphaned entries -> no unnecessary persist_server_config write."""
-        from qapbot.QBdiscocmdshelper import _format_clan_management_roles
+        from clashcontrol.QBdiscocmdshelper import _format_clan_management_roles
 
         cache = _make_cache(
             server_config={
@@ -705,7 +705,7 @@ class TestFormatClanManagementRolesPruning:
         covered_role.mention = "<@&111>"
         guild.get_role = MagicMock(return_value=covered_role)
 
-        with patch("qapbot.cache_manager.CACHE", cache), patch("qapbot.QBdiscocmdshelper.CACHE", cache):
+        with patch("clashcontrol.cache_manager.CACHE", cache), patch("clashcontrol.QBdiscocmdshelper.CACHE", cache):
             embed, _, _, _ = await _format_clan_management_roles(guild)
 
         assert covered_role.mention in embed.fields[-1].value
@@ -732,7 +732,7 @@ class TestFormatClanManagementNotificationsLopsidedUser:
         first user section instead of the old unbounded remainder). Fix: emit each user's
         header and player lines as separate content_lines entries so the splitter can always
         break between them."""
-        from qapbot.QBdiscocmdshelper import _format_clan_management_notifications
+        from clashcontrol.QBdiscocmdshelper import _format_clan_management_notifications
 
         clan_tag = "#CLAN00001"
         num_players = 80  # enough linked players on one user to exceed 4096 chars alone
@@ -773,7 +773,7 @@ class TestFormatClanManagementNotificationsLopsidedUser:
         guild = MagicMock()
         guild.id = 1
 
-        with patch("qapbot.cache_manager.CACHE", cache), patch("qapbot.QBdiscocmdshelper.CACHE", cache):
+        with patch("clashcontrol.cache_manager.CACHE", cache), patch("clashcontrol.QBdiscocmdshelper.CACHE", cache):
             main_embed, unlinked_embed, _, _ = await _format_clan_management_notifications(clan_tag, guild)
 
         all_embeds = [main_embed]
@@ -795,14 +795,14 @@ class TestFormatClanManagementNotificationsLopsidedUser:
 class TestSetPrimaryAccount:
     @pytest.mark.asyncio
     async def test_sets_primary(self, monkeypatch):
-        from qapbot.QBdiscocmdshelper import set_primary_account
+        from clashcontrol.QBdiscocmdshelper import set_primary_account
         cache = _make_cache(user_accounts={
             "U1": {"players": [
                 {"player_tag": "#P1", "is_primary": True},
                 {"player_tag": "#P2", "is_primary": False},
             ]},
         })
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         result = await set_primary_account("U1", "#P2")
         assert result is True
         assert cache.user_accounts["U1"]["players"][1]["is_primary"] is True
@@ -811,34 +811,34 @@ class TestSetPrimaryAccount:
 
     @pytest.mark.asyncio
     async def test_already_primary_returns_false(self, monkeypatch):
-        from qapbot.QBdiscocmdshelper import set_primary_account
+        from clashcontrol.QBdiscocmdshelper import set_primary_account
         cache = _make_cache(user_accounts={
             "U1": {"players": [{"player_tag": "#P1", "is_primary": True}]},
         })
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         assert await set_primary_account("U1", "#P1") is False
 
     @pytest.mark.asyncio
     async def test_user_not_found(self, monkeypatch):
-        from qapbot.QBdiscocmdshelper import set_primary_account
+        from clashcontrol.QBdiscocmdshelper import set_primary_account
         cache = _make_cache(user_accounts={})
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         assert await set_primary_account("U1", "#P1") is False
 
     @pytest.mark.asyncio
     async def test_player_not_found(self, monkeypatch):
-        from qapbot.QBdiscocmdshelper import set_primary_account
+        from clashcontrol.QBdiscocmdshelper import set_primary_account
         cache = _make_cache(user_accounts={
             "U1": {"players": [{"player_tag": "#OTHER1234"}]},
         })
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         assert await set_primary_account("U1", "#P1") is False
 
     @pytest.mark.asyncio
     async def test_invalid_players_type(self, monkeypatch):
-        from qapbot.QBdiscocmdshelper import set_primary_account
+        from clashcontrol.QBdiscocmdshelper import set_primary_account
         cache = _make_cache(user_accounts={"U1": {"players": "not_a_list"}})
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         assert await set_primary_account("U1", "#P1") is False
 
 
@@ -849,14 +849,14 @@ class TestSetPrimaryAccount:
 class TestUnlinkPlayer:
     @pytest.mark.asyncio
     async def test_unlinks_and_moves_to_unassigned(self, monkeypatch):
-        from qapbot.QBdiscocmdshelper import unlink_player
+        from clashcontrol.QBdiscocmdshelper import unlink_player
         cache = _make_cache(user_accounts={
             "U1": {"players": [
                 {"player_tag": "#P1", "is_primary": True, "player_name": "Test"},
                 {"player_tag": "#P2", "is_primary": False},
             ]},
         })
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         result = await unlink_player("U1", "#P1")
         assert result is True
         # P1 removed from user
@@ -871,28 +871,28 @@ class TestUnlinkPlayer:
 
     @pytest.mark.asyncio
     async def test_user_not_found(self, monkeypatch):
-        from qapbot.QBdiscocmdshelper import unlink_player
+        from clashcontrol.QBdiscocmdshelper import unlink_player
         cache = _make_cache(user_accounts={})
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         assert await unlink_player("U1", "#P1") is False
 
     @pytest.mark.asyncio
     async def test_player_not_found(self, monkeypatch):
-        from qapbot.QBdiscocmdshelper import unlink_player
+        from clashcontrol.QBdiscocmdshelper import unlink_player
         cache = _make_cache(user_accounts={
             "U1": {"players": [{"player_tag": "#OTHER1234"}]},
         })
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         assert await unlink_player("U1", "#P1") is False
 
     @pytest.mark.asyncio
     async def test_already_in_unassigned_not_duplicated(self, monkeypatch):
-        from qapbot.QBdiscocmdshelper import unlink_player
+        from clashcontrol.QBdiscocmdshelper import unlink_player
         cache = _make_cache(user_accounts={
             "U1": {"players": [{"player_tag": "#P1", "is_primary": False}]},
             "UNASSIGNED": {"display_name": "UNASSIGNED", "players": [{"player_tag": "#P1"}]},
         })
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         result = await unlink_player("U1", "#P1")
         assert result is True
         # Not duplicated in UNASSIGNED
@@ -907,13 +907,13 @@ class TestUnlinkPlayer:
 class TestRestorePlayerFromUnassigned:
     @pytest.mark.asyncio
     async def test_restores_player(self, monkeypatch):
-        from qapbot.QBdiscocmdshelper import restore_player_from_unassigned
+        from clashcontrol.QBdiscocmdshelper import restore_player_from_unassigned
         player = {"player_tag": "#P1", "player_name": "Test", "verified": True}
         cache = _make_cache(user_accounts={
             "U1": {"players": [], "display_name": "User1"},
             "UNASSIGNED": {"display_name": "UNASSIGNED", "players": [player]},
         })
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         user_entry = cache.user_accounts["U1"]
         restored, data, _msg = await restore_player_from_unassigned(user_entry, "#P1", "User1")
         assert restored is True
@@ -923,33 +923,33 @@ class TestRestorePlayerFromUnassigned:
 
     @pytest.mark.asyncio
     async def test_not_in_unassigned(self, monkeypatch):
-        from qapbot.QBdiscocmdshelper import restore_player_from_unassigned
+        from clashcontrol.QBdiscocmdshelper import restore_player_from_unassigned
         cache = _make_cache(user_accounts={
             "U1": {"players": []},
             "UNASSIGNED": {"display_name": "UNASSIGNED", "players": []},
         })
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         restored, data, _msg = await restore_player_from_unassigned(cache.user_accounts["U1"], "#P1", "User1")
         assert restored is False
         assert data is None
 
     @pytest.mark.asyncio
     async def test_no_unassigned_entry(self, monkeypatch):
-        from qapbot.QBdiscocmdshelper import restore_player_from_unassigned
+        from clashcontrol.QBdiscocmdshelper import restore_player_from_unassigned
         cache = _make_cache(user_accounts={"U1": {"players": []}})
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         restored, _data, _msg = await restore_player_from_unassigned(cache.user_accounts["U1"], "#P1", "User1")
         assert restored is False
 
     @pytest.mark.asyncio
     async def test_cleans_up_empty_unassigned(self, monkeypatch):
-        from qapbot.QBdiscocmdshelper import restore_player_from_unassigned
+        from clashcontrol.QBdiscocmdshelper import restore_player_from_unassigned
         player = {"player_tag": "#P1", "player_name": "Test", "verified": False}
         cache = _make_cache(user_accounts={
             "U1": {"players": [], "display_name": "User1"},
             "UNASSIGNED": {"display_name": "UNASSIGNED", "players": [player]},
         })
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         await restore_player_from_unassigned(cache.user_accounts["U1"], "#P1", "User1")
         # UNASSIGNED should be removed since it's now empty
         assert "UNASSIGNED" not in cache.user_accounts

@@ -1,7 +1,7 @@
 """
 War data persistence utilities for JSON war files and history management.
 
-NOTE: All functions in this module are intended to be called ONLY by qapbot/cache_manager.py
+NOTE: All functions in this module are intended to be called ONLY by clashcontrol/cache_manager.py
 or QBhelperfunctions.py. Do not use these functions directly from business logic or command handlers.
 
 Key Features:
@@ -12,7 +12,7 @@ Key Features:
 - Defensive error handling for file I/O and data parsing
 
 Integration:
-- Used by qapbot/cache_manager.py for loading temp war stats
+- Used by clashcontrol/cache_manager.py for loading temp war stats
 - Used by QBhelperfunctions.py for war finalization and late attack updates
 - Not to be called directly from business logic or command handlers
 """
@@ -21,7 +21,7 @@ from typing import TypedDict, Dict, Optional, Any, List, Tuple, Set, cast
 import logging
 import json as _json
 import re as _re
-from qapbot.constants import normalize_cwl_season
+from clashcontrol.constants import normalize_cwl_season
 
 _PROD_BASE = os.getenv("PROD_DATA_DIR", "")
 try:
@@ -516,7 +516,7 @@ def _append_current_war_to_history(clan_tag: str, json_file_path: Optional[str] 
     Returns:
         None
     """
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     
     logging.debug(f"append_current_war_to_history called with clan_tag={clan_tag}, json_file_path={json_file_path}")
     
@@ -690,7 +690,7 @@ def _update_history_with_late_attacks(clan_tag: str, war_id: str, updated_war_st
     Returns:
         bool: True if update successful, False otherwise
     """
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     
     # Verify database is initialized
     if not CACHE.db_manager:  # type: ignore[has-type]

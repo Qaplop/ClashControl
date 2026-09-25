@@ -3,7 +3,7 @@ get_clan() ping for passively-tracked (track_war_updates=False) clans whose
 CWL group is never rediscovered by the normal discovery graph (see
 CLAN_WAR_TRACKING.md write-path 8).
 
-Candidate discovery (which clans are overdue) is done by QapBot.py's main
+Candidate discovery (which clans are overdue) is done by ClashControl.py's main
 clan-categorization loop, piggybacked on its own already-mandatory full
 clan_name_cache scan (merged in to eliminate a redundant second full-cache
 scan every cycle — see that loop's comments). This function only receives

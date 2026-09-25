@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import re
 
-from qapbot.db_manager import db_memory_pragmas
+from clashcontrol.db_manager import db_memory_pragmas
 
 
 class TestPragmaGeneration:
@@ -51,7 +51,7 @@ class TestPragmaGeneration:
         """BotConfig is a frozen dataclass, so swap the module attribute the helper reads
         rather than mutating the instance."""
         import dataclasses
-        import qapbot.config as cfg
+        import clashcontrol.config as cfg
         monkeypatch.setattr(cfg, "CONFIG", dataclasses.replace(cfg.CONFIG, **overrides))
 
     def test_values_track_config_rather_than_being_hard_coded(self, monkeypatch):
@@ -92,7 +92,7 @@ class TestPerSchemaBudgets:
         without an explicit history statement the 35 GB cold DB would silently inherit main's
         larger ceiling — the same shape as the original bug, one schema over."""
         import dataclasses
-        import qapbot.config as cfg
+        import clashcontrol.config as cfg
         monkeypatch.setattr(cfg, "CONFIG", dataclasses.replace(
             cfg.CONFIG, db_mmap_size_mb=4096, db_history_mmap_size_mb=64,
         ))
@@ -122,7 +122,7 @@ class TestSwapAvoidanceInvariants:
     def test_anonymous_cache_total_stays_bounded(self):
         """cache_size is paid per connection in anonymous memory, so it multiplies by pool size
         — unlike mmap, where all connections map the same files and share the physical pages."""
-        from qapbot.config import CONFIG
+        from clashcontrol.config import CONFIG
         total_anon_mb = (
             CONFIG.db_cache_size_mb + CONFIG.db_history_cache_size_mb
         ) * CONFIG.db_pool_size
@@ -133,7 +133,7 @@ class TestSwapAvoidanceInvariants:
         )
 
     def test_the_safe_knob_carries_more_of_the_budget_than_the_dangerous_one(self):
-        from qapbot.config import CONFIG
+        from clashcontrol.config import CONFIG
         mapped = CONFIG.db_mmap_size_mb + CONFIG.db_history_mmap_size_mb
         anon = (CONFIG.db_cache_size_mb + CONFIG.db_history_cache_size_mb) * CONFIG.db_pool_size
 
@@ -146,7 +146,7 @@ class TestSwapAvoidanceInvariants:
         """Bounded, not unlimited. The original 8 GB let SQLite map arbitrarily much of a
         24.5 + 35.3 GB corpus; a large actively-referenced mapped set looks hot to the kernel
         and biases reclaim toward swapping the anonymous Python heap instead."""
-        from qapbot.config import CONFIG
+        from clashcontrol.config import CONFIG
         assert CONFIG.db_mmap_size_mb <= 4096
         assert CONFIG.db_history_mmap_size_mb <= CONFIG.db_mmap_size_mb
 
@@ -158,7 +158,7 @@ class TestAppliedEverywhere:
 
     def test_no_hardcoded_legacy_values_remain_in_db_manager(self):
         from pathlib import Path
-        src = Path(__file__).resolve().parents[2] / "qapbot" / "db_manager.py"
+        src = Path(__file__).resolve().parents[2] / "clashcontrol" / "db_manager.py"
         text = src.read_text(encoding="utf-8-sig")
 
         assert "cache_size=-65536" not in text, "the 64 MB literal is back"
@@ -168,7 +168,7 @@ class TestAppliedEverywhere:
 
     def test_every_pragma_application_goes_through_the_helper(self):
         from pathlib import Path
-        src = Path(__file__).resolve().parents[2] / "qapbot" / "db_manager.py"
+        src = Path(__file__).resolve().parents[2] / "clashcontrol" / "db_manager.py"
         text = src.read_text(encoding="utf-8-sig")
 
         # main-schema application: _apply_sync_pragmas, initialize(), _reconnect()
@@ -181,7 +181,7 @@ class TestConfigDefaults:
     """Defaults encode the post-SSD tuning; env vars exist so PROD can retune without a deploy."""
 
     def test_ssd_era_defaults(self):
-        from qapbot.config import CONFIG
+        from clashcontrol.config import CONFIG
         assert CONFIG.db_mmap_size_mb == 1024
         assert CONFIG.db_history_mmap_size_mb == 256
         assert CONFIG.db_cache_size_mb == 32
@@ -190,10 +190,10 @@ class TestConfigDefaults:
 
     def test_env_overrides_are_parsed_and_clamped(self, monkeypatch):
         """Calls load_config() directly rather than reloading the module: a reload swaps
-        qapbot.config.CONFIG for a new object while every module that did
-        `from qapbot.config import CONFIG` keeps the old one, and that split state breaks
+        clashcontrol.config.CONFIG for a new object while every module that did
+        `from clashcontrol.config import CONFIG` keeps the old one, and that split state breaks
         unrelated tests downstream."""
-        from qapbot.config import load_config
+        from clashcontrol.config import load_config
         monkeypatch.setenv("DB_MMAP_SIZE_MB", "256")
         monkeypatch.setenv("DB_CACHE_SIZE_MB", "0")     # clamped to >=1: a 0 cache is invalid
         monkeypatch.setenv("DB_POOL_SIZE", "-3")        # clamped to >=1
@@ -205,7 +205,7 @@ class TestConfigDefaults:
         assert loaded.db_pool_size == 1
 
     def test_unparseable_env_falls_back_to_the_default(self, monkeypatch):
-        from qapbot.config import load_config
+        from clashcontrol.config import load_config
         monkeypatch.setenv("DB_MMAP_SIZE_MB", "not-a-number")
 
         assert load_config().db_mmap_size_mb == 1024

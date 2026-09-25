@@ -349,7 +349,7 @@ class TestBuildWarPayloadRoundTrip:
     feed our computed `bestOpponentAttack` in as the API's field (the API's own value is not
     retained on disk), so a different attack gets excluded and a different "previous best" comes
     out. 76 of 54,192 wars differ on that field alone for this reason — a fixture limitation, not
-    a defect. It is also consumed only by `qapbot/scripts/recover_cwl_war.py`, never by the
+    a defect. It is also consumed only by `clashcontrol/scripts/recover_cwl_war.py`, never by the
     temp-stats path or leaderboards.
     """
 
@@ -367,7 +367,7 @@ class TestBuildWarPayloadRoundTrip:
         return o
 
     def test_rebuilds_real_payloads(self, client: Any) -> None:
-        from qapbot.cache_manager import build_war_payload
+        from clashcontrol.cache_manager import build_war_payload
 
         files = _corpus(int(os.getenv("PARITY_LIMIT", "2000")))
         if not files:

@@ -6,7 +6,7 @@ forever once cwl_ended=1 (see changelog.txt 2026-07-26). The write-time bug is
 fixed, but a group's *existing* frozen value was never re-examined — this
 self-heal re-checks it every time an ended group's standings are served, using
 the same "safe middle rank" reasoning validated in
-qapbot/scripts/audit_cwl_league_rank.py: a clan ranked outside the top 3 /
+clashcontrol/scripts/audit_cwl_league_rank.py: a clan ranked outside the top 3 /
 bottom 2 of its group is guaranteed to have stayed in the same league the
 following season, regardless of league or rule-version, so its current live
 league (if freshly checked) is trustworthy evidence for what the group's

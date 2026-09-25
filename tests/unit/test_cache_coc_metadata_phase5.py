@@ -20,7 +20,7 @@ import discord
 
 class TestUpdateUserMetadata:
     def _cm(self):
-        from qapbot.cache_manager import CacheManager
+        from clashcontrol.cache_manager import CacheManager
         cm = CacheManager()
         cm.user_accounts = {}
         cm.users_loaded = True  # tests exercise post-startup behavior; pre-load gate tested in test_cache_manager.py
@@ -148,7 +148,7 @@ class TestUpdateUserMetadata:
 
 class TestUpdateClanMetadata:
     def _coc_cache(self):
-        from qapbot.coc_cache import CoCClanCache
+        from clashcontrol.coc_cache import CoCClanCache
         cc = CoCClanCache.__new__(CoCClanCache)
         cc.cache_manager = MagicMock()
         cc.cache_manager.clan_name_cache = {}

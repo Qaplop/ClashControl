@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 import aiosqlite
 
-from qapbot.db_manager import WarHistoryDB
+from clashcontrol.db_manager import WarHistoryDB
 
 
 # ---------------------------------------------------------------------------
@@ -139,7 +139,7 @@ class TestShouldSendNotificationRepeated:
     """Cover the repeated interval notification branches (L820, L830-831)."""
 
     def test_repeated_due(self):
-        from qapbot.war_notifications import _should_send_notification
+        from clashcontrol.war_notifications import _should_send_notification
         from datetime import datetime, timedelta
 
         # Set up CACHE so _should_send_notification finds the user and previous notification
@@ -160,12 +160,12 @@ class TestShouldSendNotificationRepeated:
                 },
             },
         }
-        with patch("qapbot.war_notifications.CACHE", mock_cache):
+        with patch("clashcontrol.war_notifications.CACHE", mock_cache):
             result = _should_send_notification("war_1", "#A1", "disc1", 3.5)
         assert result is True
 
     def test_repeated_too_recent(self):
-        from qapbot.war_notifications import _should_send_notification
+        from clashcontrol.war_notifications import _should_send_notification
         from datetime import datetime, timedelta
 
         # Last notification only 10 min ago with >2h remaining → need 2h interval
@@ -186,7 +186,7 @@ class TestShouldSendNotificationRepeated:
                 },
             },
         }
-        with patch("qapbot.war_notifications.CACHE", mock_cache):
+        with patch("clashcontrol.war_notifications.CACHE", mock_cache):
             result = _should_send_notification("war_1", "#A1", "disc1", 3.5)
         assert result is False
 
@@ -298,13 +298,13 @@ class TestFormattingWidthBranches:
     """Cover formatting.py L204 (emoji width) and L212 (Latin small capital)."""
 
     def test_emoji_width(self):
-        from qapbot.formatting import text_display_width_float
+        from clashcontrol.formatting import text_display_width_float
         # U+1F600 GRINNING FACE — should trigger the emoji branch returning 2.25
         w = text_display_width_float("\U0001F600")
         assert w == 2.25
 
     def test_latin_small_capital(self):
-        from qapbot.formatting import text_display_width_float
+        from clashcontrol.formatting import text_display_width_float
         # U+1D04 LATIN SMALL CAPITAL C — in range 0x1D00-0x1D7F, category Ll
         w = text_display_width_float("\u1D04")
         assert w == 1.00
@@ -314,6 +314,6 @@ class TestExceptionStrNoContext:
     """Cover exceptions.py L111: __str__ without context."""
 
     def test_str_no_context(self):
-        from qapbot.exceptions import QapBotError
-        err = QapBotError("test error")
+        from clashcontrol.exceptions import ClashControlError
+        err = ClashControlError("test error")
         assert str(err) == "test error"

@@ -329,7 +329,7 @@ class TestAppendCurrentWarToHistoryIncompleteWar:
         import types
 
         import QBcsvhandling
-        import qapbot.cache_manager as cache_mod
+        import clashcontrol.cache_manager as cache_mod
 
         captured_rows: list[list[dict]] = []
         captured_sentinels: list[bool] = []
@@ -348,7 +348,7 @@ class TestAppendCurrentWarToHistoryIncompleteWar:
 
         monkeypatch.setattr(QBcsvhandling, "build_per_attack_rows", spy_build)
 
-        # Stub CACHE on the cache_manager module so the local `from qapbot.cache_manager import CACHE`
+        # Stub CACHE on the cache_manager module so the local `from clashcontrol.cache_manager import CACHE`
         # inside _append_current_war_to_history picks it up.
         fake_db = types.SimpleNamespace(
             add_war_data_sync=lambda *a, **kw: None,

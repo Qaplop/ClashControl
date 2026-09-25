@@ -1,4 +1,4 @@
-"""Extended tests for qapbot/coc_cache.py — sync helpers & cache lifecycle.
+"""Extended tests for clashcontrol/coc_cache.py — sync helpers & cache lifecycle.
 
 Targets uncovered lines for: invalidate(), clear_expired(), get_stats(),
 get_memory_usage_mb(), TTL initialization, _update_warlog_status,
@@ -16,7 +16,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from qapbot.coc_cache import MAX_COC_CLAN_CACHE_ENTRIES, CoCClanCache
+from clashcontrol.coc_cache import MAX_COC_CLAN_CACHE_ENTRIES, CoCClanCache
 
 
 # ---------------------------------------------------------------------------
@@ -147,7 +147,7 @@ class TestGetClanTTL:
     async def test_raises_without_coc_client(self):
         c = CoCClanCache()
         c.cache_manager = None
-        from qapbot.exceptions import CacheError
+        from clashcontrol.exceptions import CacheError
         with pytest.raises(CacheError):
             await c.get_clan("#TAG")
 
@@ -156,7 +156,7 @@ class TestGetClanTTL:
         c = CoCClanCache()
         c.cache_manager = MagicMock()
         c.cache_manager.coc_client = None
-        from qapbot.exceptions import CacheError
+        from clashcontrol.exceptions import CacheError
         with pytest.raises(CacheError):
             await c.get_clan("#TAG")
 

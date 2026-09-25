@@ -7,7 +7,7 @@ against repost_cwl_player_hub_messages(), covering the three behaviors the plan 
 disable, channel-migration only after a Discord-confirmed delete, and the cooldown-gated bump —
 plus a plain fresh-post case.
 
-QapBot's module-level code only configures logging and defines functions (the bot itself starts
+ClashControl's module-level code only configures logging and defines functions (the bot itself starts
 under `if __name__ == "__main__"`), so importing it here is side-effect-light — same pattern
 tests/unit/test_periodic_main_control.py already uses.
 """
@@ -23,9 +23,9 @@ import discord
 import pytest
 
 os.environ.setdefault("DISCORD_TOKEN", "test-token")
-import QapBot  # noqa: E402
+import ClashControl  # noqa: E402
 import QBcore  # noqa: E402
-from qapbot.cache_manager import CACHE  # noqa: E402
+from clashcontrol.cache_manager import CACHE  # noqa: E402
 
 
 def _fake_channel(*, guild_name: str = "TestGuild", last_message_id: Optional[int] = None):
@@ -61,10 +61,10 @@ def _isolate_cache(monkeypatch):
     cover that)."""
     monkeypatch.setattr(CACHE, "server_config", {})
     monkeypatch.setattr(CACHE, "persist_server_config", AsyncMock())
-    # QapBot.py did `from qapbot.config import CONFIG` at module import time, so it holds its
-    # own name binding — patching qapbot.config.CONFIG wouldn't reach it; QapBot's own binding
+    # ClashControl.py did `from clashcontrol.config import CONFIG` at module import time, so it holds its
+    # own name binding — patching clashcontrol.config.CONFIG wouldn't reach it; ClashControl's own binding
     # must be replaced directly. CONFIG is a frozen dataclass, hence dataclasses.replace().
-    monkeypatch.setattr(QapBot, "CONFIG", dataclasses.replace(QapBot.CONFIG, is_dev_mode=False))
+    monkeypatch.setattr(ClashControl, "CONFIG", dataclasses.replace(ClashControl.CONFIG, is_dev_mode=False))
 
 
 @pytest.mark.asyncio
@@ -80,7 +80,7 @@ async def test_disabled_hub_with_tracked_message_deletes_it(monkeypatch):
         "cwl_player_hub_message_id": "555111",
     }
 
-    await QapBot.repost_cwl_player_hub_messages()
+    await ClashControl.repost_cwl_player_hub_messages()
 
     config = CACHE.server_config["701"]
     assert config["cwl_player_hub_message_id"] is None
@@ -102,7 +102,7 @@ async def test_disabled_hub_keeps_tracking_on_inconclusive_delete(monkeypatch):
         "cwl_player_hub_message_id": "555222",
     }
 
-    await QapBot.repost_cwl_player_hub_messages()
+    await ClashControl.repost_cwl_player_hub_messages()
 
     # persist_server_config must never have been called — tracking stays untouched in memory.
     CACHE.persist_server_config.assert_not_awaited()
@@ -122,7 +122,7 @@ async def test_posts_a_fresh_message_when_none_tracked_yet(monkeypatch):
         "cwl_player_hub_message_id": None,
     }
 
-    await QapBot.repost_cwl_player_hub_messages()
+    await ClashControl.repost_cwl_player_hub_messages()
 
     channel.send.assert_awaited_once()
     assert CACHE.server_config["703"]["cwl_player_hub_message_id"] == "999999"
@@ -150,7 +150,7 @@ async def test_channel_migration_only_clears_tracking_after_confirmed_delete(mon
         "cwl_player_hub_message_id": "555333",
     }
 
-    await QapBot.repost_cwl_player_hub_messages()
+    await ClashControl.repost_cwl_player_hub_messages()
 
     old_channel.fetch_message.assert_awaited_once_with(555333)
     old_channel.fetch_message.return_value.delete.assert_awaited_once()
@@ -177,7 +177,7 @@ async def test_cooldown_gated_bump_skips_repost_within_the_window(monkeypatch):
         "cwl_player_hub_message_last_bump_iso": recent_bump,
     }
 
-    await QapBot.repost_cwl_player_hub_messages(only_if_not_bottom=True, bump_cooldown_seconds=300)
+    await ClashControl.repost_cwl_player_hub_messages(only_if_not_bottom=True, bump_cooldown_seconds=300)
 
     channel.send.assert_not_awaited()
     channel.fetch_message.assert_not_awaited()
@@ -196,7 +196,7 @@ async def test_only_if_not_bottom_skips_when_tracked_message_is_already_newest(m
         "cwl_player_hub_message_id": "555555",  # matches the "newest" message from history()
     }
 
-    await QapBot.repost_cwl_player_hub_messages(only_if_not_bottom=True, bump_cooldown_seconds=300)
+    await ClashControl.repost_cwl_player_hub_messages(only_if_not_bottom=True, bump_cooldown_seconds=300)
 
     channel.send.assert_not_awaited()
 
@@ -214,7 +214,7 @@ async def test_only_if_not_bottom_reposts_when_tracked_message_is_not_newest(mon
         "cwl_player_hub_message_id": "555666",
     }
 
-    await QapBot.repost_cwl_player_hub_messages(only_if_not_bottom=True, bump_cooldown_seconds=300)
+    await ClashControl.repost_cwl_player_hub_messages(only_if_not_bottom=True, bump_cooldown_seconds=300)
 
     channel.send.assert_awaited_once()
 
@@ -245,7 +245,7 @@ async def test_guild_id_scopes_repost_to_only_that_guild(monkeypatch):
         "cwl_player_hub_message_id": None,
     }
 
-    await QapBot.repost_cwl_player_hub_messages(only_if_not_bottom=False, guild_id=801)
+    await ClashControl.repost_cwl_player_hub_messages(only_if_not_bottom=False, guild_id=801)
 
     target_channel.send.assert_awaited_once()
     other_channel.send.assert_not_awaited()
@@ -277,7 +277,7 @@ async def test_omitting_guild_id_still_sweeps_every_enabled_guild(monkeypatch):
         "cwl_player_hub_message_id": None,
     }
 
-    await QapBot.repost_cwl_player_hub_messages(only_if_not_bottom=False)
+    await ClashControl.repost_cwl_player_hub_messages(only_if_not_bottom=False)
 
     channel_a.send.assert_awaited_once()
     channel_b.send.assert_awaited_once()

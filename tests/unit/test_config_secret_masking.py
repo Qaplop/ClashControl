@@ -18,7 +18,7 @@ import dataclasses
 
 import pytest
 
-from qapbot.config import CONFIG, BotConfig
+from clashcontrol.config import CONFIG, BotConfig
 
 
 SENTINELS = {

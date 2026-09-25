@@ -8,7 +8,7 @@ import pytest
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_coc_cache_fresh_hit_does_not_fetch(monkeypatch: pytest.MonkeyPatch):
-    from qapbot.coc_cache import CoCClanCache
+    from clashcontrol.coc_cache import CoCClanCache
 
     cache = CoCClanCache(soft_ttl_seconds=100, hard_ttl_seconds=200)
     cache.cache_manager = object()  # minimal truthy placeholder  # type: ignore[assignment]
@@ -35,7 +35,7 @@ async def test_coc_cache_fresh_hit_does_not_fetch(monkeypatch: pytest.MonkeyPatc
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_coc_cache_stale_schedules_background_refresh(monkeypatch: pytest.MonkeyPatch):
-    from qapbot.coc_cache import CoCClanCache
+    from clashcontrol.coc_cache import CoCClanCache
 
     cache = CoCClanCache(soft_ttl_seconds=5, hard_ttl_seconds=50)
     cache.cache_manager = type("M", (), {"coc_client": object()})()  # type: ignore[assignment]
@@ -58,7 +58,7 @@ async def test_coc_cache_stale_schedules_background_refresh(monkeypatch: pytest.
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_coc_cache_expired_forces_blocking_fetch(monkeypatch: pytest.MonkeyPatch):
-    from qapbot.coc_cache import CoCClanCache
+    from clashcontrol.coc_cache import CoCClanCache
 
     cache = CoCClanCache(soft_ttl_seconds=5, hard_ttl_seconds=8)
     cache.cache_manager = type("M", (), {"coc_client": object()})()  # type: ignore[assignment]
@@ -87,7 +87,7 @@ async def test_update_player_info_maps_coc_role_name_correctly():
     i.e. co_leader is remapped to coLeader to match COC_ROLE_PRIORITY keys.
     """
     from unittest.mock import AsyncMock, MagicMock
-    from qapbot.coc_cache import CoCClanCache
+    from clashcontrol.coc_cache import CoCClanCache
 
     def _make_member(tag: str, role_name: str) -> MagicMock:
         m = MagicMock()

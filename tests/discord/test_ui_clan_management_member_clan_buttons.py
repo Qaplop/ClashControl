@@ -18,7 +18,7 @@ os.environ.setdefault("DISCORD_TOKEN", "test-token")
 
 @pytest.fixture(autouse=True)
 def _bypass_admin_check(monkeypatch):
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.QBdiscocmdshelper as helper
 
     async def _always_admin(*args, **kwargs):
         return True
@@ -27,7 +27,7 @@ def _bypass_admin_check(monkeypatch):
 
 
 def _make_view(guild, guild_clans, current_member_clans, current_member_families, clan_families):
-    from qapbot.ui_clan_management import MemberClansConfigurationView
+    from clashcontrol.ui_clan_management import MemberClansConfigurationView
 
     clan_management_view = MagicMock()
     clan_management_view.sent_message = MagicMock(guild=guild)
@@ -57,7 +57,7 @@ def _clan_button_tags(view) -> set:
 
 @pytest.mark.discord
 def test_family_member_clans_get_no_individual_button(mock_interaction):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     CACHE.clan_name_cache = {
         "#A": {"name": "StayA"}, "#B": {"name": "StayB"}, "#STANDALONE": {"name": "Akatsuki"},
@@ -84,7 +84,7 @@ def test_previously_individually_selected_family_clan_keeps_its_button(mock_inte
     """Legacy state from before this fix (a family-member clan sitting in member_clans on its
     own, family not selected) must not become permanently stuck — it still needs a button so the
     admin can toggle it back off."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     CACHE.clan_name_cache = {"#A": {"name": "StayA"}, "#B": {"name": "StayB"}}
     view = _make_view(
@@ -103,7 +103,7 @@ def test_previously_individually_selected_family_clan_keeps_its_button(mock_inte
 def test_family_not_shown_still_lets_its_clans_be_individually_toggled(mock_interaction):
     """A family beyond the 5-family button cap has no button of its own here — its clans must
     still be individually selectable, since the family toggle isn't reachable in this view."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     CACHE.clan_name_cache = {"#A": {"name": "StayA"}}
     many_families = {f"fam{i}": {"name": f"Family{i}", "clans": [f"#F{i}"]} for i in range(5)}

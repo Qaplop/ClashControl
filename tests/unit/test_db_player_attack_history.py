@@ -9,7 +9,7 @@ from __future__ import annotations
 import sqlite3
 import threading
 
-from qapbot.db_manager import WarHistoryDB
+from clashcontrol.db_manager import WarHistoryDB
 
 _CREATE_WAR_ATTACKS = """
     CREATE TABLE IF NOT EXISTS war_attacks (
@@ -319,7 +319,7 @@ class TestCompositePlayerTagDateIndex:
 
     def test_history_schema_creates_composite_index_without_dropping_the_old_one(self, tmp_path):
         import sqlite3 as _sqlite3
-        from qapbot.db_manager import _create_history_schema_sync
+        from clashcontrol.db_manager import _create_history_schema_sync
 
         conn = _sqlite3.connect(":memory:")
         hist_path = str(tmp_path / "hist.db")
@@ -362,7 +362,7 @@ class TestCompositePlayerTagDateIndex:
         Discord login past its 60s timeout. Everything else must still be created.
         """
         import sqlite3 as _sqlite3
-        from qapbot.db_manager import _create_history_schema_sync
+        from clashcontrol.db_manager import _create_history_schema_sync
 
         conn = _sqlite3.connect(":memory:")
         hist_path = str(tmp_path / "hist2.db")
@@ -391,13 +391,13 @@ class TestCompositePlayerTagDateIndex:
         whole duration regardless of which thread runs it, so the uncoordinated
         background write collided with live concurrent writes ("database is
         locked" storm).
-        Final fix: QapBot.py's initialize_database() now calls initialize()
+        Final fix: ClashControl.py's initialize_database() now calls initialize()
         BEFORE CoC login and BEFORE periodic_main() can start any concurrent
         writes, with its own generous (non-60s) timeout — so it's safe again for
         initialize() to build this index inline, synchronously, same as any
         other index. This test confirms it still does, on both schemas.
         """
-        from qapbot.db_manager import WarHistoryDB
+        from clashcontrol.db_manager import WarHistoryDB
 
         db = WarHistoryDB()
         db_path = str(tmp_path / "init_test.db")
@@ -429,7 +429,7 @@ class TestCompositePlayerTagDateIndex:
         confirms the index survives a full maintenance run (WAL checkpoint ->
         REINDEX/VACUUM -> ANALYZE).
         """
-        from qapbot.db_manager import WarHistoryDB
+        from clashcontrol.db_manager import WarHistoryDB
 
         db = WarHistoryDB()
         db_path = str(tmp_path / "maint_test.db")

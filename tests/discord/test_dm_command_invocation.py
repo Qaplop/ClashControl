@@ -139,7 +139,7 @@ async def test_subscriptions_server_wide_dm_not_linked(mock_interaction, monkeyp
     mock_interaction.response.is_done = MagicMock(return_value=False)
     fake_cache = _FakeCache()
     monkeypatch.setattr(QBdiscordcmds, "CACHE", fake_cache)
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.QBdiscocmdshelper as helper
     monkeypatch.setattr(helper, "CACHE", fake_cache)
 
     await QBdiscordcmds.subscriptions.callback(mock_interaction, server_wide=True)  # type: ignore[arg-type]
@@ -168,7 +168,7 @@ async def test_subscriptions_server_wide_dm_resolves_single_guild(mock_interacti
     fake_cache.server_config["555"] = {"member_clans": ["#CLAN1"], "member_families": []}
     fake_cache.subscriptions["555"] = {}  # no channel subscriptions -> short-circuits to "no subscriptions"
     monkeypatch.setattr(QBdiscordcmds, "CACHE", fake_cache)
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.QBdiscocmdshelper as helper
     monkeypatch.setattr(helper, "CACHE", fake_cache)
 
     fake_guild = MagicMock()
@@ -218,7 +218,7 @@ async def _passthrough_discord_retry(op, _name="x"):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_send_and_track_dm_skips_tracking_and_deletion(mock_interaction, monkeypatch):
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.QBdiscocmdshelper as helper
 
     mock_interaction.guild = None
     fake_cache = _FakeLeaderboardCache()
@@ -251,7 +251,7 @@ async def test_send_and_track_dm_skips_tracking_and_deletion(mock_interaction, m
 @pytest.mark.asyncio
 async def test_send_and_track_guild_still_tracks(mock_interaction, monkeypatch):
     """Companion regression guard: guild-invoked sends must keep tracking as before."""
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.QBdiscocmdshelper as helper
 
     fake_cache = _FakeLeaderboardCache()
     monkeypatch.setattr(helper, "CACHE", fake_cache)
@@ -328,7 +328,7 @@ async def test_cleanup_channel_messages_dm_channel_no_crash(monkeypatch):
     discord.py's own docs — 'provided for compatibility purposes in duck typing') — but
     channel.guild.name would still raise AttributeError on None. Regression guard for the
     log-line fix that made this DM-safe."""
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.QBdiscocmdshelper as helper
 
     fake_cache = _FakeLeaderboardCache()
     monkeypatch.setattr(helper, "CACHE", fake_cache)
@@ -412,13 +412,13 @@ async def test_admin_cleanup_messages_works_from_dm_for_bot_admin(mock_interacti
     fake_cache = _FakeLeaderboardCache()
     fake_cache.user_accounts = {}  # type: ignore[attr-defined]  # resolve_guild_context() reads this
     monkeypatch.setattr(QBdiscordcmds, "CACHE", fake_cache)
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.QBdiscocmdshelper as helper
     monkeypatch.setattr(helper, "CACHE", fake_cache)
     monkeypatch.setattr(QBdiscordcmds, "SERVER_ADMIN", "123456789")
 
     cleanup_mock = AsyncMock(return_value="Deleted 0 orphaned bot messages in this channel.")
     monkeypatch.setattr(
-        "qapbot.QBdiscocmdshelper_admin_command.handle_cleanup_messages_channel", cleanup_mock
+        "clashcontrol.QBdiscocmdshelper_admin_command.handle_cleanup_messages_channel", cleanup_mock
     )
 
     await QBdiscordcmds.admin.callback(mock_interaction, action="CLEANUP_MESSAGES")  # type: ignore[arg-type]
@@ -600,7 +600,7 @@ async def test_subscriptions_dm_forces_server_wide_even_when_false(mock_interact
     fake_cache.server_config["555"] = {"member_clans": ["#CLAN1"], "member_families": []}
     fake_cache.subscriptions["555"] = {}
     monkeypatch.setattr(QBdiscordcmds, "CACHE", fake_cache)
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.QBdiscocmdshelper as helper
     monkeypatch.setattr(helper, "CACHE", fake_cache)
 
     fake_guild = MagicMock()
@@ -673,12 +673,12 @@ async def test_leaderboard_clan_autocomplete_dm_offers_all_linked_guilds_clans(m
     fake_cache.subscriptions["222"] = {"chanB": [{"clan_tag": "#CLANB"}]}
     fake_cache.clan_name_cache = {"#CLANA": {"name": "Clan A"}, "#CLANB": {"name": "Clan B"}}
     monkeypatch.setattr(QBdiscordcmds, "CACHE", fake_cache)
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.QBdiscocmdshelper as helper
     monkeypatch.setattr(helper, "CACHE", fake_cache)
-    # get_clan_family_autocomplete_choices() does its own `from qapbot.cache_manager import
+    # get_clan_family_autocomplete_choices() does its own `from clashcontrol.cache_manager import
     # CACHE` inside its body (not the module-level reference above) — must patch the actual
     # cache_manager singleton too, or it silently reads real (empty-in-tests) data.
-    import qapbot.cache_manager as cache_manager_module
+    import clashcontrol.cache_manager as cache_manager_module
     monkeypatch.setattr(cache_manager_module, "CACHE", fake_cache)
 
     choices = await QBdiscordcmds.leaderboard_clan_autocomplete(mock_interaction, "")  # type: ignore[arg-type]
@@ -697,7 +697,7 @@ async def test_leaderboard_clan_autocomplete_guild_unaffected(mock_interaction, 
     fake_cache.subscriptions["999"] = {"chan": [{"clan_tag": "#CLANC"}]}
     fake_cache.clan_name_cache = {"#CLANC": {"name": "Clan C"}}
     monkeypatch.setattr(QBdiscordcmds, "CACHE", fake_cache)
-    import qapbot.cache_manager as cache_manager_module
+    import clashcontrol.cache_manager as cache_manager_module
     monkeypatch.setattr(cache_manager_module, "CACHE", fake_cache)
 
     choices = await QBdiscordcmds.leaderboard_clan_autocomplete(mock_interaction, "")  # type: ignore[arg-type]
@@ -708,13 +708,13 @@ async def test_leaderboard_clan_autocomplete_guild_unaffected(mock_interaction, 
 
 
 # ---------------------------------------------------------------------------
-# Benign discord.py log-noise filters (QapBot.py) — round 3
+# Benign discord.py log-noise filters (ClashControl.py) — round 3
 # ---------------------------------------------------------------------------
 
 @pytest.fixture()
 def qapbot_module_for_filters():
-    import QapBot
-    return QapBot
+    import ClashControl
+    return ClashControl
 
 
 @pytest.mark.discord
@@ -801,7 +801,7 @@ async def test_clan_management_in_dm_answers_server_only(mock_interaction):
 async def test_help_listing_starts_with_player_setup_block(mock_interaction):
     """2026-09-24 (qaplop): /registration and /cwl preferences get their own top-most block,
     not the Clan / Player Info block."""
-    from qapbot.i18n import t
+    from clashcontrol.i18n import t
 
     mock_interaction.client = MagicMock()
     mock_interaction.client.application_id = 0
@@ -822,7 +822,7 @@ async def test_help_listing_mentions_come_from_command_mention(mock_interaction,
     """/help's clickable </name:id> mentions use the ids from the startup sync
     (CACHE.app_command_ids via command_mention()), subcommands with their top-level id, and it no
     longer fetches the command list itself."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     monkeypatch.setattr(CACHE, "app_command_ids", {"registration": "11", "cwl": "22", "status": "33"})
     mock_interaction.client = MagicMock()

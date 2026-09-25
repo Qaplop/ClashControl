@@ -1,0 +1,876 @@
+"""
+Configuration management for ClashControl with environment variable processing and immutable settings.
+
+This module provides centralized, single-source-of-truth configuration for ClashControl. All settings are loaded from environment variables, validated, and exposed via a frozen dataclass singleton (CONFIG). No module should create its own config; all configuration access is via CONFIG.
+
+Features:
+- Immutable configuration object (frozen dataclass)
+- Environment variable loading with type validation and safe defaults
+- No hardcoded credentials in source code
+- Centralized access for all modules
+- Thread-safe and safe for async usage
+- DEV/PROD mode selection based on DISCORD_GUILD_ID
+- Fail-fast validation on startup
+
+Configuration Sources:
+- Environment variables (primary)
+- .env files (loaded by python-dotenv in main modules)
+- Hardcoded defaults (fallback values)
+
+Security:
+- Sensitive values (API credentials) loaded from environment only
+- No sensitive values are logged or exposed
+- Configuration object is immutable to prevent accidental modification
+
+Integration:
+- Used by all modules requiring configuration values
+- Imported as singleton CONFIG object for consistency
+- Supports both development and production environments
+- DEV mode: DISCORD_GUILD_ID > 0 (uses _DEV credentials)
+- PROD mode: DISCORD_GUILD_ID == 0 (uses standard credentials)
+
+Example:
+    from clashcontrol.config import CONFIG
+    email = CONFIG.coc_email
+    interval = CONFIG.sleep_interval
+    max_subs = CONFIG.max_clan_subscriptions
+    is_dev = CONFIG.is_dev_mode
+"""
+import logging
+import os
+from dataclasses import dataclass, field, fields as dataclass_fields
+from dotenv import load_dotenv
+
+# Load environment variables from .env file (override=False: OS env vars take priority,
+# ensuring tests patching os.environ can control config without .env re-overriding them)
+load_dotenv(override=False)
+
+# Import custom exceptions for validation
+from clashcontrol.exceptions import ConfigurationError
+
+# Central configuration loader
+@dataclass(frozen=True)
+class BotConfig:
+    """
+    Immutable configuration object containing all ClashControl settings.
+    
+    Holds all configuration values needed for ClashControl operation. The frozen=True parameter makes the object immutable after creation, preventing accidental modification.
+    
+    Attributes:
+        coc_email: Clash of Clans API account email address
+        coc_password: Clash of Clans API account password
+        discord_token: Discord bot token for authentication
+        sleep_interval: Seconds between periodic update cycles (default: 300)
+        server_admin: Discord username with administrative privileges
+        max_clan_subscriptions: Maximum clans per channel subscription (default: 7)
+        is_dev_mode: True if running in DEV mode (guild-specific), False if PROD (global)
+        discord_guild_id: Guild ID for DEV mode (0 for PROD/global mode)
+    
+    Security Notes:
+        - API credentials are loaded from environment variables only
+        - No sensitive values have default values to prevent exposure
+        - Configuration is immutable to prevent runtime modification
+        - DEV and PROD credentials are selected automatically based on DISCORD_GUILD_ID
+    
+    Environment Variables:
+        DEV Mode (DISCORD_GUILD_ID > 0):
+        - DISCORD_TOKEN_DEV: Required Discord bot token for DEV instance
+        - COC_API_EMAIL_DEV: Required CoC API email for DEV
+        - COC_API_PASSWORD_DEV: Required CoC API password for DEV
+        
+        PROD Mode (DISCORD_GUILD_ID == 0):
+        - DISCORD_TOKEN: Required Discord bot token for PROD instance
+        - COC_API_EMAIL: Required CoC API email for PROD
+        - COC_API_PASSWORD: Required CoC API password for PROD
+        
+        Common:
+        - DISCORD_GUILD_ID: Guild ID for DEV mode (0 for PROD/global)
+        - SLEEP_INTERVAL: Optional, defaults to 300 seconds (5 minutes)
+        - SERVER_ADMIN: Optional, username for bot administration commands
+        - MAX_CLAN_SUBSCRIPTIONS: Optional, defaults to 7 clans per channel
+    
+    Example:
+        # DEV mode
+        config = BotConfig(
+            coc_email="dev@example.com",
+            coc_password="dev_secret",
+            discord_token="dev_token_123",
+            is_dev_mode=True,
+            discord_guild_id=123456789,
+            ...
+        )
+        
+        # PROD mode
+        config = BotConfig(
+            coc_email="prod@example.com",
+            coc_password="prod_secret",
+            discord_token="prod_token_456",
+            is_dev_mode=False,
+            discord_guild_id=0,
+            ...
+        )
+    """
+    # repr=False on every credential below (2026-09-07). A frozen dataclass gets an
+    # auto-generated __repr__ that prints every field verbatim, so the live Discord token and
+    # CoC password went into any output that rendered this object — and that is not a
+    # hypothetical: a pytest assertion failure printed the real token and password to the
+    # terminal, and the same repr reaches log files through any traceback carrying a BotConfig
+    # (frames in a traceback carry their locals, so `config` being in scope anywhere up the
+    # stack is enough). __repr__ below re-adds them masked, so debugging can still tell "set"
+    # from "empty" without ever rendering the value.
+    coc_email: str = field(repr=False)
+    coc_password: str = field(repr=False)
+    discord_token: str = field(repr=False)
+    sleep_interval: int
+    server_admin: str
+    max_clan_subscriptions: int = 7
+    is_dev_mode: bool = False
+    discord_guild_id: int = 0
+    # DEV-only: allow repost/bump of playerregistration welcome message ONLY in this channel id
+    dev_playerregistration_channel_id: int = 0
+    # Notification settings
+    notification_hours_before_end: int = 4
+    notification_batch_delay: int = 2
+    notification_max_retries: int = 1
+    
+    # Data directory (base for DB, temp, logs) and archive directory.
+    # Both are derived from PROD_DATA_DIR at runtime; defaults keep old layout.
+    data_dir: str = "data"                 # Overridden by PROD_DATA_DIR env var (PROD mode only)
+    archive_dir: str = "archive"           # Overridden by PROD_DATA_DIR env var (PROD mode only)
+    archive_old_dir: str = "archive_old"   # Overridden by PROD_DATA_DIR env var (PROD mode only); same SSD volume as archive_dir
+    investigate_dir: str = "investigate"   # Always relative to project root (HDD), not SSD
+
+    # Database settings
+    db_path: str = "data/qapbot.db"        # SQLite database file path (hot: current + previous calendar month)
+    history_db_path: str = "data/qapbot_history.db"  # SQLite history database (ATTACHed as schema 'history'; everything older than db_path's window)
+    # Fraction of the hot DB that must be free-list before nightly maintenance runs VACUUM,
+    # with vacuum_min_freelist_pages as an absolute floor for small/fresh DBs.
+    #
+    # Was a flat `freelist_count > 500` pages (8 MB at a 16 KB page size). That was right while
+    # the hot->history migration deleted a month of rows once a month: the free list sat near
+    # zero the rest of the time, so the trigger only fired when there was genuinely something
+    # to reclaim.
+    #
+    # The 2026-09-01 rolling migration broke that assumption. Deleting ~1.2M rows EVERY night
+    # frees ~1.1 GB of pages every night, so an 8 MB trigger fires unconditionally — turning an
+    # occasional VACUUM into a nightly one. On PROD that is ~7.5 min of EXCLUSIVE lock and hard
+    # Discord block (db_maintenance_mode), plus VACUUM INTO rewriting the whole 24-40 GB file to
+    # a new one, on NAS-attached SSD, every single night.
+    #
+    # And it would be reclaiming nothing: in steady state the migration deletes ~1.2M rows/day
+    # and the update cycle inserts ~1.2M rows/day, and SQLite reuses free-list pages for new
+    # inserts. The free list is CHURN, not waste — the file does not grow. VACUUM earns its cost
+    # only after a genuine one-off shrink (a retention change, or a catch-up run), which a
+    # proportional threshold still catches while daily churn never reaches it.
+    #
+    # 0.15 of a 24 GB file is ~3.6 GB, against ~1.1 GB of nightly churn: roughly 3x headroom.
+    # Set to 0 to force the old always-vacuum behaviour (the floor then decides).
+    vacuum_freelist_fraction: float = 0.15
+    vacuum_min_freelist_pages: int = 500
+    # Rolling hot-DB retention, in days (2026-09-01 redesign). The nightly migration walks the
+    # cutoff toward `today - history_retention_days`, so roughly one day of aged-out rows moves
+    # per night instead of a whole month landing on the 1st (which on 2026-09-01 meant ~38M rows
+    # and 114 never-completing chunks).
+    #
+    # The effective cutoff is min(today - N, first day of the previous calendar month) — see
+    # WarHistoryDB._history_cutoff(). The floor matters: the documented contract is "hot always
+    # holds the current + the immediately preceding calendar month", whose oldest retained row
+    # can be 61 days old (day 31 of a 31-day month following a 31-day month, e.g. 2026-08-31,
+    # where 2026-07-01 is 61 days back). A plain rolling window shorter than 61 would migrate
+    # that day out and break the contract; the floor stops it, so any value is contract-safe.
+    #
+    # WHY 75 AND NOT SOMETHING SMALLER — this value is load-bearing, do not "optimise" it for
+    # disk without re-running the analysis (clashcontrol/docs/DATABASE_ARCHITECTURE.md, 2026-09-01 (c)):
+    #
+    #   * CWL runs days 1-10 of each month and produces ~2x the normal daily war volume
+    #     (2026-08-03..08 held 2.0-2.3M rows/day against a ~1.2M baseline). Data dated day D
+    #     migrates N days later, so N decides WHICH days of the month carry the heavy migration.
+    #   * At N=60 every single CWL-data migration day lands inside a CWL window — the two
+    #     heaviest jobs the bot has, stacked on the same nights. Measured: 227 of 235 over two
+    #     years.
+    #   * Going SHORTER makes it far worse, not better. Below 61 the calendar floor starts
+    #     binding: at N=50 the cutoff freezes for ~1/3 of all days and then jumps up to 12 days
+    #     at once — and those jumps land on the 1st of the month, i.e. a ~24M-row night during
+    #     CWL. That is exactly the cliff this whole redesign removed.
+    #   * N in 71..78 is the only band that is BOTH smooth (floor never binds, cutoff advances
+    #     1 day/night, 0 frozen days) AND has zero CWL-data migration days inside a CWL window.
+    #     74/75 sit at its centre with 4 days of margin on each side. CWL data from month M then
+    #     migrates around days 15-24 of month M+2, in the quiet stretch between seasons.
+    #
+    # Cost of the extra 15 days over N=60: hot settles at ~92M rows / ~40 GB instead of ~74M /
+    # ~34 GB.
+    history_retention_days: int = 75
+    # Per-night row budget for the migration walk. Sized so a full CWL day (~2.2M rows on PROD;
+    # CWL weeks run ~2x the ~1.2M/day baseline) completes in one night with headroom rather than
+    # spilling into the next. Bounded by rows, not days, because daily volume is wildly
+    # non-uniform — the 2026-09-01 hot DB ranged from 37 rows (2026-07-15) to 2,191,245
+    # (2026-08-05), so a "N days per night" budget would be meaningless.
+    history_migration_nightly_row_budget: int = 3_000_000
+    # Secondary hard stop for a single migration run, in minutes. The row budget above is the
+    # primary bound; this exists so a pathologically slow disk cannot leave the walk running
+    # indefinitely. Lowered 90 -> 30 on 2026-09-01: the migration no longer blocks Discord
+    # commands (it sets QBcore.db_migration_active, not db_maintenance_mode), so this no longer
+    # gates availability — it now only bounds how long the write lock is contended.
+    history_migration_time_budget_minutes: float = 30.0
+
+    # --- SQLite memory budget (tracker #0106, 2026-09-07) -----------------------------------
+    # THE GOVERNING CONSTRAINT: the NAS's swap file lives on the HDD root volume, not on the
+    # eSATA SSD that holds the DB. So a swapped-out page costs ~10 ms to fault back in, while a
+    # dropped DB page costs ~100 us to re-read from the SSD — a ~100x difference. The strategy
+    # below is therefore built around one rule: NEVER let the box need to swap. Everything else
+    # (a slower query, a colder cache) is cheap by comparison.
+    #
+    # That rule sorts the two knobs into "safe" and "dangerous", and the sort is NOT intuitive:
+    #
+    #   cache_size  -> SQLite malloc()s it. ANONYMOUS memory. Under pressure the kernel's only
+    #                  way to reclaim it is to write it to swap == the HDD. This is the
+    #                  dangerous one, and it is the one that was set generously (64 MB x 9
+    #                  connections) before today.
+    #   mmap_size   -> clean, FILE-backed pages. The kernel reclaims them by simply dropping
+    #                  them; they are re-read from the SSD on next use and can NEVER go to swap.
+    #                  This is the safe one. It also avoids double-caching: a page read through
+    #                  the mapping exists once in RAM, whereas a read() copies it into SQLite's
+    #                  private cache on top of the OS page cache — two copies of every page.
+    #
+    # So the budget goes: generous mmap (safe, reclaimable, single-copy), modest cache_size
+    # (dangerous, swappable), rather than the other way round.
+    #
+    # WHY THE PREVIOUS 8 GB VALUE STILL HAD TO GO, despite mmap being the safe knob: with an
+    # 8 GB ceiling per schema against 24.5 GB + 35.3 GB of DB, SQLite will map arbitrarily much
+    # of the file. A large, actively-referenced mapped working set makes those file pages look
+    # hot to the kernel, which — at DSM's default vm.swappiness — biases reclaim toward swapping
+    # ANONYMOUS memory (the Python heap) instead. Bounding mmap to roughly the hot working set
+    # keeps the benefit without giving reclaim that excuse. If vm.swappiness is ever lowered to
+    # ~1-10 on the NAS, these ceilings can safely go up again; the low-swappiness setting is what
+    # actually removes the hazard, and it is a DSM-side change, not a code one.
+    #
+    # SIZING, per schema, because the two have completely different jobs:
+    #   main    24.5 GB, 16 KB pages. ALL per-cycle write traffic. war_attacks alone is 57M rows
+    #           with 7 indexes, so a 50-war batch does ~45k row inserts x 7 index descents. The
+    #           interior (non-leaf) B-tree nodes those descents walk are ~40-50 MB (estimated
+    #           from sqlite_stat1) -- served from the MAPPING, which is why cache_size does not
+    #           have to cover them. cache_size only needs to hold a batch's dirty pages.
+    #   history 35.3 GB, 4 KB pages. Not in the per-cycle write path at all: nightly migration
+    #           plus user-command UNION ALL reads. Bigger file, colder access -- it gets the
+    #           smaller share of both budgets.
+    #
+    # Total anonymous cost is what matters for the swap rule: (32 + 8) MB x 9 connections
+    # = ~360 MB, versus ~600 MB before. Mapped pages are shared across all 9 connections (they
+    # map the same files, so the physical pages are the same), so mmap does NOT multiply by
+    # connection count -- only the address space does, which is free.
+    db_mmap_size_mb: int = 1024              # main: hot index upper levels + recent writes
+    db_history_mmap_size_mb: int = 256       # history: cold, user-query only
+    db_cache_size_mb: int = 32               # main: dirty-page capacity for a bulk batch
+    db_history_cache_size_mb: int = 8        # history
+    db_pool_size: int = 8                    # each connection pays cache_size in ANON memory
+
+    # --- GC policy (tracker #0106, 2026-09-08) ---------------------------------------------
+    # ROOT CAUSE of the ~1 GB/hour heap climb, found 2026-09-08 and confirmed by direct
+    # experiment on 3.14.7 (the version PROD runs): the 2026-09-04 policy of
+    # `gc.disable()` + a per-cycle `gc.collect(1)` was not merely failing to reclaim
+    # generation-2 garbage — it was MANUFACTURING it.
+    #
+    # In CPython, surviving objects are PROMOTED to the next generation by every collection.
+    # `gc.collect(1)` fires at cycle end, when that cycle's war population is still live, so
+    # every survivor is promoted straight into generation 2. With automatic collection off,
+    # gen-2 was then drained only by the 03:00 UTC nightly sweep. Measured experiment: after
+    # surviving even ONE gc.collect(1), a cyclic object is unreachable to all further
+    # gc.collect(1) calls (they free 0 and return in 0.0ms) and only gc.collect(2) frees it.
+    #
+    # The arithmetic matches PROD exactly: ~480 cycles/day x ~20k survivors promoted per
+    # collect = ~9.6M objects/day, against the 10.1-11.5M the nightly sweep actually
+    # reclaimed. The nightly reclaim count jumped 211,262 -> 11,457,899 at the first sweep
+    # after that policy shipped.
+    #
+    # THE FIX is the established pattern for latency-sensitive Python (see
+    # clashcontrol/docs/PERFORMANCE_TUNING.md for sources): keep automatic collection ENABLED and
+    # make it cheap, rather than turning it off and hand-rolling a schedule.
+    #   1. gc.freeze() after startup — already done, keeps the big static caches out of every
+    #      scan. This is why PROD's live-set walk is only ~0.9-4.2s despite a large heap.
+    #   2. Raise threshold0 well above the default — this attacks PROMOTION at the source.
+    #      Objects are promoted only by surviving a collection, so collecting far less often
+    #      in gen-0 means the vast majority die by refcounting before any collection sees them.
+    #   3. Leave the nightly full sweep as a backstop and the RSS-restart as a safety net.
+    #
+    # CPython's own gen-0 default is 2000 (raised from 700 in 3.12). 50,000 is the value the
+    # widely-cited Close.com writeup landed on; it is a starting point to be tuned against
+    # PROD's [GC-AUTO]/[LOOP-LAG] lines, not a proven optimum for this workload.
+    gc_automatic: bool = True          # was disabled 2026-09-04; that is what caused the climb
+    gc_threshold0: int = 50_000        # 0 = leave CPython's default (2000 on 3.12+) alone
+    # threshold1 gates BOTH gen-1 and gen-2 frequency: CPython increments count[2] once per
+    # gen-1 collection, so gen-2 fires every threshold1 x threshold2 gen-0 collections.
+    # Raised 10 -> 30 on 2026-09-09 from a 25h PROD measurement (build 39, 981 logged pauses):
+    #
+    #            events   total pause   share of stall   objects reclaimed   efficiency
+    #   gen-1       875          760s              51%           3,748,895    4,930/s
+    #   gen-2        96          737s              49%          30,901,837   41,931/s
+    #
+    # gen-1 spent HALF the stall budget to reclaim 12% of the objects -- gen-2 is 8.5x more
+    # efficient per second of pause. The reason is the same mechanism as #0106's root cause:
+    # at gen-1 time the cycle's war population is still LIVE, so gen-1 walks it, finds it
+    # alive and promotes it, reclaiming little. It dies at cycle end and gen-2 sweeps it in
+    # bulk. All 95 of the >=3s Discord-ACK breaches were gen-2; ZERO were gen-1.
+    #
+    # Expected: gen-1 and gen-2 both ~3x rarer (gen-2 every ~48 min instead of ~16). Each
+    # gen-1 then walks more accumulated content, so total gen-1 time will NOT fall 3x -- the
+    # real saving is that objects get longer to die before anything walks them. Direction is
+    # well-supported by the table above; MAGNITUDE IS UNMEASURED. Re-run the same [GC-AUTO]
+    # census after a day and compare before tuning further.
+    gc_threshold1: int = 30            # 0 = leave CPython's default (10) alone
+    # The per-cycle collect is the promotion pump described above. Off by default now. Kept as
+    # a switch purely so the old behaviour can be restored for comparison without a code edit.
+    gc_per_cycle_collect: bool = False
+
+    # --- RSS-triggered self-restart (tracker #0106, 2026-09-08) ----------------------------
+    # A STOPGAP, not a fix. The Python heap still grows ~1 GB/hour on PROD and nothing found so
+    # far explains it (the SQLite retuning above reduced SQLite's own footprint but did not
+    # touch the climb: RSS still went 4.0 GB -> 8.5 GB overnight on 2026-09-07/08). A process
+    # restart is the only mechanism PROVEN to reclaim it, and the bot already has a safe,
+    # battle-tested restart path — /admin Maintenance Start (close DB with a FULL checkpoint)
+    # followed by Maintenance End (exit 42, which start_qapbot.sh's loop restarts).
+    #
+    # Restarting BEFORE the box is in trouble is what makes this worth doing. The 2026-09-07/08
+    # incident showed the failure sequence is: RSS climbs -> box hits ~94-96% RAM -> kernel
+    # swaps the Python heap to the HDD-backed swap file -> every GC/in-memory walk becomes
+    # seek-bound -> the 03:00 UTC nightly full GC sweep runs on a swapped-out heap and hangs the
+    # NAS for hours. Cutting in at 6 GB keeps RSS below where that spiral starts.
+    #
+    # Each restart also captures a memory profile at HIGH RSS first, which is diagnostic data we
+    # have never had — every profile so far was either at low uptime or taken after the fact.
+    # That is the point of the two-phase arm/fire below: the profile has to be written to disk
+    # before the process goes away.
+    rss_restart_enabled: bool = True
+    rss_restart_threshold_mb: int = 6144        # 6 GB of 10 GB total; thrashing began ~6.5-7 GB
+    # Guard against a hot restart loop: if RSS is already over the threshold shortly after
+    # startup, restarting again immediately would achieve nothing and would take the bot down
+    # permanently. Normal climb takes ~3 h to reach 6 GB, so 45 min is comfortably clear of it
+    # while still catching a genuinely pathological early climb (which would then just log,
+    # since arming also requires the threshold).
+    rss_restart_min_uptime_minutes: int = 45
+
+    # DEV-only: Skip CoC API connection entirely (for testing without valid API token)
+    no_coc_api: bool = False
+
+    # Monte Carlo simulation: multi-process parallelism
+    sim_multiprocess_enabled: bool = True   # SIM_MULTIPROCESS_ENABLED in .env
+    sim_max_workers: int = 0                 # SIM_MAX_WORKERS in .env (0 = all cores, capped at 8)
+
+    # CWL clan-config web bridge (clashcontrol/web_bridge.py, CWL_CLAN_CONFIG_ACTIVITY_PLAN.md Phase B).
+    # Both 0/empty by default = bridge not started. Bound to 127.0.0.1 only — a cloudflared
+    # tunnel (not this bot) is what makes it reachable from the Cloudflare Worker.
+    # DEV/PROD-suffixed like discord_token/coc_email above (dev and prod hosts share one .env):
+    # WEB_BRIDGE_PORT_DEV/WEB_BRIDGE_SECRET_DEV when DISCORD_GUILD_ID > 0 (DEV mode), else
+    # WEB_BRIDGE_PORT/WEB_BRIDGE_SECRET. Each must match the corresponding Worker environment's
+    # BRIDGE_URL/BRIDGE_SECRET (env.dev vs env.prod in activity/server/wrangler.toml).
+    web_bridge_port: int = 0
+    web_bridge_secret: str = field(default="", repr=False)  # see the repr=False note on coc_email
+
+    # CWL roster-planning feature (CWL_ROSTER_PLANNING_PLAN.md): while True, any CWL-related DM
+    # (signup confirm/opt-out blast, enrollment/assignment notifications) is only actually
+    # delivered to CONFIG.server_admin's own Discord account — every other resolved recipient is
+    # skipped (their DB rows are still written; only DM *delivery* is guarded, so the data stays
+    # realistic to test against). PROD/DEV now behave asymmetrically on purpose (tracker item
+    # #0007, 2026-08-21): the feature is considered production-ready, so `load_config()` hardcodes
+    # this to False on PROD unconditionally (no env var, no opt-out) — enrollment DMs go to every
+    # eligible player. DEV keeps the opt-in toggle: defaults to True (restricted) unless
+    # CWL_DM_RESTRICT_TO_ADMIN_DEV=false is explicitly set, so DEV never blasts real-looking DMs
+    # by accident. This default (`True`) only matters as the DEV fallback now.
+    cwl_dm_restrict_to_admin: bool = True
+
+    # Bug/feature tracker (BUG_FEATURE_TRACKER_PLAN.md). No env var — always the inverse of
+    # is_dev_mode (True on PROD, False on DEV), not independently configurable. 2026-08-20
+    # follow-up, project owner: PROD's DB — including bot_settings' tracker channel IDs — is
+    # regularly copied to DEV for realistic-data testing, so DEV would otherwise inherit
+    # PROD's real tracker channels and, with an env-var toggle, could post real-looking
+    # bug/feature items into PROD's actual channels using DEV test data. See load_config().
+    tracker_enabled: bool = False
+    tracker_data_dir: str = "tracker"  # Where per-item attachment copies live (§3.3) — project
+    # root (HDD), not under data_dir/PROD_DATA_DIR (SSD): not performance-critical, and the
+    # HDD's much larger free space fits growing attachment history better (2026-08-20 follow-up).
+
+    #: Fields whose value must never be rendered. Kept as a class-level constant rather than
+    #: inlined into __repr__ so that adding a credential field is a one-line change in one
+    #: obvious place — the failure mode being guarded against is a NEW secret being added later
+    #: and quietly inheriting the default "print me" behaviour.
+    _SECRET_FIELDS = ("coc_email", "coc_password", "discord_token", "web_bridge_secret")
+
+    def __repr__(self) -> str:
+        """Render every field, with credentials masked to set/empty rather than shown.
+
+        Replaces the dataclass-generated __repr__, which printed the live Discord token and CoC
+        password verbatim into anything that rendered this object — pytest failure output and
+        any traceback whose frames hold a BotConfig, both of which reach log files.
+
+        Masking rather than omitting (the plain `repr=False` behaviour) keeps the diagnostic
+        value: "is the token actually loaded?" is a real question during startup debugging, and
+        `<set>` vs `<empty>` answers it without disclosing anything. No length or prefix is
+        included on purpose — both narrow a brute-force search.
+        """
+        parts = []
+        for f in dataclass_fields(self):
+            value = getattr(self, f.name, None)
+            if f.name in self._SECRET_FIELDS:
+                parts.append(f"{f.name}=<{'set' if value else 'empty'}>")
+            elif f.repr:
+                parts.append(f"{f.name}={value!r}")
+        return f"{type(self).__name__}({', '.join(parts)})"
+
+
+def load_config() -> BotConfig:
+    """
+    Load configuration values from environment variables with DEV/PROD mode selection.
+    
+    Reads all required configuration values from environment variables, determines whether to run in DEV or PROD mode based on DISCORD_GUILD_ID, and returns an immutable BotConfig object with the appropriate credentials.
+    
+    Returns:
+        BotConfig: Immutable configuration object with all settings
+    
+    DEV/PROD Mode Selection:
+        - DEV mode: DISCORD_GUILD_ID > 0
+          Uses: DISCORD_TOKEN_DEV, COC_API_EMAIL_DEV, COC_API_PASSWORD_DEV
+        - PROD mode: DISCORD_GUILD_ID == 0
+          Uses: DISCORD_TOKEN, COC_API_EMAIL, COC_API_PASSWORD
+    
+    Environment Variable Processing:
+        - DISCORD_GUILD_ID: Determines DEV/PROD mode (default: 0 for PROD)
+        - DISCORD_TOKEN or DISCORD_TOKEN_DEV: Selected based on mode
+        - COC_API_EMAIL or COC_API_EMAIL_DEV: Selected based on mode
+        - COC_API_PASSWORD or COC_API_PASSWORD_DEV: Selected based on mode
+        - SLEEP_INTERVAL: Converted to int, defaults to 300 seconds
+        - SERVER_ADMIN: Numeric Discord user ID of the bot admin (preferred; a username is
+          accepted as deprecated legacy fallback) — optional, for admin command restrictions
+        - MAX_CLAN_SUBSCRIPTIONS: Converted to int with validation, defaults to 7
+    
+    Type Conversion:
+        - Numeric values are converted with safe fallbacks
+        - Invalid integers default to safe values rather than raising exceptions
+        - String values are used directly from environment
+    
+    Error Handling:
+        - Invalid MAX_CLAN_SUBSCRIPTIONS values fall back to default of 7
+        - Invalid DISCORD_GUILD_ID values fall back to 0 (PROD mode)
+        - Missing optional values use safe defaults
+        - Required values (tokens/credentials) must be provided by environment
+    
+    Security:
+        - No sensitive values are logged or exposed in error messages
+        - Configuration validation happens early in application startup
+        - Automatic credential selection prevents mixing DEV/PROD credentials
+    
+    Example:
+        # With DEV environment variables set:
+        # DISCORD_GUILD_ID=123456789
+        # DISCORD_TOKEN_DEV=dev_token_123
+        # COC_API_EMAIL_DEV=dev@example.com
+        # COC_API_PASSWORD_DEV=dev_secret
+        config = load_config()
+        # Returns: BotConfig(is_dev_mode=True, discord_guild_id=123456789, ...)
+        
+        # With PROD environment variables set:
+        # DISCORD_GUILD_ID=0
+        # DISCORD_TOKEN=prod_token_456
+        # COC_API_EMAIL=prod@example.com
+        # COC_API_PASSWORD=prod_secret
+        config = load_config()
+        # Returns: BotConfig(is_dev_mode=False, discord_guild_id=0, ...)
+    """
+    # Determine DEV/PROD mode based on DISCORD_GUILD_ID
+    try:
+        discord_guild_id = int(os.getenv("DISCORD_GUILD_ID", "0"))
+        #discord_guild_id = 0 # Uncomment to force global mode for testing/dev, also uncomment correpsonding line in ClashControl.py!!!
+    except ValueError:
+        discord_guild_id = 0
+    
+    is_dev_mode = discord_guild_id > 0
+    
+    # Select credentials based on mode
+    if is_dev_mode:
+        # DEV mode: use _DEV credentials
+        coc_email = os.getenv("COC_API_EMAIL_DEV", "")
+        coc_password = os.getenv("COC_API_PASSWORD_DEV", "")
+        discord_token = os.getenv("DISCORD_TOKEN_DEV", "")
+        # DEV-only: playerregistration channel restriction
+        try:
+            dev_playerregistration_channel_id = int(os.getenv("DEV_PLAYERREGISTRATION_CHANNEL_ID", "0"))
+        except ValueError:
+            dev_playerregistration_channel_id = 0
+    else:
+        # PROD mode: use standard credentials
+        dev_playerregistration_channel_id = 0  # Not used in PROD mode
+        coc_email = os.getenv("COC_API_EMAIL", "")
+        coc_password = os.getenv("COC_API_PASSWORD", "")
+        discord_token = os.getenv("DISCORD_TOKEN", "")
+    
+    sleep_interval = int(os.getenv("SLEEP_INTERVAL", "300"))
+    server_admin = os.getenv("SERVER_ADMIN", "")
+    if server_admin and not server_admin.isdigit():
+        logging.warning(
+            "SERVER_ADMIN is set to a username (deprecated — usernames can be re-registered "
+            "by others if released). Set SERVER_ADMIN to your numeric Discord user ID instead."
+        )
+    
+    # Safe integer conversion with fallback for max subscriptions
+    try:
+        max_subs = int(os.getenv("MAX_CLAN_SUBSCRIPTIONS", "15"))
+    except ValueError:
+        max_subs = 15
+    
+    # Notification configuration with safe defaults
+    try:
+        notif_hours = int(os.getenv("NOTIFICATION_HOURS_BEFORE_END", "4"))
+    except ValueError:
+        notif_hours = 4
+    
+    try:
+        notif_delay = int(os.getenv("NOTIFICATION_BATCH_DELAY", "2"))
+    except ValueError:
+        notif_delay = 2
+    
+    try:
+        notif_retries = int(os.getenv("NOTIFICATION_MAX_RETRIES", "1"))
+    except ValueError:
+        notif_retries = 1
+    
+    # Data + archive directories — all derived from PROD_DATA_DIR base path.
+    # When set AND running in PROD mode: data_dir = PROD_DATA_DIR/data,
+    #   archive_dir = PROD_DATA_DIR/archive, archive_old_dir = PROD_DATA_DIR/archive_old.
+    # archive_old_dir lives on the same SSD volume as archive_dir so that the nightly
+    #   archive move can use os.replace() (same-filesystem metadata rename, no data copy).
+    # Ignored in DEV mode even if set; falls back to relative paths.
+    _prod_base = os.getenv("PROD_DATA_DIR", "")
+    if _prod_base and not is_dev_mode:
+        data_dir = os.path.join(_prod_base, "data")
+        archive_dir = os.path.join(_prod_base, "archive")
+        archive_old_dir = os.path.join(_prod_base, "archive_old")
+    else:
+        data_dir = "data"
+        archive_dir = "archive"
+        archive_old_dir = "archive_old"
+    investigate_dir = "investigate"  # Always relative to project root (HDD), not SSD
+
+    # Database configuration
+    db_path = os.getenv("DB_PATH", os.path.join(data_dir, "qapbot.db"))
+    history_db_path = os.getenv("HISTORY_DB_PATH", os.path.join(data_dir, "qapbot_history.db"))
+    try:
+        vacuum_freelist_fraction = float(os.getenv("VACUUM_FREELIST_FRACTION", "0.15"))
+    except ValueError:
+        vacuum_freelist_fraction = 0.15
+    try:
+        vacuum_min_freelist_pages = int(os.getenv("VACUUM_MIN_FREELIST_PAGES", "500"))
+    except ValueError:
+        vacuum_min_freelist_pages = 500
+    try:
+        history_retention_days = int(os.getenv("HISTORY_RETENTION_DAYS", "75"))
+    except ValueError:
+        history_retention_days = 75
+    try:
+        history_migration_nightly_row_budget = int(os.getenv("HISTORY_MIGRATION_NIGHTLY_ROW_BUDGET", "3000000"))
+    except ValueError:
+        history_migration_nightly_row_budget = 3_000_000
+    try:
+        history_migration_time_budget_minutes = float(os.getenv("HISTORY_MIGRATION_TIME_BUDGET_MINUTES", "30"))
+    except ValueError:
+        history_migration_time_budget_minutes = 30.0
+
+    # SQLite memory budget — see the dataclass fields for the 2026-09-07 measurements behind
+    # these defaults. Env-overridable so PROD can be retuned without a code change if the
+    # storage or the box's RAM changes again.
+    try:
+        db_mmap_size_mb = max(0, int(os.getenv("DB_MMAP_SIZE_MB", "1024")))
+    except ValueError:
+        db_mmap_size_mb = 1024
+    try:
+        db_history_mmap_size_mb = max(0, int(os.getenv("DB_HISTORY_MMAP_SIZE_MB", "256")))
+    except ValueError:
+        db_history_mmap_size_mb = 256
+    try:
+        db_cache_size_mb = max(1, int(os.getenv("DB_CACHE_SIZE_MB", "32")))
+    except ValueError:
+        db_cache_size_mb = 32
+    try:
+        db_history_cache_size_mb = max(1, int(os.getenv("DB_HISTORY_CACHE_SIZE_MB", "8")))
+    except ValueError:
+        db_history_cache_size_mb = 8
+    try:
+        db_pool_size = max(1, int(os.getenv("DB_POOL_SIZE", "8")))
+    except ValueError:
+        db_pool_size = 8
+
+    # GC policy — see the dataclass fields for the root-cause analysis behind these defaults.
+    # GC_AUTOMATIC keeps its historical name/meaning (=1 forces automatic collection on), but
+    # the DEFAULT is now on rather than off; set GC_AUTOMATIC=0 to restore the 2026-09-04
+    # disabled-collector behaviour for comparison.
+    _gc_auto_env = os.getenv("GC_AUTOMATIC", "").strip()
+    gc_automatic = True if _gc_auto_env == "" else _gc_auto_env not in ("0", "false", "no")
+    try:
+        gc_threshold0 = max(0, int(os.getenv("GC_THRESHOLD0", "50000")))
+    except ValueError:
+        gc_threshold0 = 50_000
+    try:
+        gc_threshold1 = max(0, int(os.getenv("GC_THRESHOLD1", "30")))
+    except ValueError:
+        gc_threshold1 = 30
+    gc_per_cycle_collect = os.getenv("GC_PER_CYCLE_COLLECT", "").strip().lower() in ("1", "true", "yes")
+
+    # RSS-triggered self-restart — see the dataclass fields for why this exists.
+    rss_restart_enabled = os.getenv("RSS_RESTART_ENABLED", "true").lower() in ("true", "1", "yes")
+    try:
+        rss_restart_threshold_mb = max(0, int(os.getenv("RSS_RESTART_THRESHOLD_MB", "6144")))
+    except ValueError:
+        rss_restart_threshold_mb = 6144
+    try:
+        rss_restart_min_uptime_minutes = max(0, int(os.getenv("RSS_RESTART_MIN_UPTIME_MINUTES", "45")))
+    except ValueError:
+        rss_restart_min_uptime_minutes = 45
+
+    # DEV-only: Skip CoC API connection (for testing without valid API token)
+    no_coc_api = os.getenv("NO_COC_API", "false").lower() in ("true", "1", "yes")
+
+    # Monte Carlo simulation parallelism
+    sim_multiprocess_enabled = os.getenv("SIM_MULTIPROCESS_ENABLED", "true").lower() not in ("false", "0", "no")
+    try:
+        sim_max_workers = max(0, int(os.getenv("SIM_MAX_WORKERS", "0")))
+    except ValueError:
+        sim_max_workers = 0
+
+    # CWL clan-config web bridge (Phase B) — both must be set to start it. DEV/PROD-suffixed
+    # like discord_token/coc_email above, since dev and prod hosts share one .env file.
+    if is_dev_mode:
+        _web_bridge_port_raw = os.getenv("WEB_BRIDGE_PORT_DEV", "0")
+        web_bridge_secret = os.getenv("WEB_BRIDGE_SECRET_DEV", "")
+    else:
+        _web_bridge_port_raw = os.getenv("WEB_BRIDGE_PORT", "0")
+        web_bridge_secret = os.getenv("WEB_BRIDGE_SECRET", "")
+    try:
+        web_bridge_port = max(0, int(_web_bridge_port_raw))
+    except ValueError:
+        web_bridge_port = 0
+
+    # CWL DM safety toggle. DEV keeps the opt-in env var (defaults to restricted unless
+    # CWL_DM_RESTRICT_TO_ADMIN_DEV=false is explicitly set). PROD no longer reads an env var at
+    # all — tracker item #0007 (2026-08-21) removed the toggle for PROD: the feature is
+    # production-ready, so PROD is always unrestricted (every eligible player gets DMed).
+    if is_dev_mode:
+        cwl_dm_restrict_to_admin = os.getenv("CWL_DM_RESTRICT_TO_ADMIN_DEV", "true").lower() in ("true", "1", "yes")
+    else:
+        cwl_dm_restrict_to_admin = False
+
+    # Bug/feature tracker — no env var, see BotConfig.tracker_enabled comment for why (PROD DB
+    # copies to DEV carry PROD's real tracker channel IDs along with them).
+    tracker_enabled = not is_dev_mode
+    # Project root (HDD), like investigate_dir above — not under data_dir/PROD_DATA_DIR (SSD):
+    # attachment storage isn't performance-critical and benefits from the HDD's larger free
+    # space (2026-08-20 follow-up, project owner; tracker item #0004).
+    tracker_data_dir = os.getenv("TRACKER_DATA_DIR", "tracker")
+
+    # Create config object
+    config = BotConfig(
+        coc_email=coc_email,
+        coc_password=coc_password,
+        discord_token=discord_token,
+        sleep_interval=sleep_interval,
+        server_admin=server_admin,
+        max_clan_subscriptions=max_subs,
+        data_dir=data_dir,
+        archive_dir=archive_dir,
+        archive_old_dir=archive_old_dir,
+        investigate_dir=investigate_dir,
+        db_path=db_path,
+        history_db_path=history_db_path,
+        vacuum_freelist_fraction=vacuum_freelist_fraction,
+        vacuum_min_freelist_pages=vacuum_min_freelist_pages,
+        history_retention_days=history_retention_days,
+        history_migration_nightly_row_budget=history_migration_nightly_row_budget,
+        history_migration_time_budget_minutes=history_migration_time_budget_minutes,
+        db_mmap_size_mb=db_mmap_size_mb,
+        db_history_mmap_size_mb=db_history_mmap_size_mb,
+        db_cache_size_mb=db_cache_size_mb,
+        db_history_cache_size_mb=db_history_cache_size_mb,
+        db_pool_size=db_pool_size,
+        gc_automatic=gc_automatic,
+        gc_threshold0=gc_threshold0,
+        gc_threshold1=gc_threshold1,
+        gc_per_cycle_collect=gc_per_cycle_collect,
+        rss_restart_enabled=rss_restart_enabled,
+        rss_restart_threshold_mb=rss_restart_threshold_mb,
+        rss_restart_min_uptime_minutes=rss_restart_min_uptime_minutes,
+        is_dev_mode=is_dev_mode,
+        discord_guild_id=discord_guild_id,
+        dev_playerregistration_channel_id=dev_playerregistration_channel_id,
+        notification_hours_before_end=notif_hours,
+        notification_batch_delay=notif_delay,
+        notification_max_retries=notif_retries,
+        no_coc_api=no_coc_api,
+        sim_multiprocess_enabled=sim_multiprocess_enabled,
+        sim_max_workers=sim_max_workers,
+        web_bridge_port=web_bridge_port,
+        web_bridge_secret=web_bridge_secret,
+        cwl_dm_restrict_to_admin=cwl_dm_restrict_to_admin,
+        tracker_enabled=tracker_enabled,
+        tracker_data_dir=tracker_data_dir,
+    )
+    
+    # Validate configuration (fail fast on startup)
+    _validate_config(config)
+    
+    return config
+
+
+def _validate_config(config: BotConfig) -> None:
+    """
+    Validate configuration values and fail fast if invalid.
+    
+    Performs comprehensive validation of all configuration values to catch
+    errors at startup rather than during runtime. This includes checking for:
+    - Required credentials are present
+    - Numeric values are within valid ranges
+    - Mode-specific requirements are met
+    
+    Args:
+        config: BotConfig object to validate
+    
+    Raises:
+        ConfigurationError: If any validation check fails
+    
+    Validation Rules:
+        1. Required credentials must be non-empty strings
+        2. Sleep interval must be >= 60 seconds (prevent spam)
+        3. Max subscriptions must be >= 1
+        4. Notification hours must be >= 0
+        5. Notification delays/retries must be >= 0
+        6. DEV mode must have valid guild ID > 0
+    
+    Example:
+        config = BotConfig(...)
+        _validate_config(config)  # Raises ConfigurationError if invalid
+    """
+    mode_str = "DEV" if config.is_dev_mode else "PROD"
+    
+    # Validate required credentials (skip CoC credentials when NO_COC_API is set)
+    if not config.no_coc_api:
+        if not config.coc_email:
+            if config.is_dev_mode:
+                raise ConfigurationError(
+                    "COC_API_EMAIL_DEV must be set for DEV mode",
+                    context={"mode": mode_str}
+                )
+            else:
+                raise ConfigurationError(
+                    "COC_API_EMAIL must be set for PROD mode",
+                    context={"mode": mode_str}
+                )
+        
+        if not config.coc_password:
+            if config.is_dev_mode:
+                raise ConfigurationError(
+                    "COC_API_PASSWORD_DEV must be set for DEV mode",
+                    context={"mode": mode_str}
+                )
+            else:
+                raise ConfigurationError(
+                    "COC_API_PASSWORD must be set for PROD mode",
+                    context={"mode": mode_str}
+                )
+    
+    if not config.discord_token:
+        if config.is_dev_mode:
+            raise ConfigurationError(
+                "DISCORD_TOKEN_DEV must be set for DEV mode",
+                context={"mode": mode_str}
+            )
+        else:
+            raise ConfigurationError(
+                "DISCORD_TOKEN must be set for PROD mode",
+                context={"mode": mode_str}
+            )
+    
+    # Validate numeric ranges
+    _min_sleep = 10 if config.is_dev_mode else 60
+    if config.sleep_interval < _min_sleep:
+        raise ConfigurationError(
+            f"SLEEP_INTERVAL must be >= {_min_sleep} seconds {'(DEV mode)' if config.is_dev_mode else 'to prevent API spam'}, got {config.sleep_interval}",
+            context={"sleep_interval": config.sleep_interval}
+        )
+    
+    if config.max_clan_subscriptions < 1:
+        raise ConfigurationError(
+            f"MAX_CLAN_SUBSCRIPTIONS must be >= 1, got {config.max_clan_subscriptions}",
+            context={"max_clan_subscriptions": config.max_clan_subscriptions}
+        )
+    
+    if config.notification_hours_before_end < 0:
+        raise ConfigurationError(
+            f"NOTIFICATION_HOURS_BEFORE_END must be >= 0, got {config.notification_hours_before_end}",
+            context={"notification_hours_before_end": config.notification_hours_before_end}
+        )
+    
+    if config.notification_batch_delay < 0:
+        raise ConfigurationError(
+            f"NOTIFICATION_BATCH_DELAY must be >= 0, got {config.notification_batch_delay}",
+            context={"notification_batch_delay": config.notification_batch_delay}
+        )
+    
+    if config.notification_max_retries < 0:
+        raise ConfigurationError(
+            f"NOTIFICATION_MAX_RETRIES must be >= 0, got {config.notification_max_retries}",
+            context={"notification_max_retries": config.notification_max_retries}
+        )
+    
+    # Validate DEV mode consistency
+    if config.is_dev_mode and config.discord_guild_id <= 0:
+        raise ConfigurationError(
+            "DEV mode requires DISCORD_GUILD_ID > 0",
+            context={"is_dev_mode": config.is_dev_mode, "discord_guild_id": config.discord_guild_id}
+        )
+    
+    if not config.is_dev_mode and config.discord_guild_id != 0:
+        raise ConfigurationError(
+            "PROD mode requires DISCORD_GUILD_ID == 0",
+            context={"is_dev_mode": config.is_dev_mode, "discord_guild_id": config.discord_guild_id}
+        )
+
+# Global configuration object - immutable singleton
+CONFIG = load_config()
+"""
+Global configuration object providing centralized access to all ClashControl settings.
+
+This singleton object is loaded once at module import time and provides immutable
+access to all configuration values throughout the application. All modules should
+import and use this CONFIG object rather than creating their own configuration instances.
+
+The CONFIG object automatically selects DEV or PROD credentials based on DISCORD_GUILD_ID:
+- DEV mode (DISCORD_GUILD_ID > 0): Uses _DEV credentials
+- PROD mode (DISCORD_GUILD_ID == 0): Uses standard credentials
+
+Usage:
+    from clashcontrol.config import CONFIG
+    email = CONFIG.coc_email
+    token = CONFIG.discord_token
+    interval = CONFIG.sleep_interval
+    max_subs = CONFIG.max_clan_subscriptions
+    if CONFIG.is_dev_mode:
+        # Running in DEV mode
+        pass
+
+Thread Safety:
+    The CONFIG object is immutable (frozen dataclass) and safe for concurrent access
+    from multiple threads or asyncio tasks.
+
+Validation:
+    Configuration is validated once at load time. If required environment variables
+    are missing or invalid, the application should fail early rather than during
+    runtime operations.
+
+Example:
+    from clashcontrol.config import CONFIG
+    
+    # Check mode
+    if CONFIG.is_dev_mode:
+        print(f"Running in DEV mode for guild {CONFIG.discord_guild_id}")
+    else:
+        print("Running in PROD mode (global)")
+    
+    # Use credentials (automatically selected)
+    await coc_client.login(CONFIG.coc_email, CONFIG.coc_password)
+    bot.run(CONFIG.discord_token)
+"""

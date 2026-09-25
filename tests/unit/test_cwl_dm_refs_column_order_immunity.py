@@ -36,7 +36,7 @@ import pytest
 
 os.environ.setdefault("DISCORD_TOKEN", "test-token")
 
-from qapbot.db_manager import WarHistoryDB
+from clashcontrol.db_manager import WarHistoryDB
 
 
 # Deliberately distinguishable values: if any two ever get swapped, the assertion names exactly

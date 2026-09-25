@@ -15,8 +15,8 @@ from aiohttp.test_utils import TestClient, TestServer
 
 os.environ.setdefault("DISCORD_TOKEN", "test-token")
 
-from qapbot.config import CONFIG
-from qapbot.db_manager import WarHistoryDB
+from clashcontrol.config import CONFIG
+from clashcontrol.db_manager import WarHistoryDB
 
 SECRET = "test-secret"
 
@@ -34,7 +34,7 @@ async def db(tmp_path):
 
 @pytest.fixture(autouse=True)
 def _wire_cache(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     monkeypatch.setattr(CACHE, "db_manager", db)
     monkeypatch.setattr(CACHE, "tracker_settings", {})
 
@@ -42,13 +42,13 @@ def _wire_cache(db, monkeypatch):
 @pytest.fixture
 def bridge_config(monkeypatch):
     config = dataclasses.replace(CONFIG, web_bridge_secret=SECRET, web_bridge_port=1)
-    monkeypatch.setattr("qapbot.config.CONFIG", config)
+    monkeypatch.setattr("clashcontrol.config.CONFIG", config)
     return config
 
 
 @pytest.fixture
 async def client(bridge_config):
-    from qapbot.web_bridge import create_app
+    from clashcontrol.web_bridge import create_app
     async with TestClient(TestServer(create_app())) as c:
         yield c
 
@@ -158,7 +158,7 @@ async def test_get_attachment_streams_file(client, db, tmp_path, bridge_config, 
         item_number, filename="1_shot.png", original_name="shot.png",
         size_bytes=5, local_path=full_path, content_type="image/png",
     )
-    monkeypatch.setattr("qapbot.config.CONFIG", dataclasses.replace(bridge_config, tracker_data_dir=tracker_dir))
+    monkeypatch.setattr("clashcontrol.config.CONFIG", dataclasses.replace(bridge_config, tracker_data_dir=tracker_dir))
 
     resp = await client.get(f"/api/tracker/items/{item_number}/attachments/{aid}", headers={"X-Bridge-Secret": SECRET})
     assert resp.status == 200
@@ -174,7 +174,7 @@ async def test_get_attachment_rejects_path_outside_tracker_root(client, db, tmp_
         item_number, filename="1_x.txt", original_name="x.txt",
         size_bytes=6, local_path=str(outside_file), content_type="text/plain",
     )
-    monkeypatch.setattr("qapbot.config.CONFIG", dataclasses.replace(bridge_config, tracker_data_dir=str(tmp_path / "tracker_data")))
+    monkeypatch.setattr("clashcontrol.config.CONFIG", dataclasses.replace(bridge_config, tracker_data_dir=str(tmp_path / "tracker_data")))
 
     resp = await client.get(f"/api/tracker/items/{item_number}/attachments/{aid}", headers={"X-Bridge-Secret": SECRET})
     assert resp.status == 400
@@ -322,7 +322,7 @@ async def test_post_reply_and_invite_posts_and_grants(client, db, monkeypatch):
     """Agent-facing equivalent of the Discord "Reply to requestor" button + reply modal (tracker
     item #0102): the reporter is already a member of the tracker's home guild, so this both
     posts the reply (mentioning them) and grants channel access in one call."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     CACHE.tracker_settings["tracker_guild_id"] = "999"
 
     thread = _fake_channel()
@@ -450,8 +450,8 @@ async def test_get_thread_requires_secret(client, db):
 # -- testcases ---------------------------------------------------------
 
 async def test_post_testcases_creates_and_posts(client, db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_tracker import TRACKER_SETTING_TEST_CHANNEL
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_tracker import TRACKER_SETTING_TEST_CHANNEL
     CACHE.tracker_settings[TRACKER_SETTING_TEST_CHANNEL] = "1"
     channel = _fake_channel()
     _wire_bot(monkeypatch, channel=channel)
@@ -469,8 +469,8 @@ async def test_post_testcases_creates_and_posts(client, db, monkeypatch):
 
 
 async def test_post_testcases_accepts_per_case_priority(client, db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_tracker import TRACKER_SETTING_TEST_CHANNEL
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_tracker import TRACKER_SETTING_TEST_CHANNEL
     CACHE.tracker_settings[TRACKER_SETTING_TEST_CHANNEL] = "1"
     channel = _fake_channel()
     _wire_bot(monkeypatch, channel=channel)
@@ -524,8 +524,8 @@ async def test_post_testcases_reports_discord_failure_as_json_and_keeps_the_db_w
     committed successfully. Confirms both halves of the fix: a real JSON error comes back, AND
     the rows are there regardless -- a caller retrying the same cases after this error is safe
     (set_tracker_testcases replaces the full set, it doesn't append)."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_tracker import TRACKER_SETTING_TEST_CHANNEL
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_tracker import TRACKER_SETTING_TEST_CHANNEL
     CACHE.tracker_settings[TRACKER_SETTING_TEST_CHANNEL] = "1"
     channel = _fake_channel()
     channel.send = AsyncMock(side_effect=discord.HTTPException(MagicMock(status=503), "service unavailable"))
@@ -554,8 +554,8 @@ async def test_post_create_item_requires_secret(client):
 
 
 async def test_post_create_item_persists_and_posts(client, db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_tracker import TRACKER_SETTING_BUG_CHANNEL
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_tracker import TRACKER_SETTING_BUG_CHANNEL
     CACHE.tracker_settings[TRACKER_SETTING_BUG_CHANNEL] = "1"
     channel = _fake_channel()
     _wire_bot(monkeypatch, channel=channel)
@@ -577,8 +577,8 @@ async def test_post_create_item_persists_and_posts(client, db, monkeypatch):
 
 
 async def test_post_create_item_rejects_invalid_item_type(client, db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_tracker import TRACKER_SETTING_BUG_CHANNEL
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_tracker import TRACKER_SETTING_BUG_CHANNEL
     CACHE.tracker_settings[TRACKER_SETTING_BUG_CHANNEL] = "1"
     resp = await client.post(
         "/api/tracker/items", json={"item_type": "epic", "title": "t", "description": "d"},
@@ -588,8 +588,8 @@ async def test_post_create_item_rejects_invalid_item_type(client, db, monkeypatc
 
 
 async def test_post_create_item_requires_title_and_description(client, db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_tracker import TRACKER_SETTING_BUG_CHANNEL
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_tracker import TRACKER_SETTING_BUG_CHANNEL
     CACHE.tracker_settings[TRACKER_SETTING_BUG_CHANNEL] = "1"
     resp = await client.post(
         "/api/tracker/items", json={"item_type": "bug", "title": "", "description": "d"},
@@ -599,8 +599,8 @@ async def test_post_create_item_requires_title_and_description(client, db, monke
 
 
 async def test_post_create_item_rejects_invalid_priority(client, db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_tracker import TRACKER_SETTING_BUG_CHANNEL
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_tracker import TRACKER_SETTING_BUG_CHANNEL
     CACHE.tracker_settings[TRACKER_SETTING_BUG_CHANNEL] = "1"
     resp = await client.post(
         "/api/tracker/items",
@@ -890,8 +890,8 @@ async def test_post_testcase_move_done_needs_confirmation_when_incomplete(client
 
 
 async def test_post_testcase_move_done_force_moves_despite_incomplete(client, db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_tracker import TRACKER_SETTING_DONE_TESTING_CHANNEL
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_tracker import TRACKER_SETTING_DONE_TESTING_CHANNEL
     CACHE.tracker_settings[TRACKER_SETTING_DONE_TESTING_CHANNEL] = "1"
     channel = _fake_channel()
     channel.fetch_message = AsyncMock(return_value=AsyncMock())
@@ -915,8 +915,8 @@ async def test_post_testcase_move_done_force_moves_despite_incomplete(client, db
 
 
 async def test_post_testcase_move_done_moves_directly_when_already_complete(client, db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_tracker import TRACKER_SETTING_DONE_TESTING_CHANNEL
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_tracker import TRACKER_SETTING_DONE_TESTING_CHANNEL
     CACHE.tracker_settings[TRACKER_SETTING_DONE_TESTING_CHANNEL] = "1"
     channel = _fake_channel()
     channel.fetch_message = AsyncMock(return_value=AsyncMock())

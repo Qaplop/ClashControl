@@ -20,7 +20,7 @@ import pytest
 
 os.environ.setdefault("DISCORD_TOKEN", "test-token")
 
-from qapbot.db_manager import WarHistoryDB
+from clashcontrol.db_manager import WarHistoryDB
 
 
 @pytest.fixture
@@ -35,7 +35,7 @@ async def db(tmp_path):
 
 
 async def _seed_guild_and_clan(db: WarHistoryDB, guild_id: str, clan_tag: str = "#CLAN1") -> None:
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await db._conn.execute("INSERT OR IGNORE INTO guild_config (guild_id) VALUES (?)", (guild_id,))
     await db._conn.execute("INSERT OR IGNORE INTO clans (clan_tag, name) VALUES (?, ?)", (clan_tag, "Test Clan"))
@@ -93,8 +93,8 @@ async def _seed_cwl_war(db: WarHistoryDB, clan_tag: str, players: list, date: st
 
 @pytest.mark.asyncio
 async def test_rejects_when_no_event(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import start_cwl_enrollment
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import start_cwl_enrollment
 
     monkeypatch.setattr(CACHE, "db_manager", db)
     summary = await start_cwl_enrollment(1001, "2099-01")
@@ -104,8 +104,8 @@ async def test_rejects_when_no_event(db, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_rejects_when_not_draft(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import start_cwl_enrollment
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import start_cwl_enrollment
 
     await _seed_guild_and_clan(db, "1002")
     monkeypatch.setattr(CACHE, "db_manager", db)
@@ -119,8 +119,8 @@ async def test_rejects_when_not_draft(db, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_rejects_when_no_participating_clans(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import start_cwl_enrollment
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import start_cwl_enrollment
 
     await _seed_guild_and_clan(db, "1003")
     monkeypatch.setattr(CACHE, "db_manager", db)
@@ -133,8 +133,8 @@ async def test_rejects_when_no_participating_clans(db, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_no_tracked_members_still_opens_enrollment_with_zero_seeded(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import start_cwl_enrollment
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import start_cwl_enrollment
 
     await _seed_guild_and_clan(db, "1004")
     monkeypatch.setattr(CACHE, "db_manager", db)
@@ -149,9 +149,9 @@ async def test_no_tracked_members_still_opens_enrollment_with_zero_seeded(db, mo
 
 @pytest.mark.asyncio
 async def test_seeds_signups_and_dms_linked_confirmed_accounts(db, monkeypatch):
-    from qapbot import config as config_module
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import start_cwl_enrollment
+    from clashcontrol import config as config_module
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import start_cwl_enrollment
 
     # Deterministic regardless of this machine's own .env (DEV checkouts have is_dev_mode=True
     # ambiently, and cwl_dm_restrict_to_admin defaults True everywhere) — the DM guard itself
@@ -211,9 +211,9 @@ async def test_dms_a_guest_player_invited_during_draft(db, monkeypatch):
     button ever reached them. A guest's real current clan is by definition none of this guild's
     pooled clans, so start_cwl_enrollment's get_current_clan_members_sync() scan can't see them;
     their already-existing cwl_signups row is now folded into the DM targets separately."""
-    from qapbot import config as config_module
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import start_cwl_enrollment
+    from clashcontrol import config as config_module
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import start_cwl_enrollment
 
     monkeypatch.setattr(
         config_module, "CONFIG",
@@ -256,9 +256,9 @@ async def test_dms_a_guest_player_invited_during_draft(db, monkeypatch):
 async def test_skips_a_permanently_opted_out_guest_player(db, monkeypatch):
     """The pooled-guest DM pass above must honour cwl_permanent_optout exactly like the
     current-member pass does."""
-    from qapbot import config as config_module
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import start_cwl_enrollment
+    from clashcontrol import config as config_module
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import start_cwl_enrollment
 
     monkeypatch.setattr(
         config_module, "CONFIG",
@@ -297,9 +297,9 @@ async def test_deleting_and_recreating_same_season_dms_again(db, monkeypatch):
     season string expecting fresh DMs. Before the fix, cwl_player_season_status.dm_sent (global,
     keyed by (player_tag, cwl_season) — deliberately not cascaded from cwl_events) was still
     standing from the deleted event, so the second Start Enrollment silently DMed nobody at all."""
-    from qapbot import config as config_module
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import start_cwl_enrollment
+    from clashcontrol import config as config_module
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import start_cwl_enrollment
 
     monkeypatch.setattr(
         config_module, "CONFIG",
@@ -341,9 +341,9 @@ async def test_one_recipients_dm_failure_does_not_abort_the_rest_of_the_batch(db
     cache_manager.py (retried, never re-raised) — this asserts the outcome an admin actually
     cares about: every OTHER recipient still gets DMed, the event still opens, and the failure
     is reported back instead of silently vanishing."""
-    from qapbot import config as config_module
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import start_cwl_enrollment
+    from clashcontrol import config as config_module
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import start_cwl_enrollment
 
     monkeypatch.setattr(
         config_module, "CONFIG",
@@ -386,9 +386,9 @@ async def test_blocked_recipient_is_not_marked_as_dm_sent(db, monkeypatch):
     reach them again short of a DB fix. Confirms _send_cwl_enrollment_dm_batch's own contract
     (mark_cwl_player_dm_sent_sync is only ever called inside `if sent:`) holds end-to-end, and
     that every OTHER recipient in the same batch is still reached normally."""
-    from qapbot import config as config_module
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import start_cwl_enrollment
+    from clashcontrol import config as config_module
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import start_cwl_enrollment
 
     monkeypatch.setattr(
         config_module, "CONFIG",
@@ -438,9 +438,9 @@ async def test_non_participating_family_clan_members_are_still_pooled_and_dmed(d
     participating for this event — its member must still be seeded and DMed. #OTHER_CLAN is a
     genuinely unrelated clan (neither family nor configured on this event at all) and must still
     be excluded — this isn't "pool literally everyone in the database," just the whole family."""
-    from qapbot import config as config_module
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import start_cwl_enrollment
+    from clashcontrol import config as config_module
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import start_cwl_enrollment
 
     monkeypatch.setattr(
         config_module, "CONFIG",
@@ -494,9 +494,9 @@ async def test_globally_already_dmed_player_is_seeded_with_real_status_but_not_r
     and guild B's clan rosters." Simulates the cross-guild scenario without needing a second real
     guild: #P1 already has a global cwl_player_season_status row (as if some OTHER guild's Start
     Enrollment already DMed and they confirmed) before THIS guild's Start Enrollment runs."""
-    from qapbot import config as config_module
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import start_cwl_enrollment
+    from clashcontrol import config as config_module
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import start_cwl_enrollment
 
     monkeypatch.setattr(
         config_module, "CONFIG",
@@ -548,8 +548,8 @@ async def test_globally_already_dmed_player_is_seeded_with_real_status_but_not_r
 async def test_departed_member_is_not_seeded(db, monkeypatch):
     """A player currently in a different clan (or no clan at all) must not be pulled into this
     clan's enrollment, even if they were previously in it — matches live membership only."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import start_cwl_enrollment
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import start_cwl_enrollment
 
     await _seed_guild_and_clan(db, "1009", clan_tag="#CLAN1")
     await db._conn.execute("INSERT OR IGNORE INTO clans (clan_tag, name) VALUES ('#OTHER_CLAN', 'Other Clan')")
@@ -570,8 +570,8 @@ async def test_permanently_opted_out_accounts_are_seeded_declined_with_no_dm(db,
     (no cwl_signups row at all). They now ALWAYS get seeded — as 'declined' — so the row is what
     makes them show as Declined on the board and in the season overview; only the DM (gated by
     cwl_optout_send_dm_anyway, tested separately below) is still skipped by default."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import start_cwl_enrollment
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import start_cwl_enrollment
 
     await _seed_guild_and_clan(db, "1006")
     monkeypatch.setattr(CACHE, "db_manager", db)
@@ -597,9 +597,9 @@ async def test_opted_out_with_dm_anyway_is_seeded_declined_and_still_dmed(db, mo
     """The DM-anyway override (plans/cwl-personal-hub.md): the seeded status is UNCHANGED
     ('declined') — the member's own auto-decline is only overridable by their own DM-button
     click, never implied by having asked for the DM — but the invitation DM still goes out."""
-    from qapbot import config as config_module
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import start_cwl_enrollment
+    from clashcontrol import config as config_module
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import start_cwl_enrollment
 
     # Deterministic regardless of this machine's own .env (see test_seeds_signups_and_dms_
     # linked_confirmed_accounts above for why) — "d1" must not be silently blocked by the
@@ -633,9 +633,9 @@ async def test_permanently_opted_in_accounts_are_seeded_auto_confirmed_and_dmed(
     """plans/cwl-personal-hub.md Phase 4b: a standing opt-in preference seeds 'auto_confirmed'
     and ALWAYS gets the invitation DM (no send-dm-anyway gate on this branch — the whole point is
     letting the member switch to confirmed/declined for a specific season)."""
-    from qapbot import config as config_module
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import start_cwl_enrollment
+    from clashcontrol import config as config_module
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import start_cwl_enrollment
 
     monkeypatch.setattr(
         config_module, "CONFIG",
@@ -664,9 +664,9 @@ async def test_permanently_opted_in_accounts_are_seeded_auto_confirmed_and_dmed(
 async def test_no_preference_is_unchanged_pending(db, monkeypatch):
     """A participant with neither preference set behaves exactly as before this feature —
     plain 'pending', DMed normally."""
-    from qapbot import config as config_module
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import start_cwl_enrollment
+    from clashcontrol import config as config_module
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import start_cwl_enrollment
 
     monkeypatch.setattr(
         config_module, "CONFIG",
@@ -693,8 +693,8 @@ async def test_existing_global_response_beats_every_standing_preference(db, monk
     """rule h wins over Phase 4b's own precedence: a real answer the member already gave ANOTHER
     guild this season is never contradicted by a standing opt-in/opt-out preference — this guild's
     freshly-seeded row must show that same real answer, not a value derived from the preference."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import start_cwl_enrollment
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import start_cwl_enrollment
 
     await _seed_guild_and_clan(db, "1018")
     monkeypatch.setattr(CACHE, "db_manager", db)
@@ -721,9 +721,9 @@ async def test_dm_guard_only_dms_the_configured_server_admin_in_dev(db, monkeypa
     Phase 2 in DEV, a bulk DM blast must only ever reach the project owner's own account.
     The guard is CONFIG.cwl_dm_restrict_to_admin (independent of is_dev_mode since 2026-08-14) —
     this exercises it with is_dev_mode=True to confirm DEV behavior is unchanged."""
-    from qapbot import config as config_module
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import start_cwl_enrollment
+    from clashcontrol import config as config_module
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import start_cwl_enrollment
 
     fake_config = dataclasses.replace(
         config_module.CONFIG, is_dev_mode=True, server_admin="d1", cwl_dm_restrict_to_admin=True,
@@ -765,9 +765,9 @@ async def test_dm_guard_only_dms_the_configured_server_admin_in_prod(db, monkeyp
     """2026-08-14: the DM guard is now independent of is_dev_mode specifically so it can also
     be enabled on PROD while the roster-assignment feature is still being live-tested there —
     this is the scenario that motivated splitting it out of the is_dev_mode check."""
-    from qapbot import config as config_module
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import start_cwl_enrollment
+    from clashcontrol import config as config_module
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import start_cwl_enrollment
 
     fake_config = dataclasses.replace(
         config_module.CONFIG, is_dev_mode=False, server_admin="d1", cwl_dm_restrict_to_admin=True,
@@ -805,9 +805,9 @@ async def test_dm_guard_also_dms_enrolled_testers_in_prod(db, monkeypatch):
     CONFIG.server_admin any more — in PROD, anyone enrolled in CACHE.testers is treated the
     same way, so a hand-picked group can see the real DM while the rest of the guild stays
     guarded."""
-    from qapbot import config as config_module
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import start_cwl_enrollment
+    from clashcontrol import config as config_module
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import start_cwl_enrollment
 
     fake_config = dataclasses.replace(
         config_module.CONFIG, is_dev_mode=False, server_admin="d1", cwl_dm_restrict_to_admin=True,
@@ -847,9 +847,9 @@ async def test_dm_guard_ignores_testers_in_dev(db, monkeypatch):
     """2026-08-15 follow-up (project owner's spec): testers are a PROD-only concept — a DEV
     host must keep DMing only CONFIG.server_admin, exactly as it did before testers existed,
     even if CACHE.testers is non-empty (e.g. shared in-memory state from another guild/test)."""
-    from qapbot import config as config_module
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import start_cwl_enrollment
+    from clashcontrol import config as config_module
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import start_cwl_enrollment
 
     fake_config = dataclasses.replace(
         config_module.CONFIG, is_dev_mode=True, server_admin="d1", cwl_dm_restrict_to_admin=True,
@@ -884,9 +884,9 @@ async def test_dm_guard_ignores_testers_in_dev(db, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_prod_mode_is_unaffected_when_dm_guard_disabled(db, monkeypatch):
-    from qapbot import config as config_module
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import start_cwl_enrollment
+    from clashcontrol import config as config_module
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import start_cwl_enrollment
 
     fake_config = dataclasses.replace(
         config_module.CONFIG, is_dev_mode=False, server_admin="d1", cwl_dm_restrict_to_admin=False,
@@ -916,8 +916,8 @@ async def test_prod_mode_is_unaffected_when_dm_guard_disabled(db, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_seeds_auto_assignments_from_last_months_cwl_activity(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import start_cwl_enrollment
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import start_cwl_enrollment
 
     await _seed_guild_and_clan(db, "1010")
     monkeypatch.setattr(CACHE, "db_manager", db)
@@ -948,8 +948,8 @@ async def test_seeds_auto_assignments_for_a_guest_clans_own_current_members(db, 
     _build_enrollment_payload's own player pool), or resolve_prior_cwl_assignments() can never
     place them into their own column no matter how much real prior-CWL-attack history they have,
     since they were never even in the candidate list to begin with."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import start_cwl_enrollment
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import start_cwl_enrollment
 
     guild_id = 10102
     await _seed_guild_and_clan(db, str(guild_id), clan_tag="#CLAN1")  # "The QCrew" — the only family clan
@@ -985,8 +985,8 @@ async def test_current_family_clan_membership_beats_stale_history_for_a_guest_cl
     participating) — but a player who is a genuine CURRENT member of a clan that IS participating
     must never have their own real, live family-clan membership overridden by some earlier
     season's attack history for a totally different (here: guest) clan."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import start_cwl_enrollment
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import start_cwl_enrollment
 
     guild_id = 10103
     await _seed_guild_and_clan(db, str(guild_id), clan_tag="#CLAN1")  # "The QCrew"
@@ -1026,8 +1026,8 @@ async def test_current_clan_does_not_beat_history_pointing_at_another_family_cla
     intended scope (per its own docstring, "most commonly a guest clan") was history pointing
     OUTSIDE the family, never history pointing at the family's own other clan. #MARINES2 must win
     here: it's real, one-season-old, in-family CWL history, not stale foreign data."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import start_cwl_enrollment
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import start_cwl_enrollment
 
     guild_id = 10104
     await db._conn.execute("INSERT OR IGNORE INTO guild_config (guild_id) VALUES (?)", (str(guild_id),))
@@ -1063,8 +1063,8 @@ async def test_current_clan_does_not_beat_history_pointing_at_another_family_cla
 async def test_departed_member_is_not_auto_assigned(db, monkeypatch):
     """A player with CWL history for this clan who is no longer a current member (per
     user_players.current_clan_tag) must not get auto-assigned — matches current membership."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import start_cwl_enrollment
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import start_cwl_enrollment
 
     await _seed_guild_and_clan(db, "1011")
     monkeypatch.setattr(CACHE, "db_manager", db)
@@ -1083,9 +1083,9 @@ async def test_departed_member_is_not_auto_assigned(db, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_no_cwl_history_leaves_player_unassigned(db, monkeypatch):
-    from qapbot import config as config_module
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import start_cwl_enrollment
+    from clashcontrol import config as config_module
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import start_cwl_enrollment
 
     # Not testing the DM guard here — disabled so seeding isn't incidentally gated by it
     # (2026-08-29: seeding a bare 'pending' row now requires the DM to actually be reachable).
@@ -1111,9 +1111,9 @@ async def test_no_cwl_history_leaves_player_unassigned(db, monkeypatch):
 async def test_account_wide_expansion_off_by_default(db, monkeypatch):
     """guild_config.cwl_enrollment_include_all_linked_accounts defaults False — an account's
     out-of-family player must NOT be pulled in unless the guild opts in (2026-08-15)."""
-    from qapbot import config as config_module
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import start_cwl_enrollment
+    from clashcontrol import config as config_module
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import start_cwl_enrollment
 
     # Not testing the DM guard here — disabled so seeding isn't incidentally gated by it
     # (2026-08-29: seeding a bare 'pending' row now requires the DM to actually be reachable).
@@ -1146,9 +1146,9 @@ async def test_account_wide_expansion_off_by_default(db, monkeypatch):
 async def test_account_wide_expansion_pulls_in_other_clan_players_when_enabled(db, monkeypatch):
     """With the toggle on, d1's #P2 (an out-of-family clan player) is seeded alongside #P1 —
     the Marines/QCrew scenario from the project owner's own account."""
-    from qapbot import config as config_module
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import start_cwl_enrollment
+    from clashcontrol import config as config_module
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import start_cwl_enrollment
 
     # Not testing the DM guard here — disabled so seeding isn't incidentally gated by it
     # (2026-08-29: seeding a bare 'pending' row now requires the DM to actually be reachable).
@@ -1188,8 +1188,8 @@ async def test_start_enrollment_detects_and_reports_shared_clan(db, monkeypatch)
     trigger points — a clan this guild has configured as participating might already be claimed
     by another guild for the same season. summary['shared_clans'] must report it so the caller
     (ui_cwl_roster.py) can notify."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import start_cwl_enrollment
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import start_cwl_enrollment
 
     await _seed_guild_and_clan(db, "1015", clan_tag="#CLAN1")
     monkeypatch.setattr(CACHE, "db_manager", db)
@@ -1230,8 +1230,8 @@ async def test_start_enrollment_never_double_books_a_confirmed_shared_clan_guest
     assign_cwl_player_sync (QBdiscocmdshelper_cwl.py) now gates every auto-assign write on
     deliberate=False, which never evicts the existing claim — it mirrors the player into a local
     assignment pointing at their REAL shared clan instead of the auto-assign target."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import start_cwl_enrollment
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import start_cwl_enrollment
 
     await _seed_guild_and_clan(db, "1020", clan_tag="#CLAN1")  # "The QCrew"
     monkeypatch.setattr(CACHE, "db_manager", db)
@@ -1279,8 +1279,8 @@ async def test_start_enrollment_shows_confirmed_shared_guest_as_orphaned_when_sh
     roster) — nothing in _build_enrollment_payload's shared-table merge would ever resolve
     #QMANIAC's real placement on its own, so assign_cwl_player_sync's local mirror is the ONLY
     thing standing between them and silently landing in plain Unassigned."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import start_cwl_enrollment
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import start_cwl_enrollment
 
     await _seed_guild_and_clan(db, "1021", clan_tag="#CLAN1")  # "The QCrew"
     monkeypatch.setattr(CACHE, "db_manager", db)
@@ -1325,8 +1325,8 @@ async def test_start_enrollment_current_clan_beats_a_stale_non_deliberate_shared
     placement, which must always still win regardless — see test_start_enrollment_never_double_
     books_a_confirmed_shared_clan_guest), it's just a leftover 'auto_assigned' guess with nothing
     deliberate behind it, and the player's own live current clan flatly contradicts it."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import start_cwl_enrollment
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import start_cwl_enrollment
 
     await _seed_guild_and_clan(db, "1022", clan_tag="#CLAN1")  # "The QCrew"
     monkeypatch.setattr(CACHE, "db_manager", db)
@@ -1374,9 +1374,9 @@ async def test_start_enrollment_never_assigns_a_player_into_an_unrelated_shared_
     Here #LONER is a current member of a family clan that isn't participating, with real CWL
     history for the guild's own participating #CLAN1, and nothing whatsoever to do with
     #SHAREDCLAN."""
-    from qapbot import config as config_module
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import start_cwl_enrollment
+    from clashcontrol import config as config_module
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import start_cwl_enrollment
 
     monkeypatch.setattr(
         config_module, "CONFIG",
@@ -1414,8 +1414,8 @@ async def test_start_enrollment_never_assigns_a_player_into_an_unrelated_shared_
 
 @pytest.mark.asyncio
 async def test_start_enrollment_shared_clans_empty_when_nothing_shared(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import start_cwl_enrollment
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import start_cwl_enrollment
 
     await _seed_guild_and_clan(db, "1016", clan_tag="#CLAN1")
     monkeypatch.setattr(CACHE, "db_manager", db)

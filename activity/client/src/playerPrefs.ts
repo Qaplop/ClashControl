@@ -8,7 +8,7 @@ import { utcStringToLocalParts } from './timeFormat'
 import { STATUS_ICON, isVisibleStatus, statusLabel } from './signupStatus'
 import type { Translator } from './i18n'
 
-// CoC's real league ladder — duplicated verbatim from qapbot/ui_cwl_roster.py's CWL_LEAGUE_RANKS
+// CoC's real league ladder — duplicated verbatim from clashcontrol/ui_cwl_roster.py's CWL_LEAGUE_RANKS
 // (see that list's own comment pointing back here) rather than fetched, since it is static and
 // CoC-defined. If that list ever changes (it did once already, tracker #0047 — CoC added the
 // Legend/Titan tiers above Champion and this copy went stale), update this one too.
@@ -26,7 +26,7 @@ const CWL_LEAGUE_RANKS: string[] = [
 
 type PrefsMode = 'none' | 'optin' | 'optout' | 'bench'
 
-// POST /api/cwl/player-prefs/status's four possible failure codes (qapbot/web_bridge.py's
+// POST /api/cwl/player-prefs/status's four possible failure codes (clashcontrol/web_bridge.py's
 // _PLAYER_PREFS_STATUS_ERROR_HTTP_STATUS) — each one is also a real cwl.template.* key, reused
 // as-is (Phase 6f). Anything else (e.g. "invalid request body") isn't a translation key at all
 // and is shown verbatim.

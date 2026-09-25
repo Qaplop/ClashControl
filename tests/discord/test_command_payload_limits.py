@@ -44,7 +44,7 @@ CHOICES_MAX = 25
 def _iter_commands() -> Iterator[Tuple[str, Any]]:
     """Yield (dotted_path, command) for every app command reachable from QBdiscordcmds.
 
-    Discovered by scanning the module namespace rather than mirroring QapBot.py's
+    Discovered by scanning the module namespace rather than mirroring ClashControl.py's
     COMMANDS/COMMAND_GROUPS lists, so a newly added command is covered the moment it
     exists — a hand-maintained list here would be one more thing to forget.
     """

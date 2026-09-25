@@ -1,6 +1,6 @@
 """Regression test for the READ-side counterpart of the 2026-08-14 hot/history
 column-order-drift incident (Cardinal Rule 1, .github/copilot-instructions.md; full writeup in
-qapbot/docs/DATABASE_ARCHITECTURE.md's "Hot/History DB Split" section).
+clashcontrol/docs/DATABASE_ARCHITECTURE.md's "Hot/History DB Split" section).
 
 The 2026-08-14 fix (`_explicit_column_list()`, `WarHistoryDB._migrate_date_window_batched`)
 only covered the *write* path (the monthly hot->history migration). On 2026-08-16, while
@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import pytest
 
-from qapbot.db_manager import WarHistoryDB
+from clashcontrol.db_manager import WarHistoryDB
 
 
 @pytest.fixture
@@ -47,7 +47,7 @@ async def _rebuild_history_war_attacks_with_real_drift_order(db: WarHistoryDB) -
     `max_attacks`/`missed_attacks`/`defensive_stars`/`created_at` moved to the very end, after
     `defender_th`/`defender_map_position`/`duration`/`is_fresh`/`times_defended`/
     `best_def_destruction` — versus `main.war_attacks`'s own order (see the CREATE TABLE at
-    qapbot/db_manager.py's `initialize()`, main schema section), where `attack_order`/`stars`/
+    clashcontrol/db_manager.py's `initialize()`, main schema section), where `attack_order`/`stars`/
     `destruction`/`defender_tag`/`max_attacks`/`missed_attacks`/`defensive_stars`/`created_at`
     come first and `map_position`/`defender_th`/`defender_map_position`/`duration`/`is_fresh`/
     `times_defended`/`best_def_destruction` are appended at the end instead — i.e. a real,

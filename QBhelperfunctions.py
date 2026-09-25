@@ -1,7 +1,7 @@
 """
 Helper functions for leaderboard generation, war info updates, Discord posting, and cache-centric message management for ClashControl.
 
-This module provides the core business logic for QapBot's primary functions:
+This module provides the core business logic for ClashControl's primary functions:
 
 Core Functions:
 - Leaderboard generation with various modes (attack, avgstars, attackdefratio, etc.)
@@ -37,23 +37,23 @@ from datetime import datetime, timedelta, timezone as _tz
 from typing import List, Dict, Any, Literal, Optional, Tuple, Union, Set, cast, overload
 from collections import defaultdict
 import hashlib
-from qapbot.cache_manager import CACHE
-from qapbot.config import CONFIG
-from qapbot.formatting import MODE_REGISTRY, DEFAULT_MODE, RAID_MODES  # type: ignore[attr-defined]
-from qapbot.constants import (
+from clashcontrol.cache_manager import CACHE
+from clashcontrol.config import CONFIG
+from clashcontrol.formatting import MODE_REGISTRY, DEFAULT_MODE, RAID_MODES  # type: ignore[attr-defined]
+from clashcontrol.constants import (
     DISCORD_MESSAGE_MAX_LENGTH,
     PASSIVE_CLAN_REFRESH_INTERVAL_DAYS,
     SECONDS_PER_HOUR,
     SECONDS_PER_MINUTE,
     WAR_UPDATE_LEAGUES,
 )
-from qapbot.exceptions import (
+from clashcontrol.exceptions import (
     WarProcessingError,
     WarDataFetchError,
     LeaderboardPostingError
 )
-from qapbot.formatting import render_leaderboard, normalize_player_name, text_display_width, best_practice_player_cell
-from qapbot.discord_health import discord_retry
+from clashcontrol.formatting import render_leaderboard, normalize_player_name, text_display_width, best_practice_player_cell
+from clashcontrol.discord_health import discord_retry
 
 # Sentinel markers used to pass plain-text (emoji) sections through the leaderboard
 # text pipeline without them ending up inside ``` code blocks, where Discord will not
@@ -62,13 +62,13 @@ _PLAIN_SENTINEL_START = "\x00PLAIN_S\x00"
 _PLAIN_SENTINEL_END   = "\x00PLAIN_E\x00"
 
 # ── Clash of Clans font paths (used by generate_cwl_group_image) ──────────────
-_CLASH_FONTS_DIR    = os.path.join(os.path.dirname(os.path.abspath(__file__)), "qapbot", "fonts")
+_CLASH_FONTS_DIR    = os.path.join(os.path.dirname(os.path.abspath(__file__)), "clashcontrol", "fonts")
 _CLASH_REGULAR_PATH = os.path.join(_CLASH_FONTS_DIR, "Clash_Regular.otf")
 _CLASH_BOLD_PATH    = os.path.join(_CLASH_FONTS_DIR, "Clash_Bold.otf")
 _clash_fonts_registered: bool = False
 
 # ── CWL image asset paths (used by generate_cwl_group_image) ─────────────────
-_GAMEASSETS_DIR  = os.path.join(os.path.dirname(os.path.abspath(__file__)), "qapbot", "gameassets")
+_GAMEASSETS_DIR  = os.path.join(os.path.dirname(os.path.abspath(__file__)), "clashcontrol", "gameassets")
 _MEDAL_ICON_PATH = os.path.join(_GAMEASSETS_DIR, "Icon_League_Medal.png")
 
 # Maps CoC API league_name → gameassets PNG filename.
@@ -786,7 +786,7 @@ def _resolve_war_league(tag: str, opponent_tag: Optional[str] = None) -> str:
 def generate_war_info_text(clan_tag: str) -> str:
     # Shared with war_notifications.py — was a function-local duplicate here until C5
     # (2026-08-08); see parse_war_timestamp_field()'s docstring for the format parsed.
-    from qapbot.war_notifications import parse_war_timestamp_field as _parse_timestamp_field
+    from clashcontrol.war_notifications import parse_war_timestamp_field as _parse_timestamp_field
 
     def _fmt_delta_from_secs(secs: Optional[int]) -> str:
         if secs is None:
@@ -839,7 +839,7 @@ def generate_war_info_text(clan_tag: str) -> str:
         # --- TH lineup emojis ---
         def _build_lineup_row(members: List[Any]) -> str:
             """Return TH emojis with counts sorted descending by TH level."""
-            from qapbot.emojis import BotEmojis
+            from clashcontrol.emojis import BotEmojis
             from collections import Counter
             counts: Counter[int] = Counter(m.get('townhall', 0) or 0 for m in members)
             parts: List[str] = []
@@ -1199,7 +1199,7 @@ def _generate_cwlinfo_archive_embeds(clan_tag: str) -> List[discord.Embed]:
 
 def _build_cwl_lineup(members: List[Any], team_size: int = 15, ascending: bool = False) -> str:
     """Return TH emoji × count string from coc member objects or war-data dicts."""
-    from qapbot.emojis import BotEmojis
+    from clashcontrol.emojis import BotEmojis
     from collections import Counter as _Counter
     ths: List[int] = []
     for m in members:
@@ -1229,7 +1229,7 @@ def _fmt_secs(secs: Optional[int]) -> str:
 
 def _lineup_from_json_r(lineup_json: str, ascending: bool = False) -> str:
     """Render a stored TH-level JSON array (from war_summary DB) as emoji × count string."""
-    from qapbot.emojis import BotEmojis
+    from clashcontrol.emojis import BotEmojis
     try:
         import json as _ljson
         from collections import Counter as _LC
@@ -2581,7 +2581,7 @@ def _load_cwl_analysis_from_db_sync(
 #
 # ── Rules valid from 2026-05 onwards ────────────────────────────────────────
 # Supercell has never published these numbers. Empirically measured 2026-07-26
-# via `qapbot/scripts/audit_cwl_league_rank.py evaluate-promo-rules` — for every
+# via `clashcontrol/scripts/audit_cwl_league_rank.py evaluate-promo-rules` — for every
 # clan in a fully-ranked, complete-data 8-clan group in season 2026-07, compared
 # its final rank against its CURRENT live league (fetched fresh right after that
 # season's promotions applied). Gold League I through Champion League III: huge
@@ -2713,7 +2713,7 @@ def _get_cwl_promo_rules(season: str, league_name: str) -> Tuple[int, int]:
 # This performs that re-check every time an ended group's standings are served
 # (cheap — in-memory clan_name_cache only, no API/DB calls), using the same
 # league-independent "safe middle rank" reasoning validated in
-# qapbot/scripts/audit_cwl_league_rank.py's `reconstruct` command: no version of
+# clashcontrol/scripts/audit_cwl_league_rank.py's `reconstruct` command: no version of
 # the promotion/demotion rules below moves a clan more than 3 ranks up or 2 down,
 # so a clan ranked outside that band is guaranteed to have stayed in the same
 # league the following season. If that clan's CURRENT live league (in
@@ -2942,7 +2942,7 @@ def _sweep_cwl_ended_batch_sync(after_group_id: str, after_season: str, limit: i
 
     Returns {"marked", "checked", "cursor", "exhausted"}.
     """
-    from qapbot.constants import cwl_season_window_closed
+    from clashcontrol.constants import cwl_season_window_closed
 
     db = CACHE.db_manager
     result: Dict[str, Any] = {
@@ -3331,8 +3331,8 @@ def generate_cwl_group_image(
     C_BADGE_NEU    = "#404040"   # gray neutral badge
     C_BADGE_DEM    = "#A52626"   # red demotion badge (matches demoted rank number colour)
 
-    # ── Font setup: register all fonts in qapbot/fonts/ once per process ─────
-    # Drop any .otf/.ttf file into qapbot/fonts/ to make it available here
+    # ── Font setup: register all fonts in clashcontrol/fonts/ once per process ─────
+    # Drop any .otf/.ttf file into clashcontrol/fonts/ to make it available here
     # (e.g. NotoSansKR-Bold.otf for Korean clan names).  The Clash OTF files
     # are always present; additional Noto files are optional but recommended.
     global _clash_fonts_registered
@@ -3365,7 +3365,7 @@ def generate_cwl_group_image(
     def _name_fp(name: str, size: float) -> "_fm.FontProperties":
         """Clash Bold for pure Latin names; broad Unicode font stack for names containing
         symbols / emoji outside the Basic Latin + Latin Extended range.
-        To extend coverage on prod, drop additional font files into qapbot/fonts/:
+        To extend coverage on prod, drop additional font files into clashcontrol/fonts/:
           - NotoSansKR-Bold.ttf          → Korean Hangul      (family: "Noto Sans KR")
           - NotoSansArabic-Bold.ttf      → Arabic             (family: "Noto Sans Arabic")
           - NotoSansSC-Bold.ttf          → Chinese            (family: "Noto Sans SC")
@@ -3634,7 +3634,7 @@ async def generate_cwl_group_analysis_embeds(clan_tag: str) -> List[discord.Embe
     Returns an empty list if no live CWL group is available or fewer than 2 clans
     are found.
     """
-    from qapbot.emojis import BotEmojis
+    from clashcontrol.emojis import BotEmojis
 
     # ── Attempt live API; fall back to historical DB if the season is over ────
     attacker_data: Dict[str, Dict[str, Any]] = {}
@@ -4140,7 +4140,7 @@ def compute_roster_stats_sync(
         # only reflect the hot (current + previous month) window).  ws is joined
         # against main.war_summary and history.war_summary directly (NOT a UNION
         # ALL CTE) because SQLite fully materializes a compound subquery used as
-        # the right side of a LEFT JOIN — see qapbot/db_manager.py get_player_war_history_sync
+        # the right side of a LEFT JOIN — see clashcontrol/db_manager.py get_player_war_history_sync
         # for the incident this caused (59s query / OOM).
         war_rows_raw = conn.execute(f"""
             WITH wa AS (
@@ -4556,7 +4556,7 @@ async def post_discord_content_with_tracking(
         # Delete using exact mode match — avoids delete_leaderboard_messages_for_context
         # which appends _{month}_{year} and would never find fully-qualified mode strings
         # like "cwlgroup_2026-05".
-        from qapbot.QBdiscocmdshelper import _delete_messages_by_filter  # type: ignore[misc,attr-defined]
+        from clashcontrol.QBdiscocmdshelper import _delete_messages_by_filter  # type: ignore[misc,attr-defined]
         await _delete_messages_by_filter(
             channel_id,
             lambda k, v: (
@@ -4894,7 +4894,7 @@ def _generate_raid_leaderboard_text(
     - raidmissed: month=None -> the latest ended season (the penalty list); otherwise missed
       weekends summed per player over the period, most first.
     """
-    from qapbot.constants import RAID_BASE_ATTACK_LIMIT
+    from clashcontrol.constants import RAID_BASE_ATTACK_LIMIT
 
     db = CACHE.db_manager
     title = {"raid": "Capital Raid Leaderboard", "currentraid": "Current Raid Weekend",
@@ -5168,7 +5168,7 @@ def resolve_subscription_period(sub: Dict[str, Any], now: Optional[datetime] = N
     Resolve the (month, year, month_range) a subscription targets "right now".
 
     Mirrors the period logic used by the automatic per-cycle leaderboard posting
-    loop (post_leaderboards_to_subscribed_channels() in QapBot.py), so a manual
+    loop (post_leaderboards_to_subscribed_channels() in ClashControl.py), so a manual
     re-render of a subscription (e.g. /highlightme) matches what the next
     automatic post would show.
 
@@ -5222,7 +5222,7 @@ async def delete_leaderboard_messages_for_context(clan_tag: str, channel_id: str
         year: Year as int
         cwl_only: Whether to restrict to CWL-only messages
     """
-    from qapbot.QBdiscocmdshelper import _delete_messages_by_filter  # type: ignore[misc,attr-defined]
+    from clashcontrol.QBdiscocmdshelper import _delete_messages_by_filter  # type: ignore[misc,attr-defined]
     
     # Compose mode string
     # "currentwar", "cwlinfo" and "currentraid" use just their name (no month/year suffix).
@@ -6565,7 +6565,7 @@ async def refresh_stale_passive_clans(candidates: List[Tuple[str, str]]) -> int:
     for their monthly refresh, run every update cycle.
 
     Passively-tracked clans (track_war_updates=False) are excluded from the main
-    update loop entirely (QapBot.py's clan categorization fast-rejects them) and
+    update loop entirely (ClashControl.py's clan categorization fast-rejects them) and
     only ever get refreshed as a side effect of their CWL group happening to be
     rediscovered this season (cache_manager._sync_group_track_war_updates, see
     CLAN_WAR_TRACKING.md write-path 7) — which itself requires at least one
@@ -6588,7 +6588,7 @@ async def refresh_stale_passive_clans(candidates: List[Tuple[str, str]]) -> int:
         candidates: (clan_tag, sort_key) pairs already identified as overdue
             (last_checked_via_api older than PASSIVE_CLAN_REFRESH_INTERVAL_DAYS,
             or never checked — sort_key '' sorts first). Collected by
-            QapBot.py's main clan-categorization loop as a side effect of its
+            ClashControl.py's main clan-categorization loop as a side effect of its
             own already-mandatory full clan_name_cache scan, rather than this
             function scanning the cache a second time — see
             CLAN_WAR_TRACKING.md write-path 8.
@@ -7369,8 +7369,8 @@ async def predict_war_between_clans(clan1_tag: str, clan2_tag: str, n_players: i
     Returns:
         Discord-ready formatted string with roster emojis and win/lose/draw probabilities.
     """
-    from qapbot.formatting import normalize_player_name as _norm_name
-    from qapbot.emojis import BotEmojis
+    from clashcontrol.formatting import normalize_player_name as _norm_name
+    from clashcontrol.emojis import BotEmojis
     from QBwarsim import calculate_win_probability
     from collections import Counter
 
@@ -7887,7 +7887,7 @@ async def fetch_clan_war_data(clan_tag: str) -> Optional[Dict[str, Any]]:
                 import json as _json
                 import re as _re
                 import datetime as _dt_mod
-                from qapbot.config import CONFIG as _CFG
+                from clashcontrol.config import CONFIG as _CFG
                 _inv_dir = _CFG.investigate_dir
                 os.makedirs(_inv_dir, exist_ok=True)
                 _tag_clean = _re.sub(r'[^A-Z0-9]', '', clan_tag.upper())
@@ -7930,7 +7930,7 @@ async def fetch_clan_war_data(clan_tag: str) -> Optional[Dict[str, Any]]:
         _war_payload = None
         if _pl_my is not None and _pl_opp is not None:
             try:
-                from qapbot.cache_manager import build_war_payload
+                from clashcontrol.cache_manager import build_war_payload
                 _war_payload = build_war_payload(coc_war_obj, _pl_my, _pl_opp)
             except Exception as _pl_ex:
                 # Stage 3: the payload IS the data now, so a failure here costs this clan its
@@ -7947,7 +7947,7 @@ async def fetch_clan_war_data(clan_tag: str) -> Optional[Dict[str, Any]]:
         _result = {
             'clan_tag': clan_tag,
             'war_payload': _war_payload,
-            # Carried explicitly so QapBot.py's smart-backdating never needs the coc object
+            # Carried explicitly so ClashControl.py's smart-backdating never needs the coc object
             # (§3 Step 4). Same string form the payload stores, so the existing _DT_RE parse works.
             'end_time': str(getattr(coc_war_obj, 'end_time', '')),  # type: ignore[arg-type]
             'opponent_tag': opponent_tag,
@@ -8086,7 +8086,7 @@ def release_war_object(war: Any) -> int:
 
     That is the entire GC bill. PROD measured ~195 such objects per clan x ~2,600 clans =
     508,769 objects per cycle, costing a 2.0s stop-the-world pause at ~240K objects/s — which
-    is what made Discord unresponsive mid-cycle (see qapbot/docs/PERFORMANCE_TUNING.md).
+    is what made Discord unresponsive mid-cycle (see clashcontrol/docs/PERFORMANCE_TUNING.md).
 
     Severing the back-references makes the graph acyclic, so it dies the moment the last
     reference drops and never reaches the collector at all. Measured on real `coc.ClanWar`
@@ -8372,7 +8372,7 @@ async def update_clan_war_info_and_stats(clan_tag: str) -> bool:
 
 # ─── Clan Capital raid weekends (tracker #0115) ─────────────────────────────
 # Design: plans/tracker-0115-capital-raid-leaderboards.md §2-§3; game rules:
-# qapbot/docs/COC_GAME_MECHANICS.md § Clan Capital Raid Weekends.
+# clashcontrol/docs/COC_GAME_MECHANICS.md § Clan Capital Raid Weekends.
 
 # A roster snapshot taken later than this after season start may include players who joined
 # after the start (and so could not raid) — flagged in the output (plan §2.1).
@@ -8422,7 +8422,7 @@ async def update_capital_raid_for_clan(clan_tag: str, now: Optional[datetime] = 
     Returns:
         Counters {"snapshot", "fetched", "written", "finalized", "backfilled"} for the cycle log line.
     """
-    from qapbot.constants import (
+    from clashcontrol.constants import (
         RAID_BASE_ATTACK_LIMIT, coc_timestamp_to_iso, current_raid_season_bounds, is_capital_raid_window,
     )
 
@@ -8529,8 +8529,8 @@ async def update_capital_raids_for_member_clans(now: Optional[datetime] = None) 
     Returns:
         Aggregated counters plus "clans" (processed) and "errors" for the [RAID-UPDATE] line.
     """
-    from qapbot.constants import is_capital_raid_window
-    from qapbot.QBdiscocmdshelper_cwl import all_member_clan_tags
+    from clashcontrol.constants import is_capital_raid_window
+    from clashcontrol.QBdiscocmdshelper_cwl import all_member_clan_tags
 
     totals = {"clans": 0, "snapshot": 0, "fetched": 0, "written": 0, "finalized": 0, "backfilled": 0, "errors": 0}
     db = CACHE.db_manager

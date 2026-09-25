@@ -18,8 +18,8 @@ from aiohttp.test_utils import TestClient, TestServer
 
 os.environ.setdefault("DISCORD_TOKEN", "test-token")
 
-from qapbot.config import CONFIG
-from qapbot.db_manager import WarHistoryDB
+from clashcontrol.config import CONFIG
+from clashcontrol.db_manager import WarHistoryDB
 
 
 @pytest.fixture
@@ -51,13 +51,13 @@ def _seed_player_names(db: WarHistoryDB, names: Dict[str, str]) -> None:
 @pytest.fixture
 def bridge_config(monkeypatch):
     config = dataclasses.replace(CONFIG, web_bridge_secret="test-secret", web_bridge_port=1)
-    monkeypatch.setattr("qapbot.config.CONFIG", config)
+    monkeypatch.setattr("clashcontrol.config.CONFIG", config)
     return config
 
 
 @pytest.fixture
 async def client():
-    from qapbot.web_bridge import create_app
+    from clashcontrol.web_bridge import create_app
 
     async with TestClient(TestServer(create_app())) as c:
         yield c
@@ -98,7 +98,7 @@ def _fake_role_bot(guild_id: int, discord_user_id: int, role_ids):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_resolve_admin_or_leader_allows_guild_admin(monkeypatch):
-    from qapbot.web_bridge import _resolve_admin_or_leader
+    from clashcontrol.web_bridge import _resolve_admin_or_leader
     import QBcore
 
     monkeypatch.setattr(QBcore, "bot", _fake_admin_bot(1, 2, is_admin=True))
@@ -108,8 +108,8 @@ async def test_resolve_admin_or_leader_allows_guild_admin(monkeypatch):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_resolve_admin_or_leader_allows_leader_role_holder(monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.web_bridge import _resolve_admin_or_leader
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.web_bridge import _resolve_admin_or_leader
     import QBcore
 
     monkeypatch.setattr(QBcore, "bot", _fake_role_bot(1, 2, role_ids=[1001]))
@@ -121,8 +121,8 @@ async def test_resolve_admin_or_leader_allows_leader_role_holder(monkeypatch):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_resolve_admin_or_leader_allows_coleader_role_holder(monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.web_bridge import _resolve_admin_or_leader
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.web_bridge import _resolve_admin_or_leader
     import QBcore
 
     monkeypatch.setattr(QBcore, "bot", _fake_role_bot(1, 2, role_ids=[1002]))
@@ -134,8 +134,8 @@ async def test_resolve_admin_or_leader_allows_coleader_role_holder(monkeypatch):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_resolve_admin_or_leader_rejects_regular_member(monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.web_bridge import _resolve_admin_or_leader
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.web_bridge import _resolve_admin_or_leader
     import QBcore
 
     monkeypatch.setattr(QBcore, "bot", _fake_role_bot(1, 2, role_ids=[9999]))  # unrelated role
@@ -147,7 +147,7 @@ async def test_resolve_admin_or_leader_rejects_regular_member(monkeypatch):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_resolve_admin_or_leader_rejects_when_guild_unresolvable(monkeypatch):
-    from qapbot.web_bridge import _resolve_admin_or_leader
+    from clashcontrol.web_bridge import _resolve_admin_or_leader
     import QBcore
 
     bot = MagicMock()
@@ -194,7 +194,7 @@ async def test_i18n_missing_params_returns_400(bridge_config, client):
 @pytest.mark.asyncio
 async def test_i18n_without_guild_uses_user_language(bridge_config, client):
     """Tracker #0135: the landing page shown outside any server has no guild_id to send."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     CACHE.user_accounts["910"] = {"user_language": "de"}
     CACHE.user_accounts.pop("911", None)
@@ -213,12 +213,12 @@ async def test_i18n_without_guild_uses_user_language(bridge_config, client):
 @pytest.mark.asyncio
 async def test_i18n_activity_landing_namespace_is_complete_in_every_language(bridge_config, client):
     """Tracker #0135: every language ships every landing-page key (no silent English fallback)."""
-    from qapbot.i18n import get_namespace
+    from clashcontrol.i18n import get_namespace
 
     english_keys = set(get_namespace("activity.landing", "en"))
     assert english_keys
     for lang in ("de", "es", "zh", "la"):
-        from qapbot.i18n import _translation_manager
+        from clashcontrol.i18n import _translation_manager
 
         subtree = _translation_manager.translations[lang]["activity"]["landing"]
         assert set(subtree) == english_keys, lang
@@ -227,7 +227,7 @@ async def test_i18n_activity_landing_namespace_is_complete_in_every_language(bri
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_i18n_defaults_to_english_with_no_preference_set(bridge_config, client):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     CACHE.server_config["901"] = {}
     CACHE.user_accounts.pop("902", None)
@@ -246,7 +246,7 @@ async def test_i18n_defaults_to_english_with_no_preference_set(bridge_config, cl
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_i18n_honours_guild_language_over_default(bridge_config, client):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     CACHE.server_config["903"] = {"language": "de"}
     CACHE.user_accounts.pop("904", None)
@@ -266,7 +266,7 @@ async def test_i18n_honours_guild_language_over_default(bridge_config, client):
 async def test_i18n_user_language_wins_over_guild_language(bridge_config, client):
     """The exact chain t() itself uses — a member's own preference beats the guild's, matching
     what a DM to the same member would show them."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     CACHE.server_config["905"] = {"language": "en"}
     CACHE.user_accounts["906"] = {"user_language": "de"}
@@ -284,7 +284,7 @@ async def test_i18n_user_language_wins_over_guild_language(bridge_config, client
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_i18n_unknown_namespace_returns_empty_strings_not_an_error(bridge_config, client):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     CACHE.server_config["907"] = {}
     CACHE.user_accounts.pop("908", None)
@@ -305,7 +305,7 @@ async def test_i18n_unknown_namespace_returns_empty_strings_not_an_error(bridge_
 # ---------------------------------------------------------------------------
 
 def test_bridge_log_label_resolves_name_from_bot_cache(monkeypatch):
-    from qapbot.web_bridge import _bridge_log_label
+    from clashcontrol.web_bridge import _bridge_log_label
     import QBcore
 
     guild = MagicMock()
@@ -318,7 +318,7 @@ def test_bridge_log_label_resolves_name_from_bot_cache(monkeypatch):
 
 
 def test_bridge_log_label_falls_back_to_bare_id_when_unresolvable(monkeypatch):
-    from qapbot.web_bridge import _bridge_log_label
+    from clashcontrol.web_bridge import _bridge_log_label
     import QBcore
 
     bot = MagicMock()
@@ -329,7 +329,7 @@ def test_bridge_log_label_falls_back_to_bare_id_when_unresolvable(monkeypatch):
 
 
 def test_bridge_log_label_returns_dash_for_missing_id():
-    from qapbot.web_bridge import _bridge_log_label
+    from clashcontrol.web_bridge import _bridge_log_label
 
     assert _bridge_log_label("guild", None) == "-"
     assert _bridge_log_label("user", "") == "-"
@@ -398,17 +398,17 @@ async def test_clan_config_get_super_admin_bypasses_guild_lookup(monkeypatch):
     """The configured single super-admin (CONFIG.server_admin) is treated as admin of every
     guild without ever needing a resolvable guild/member — mirrors
     QBdiscocmdshelper._is_configured_admin()'s numeric-ID fast path."""
-    from qapbot.web_bridge import create_app
+    from clashcontrol.web_bridge import create_app
 
     config = dataclasses.replace(CONFIG, web_bridge_secret="test-secret", web_bridge_port=1, server_admin="999")
-    monkeypatch.setattr("qapbot.config.CONFIG", config)
+    monkeypatch.setattr("clashcontrol.config.CONFIG", config)
 
     import QBcore
     bot = MagicMock()
     bot.get_guild = MagicMock(return_value=None)  # guild not even resolvable
     monkeypatch.setattr(QBcore, "bot", bot)
 
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     CACHE.server_config["1"] = {"member_clans": [], "member_families": []}
     CACHE.db_manager = None
 
@@ -424,8 +424,8 @@ async def test_clan_config_get_super_admin_bypasses_guild_lookup(monkeypatch):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_clan_config_get_returns_payload_for_admin(db, bridge_config, client, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import resolve_current_cwl_season
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_current_cwl_season
 
     await _seed_guild_and_clans(db, "555", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -467,8 +467,8 @@ async def test_clan_config_get_returns_payload_for_admin(db, bridge_config, clie
 async def test_clan_config_post_persists_and_refreshes_hub(db, bridge_config, client, monkeypatch):
     """POST never creates a season itself (Phase E.3 — that's exclusively "Add New Season"'s
     job in Discord), so the test seeds the event first, simulating that having already run."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import resolve_current_cwl_season
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_current_cwl_season
 
     await _seed_guild_and_clans(db, "666", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -484,7 +484,7 @@ async def test_clan_config_post_persists_and_refreshes_hub(db, bridge_config, cl
     monkeypatch.setattr(QBcore, "bot", _fake_admin_bot(666, 42, is_admin=True))
 
     refresh_mock = AsyncMock()
-    monkeypatch.setattr("qapbot.ui_cwl_roster.refresh_cwl_management_hub_message", refresh_mock)
+    monkeypatch.setattr("clashcontrol.ui_cwl_roster.refresh_cwl_management_hub_message", refresh_mock)
 
     resp = await client.post(
         "/api/cwl/clan-config",
@@ -517,8 +517,8 @@ async def test_clan_config_post_triggers_sharing_for_newly_participating_shared_
     """2026-08-15 (cross-guild shared CWL clans) — the first of the two trigger points. #CLAN1
     is newly turned on to participating=True in this save, and another guild (9999) already has
     it participating for the same season — must establish the shared-clan record and notify."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import resolve_current_cwl_season
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_current_cwl_season
 
     await _seed_guild_and_clans(db, "667", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -537,9 +537,9 @@ async def test_clan_config_post_triggers_sharing_for_newly_participating_shared_
 
     import QBcore
     monkeypatch.setattr(QBcore, "bot", _fake_admin_bot(667, 42, is_admin=True))
-    monkeypatch.setattr("qapbot.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
+    monkeypatch.setattr("clashcontrol.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
     notify_mock = AsyncMock()
-    monkeypatch.setattr("qapbot.ui_cwl_roster.notify_cwl_clan_shared", notify_mock)
+    monkeypatch.setattr("clashcontrol.ui_cwl_roster.notify_cwl_clan_shared", notify_mock)
 
     resp = await client.post(
         "/api/cwl/clan-config",
@@ -564,8 +564,8 @@ async def test_clan_config_post_triggers_sharing_for_newly_participating_shared_
 async def test_clan_config_post_does_not_trigger_sharing_for_already_participating_clan(db, bridge_config, client, monkeypatch):
     """Re-saving a clan that was ALREADY participating (e.g. just editing roster_size) must not
     re-run the sharing check — only a clan newly turning on this save qualifies."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import resolve_current_cwl_season
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_current_cwl_season
 
     await _seed_guild_and_clans(db, "668", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -580,9 +580,9 @@ async def test_clan_config_post_does_not_trigger_sharing_for_already_participati
 
     import QBcore
     monkeypatch.setattr(QBcore, "bot", _fake_admin_bot(668, 42, is_admin=True))
-    monkeypatch.setattr("qapbot.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
+    monkeypatch.setattr("clashcontrol.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
     notify_mock = AsyncMock()
-    monkeypatch.setattr("qapbot.ui_cwl_roster.notify_cwl_clan_shared", notify_mock)
+    monkeypatch.setattr("clashcontrol.ui_cwl_roster.notify_cwl_clan_shared", notify_mock)
 
     resp = await client.post(
         "/api/cwl/clan-config",
@@ -604,7 +604,7 @@ async def test_clan_config_post_rejects_when_no_season_exists_yet(db, bridge_con
     """Without a prior "Add New Season" (i.e. no cwl_events row for the resolved season), POST
     must refuse rather than silently creating one — Phase E.3's explicit instruction that only
     "Add New Season" ever creates a season."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "1010", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -636,9 +636,9 @@ async def test_deactivating_clan_via_bridge_preserves_settings(db, bridge_config
     layer): deactivate a clan that has custom roster_size/cwl_start_at, confirm GET still
     reports those values (participating=False), then reactivate and confirm they're still
     there — the exact bug the project owner found live in the Activity."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
-    from qapbot.QBdiscocmdshelper_cwl import resolve_current_cwl_season
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_current_cwl_season
 
     await _seed_guild_and_clans(db, "777", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -650,7 +650,7 @@ async def test_deactivating_clan_via_bridge_preserves_settings(db, bridge_config
 
     import QBcore
     monkeypatch.setattr(QBcore, "bot", _fake_admin_bot(777, 42, is_admin=True))
-    monkeypatch.setattr("qapbot.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
+    monkeypatch.setattr("clashcontrol.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
 
     headers = {"X-Bridge-Secret": "test-secret"}
 
@@ -709,7 +709,7 @@ async def test_adding_a_guest_clan_unchecked_still_seeds_the_player_pool(db, bri
     roster while leaving it UNCHECKED (participating=False), on an event that's already past
     draft, must still seed its current members into the pool — just without actually assigning
     anyone into its (non-existent) column."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "840", {"#CLAN1": "Alpha", "#AKATSUKI": "Akatsuki"})
     CACHE.db_manager = db
@@ -725,7 +725,7 @@ async def test_adding_a_guest_clan_unchecked_still_seeds_the_player_pool(db, bri
 
     import QBcore
     monkeypatch.setattr(QBcore, "bot", _fake_admin_bot(840, 42, is_admin=True))
-    monkeypatch.setattr("qapbot.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
+    monkeypatch.setattr("clashcontrol.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
 
     resp = await client.post(
         "/api/cwl/clan-config",
@@ -751,7 +751,7 @@ async def test_adding_unchecked_guest_clan_never_auto_assigns_even_a_qualifying_
     qualifying condition) must NOT get assigned into a non-participating clan's column — only
     visibility-seeded as pending/unassigned, since participating_clan_tags alone still defines
     valid assignment targets (unchanged by rule b's pool-membership broadening)."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "841", {"#CLAN1": "Alpha", "#AKATSUKI": "Akatsuki"})
     CACHE.db_manager = db
@@ -776,7 +776,7 @@ async def test_adding_unchecked_guest_clan_never_auto_assigns_even_a_qualifying_
 
     import QBcore
     monkeypatch.setattr(QBcore, "bot", _fake_admin_bot(841, 42, is_admin=True))
-    monkeypatch.setattr("qapbot.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
+    monkeypatch.setattr("clashcontrol.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
 
     resp = await client.post(
         "/api/cwl/clan-config",
@@ -807,7 +807,7 @@ async def test_unchecking_a_guest_clan_via_bridge_no_longer_purges_the_player_po
     """The exact behavior rule f reverses: a plain uncheck+Save of a guest (non-family) clan used
     to delete its members' cwl_signups/cwl_assignments rows automatically. It must not anymore —
     the clan just drops off the active roster, its players stay in the pool untouched."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "820", {"#CLAN1": "Alpha", "#GUESTCLAN": "Guest"})
     CACHE.db_manager = db
@@ -836,7 +836,7 @@ async def test_unchecking_a_guest_clan_via_bridge_no_longer_purges_the_player_po
 
     import QBcore
     monkeypatch.setattr(QBcore, "bot", _fake_admin_bot(820, 42, is_admin=True))
-    monkeypatch.setattr("qapbot.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
+    monkeypatch.setattr("clashcontrol.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
 
     resp = await client.post(
         "/api/cwl/clan-config",
@@ -863,7 +863,7 @@ async def test_unchecking_a_shared_guest_clan_via_bridge_no_longer_purges_the_pl
     guest clan must be just as purely cosmetic as unchecking a plain one — the destructive purge
     lived in a SEPARATE code path (detach_guild_from_shared_clan_on_deactivation's shared branch)
     that rule f's original fix never touched, and this is the regression it left behind."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "832", {"#CLAN1": "Alpha", "#STAYCALM": "StayCalm"})
     await db.conn.execute("INSERT OR IGNORE INTO guild_config (guild_id) VALUES ('833')")
@@ -908,7 +908,7 @@ async def test_unchecking_a_shared_guest_clan_via_bridge_no_longer_purges_the_pl
 
     import QBcore
     monkeypatch.setattr(QBcore, "bot", _fake_admin_bot(832, 42, is_admin=True))
-    monkeypatch.setattr("qapbot.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
+    monkeypatch.setattr("clashcontrol.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
 
     resp = await client.post(
         "/api/cwl/clan-config",
@@ -929,7 +929,7 @@ async def test_unchecking_a_shared_guest_clan_via_bridge_no_longer_purges_the_pl
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_guest_clan_remove_endpoint_purges_pool_and_deletes_the_clan_row(db, bridge_config, client, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "821", {"#CLAN1": "Alpha", "#GUESTCLAN": "Guest"})
     CACHE.db_manager = db
@@ -952,7 +952,7 @@ async def test_guest_clan_remove_endpoint_purges_pool_and_deletes_the_clan_row(d
 
     import QBcore
     monkeypatch.setattr(QBcore, "bot", _fake_admin_bot(821, 42, is_admin=True))
-    monkeypatch.setattr("qapbot.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
+    monkeypatch.setattr("clashcontrol.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
 
     resp = await client.post(
         "/api/cwl/enrollment/guest-clan/remove",
@@ -971,7 +971,7 @@ async def test_guest_clan_remove_endpoint_purges_pool_and_deletes_the_clan_row(d
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_guest_clan_remove_endpoint_rejects_a_family_clan(db, bridge_config, client, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "822", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -997,7 +997,7 @@ async def test_guest_clan_remove_endpoint_rejects_a_family_clan(db, bridge_confi
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_guest_clan_remove_endpoint_404_when_clan_not_on_roster(db, bridge_config, client, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "823", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -1024,7 +1024,7 @@ async def test_guest_clan_remove_endpoint_404_when_clan_not_on_roster(db, bridge
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_guest_players_list_includes_invited_and_orphaned_but_not_family(db, bridge_config, client, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "824", {"#CLAN1": "Alpha", "#GUESTCLAN": "Guest"})
     CACHE.db_manager = db
@@ -1075,7 +1075,7 @@ async def test_guest_players_list_includes_invited_and_orphaned_but_not_family(d
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_guest_players_remove_purges_pool_but_not_global_status(db, bridge_config, client, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "825", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -1093,7 +1093,7 @@ async def test_guest_players_remove_purges_pool_but_not_global_status(db, bridge
 
     import QBcore
     monkeypatch.setattr(QBcore, "bot", _fake_admin_bot(825, 42, is_admin=True))
-    monkeypatch.setattr("qapbot.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
+    monkeypatch.setattr("clashcontrol.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
 
     resp = await client.post(
         "/api/cwl/enrollment/guest-players/remove",
@@ -1124,7 +1124,7 @@ async def test_guest_players_remove_purges_pool_but_not_global_status(db, bridge
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_guest_players_list_excludes_guest_clan_derived_players(db, bridge_config, client, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "826", {"#CLAN1": "Alpha", "#GUESTCLAN": "Guest"})
     CACHE.db_manager = db
@@ -1182,8 +1182,8 @@ async def test_guest_players_list_excludes_a_genuine_deliberate_cross_assignment
     (tests/unit/test_cwl_clan_ownership.py) — the backend-level test this end-to-end check builds
     on. A player whose current clan IS a family clan would have is_guest=False and never even
     reach the candidate list this filter operates on, so wouldn't actually exercise it."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import remove_cwl_guest_clan
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import remove_cwl_guest_clan
 
     shared_clan_id, owner_event_id, follower_event_id = await _seed_shared_clan_pair(db, "829", "828")
     CACHE.db_manager = db
@@ -1231,8 +1231,8 @@ async def test_guest_players_list_excludes_a_purged_own_member_self_assignment(d
     tests/unit/test_cwl_clan_ownership.py, for the direct backend-level test. This is the
     end-to-end confirmation that the fixed player is gone from the "Remove Guest Players" list too
     (nothing to filter — their local rows no longer exist at all after Remove)."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import remove_cwl_guest_clan
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import remove_cwl_guest_clan
 
     shared_clan_id, owner_event_id, follower_event_id = await _seed_shared_clan_pair(db, "829", "828")
     CACHE.db_manager = db
@@ -1273,7 +1273,7 @@ async def test_guest_players_list_excludes_a_purged_own_member_self_assignment(d
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_guest_players_remove_rejects_guest_clan_derived_player(db, bridge_config, client, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "827", {"#CLAN1": "Alpha", "#GUESTCLAN": "Guest"})
     CACHE.db_manager = db
@@ -1301,7 +1301,7 @@ async def test_guest_players_remove_rejects_guest_clan_derived_player(db, bridge
 
     import QBcore
     monkeypatch.setattr(QBcore, "bot", _fake_admin_bot(827, 42, is_admin=True))
-    monkeypatch.setattr("qapbot.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
+    monkeypatch.setattr("clashcontrol.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
 
     resp = await client.post(
         "/api/cwl/enrollment/guest-players/remove",
@@ -1327,7 +1327,7 @@ async def test_guest_players_remove_all_rejected_skips_hub_refresh(db, bridge_co
     """When every requested tag is rejected, nothing changed — the Hub message refresh and
     enrollment-version bump (which drive the live board's auto-update) must not fire for a no-op
     request; only a genuine removal should trigger either."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "828", {"#CLAN1": "Alpha", "#GUESTCLAN": "Guest"})
     CACHE.db_manager = db
@@ -1355,7 +1355,7 @@ async def test_guest_players_remove_all_rejected_skips_hub_refresh(db, bridge_co
     import QBcore
     monkeypatch.setattr(QBcore, "bot", _fake_admin_bot(828, 42, is_admin=True))
     refresh_mock = AsyncMock()
-    monkeypatch.setattr("qapbot.ui_cwl_roster.refresh_cwl_management_hub_message", refresh_mock)
+    monkeypatch.setattr("clashcontrol.ui_cwl_roster.refresh_cwl_management_hub_message", refresh_mock)
 
     resp = await client.post(
         "/api/cwl/enrollment/guest-players/remove",
@@ -1376,7 +1376,7 @@ async def test_enrollment_guest_add_rejects_when_player_already_in_guest_clan(db
     """Race condition 1 (project owner's spec, verbatim): "When a guest clan was added all
     players of that clan are already in the player pool. Trying to add an individual player that
     is member of the guest clan should lead to an appropriate error message to the user.\""""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "829", {"#CLAN1": "Alpha", "#GUESTCLAN": "Guest"})
     CACHE.db_manager = db
@@ -1402,7 +1402,7 @@ async def test_enrollment_guest_add_rejects_when_player_already_in_guest_clan(db
 
     import QBcore
     monkeypatch.setattr(QBcore, "bot", _fake_admin_bot(829, 42, is_admin=True))
-    monkeypatch.setattr("qapbot.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
+    monkeypatch.setattr("clashcontrol.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
 
     resp = await client.post(
         "/api/cwl/enrollment/guest",
@@ -1426,7 +1426,7 @@ async def test_enrollment_guest_add_rejects_when_player_already_placed_in_anothe
     — unlike a guest CLAN, an individual guest-player invite has no cross-guild conflict handling
     at all, so this used to silently succeed and leave the player one drag away from a genuine
     double-booking across two guilds' rosters for the same season."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "830", {"#HOME": "Home"})
     await _seed_guild_and_clans(db, "831", {"#OTHERCLAN": "Other"})
@@ -1444,7 +1444,7 @@ async def test_enrollment_guest_add_rejects_when_player_already_placed_in_anothe
 
     import QBcore
     monkeypatch.setattr(QBcore, "bot", _fake_admin_bot(830, 42, is_admin=True))
-    monkeypatch.setattr("qapbot.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
+    monkeypatch.setattr("clashcontrol.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
 
     resp = await client.post(
         "/api/cwl/enrollment/guest",
@@ -1466,7 +1466,7 @@ async def test_guest_player_reclassified_when_clan_later_invited_as_guest(db, br
     beats individual invitation." The classification is derived from live current-clan membership
     on every call (get_cwl_guest_clan_tags_sync), so this "switch" needs no write-time flag flip —
     it falls out automatically once #GUESTCLAN is added to the roster."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "830", {"#CLAN1": "Alpha", "#GUESTCLAN": "Guest"})
     CACHE.db_manager = db
@@ -1493,7 +1493,7 @@ async def test_guest_player_reclassified_when_clan_later_invited_as_guest(db, br
 
     import QBcore
     monkeypatch.setattr(QBcore, "bot", _fake_admin_bot(830, 42, is_admin=True))
-    monkeypatch.setattr("qapbot.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
+    monkeypatch.setattr("clashcontrol.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
 
     resp = await client.get(
         "/api/cwl/enrollment/guest-players",
@@ -1535,9 +1535,9 @@ async def test_guest_player_reclassified_when_clan_later_invited_as_guest(db, br
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_notify_new_cwl_pool_members_only_dms_not_yet_contacted(db, monkeypatch):
-    from qapbot import config as config_module
-    from qapbot.cache_manager import CACHE
-    from qapbot.web_bridge import notify_new_cwl_pool_members
+    from clashcontrol import config as config_module
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.web_bridge import notify_new_cwl_pool_members
 
     monkeypatch.setattr(
         config_module, "CONFIG",
@@ -1597,10 +1597,10 @@ async def test_notify_new_cwl_pool_members_contacts_exactly_what_the_count_repor
     still DMed — and being settled, had already answered and should never have been re-invited.
     Both now read the same set, so this asserts the two agree rather than that either is some
     particular number."""
-    from qapbot import config as config_module
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import count_cwl_pool_members_missing_dm
-    from qapbot.web_bridge import notify_new_cwl_pool_members
+    from clashcontrol import config as config_module
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import count_cwl_pool_members_missing_dm
+    from clashcontrol.web_bridge import notify_new_cwl_pool_members
 
     monkeypatch.setattr(
         config_module, "CONFIG",
@@ -1656,9 +1656,9 @@ async def test_notify_new_cwl_pool_members_seeds_declined_for_an_optout_no_dm_ne
     _send_cwl_enrollment_dm_batch's own seed-before-DM step (that step only ever seeds who it's
     ABOUT to DM), so without the second seed pass they would never get a cwl_signups row at all,
     and would be invisible on the board instead of showing as Declined."""
-    from qapbot import config as config_module
-    from qapbot.cache_manager import CACHE
-    from qapbot.web_bridge import notify_new_cwl_pool_members
+    from clashcontrol import config as config_module
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.web_bridge import notify_new_cwl_pool_members
 
     monkeypatch.setattr(
         config_module, "CONFIG",
@@ -1700,8 +1700,8 @@ async def test_notify_new_cwl_pool_members_seeds_declined_for_an_optout_no_dm_ne
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_notify_new_cwl_pool_members_rejects_draft_event(db):
-    from qapbot.cache_manager import CACHE
-    from qapbot.web_bridge import notify_new_cwl_pool_members
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.web_bridge import notify_new_cwl_pool_members
 
     await _seed_guild_and_clans(db, "831", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -1723,7 +1723,7 @@ async def test_notify_new_cwl_pool_members_rejects_draft_event(db):
 async def test_clan_config_get_honors_persisted_selected_season(db, bridge_config, client, monkeypatch):
     """GET reflects guild_config.cwl_selected_season (set by the Discord-side season select),
     not whatever get_current_cwl_event_sync() would otherwise resolve to."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "888", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -1758,7 +1758,7 @@ async def test_clan_config_get_honors_persisted_selected_season(db, bridge_confi
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_clan_config_get_sorts_clans_by_tier_highest_first(db, bridge_config, client, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "1212", {"#CLAN1": "Bronze Clan", "#CLAN2": "Champion Clan", "#CLAN3": "No Tier Clan"})
     CACHE.db_manager = db
@@ -1788,7 +1788,7 @@ async def test_clan_config_get_sorts_clans_by_tier_highest_first(db, bridge_conf
 async def test_clan_config_post_targets_the_selected_season(db, bridge_config, client, monkeypatch):
     """POST must write to the season currently selected in guild_config, not whichever event
     happens to be "current" — mirrors the GET-side persisted-selection test above."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "333", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -1804,7 +1804,7 @@ async def test_clan_config_post_targets_the_selected_season(db, bridge_config, c
 
     import QBcore
     monkeypatch.setattr(QBcore, "bot", _fake_admin_bot(333, 42, is_admin=True))
-    monkeypatch.setattr("qapbot.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
+    monkeypatch.setattr("clashcontrol.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
 
     resp = await client.post(
         "/api/cwl/clan-config",
@@ -1848,7 +1848,7 @@ async def test_screen_get_returns_recorded_value_and_does_not_clear_it(bridge_co
     left that second call with nothing recorded, silently falling back to clan_config even
     though the user never clicked a different button — this is the regression test for
     that live bug."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     CACHE.pending_cwl_activity_screen[("1", "2")] = "enrollment"
 
@@ -1866,7 +1866,7 @@ async def test_screen_get_returns_recorded_value_and_does_not_clear_it(bridge_co
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_screen_get_reflects_a_new_click_overwriting_an_older_one(bridge_config, client):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     CACHE.pending_cwl_activity_screen[("1", "2")] = "enrollment"
     await client.get(
@@ -1893,7 +1893,7 @@ async def test_screen_get_reflects_a_new_click_overwriting_an_older_one(bridge_c
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_dm_guild_get_returns_recorded_guild_as_string_without_clearing(bridge_config, client, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     # A real-sized snowflake: above JS's safe integer range, hence the string in the response.
     monkeypatch.setitem(CACHE.pending_cwl_dm_guild, "42", 1145641080621109312)
@@ -1931,7 +1931,7 @@ async def test_dm_guild_get_requires_bridge_secret(bridge_config, client):
 async def test_screen_get_defaults_to_landing_when_nothing_recorded(bridge_config, client):
     """Tracker #0135: nothing recorded = launched from Discord's own Launch button, not a bot
     button — the getting-started page, never an admin screen."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     CACHE.pending_cwl_activity_screen.pop(("3", "4"), None)
 
@@ -1975,17 +1975,17 @@ async def test_screen_get_rejects_missing_params(bridge_config, client):
 # ---------------------------------------------------------------------------
 
 def test_build_enrollment_payload_sync_is_not_a_coroutine_function():
-    from qapbot.web_bridge import _build_enrollment_payload_sync
+    from clashcontrol.web_bridge import _build_enrollment_payload_sync
     assert not asyncio.iscoroutinefunction(_build_enrollment_payload_sync)
 
 
 def test_build_clan_config_payload_sync_is_not_a_coroutine_function():
-    from qapbot.web_bridge import _build_clan_config_payload_sync
+    from clashcontrol.web_bridge import _build_clan_config_payload_sync
     assert not asyncio.iscoroutinefunction(_build_clan_config_payload_sync)
 
 
 def test_search_cwl_guests_sync_is_not_a_coroutine_function():
-    from qapbot.web_bridge import _search_cwl_guests_sync
+    from clashcontrol.web_bridge import _search_cwl_guests_sync
     assert not asyncio.iscoroutinefunction(_search_cwl_guests_sync)
 
 
@@ -1996,8 +1996,8 @@ def test_search_cwl_guests_sync_is_not_a_coroutine_function():
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_enrollment_get_returns_merged_players_and_clans(db, bridge_config, client, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import resolve_current_cwl_season
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_current_cwl_season
 
     await _seed_guild_and_clans(db, "777", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -2073,8 +2073,8 @@ async def test_enrollment_get_dm_sent_reflects_whether_a_dm_actually_went_out(db
     blocked, etc.) still carries status 'pending' despite never having received anything. The
     board tells the two apart via this dm_sent field, so it must reflect the real dm_sent_status
     table, not just "a pending row exists"."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import resolve_current_cwl_season
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_current_cwl_season
 
     await _seed_guild_and_clans(db, "778", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -2122,7 +2122,7 @@ async def test_enrollment_get_includes_members_of_non_participating_member_clans
     from a clan that opted out, or that just never opted in. #CLAN2 is a guild member clan but
     NOT participating this event; #P2 (a #CLAN2 member) must still show up in the payload,
     unassigned (no column exists for #CLAN2 to be assigned into)."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "791", {"#CLAN1": "Alpha", "#CLAN2": "Bravo"})
     CACHE.db_manager = db
@@ -2161,7 +2161,7 @@ async def test_enrollment_get_includes_guest_clan_roster(db, bridge_config, clie
     Configure Participating Clans Guests search — see _search_cwl_guests's docstring) still gets
     both a board column AND its current members pulled into the pool, exactly like a real family
     clan — that's the whole "full participating clan treatment" the project owner asked for."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "792", {"#CLAN1": "Alpha", "#GUESTCLAN": "Guest Clan"})
     CACHE.db_manager = db
@@ -2217,7 +2217,7 @@ async def test_enrollment_get_unchecked_plain_guest_clan_members_fall_back_to_un
     produce a tag absent from `clans` (which only lists PARTICIPATING clans). Fixed by having the
     payload builder itself drop an assignment pointing at a non-participating clan unless that
     clan is a genuine cwl_shared_clans entry."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "794", {"#CLAN1": "Alpha", "#GUESTCLAN": "Guest Clan"})
     CACHE.db_manager = db
@@ -2260,7 +2260,7 @@ async def test_enrollment_get_unchecked_plain_guest_clan_members_fall_back_to_un
 async def test_enrollment_get_marks_guest_invited_players(db, bridge_config, client, monkeypatch):
     """A guest PLAYER (cwl_signups.source='guest_invite', from POST /api/cwl/enrollment/guest)
     carries is_guest=True; a normal member/signup carries is_guest=False."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "793", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -2307,7 +2307,7 @@ async def test_enrollment_get_is_guest_follows_live_current_clan_not_assignment_
       deliberately drag-assigned INTO #CLAN1 (this guild's own clan) — must still show
       is_guest=True despite being assigned into a member clan's roster, since the badge tracks
       who they ARE, not where they've been placed."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "794", {"#CLAN1": "Alpha", "#GUESTCLAN": "Beta"})
     CACHE.db_manager = db
@@ -2352,7 +2352,7 @@ async def test_enrollment_get_resolves_current_clan_tag_outside_family_and_parti
     green/amber. #PGUEST is assigned to #CLAN1 (participating) but really still sits in
     #OUTSIDE_CLAN (neither family nor participating) — must resolve to "different-clan" data,
     i.e. current_clan_tag == #OUTSIDE_CLAN, not null."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "794", {"#CLAN1": "Alpha", "#OUTSIDE_CLAN": "Outside"})
     CACHE.db_manager = db
@@ -2387,7 +2387,7 @@ async def test_enrollment_get_resolves_current_clan_tag_outside_family_and_parti
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_enrollment_get_includes_cwl_permanent_optout_flag(db, bridge_config, client, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "792", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -2426,7 +2426,7 @@ async def test_enrollment_get_includes_current_clan_tag(db, bridge_config, clien
     user_players.current_clan_tag — distinct from assigned_clan_tag, which is the CWL
     assignment. Absent (null) for a player only known via an old signup who's since left every
     guild clan, so get_current_clan_members_sync() no longer covers them."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "793", {"#CLAN1": "Alpha", "#CLAN2": "Bravo"})
     CACHE.db_manager = db
@@ -2465,7 +2465,7 @@ async def test_enrollment_get_prefers_live_th_level_over_war_attacks_fallback(db
     """user_players.th_level (kept fresh by coc_cache.py's per-clan poll, 2026-08-14) must win
     over the war_attacks-derived fallback when both exist — the live value is always at least as
     fresh, and doesn't require the player to have ever made a tracked war attack."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "790", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -2513,7 +2513,7 @@ async def test_enrollment_get_mirrors_a_private_placement_in_another_guild(db, b
     _build_enrollment_payload). The Marines/QCrew clans here are NOT shared with each other at
     all — Killer's real placement lives purely in Marines' own private cwl_assignments, which
     QCrew's board has no local record of until this fix's cross-guild mirror runs."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "832", {"#MARINES2": "The Marines II"})
     await _seed_guild_and_clans(db, "833", {"#QCREW2": "The QCrew"})
@@ -2557,7 +2557,7 @@ async def test_enrollment_get_uses_cached_th_level_for_clanless_pooled_player(db
     through to (possibly much older, or entirely absent) war_attacks history (2026-08-20, live bug
     report: players who left their clan after being pooled showed a blank TH badge despite the
     bot already having their TH cached from before they left)."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "791", {"#CLAN2": "Beta"})
     CACHE.db_manager = db
@@ -2616,7 +2616,7 @@ async def test_enrollment_get_resolves_link_live_not_from_signup_snapshot(db, br
       #NEVER  — signup snapshot names an owner, no user_players row at all (guest tag added by
                 search, never linked) — must keep the snapshot value rather than being blanked.
     """
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "834", {"#CLANL": "LinkClan"})
     CACHE.db_manager = db
@@ -2662,7 +2662,7 @@ async def test_enrollment_get_prefers_live_preferred_league_over_frozen_signup_s
     default taken when Start Enrollment seeded the row, never refreshed afterward — same
     staleness class as the discord_id bug above, and the fix is the same shape: the live
     user_players value must win over the frozen snapshot."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "836", {"#CLANM": "MasterClan"})
     CACHE.db_manager = db
@@ -2707,7 +2707,7 @@ async def test_enrollment_get_falls_back_to_player_scoped_link_for_preferred_lea
     pooled player whose CURRENT clan is outside that set (e.g. transferred to an unrelated clan)
     was never covered there, unlike cwl_permanent_optout which already has a links_by_tag
     fallback for exactly this blind spot. preferred_league_rank now gets the same fallback."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "837", {"#CLANQ": "QCrew", "#OUTSIDE": "Outside Clan"})
     CACHE.db_manager = db
@@ -2755,7 +2755,7 @@ async def test_enrollment_get_clears_link_for_account_returned_to_unassigned_poo
     the board must render it unlinked rather than keeping the old owner. get_player_links_sync
     maps 'UNASSIGNED' to None, so the live override has to apply that None rather than treating
     it as "no information"."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "835", {"#CLANU": "UnlinkClan"})
     CACHE.db_manager = db
@@ -2793,7 +2793,7 @@ async def test_enrollment_get_includes_discord_display_name_for_the_tooltip(db, 
     extra DB query. Three shapes: linked + present in the cache, linked but absent from it (left
     the server — falls back to null, the frontend then shows the older "Linked" text), and not
     linked at all."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "836", {"#CLAND": "NameClan"})
     CACHE.db_manager = db
@@ -2836,7 +2836,7 @@ async def test_enrollment_get_resolves_optout_for_a_clanless_pooled_player(db, b
     cwl_permanent_optout=False no matter what user_players actually said, hiding a real opt-out
     from the board. The same get_player_links_sync call that fixes discord_id (2026-08-22) also
     carries cwl_permanent_optout, so it closes this identical blind spot."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "836", {"#CLANO": "OptClan"})
     CACHE.db_manager = db
@@ -2872,7 +2872,7 @@ async def test_enrollment_get_resolves_optout_for_a_clanless_pooled_player(db, b
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_enrollment_get_no_event_returns_empty(db, bridge_config, client, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "778", {})
     CACHE.db_manager = db
@@ -2898,7 +2898,7 @@ async def test_enrollment_get_no_event_returns_empty(db, bridge_config, client, 
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_enrollment_get_allows_leader_role_holder(db, bridge_config, client, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "779", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -2939,7 +2939,7 @@ async def test_enrollment_get_rejects_regular_member(bridge_config, client, monk
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_enrollment_assign_upserts_assignment(db, bridge_config, client, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "785", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -2952,7 +2952,7 @@ async def test_enrollment_assign_upserts_assignment(db, bridge_config, client, m
 
     import QBcore
     monkeypatch.setattr(QBcore, "bot", _fake_admin_bot(785, 42, is_admin=True))
-    monkeypatch.setattr("qapbot.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
+    monkeypatch.setattr("clashcontrol.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
 
     resp = await client.post(
         "/api/cwl/enrollment/assign",
@@ -2970,7 +2970,7 @@ async def test_enrollment_assign_upserts_assignment(db, bridge_config, client, m
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_enrollment_assign_null_clan_tag_unassigns(db, bridge_config, client, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "786", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -2984,7 +2984,7 @@ async def test_enrollment_assign_null_clan_tag_unassigns(db, bridge_config, clie
 
     import QBcore
     monkeypatch.setattr(QBcore, "bot", _fake_admin_bot(786, 42, is_admin=True))
-    monkeypatch.setattr("qapbot.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
+    monkeypatch.setattr("clashcontrol.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
 
     resp = await client.post(
         "/api/cwl/enrollment/assign",
@@ -2998,7 +2998,7 @@ async def test_enrollment_assign_null_clan_tag_unassigns(db, bridge_config, clie
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_enrollment_assign_no_event_returns_409(db, bridge_config, client, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "787", {})
     CACHE.db_manager = db
@@ -3022,7 +3022,7 @@ async def test_enrollment_assign_rejects_player_already_placed_in_another_guild(
     already_placed_in_another_guild: even if a conflicting signup somehow already exists locally
     (e.g. seeded before this fix shipped), the actual placement write must still refuse rather
     than silently double-booking the player into two guilds' rosters for the same season."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "788", {"#HOME2": "Home2"})
     await _seed_guild_and_clans(db, "789", {"#OTHERCLAN2": "Other2"})
@@ -3043,7 +3043,7 @@ async def test_enrollment_assign_rejects_player_already_placed_in_another_guild(
 
     import QBcore
     monkeypatch.setattr(QBcore, "bot", _fake_admin_bot(788, 42, is_admin=True))
-    monkeypatch.setattr("qapbot.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
+    monkeypatch.setattr("clashcontrol.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
 
     resp = await client.post(
         "/api/cwl/enrollment/assign",
@@ -3072,7 +3072,7 @@ async def test_enrollment_assign_rejects_non_admin_non_leader(bridge_config, cli
 
 # ---------------------------------------------------------------------------
 # Guests (2026-08-15) — GET /api/cwl/guest-search, POST /api/cwl/enrollment/guest. See
-# qapbot/web_bridge.py's _search_cwl_guests docstring: a guest CLAN hit is added via the
+# clashcontrol/web_bridge.py's _search_cwl_guests docstring: a guest CLAN hit is added via the
 # existing POST /api/cwl/clan-config (no separate endpoint), so only the search itself and the
 # guest-PLAYER add need coverage here.
 # ---------------------------------------------------------------------------
@@ -3100,7 +3100,7 @@ async def test_guest_search_get_rejects_non_admin(bridge_config, client, monkeyp
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_guest_search_returns_clan_hits_excluding_already_participating(db, bridge_config, client, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "801", {"#CLAN1": "Marines", "#CLAN2": "QCrew"})
     CACHE.db_manager = db
@@ -3138,7 +3138,7 @@ async def test_guest_search_excludes_family_clan_not_yet_configured_for_event(db
     explicitly checked/configured for this event) still showed up as an addable "guest" —
     excluding only already-*participating* clans missed this case. A guild's own family clan is
     never a guest candidate regardless of whether it's been configured for the event at all."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "856", {"#CLAN1": "Marines"})
     CACHE.db_manager = db
@@ -3168,7 +3168,7 @@ async def test_guest_search_excludes_current_member_of_family_clan(db, bridge_co
     showing up as an addable "guest" whenever they had no cwl_signups row of their own yet (e.g.
     before Start Enrollment has run) — excluding only already-invited signups missed this case.
     A current member of any clan in this guild's own lineup is never a guest candidate."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "857", {"#CLAN1": "Marines"})
     CACHE.db_manager = db
@@ -3196,8 +3196,8 @@ async def test_guest_search_highlights_clan_already_on_another_guilds_roster(db,
     """2026-08-15 (cross-guild shared CWL clans, project owner's spec): a clan already
     participating in ANOTHER guild's event for the same season is still shown (never hidden),
     annotated with already_shared_with so the frontend can highlight it and confirm before add."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import resolve_current_cwl_season
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_current_cwl_season
 
     await _seed_guild_and_clans(db, "811", {"#CLAN1": "Marines"})
     CACHE.db_manager = db
@@ -3248,7 +3248,7 @@ async def test_guest_search_clan_hit_includes_live_tier(db, bridge_config, clien
     always showed tier "—" until the next full page reload, because the search result never
     carried CACHE's live war_league at all — the frontend just hardcoded tier: null when
     constructing the new row."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "810", {"#CLAN1": "Marines"})
     CACHE.db_manager = db
@@ -3276,7 +3276,7 @@ async def test_guest_search_clan_hit_includes_live_tier(db, bridge_config, clien
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_guest_search_returns_player_hit_by_name(db, bridge_config, client, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "802", {"#OUTSIDE_CLAN": "Outside"})
     CACHE.db_manager = db
@@ -3306,7 +3306,7 @@ async def test_guest_search_excludes_already_invited_guest_player(db, bridge_con
     """2026-08-20 fix, live bug report: a player already invited as a guest kept reappearing in
     later searches. A player_tag with an existing cwl_signups row for this event must be
     excluded from the result list, same as an already-participating clan already is."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "805", {"#OUTSIDE_CLAN": "Outside"})
     CACHE.db_manager = db
@@ -3336,7 +3336,7 @@ async def test_guest_search_excludes_already_invited_guest_player(db, bridge_con
 async def test_guest_search_returns_player_hit_via_discord_account_name(db, bridge_config, client, monkeypatch):
     """Searching a Discord display name surfaces that account's linked players directly,
     flattened — not a nested 'discord_user' result type (see _search_cwl_guests docstring)."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "803", {})
     CACHE.db_manager = db
@@ -3365,7 +3365,7 @@ async def test_guest_search_returns_player_hit_via_discord_account_name(db, brid
 async def test_guest_search_raw_unindexed_tag_still_returned(db, bridge_config, client, monkeypatch):
     """A tag the bot has genuinely never seen still comes back as a hit (name = the tag itself)
     so the admin can add it directly — it just can't be DMed until it's real."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "804", {})
     CACHE.db_manager = db
@@ -3389,11 +3389,11 @@ async def test_guest_search_raw_unindexed_tag_still_returned(db, bridge_config, 
 
 # ---------------------------------------------------------------------------
 # CoC API fallback for an unknown-but-well-formed tag (2026-08-20) — see
-# qapbot/web_bridge.py's _resolve_guest_tag_via_coc_api().
+# clashcontrol/web_bridge.py's _resolve_guest_tag_via_coc_api().
 # ---------------------------------------------------------------------------
 
 async def _setup_api_fallback_guild(db, guild_id: str, monkeypatch) -> None:
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, guild_id, {})
     CACHE.db_manager = db
@@ -3413,7 +3413,7 @@ async def test_guest_search_unknown_tag_resolved_as_clan_via_coc_api(db, bridge_
     unverified placeholder entirely."""
     from types import SimpleNamespace
 
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _setup_api_fallback_guild(db, "850", monkeypatch)
 
@@ -3448,7 +3448,7 @@ async def test_guest_search_unknown_tag_resolved_as_player_via_coc_api(db, bridg
     import coc  # type: ignore[import-untyped]
     from types import SimpleNamespace
 
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _setup_api_fallback_guild(db, "851", monkeypatch)
     monkeypatch.setattr(
@@ -3482,7 +3482,7 @@ async def test_guest_search_coc_api_fallback_excludes_already_invited_player(db,
     import coc  # type: ignore[import-untyped]
     from types import SimpleNamespace
 
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _setup_api_fallback_guild(db, "854", monkeypatch)
     event_id = db.create_cwl_event_sync("854", "2026-09", "discordid1")
@@ -3513,7 +3513,7 @@ async def test_guest_search_coc_api_fallback_excludes_current_family_clan_member
     import coc  # type: ignore[import-untyped]
     from types import SimpleNamespace
 
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _setup_api_fallback_guild(db, "855", monkeypatch)
     await db.conn.execute("INSERT OR IGNORE INTO clans (clan_tag, name) VALUES ('#CLAN1', 'Marines')")
@@ -3546,7 +3546,7 @@ async def test_guest_search_tag_of_clan_already_in_table_is_not_offered_as_playe
     be created for a known clan tag in the first place."""
     from types import SimpleNamespace
 
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _setup_api_fallback_guild(db, "853", monkeypatch)
     await _seed_guild_and_clans(db, "853", {"#2CGGVVVJG": "AKATSUKI"})
@@ -3576,7 +3576,7 @@ async def test_guest_search_tag_known_as_both_clan_and_player_still_offers_the_p
     player when it is NOT also a known player in our DB. Here the tag is a clan already in the
     table AND a player in user_players (not in player_name_search, so the prefix search misses it)
     — the player must still come back, as a real hit with its stored name."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _setup_api_fallback_guild(db, "854", monkeypatch)
     await _seed_guild_and_clans(db, "854", {"#2CGGVVVJG": "AKATSUKI"})
@@ -3611,7 +3611,7 @@ async def test_guest_search_unknown_tag_absent_from_coc_api_keeps_raw_placeholde
     name = the tag), and the internal `unverified` marker never reaches the frontend."""
     import coc  # type: ignore[import-untyped]
 
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _setup_api_fallback_guild(db, "852", monkeypatch)
     monkeypatch.setattr(
@@ -3635,7 +3635,7 @@ async def test_guest_search_unknown_tag_absent_from_coc_api_keeps_raw_placeholde
 async def test_guest_search_db_hit_never_triggers_coc_api(db, bridge_config, client, monkeypatch):
     """The fallback is a last resort: any real DB hit must short-circuit it, so a normal search
     never costs a CoC API call."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _setup_api_fallback_guild(db, "853", monkeypatch)
     CACHE.clan_name_cache = {"#KN0WNCLAN": {"name": "Known Clan"}}
@@ -3660,8 +3660,8 @@ async def test_guest_search_api_miss_is_negative_cached(db, bridge_config, clien
     non-existent tag doesn't re-issue two API calls each time."""
     import coc  # type: ignore[import-untyped]
 
-    from qapbot.cache_manager import CACHE
-    from qapbot import web_bridge
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol import web_bridge
 
     await _setup_api_fallback_guild(db, "854", monkeypatch)
     web_bridge._guest_tag_api_misses.clear()
@@ -3685,7 +3685,7 @@ async def test_guest_search_at_prefix_restricts_to_discord_display_name_only(db,
     expression starts with @ assume it is a discord user and only search in that name space."
     A clan name and a plain (non-linked-account) player name that both also match the needle must
     be excluded — only players reached via a matching Discord display name come back."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "820", {})
     CACHE.db_manager = db
@@ -3717,7 +3717,7 @@ async def test_guest_search_hash_prefix_restricts_to_tag_matching_only(db, bridg
     starts with a # assume that we are talking about a clan, player or family tag." A clan whose
     NAME matches the needle but whose tag doesn't must be excluded once # restricts to tag-only
     matching."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "821", {})
     CACHE.db_manager = db
@@ -3748,7 +3748,7 @@ async def test_guest_search_interleaves_and_caps_clan_and_player_hits(db, bridge
     """2026-08-16, live-testing feedback, project owner's spec, verbatim: "Do the interleave, cap
     each type 12 / 12" — a broad query matching more than 12 of each type must not let one type
     bury the other; the result alternates clan/player and stops at 12 of each (24 total here)."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "822", {})
     CACHE.db_manager = db
@@ -3804,7 +3804,7 @@ async def test_guest_search_below_minimum_text_length_returns_empty(db, bridge_c
     """A plain-text query under GUEST_SEARCH_MIN_NEEDLE_TEXT (3) must reject before any scan,
     even though the CACHE contents would otherwise match — and must never reach
     get_player_links_sync (the call whose unbounded input caused "too many SQL variables")."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "830", {"#CLAN1": "QCrew"})
     CACHE.db_manager = db
@@ -3832,7 +3832,7 @@ async def test_guest_search_below_minimum_text_length_returns_empty(db, bridge_c
 @pytest.mark.asyncio
 async def test_guest_search_below_minimum_at_prefix_needle_returns_empty(db, bridge_config, client, monkeypatch):
     """@needle under GUEST_SEARCH_MIN_NEEDLE_TAG (2) must reject before scanning user_accounts."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "831", {})
     CACHE.db_manager = db
@@ -3863,7 +3863,7 @@ async def test_guest_search_below_minimum_at_prefix_needle_returns_empty(db, bri
 async def test_guest_search_below_minimum_hash_prefix_needle_returns_empty(db, bridge_config, client, monkeypatch):
     """#2 -> needle "2" (length 1) must reject; this is the exact PROD incident pattern (a short
     '#'-prefixed query matching millions of player_name_index entries)."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "832", {})
     CACHE.db_manager = db
@@ -3893,7 +3893,7 @@ async def test_guest_search_below_minimum_hash_prefix_needle_returns_empty(db, b
 async def test_guest_search_hash_prefix_caps_player_hits_at_twelve(db, bridge_config, client, monkeypatch):
     """The # tag-mode scan over player_name_index must stop collecting once GUEST_SEARCH_CAP
     (12) hits exist, not after scanning the whole index."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "833", {})
     CACHE.db_manager = db
@@ -3924,7 +3924,7 @@ async def test_guest_search_hash_prefix_uses_sqlite(db, bridge_config, client, m
     (SQLite, PK-prefix-indexed) — proven here by seeding ONLY the real DB (via
     update_player_name_index_sync, which also populates player_name_search); a correct result
     is only possible if the SQLite path actually ran."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "835", {})
     CACHE.db_manager = db
@@ -3957,7 +3957,7 @@ async def test_guest_search_text_query_caps_clan_hits_and_db_check_calls(db, bri
     (find_cwl_clan_participation_across_guilds_sync) only ever runs for the capped set, not once
     per matching clan found during the scan — this is Step 2's "≤12 DB queries per search, ever"
     guarantee."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     clan_tags = {f"#CLAN{i:02d}": f"Test Clan {i:02d}" for i in range(20)}
     await _seed_guild_and_clans(db, "834", clan_tags)
@@ -3995,7 +3995,7 @@ async def test_guest_search_text_query_caps_clan_hits_and_db_check_calls(db, bri
 async def test_guest_search_still_returns_normal_results_when_threaded(db, bridge_config, client, monkeypatch):
     """Behavioral no-op check: routing the real _search_cwl_guests_sync through
     asyncio.to_thread must not change what a normal (non-concurrent) query returns."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "840", {"#CLAN1": "Marines"})
     CACHE.db_manager = db
@@ -4036,7 +4036,7 @@ async def test_guest_search_coalesces_a_queued_keystroke_superseded_by_a_newer_o
     calling the underlying search function. "third" then runs for real. So the underlying search
     function must be called exactly twice ("first", "third") — never for "second" — which is
     the actual pile-up-prevention property Step 3 exists for."""
-    import qapbot.web_bridge as web_bridge_module
+    import clashcontrol.web_bridge as web_bridge_module
 
     started = threading.Event()
     release = threading.Event()
@@ -4120,7 +4120,7 @@ async def test_clan_names_get_rejects_non_admin_non_leader(bridge_config, client
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_clan_names_resolves_known_tags_and_omits_unknown_ones(bridge_config, client, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     CACHE.clan_name_cache = {"#CLAN1": {"name": "Marines"}, "#CLAN2": {"name": "QCrew"}}
 
@@ -4162,7 +4162,7 @@ async def test_clan_names_empty_tags_returns_empty(bridge_config, client, monkey
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_enrollment_get_includes_version_field(db, bridge_config, client, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "8600", {})
     CACHE.db_manager = db
@@ -4193,7 +4193,7 @@ async def test_enrollment_wait_rejects_missing_secret(bridge_config, client):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_enrollment_wait_stale_known_version_returns_immediately(db, bridge_config, client, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "8601", {})
     CACHE.db_manager = db
@@ -4214,8 +4214,8 @@ async def test_enrollment_wait_stale_known_version_returns_immediately(db, bridg
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_enrollment_wait_times_out_with_no_write(db, bridge_config, client, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    import qapbot.web_bridge as web_bridge_module
+    from clashcontrol.cache_manager import CACHE
+    import clashcontrol.web_bridge as web_bridge_module
 
     await _seed_guild_and_clans(db, "8602", {})
     CACHE.db_manager = db
@@ -4240,8 +4240,8 @@ async def test_enrollment_wait_resolves_on_concurrent_write(db, bridge_config, c
     """A parked wait must be released promptly by a real write through the normal POST endpoint —
     not just by calling bump_enrollment_version() directly — proving the actual handler wiring,
     not just the primitive."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import resolve_current_cwl_season
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_current_cwl_season
 
     await _seed_guild_and_clans(db, "8603", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -4258,7 +4258,7 @@ async def test_enrollment_wait_resolves_on_concurrent_write(db, bridge_config, c
 
     import QBcore
     monkeypatch.setattr(QBcore, "bot", _fake_admin_bot(8603, 42, is_admin=True))
-    monkeypatch.setattr("qapbot.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
+    monkeypatch.setattr("clashcontrol.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
 
     wait_task = asyncio.create_task(client.get(
         "/api/cwl/enrollment/wait?guild_id=8603&discord_user_id=42&known_version=0",
@@ -4283,8 +4283,8 @@ async def test_enrollment_wait_resolves_on_concurrent_write(db, bridge_config, c
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_enrollment_wait_waiter_cap_overflow_returns_changed_immediately(db, bridge_config, client, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    import qapbot.web_bridge as web_bridge_module
+    from clashcontrol.cache_manager import CACHE
+    import clashcontrol.web_bridge as web_bridge_module
 
     await _seed_guild_and_clans(db, "8604", {})
     CACHE.db_manager = db
@@ -4328,7 +4328,7 @@ async def test_enrollment_wait_cross_guild_shared_clan_write_releases_other_guil
     itself (2026-08-19: the board's 1-click admin confirm control this test used to trigger the
     write with was removed entirely — deprecated, dead code — so the write is now made the same
     way a real admin actually makes one)."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     CACHE.db_manager = db
     CACHE.clan_name_cache = {"#CLAN1": {"name": "Alpha"}}
@@ -4343,7 +4343,7 @@ async def test_enrollment_wait_cross_guild_shared_clan_write_releases_other_guil
 
     import QBcore
     monkeypatch.setattr(QBcore, "bot", _fake_admin_bot(8605, 42, is_admin=True))
-    monkeypatch.setattr("qapbot.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
+    monkeypatch.setattr("clashcontrol.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
 
     # Guild 8606 (the follower) is the one waiting.
     wait_task = asyncio.create_task(client.get(
@@ -4375,11 +4375,11 @@ async def test_activity_closed_does_not_bump_enrollment_version(bridge_config, c
     on every close, even when nothing changed — deliberately excluded from bump_enrollment_version
     (see that handler's own docstring) so a plain Cancel/back-gesture close doesn't wake every
     parked waiter for no reason."""
-    import qapbot.web_bridge as web_bridge_module
+    import clashcontrol.web_bridge as web_bridge_module
 
     import QBcore
     monkeypatch.setattr(QBcore, "bot", _fake_admin_bot(8609, 42, is_admin=True))
-    monkeypatch.setattr("qapbot.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
+    monkeypatch.setattr("clashcontrol.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
 
     before = web_bridge_module._enrollment_version.get("8609", 0)
 
@@ -4431,7 +4431,7 @@ async def test_player_stats_get_rejects_non_admin_non_leader(bridge_config, clie
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_player_stats_no_history_returns_null_fields(db, bridge_config, client, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "841", {})
     CACHE.db_manager = db
@@ -4453,7 +4453,7 @@ async def test_player_stats_no_history_returns_null_fields(db, bridge_config, cl
 async def test_player_stats_returns_recent_cwl_stats(db, bridge_config, client, monkeypatch):
     from datetime import datetime, timezone
 
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "842", {"#CLAN1": "Marines"})
     CACHE.db_manager = db
@@ -4503,8 +4503,8 @@ async def test_player_stats_returns_recent_cwl_stats(db, bridge_config, client, 
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_player_stats_caches_repeat_lookups_for_same_tag(db, bridge_config, client, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    import qapbot.web_bridge as web_bridge_module
+    from clashcontrol.cache_manager import CACHE
+    import clashcontrol.web_bridge as web_bridge_module
     import QBhelperfunctions
 
     web_bridge_module.clear_player_stats_cache()
@@ -4539,8 +4539,8 @@ async def test_player_stats_caches_repeat_lookups_for_same_tag(db, bridge_config
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_player_stats_cache_expires_after_ttl(db, bridge_config, client, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    import qapbot.web_bridge as web_bridge_module
+    from clashcontrol.cache_manager import CACHE
+    import clashcontrol.web_bridge as web_bridge_module
     import QBhelperfunctions
 
     web_bridge_module.clear_player_stats_cache()
@@ -4591,8 +4591,8 @@ async def test_player_stats_cache_expires_after_ttl(db, bridge_config, client, m
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_player_stats_cache_cleared_by_clear_player_stats_cache(db, bridge_config, client, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    import qapbot.web_bridge as web_bridge_module
+    from clashcontrol.cache_manager import CACHE
+    import clashcontrol.web_bridge as web_bridge_module
     import QBhelperfunctions
 
     web_bridge_module.clear_player_stats_cache()
@@ -4631,7 +4631,7 @@ async def test_player_stats_cache_cleared_by_clear_player_stats_cache(db, bridge
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_enrollment_guest_creates_signup_row(db, bridge_config, client, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "806", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -4642,7 +4642,7 @@ async def test_enrollment_guest_creates_signup_row(db, bridge_config, client, mo
 
     import QBcore
     monkeypatch.setattr(QBcore, "bot", _fake_admin_bot(806, 42, is_admin=True))
-    monkeypatch.setattr("qapbot.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
+    monkeypatch.setattr("clashcontrol.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
 
     resp = await client.post(
         "/api/cwl/enrollment/guest",
@@ -4670,7 +4670,7 @@ async def test_enrollment_guest_never_sends_an_immediate_dm(db, bridge_config, c
     branch are gone entirely (even with a linked discord_id, which used to be enough to trigger
     an immediate send). The DM only ever goes out later, via Start Enrollment or the rule-h
     "notify new pool members" flow."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "807", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -4681,9 +4681,9 @@ async def test_enrollment_guest_never_sends_an_immediate_dm(db, bridge_config, c
 
     import QBcore
     monkeypatch.setattr(QBcore, "bot", _fake_admin_bot(807, 42, is_admin=True))
-    monkeypatch.setattr("qapbot.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
+    monkeypatch.setattr("clashcontrol.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
     send_dm_mock = AsyncMock(return_value=(True, "sent"))
-    monkeypatch.setattr("qapbot.QBdiscocmdshelper_cwl.send_cwl_signup_template_dm", send_dm_mock)
+    monkeypatch.setattr("clashcontrol.QBdiscocmdshelper_cwl.send_cwl_signup_template_dm", send_dm_mock)
 
     resp = await client.post(
         "/api/cwl/enrollment/guest",
@@ -4742,7 +4742,7 @@ async def test_enrollment_guest_rejects_non_admin(bridge_config, client, monkeyp
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_shared_clan_evict_owner_removes_target(db, bridge_config, client, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "820", {"#CLAN1": "Alpha"})
     await db.conn.execute("INSERT OR IGNORE INTO guild_config (guild_id) VALUES ('821')")
@@ -4760,7 +4760,7 @@ async def test_shared_clan_evict_owner_removes_target(db, bridge_config, client,
 
     import QBcore
     monkeypatch.setattr(QBcore, "bot", _fake_admin_bot(820, 42, is_admin=True))
-    monkeypatch.setattr("qapbot.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
+    monkeypatch.setattr("clashcontrol.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
 
     resp = await client.post(
         "/api/cwl/shared-clan/evict",
@@ -4775,7 +4775,7 @@ async def test_shared_clan_evict_owner_removes_target(db, bridge_config, client,
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_shared_clan_evict_rejects_non_owner_guild(db, bridge_config, client, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "822", {"#CLAN1": "Alpha"})
     await db.conn.execute("INSERT OR IGNORE INTO guild_config (guild_id) VALUES ('823')")
@@ -4824,8 +4824,8 @@ async def test_shared_clan_evict_rejects_non_admin(bridge_config, client, monkey
 async def test_clan_config_get_reports_shared_with_info(db, bridge_config, client, monkeypatch):
     """The Configure Participating Clans GET payload's new shared_with field (2026-08-15) — used
     by the frontend to show the shared badge and, for the owner, the evict affordance."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import resolve_current_cwl_season
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_current_cwl_season
 
     await _seed_guild_and_clans(db, "826", {"#CLAN1": "Alpha"})
     await db.conn.execute("INSERT OR IGNORE INTO guild_config (guild_id) VALUES ('827')")
@@ -4880,7 +4880,7 @@ async def test_clan_config_get_reports_shared_with_even_when_currently_unchecked
     unchecked and saved again, got a payload with shared_with=null for that clan on the very
     next load — even though the clan's real cwl_shared_clans record was untouched by any of that
     and it was still, in fact, shared."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "828", {"#CLAN1": "Alpha"})
     await db.conn.execute("INSERT OR IGNORE INTO guild_config (guild_id) VALUES ('829')")
@@ -4891,7 +4891,7 @@ async def test_clan_config_get_reports_shared_with_even_when_currently_unchecked
     CACHE.subscriptions = {}
     CACHE.clan_families = {}
 
-    from qapbot.QBdiscocmdshelper_cwl import resolve_current_cwl_season
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_current_cwl_season
     season = resolve_current_cwl_season()
     event_id = db.create_cwl_event_sync("828", season, "111")
     other_event_id = db.create_cwl_event_sync("829", season, "222")
@@ -4937,7 +4937,7 @@ async def test_clan_config_get_shows_owners_roster_size_for_follower(db, bridge_
     already-shared clan — unlike the Manage Enrollment board, which already deferred to the
     owner. A follower must see the OWNER's canonical settings here too, never its own stale
     local copy."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     CACHE.db_manager = db
     CACHE.clan_name_cache = {"#CLAN1": {"name": "Alpha"}}
@@ -4975,7 +4975,7 @@ async def test_clan_config_post_from_follower_cannot_diverge_shared_settings(db,
     """The write-side half of the same guard: even if a follower's form somehow still submits a
     different roster_size/cwl_start_at for an already-shared clan, the save must silently keep
     the owner's canonical values — never persist a divergent local copy."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     CACHE.db_manager = db
     CACHE.clan_name_cache = {"#CLAN1": {"name": "Alpha"}}
@@ -4996,7 +4996,7 @@ async def test_clan_config_post_from_follower_cannot_diverge_shared_settings(db,
     bot = MagicMock()
     bot.get_guild = MagicMock(side_effect=lambda gid: follower_guild if gid == 843 else (owner_guild if gid == 842 else None))
     monkeypatch.setattr(QBcore, "bot", bot)
-    monkeypatch.setattr("qapbot.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
+    monkeypatch.setattr("clashcontrol.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
 
     resp = await client.post(
         "/api/cwl/clan-config",
@@ -5037,7 +5037,7 @@ async def _seed_shared_clan_pair(db: WarHistoryDB, owner_guild_id: str, follower
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_enrollment_get_uses_owner_roster_size_for_shared_clan(db, bridge_config, client, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     CACHE.db_manager = db
     CACHE.clan_name_cache = {"#CLAN1": {"name": "Alpha"}}
@@ -5072,7 +5072,7 @@ async def test_shared_clan_add_remove_readd_flow_stays_consistent(db, bridge_con
     dangling as "still sharing" something it turned off), and the clan's current members must end
     up visible with a real status after step 4 even though most of them have no prior CWL history
     in this exact clan (the auto-assign-on-add visibility-seed fix)."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     CACHE.db_manager = db
     CACHE.clan_name_cache = {"#CLAN1": {"name": "Alpha"}}
@@ -5138,8 +5138,8 @@ async def test_shared_clan_add_remove_readd_flow_stays_consistent(db, bridge_con
     bot = MagicMock()
     bot.get_guild = MagicMock(side_effect=lambda gid: acting_guild if gid == 851 else (home_guild if gid == 850 else None))
     monkeypatch.setattr(QBcore, "bot", bot)
-    monkeypatch.setattr("qapbot.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
-    monkeypatch.setattr("qapbot.ui_cwl_roster.notify_cwl_clan_shared", AsyncMock())
+    monkeypatch.setattr("clashcontrol.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
+    monkeypatch.setattr("clashcontrol.ui_cwl_roster.notify_cwl_clan_shared", AsyncMock())
 
     async def _save(participating: bool) -> None:
         resp = await client.post(
@@ -5206,7 +5206,7 @@ async def test_foreign_guest_conversion_and_purge_end_to_end_through_real_endpoi
     they disappear from guild 853's roster AND pool entirely — verified through the actual
     POST /api/cwl/clan-config and POST /api/cwl/enrollment/assign endpoints, not by calling the
     underlying helpers directly, to prove the wiring itself works end to end."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     CACHE.db_manager = db
     CACHE.clan_name_cache = {"#CLAN1": {"name": "Alpha"}, "#PRIVATE": {"name": "Beta"}}
@@ -5223,7 +5223,7 @@ async def test_foreign_guest_conversion_and_purge_end_to_end_through_real_endpoi
 
     import QBcore
     monkeypatch.setattr(QBcore, "bot", _fake_admin_bot(853, 42, is_admin=True))
-    monkeypatch.setattr("qapbot.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
+    monkeypatch.setattr("clashcontrol.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
 
     # Step 1: guild 853 drags #REALMEMBER (a real #CLAN1 member) into its own private #PRIVATE.
     resp = await client.post(
@@ -5280,7 +5280,7 @@ async def test_drag_out_of_orphaned_column_survives_clan_reactivation(db, bridge
     deactivated origin clan's row silently survived — and reactivating that clan later
     (sync_cwl_shared_clan_roster_to_local_pools) snapped the player right back to it, undoing the
     reassignment."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     CACHE.db_manager = db
     CACHE.clan_name_cache = {"#CLAN1": {"name": "StayCalm"}, "#QCREW": {"name": "The QCrew"}}
@@ -5298,7 +5298,7 @@ async def test_drag_out_of_orphaned_column_survives_clan_reactivation(db, bridge
 
     import QBcore
     monkeypatch.setattr(QBcore, "bot", _fake_admin_bot(860, 42, is_admin=True))
-    monkeypatch.setattr("qapbot.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
+    monkeypatch.setattr("clashcontrol.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
 
     # Step 1: guild 860 detaches #CLAN1 — QManiac becomes an orphaned local assignment there.
     resp = await client.post(
@@ -5358,7 +5358,7 @@ async def test_enrollment_get_shows_owners_signup_status_for_unassigned_shared_c
     yet (so the roster-merge override below doesn't touch them) still sits in the general pool via
     plain current-membership; if the OWNER guild's own cwl_signups already recorded a real status
     for that same real player, show it instead of a hardcoded blank."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     CACHE.db_manager = db
     CACHE.clan_name_cache = {"#CLAN1": {"name": "Alpha"}}
@@ -5391,7 +5391,7 @@ async def test_enrollment_get_shows_owners_signup_status_for_unassigned_shared_c
 async def test_enrollment_get_shows_identical_roster_from_either_guild(db, bridge_config, client, monkeypatch):
     """The core claim of this feature: a player assigned to the shared clan via one guild's
     board shows up identically when the OTHER guild builds its own payload."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     CACHE.db_manager = db
     CACHE.clan_name_cache = {"#CLAN1": {"name": "Alpha"}}
@@ -5435,7 +5435,7 @@ async def test_enrollment_get_shows_auto_assigned_shared_guest_as_pending_not_co
     with set_cwl_shared_clan_player_assignment_sync, which never touches `status` at all — the
     board must show the honest 'pending' default (nobody actually responded), while the player
     still lands correctly in the column via the separate `assigned` column."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     CACHE.db_manager = db
     CACHE.clan_name_cache = {"#CLAN1": {"name": "Alpha"}}
@@ -5462,7 +5462,7 @@ async def test_enrollment_get_shows_auto_assigned_shared_guest_as_pending_not_co
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_enrollment_assign_to_shared_clan_writes_to_shared_table(db, bridge_config, client, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     CACHE.db_manager = db
     CACHE.server_config["836"] = {"member_clans": ["#CLAN1"], "member_families": []}
@@ -5472,7 +5472,7 @@ async def test_enrollment_assign_to_shared_clan_writes_to_shared_table(db, bridg
 
     import QBcore
     monkeypatch.setattr(QBcore, "bot", _fake_admin_bot(836, 42, is_admin=True))
-    monkeypatch.setattr("qapbot.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
+    monkeypatch.setattr("clashcontrol.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
 
     resp = await client.post(
         "/api/cwl/enrollment/assign",
@@ -5498,7 +5498,7 @@ async def test_enrollment_assign_to_shared_clan_writes_to_shared_table(db, bridg
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_enrollment_assign_away_from_shared_clan_removes_shared_row(db, bridge_config, client, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     CACHE.db_manager = db
     CACHE.server_config["838"] = {"member_clans": [], "member_families": []}
@@ -5508,7 +5508,7 @@ async def test_enrollment_assign_away_from_shared_clan_removes_shared_row(db, br
 
     import QBcore
     monkeypatch.setattr(QBcore, "bot", _fake_admin_bot(838, 42, is_admin=True))
-    monkeypatch.setattr("qapbot.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
+    monkeypatch.setattr("clashcontrol.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
 
     # Drag to Unassigned (clan_tag: null).
     resp = await client.post(
@@ -5534,7 +5534,7 @@ async def test_activity_closed_refreshes_hub_message(db, bridge_config, client, 
 
     monkeypatch.setattr(QBcore, "bot", _fake_admin_bot(870, 42, is_admin=True))
     refresh_mock = AsyncMock()
-    monkeypatch.setattr("qapbot.ui_cwl_roster.refresh_cwl_management_hub_message", refresh_mock)
+    monkeypatch.setattr("clashcontrol.ui_cwl_roster.refresh_cwl_management_hub_message", refresh_mock)
 
     resp = await client.post(
         "/api/cwl/activity-closed",
@@ -5590,7 +5590,7 @@ async def test_activity_closed_never_fails_when_hub_refresh_errors(db, bridge_co
 
     monkeypatch.setattr(QBcore, "bot", _fake_admin_bot(870, 42, is_admin=True))
     monkeypatch.setattr(
-        "qapbot.ui_cwl_roster.refresh_cwl_management_hub_message",
+        "clashcontrol.ui_cwl_roster.refresh_cwl_management_hub_message",
         AsyncMock(side_effect=RuntimeError("boom")),
     )
 
@@ -5632,7 +5632,7 @@ def _fake_dm_bot(guild_id: int, discord_user_id: int, deleted_message_ids: list)
 
 async def _seed_status_event(db, guild_id: str, season: str = "2026-09"):
     """One signup_open event with a single participating clan and one linked, pooled player."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, guild_id, {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -5659,14 +5659,14 @@ async def _seed_status_event(db, guild_id: str, season: str = "2026-09"):
 async def test_enrollment_status_confirmed_writes_local_and_global_and_sends_no_dm(
     db, bridge_config, client, monkeypatch,
 ):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     event_id = await _seed_status_event(db, "840")
     db.upsert_cwl_signup_sync(event_id, "#P1", "PlayerOne", "70", None, "template_confirm", "pending")
 
     import QBcore
     monkeypatch.setattr(QBcore, "bot", _fake_admin_bot(840, 42, is_admin=True))
-    monkeypatch.setattr("qapbot.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
+    monkeypatch.setattr("clashcontrol.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
     sent = []
     monkeypatch.setattr(
         CACHE, "send_user_dm_detailed",
@@ -5705,7 +5705,7 @@ async def test_enrollment_status_declined_creates_a_signup_row_when_none_existed
 
     import QBcore
     monkeypatch.setattr(QBcore, "bot", _fake_admin_bot(841, 42, is_admin=True))
-    monkeypatch.setattr("qapbot.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
+    monkeypatch.setattr("clashcontrol.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
 
     resp = await client.post(
         "/api/cwl/enrollment/status",
@@ -5726,8 +5726,8 @@ async def test_enrollment_status_declined_creates_a_signup_row_when_none_existed
 async def test_enrollment_status_pending_retracts_old_dm_clears_dm_sent_and_resends(
     db, bridge_config, client, monkeypatch,
 ):
-    from qapbot import config as config_module
-    from qapbot.cache_manager import CACHE
+    from clashcontrol import config as config_module
+    from clashcontrol.cache_manager import CACHE
 
     monkeypatch.setattr(
         config_module, "CONFIG",
@@ -5744,7 +5744,7 @@ async def test_enrollment_status_pending_retracts_old_dm_clears_dm_sent_and_rese
     deleted: list = []
     import QBcore
     monkeypatch.setattr(QBcore, "bot", _fake_dm_bot(842, 42, deleted))
-    monkeypatch.setattr("qapbot.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
+    monkeypatch.setattr("clashcontrol.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
 
     contacted = []
 
@@ -5787,7 +5787,7 @@ async def test_enrollment_status_pending_retracts_old_dm_clears_dm_sent_and_rese
 async def test_enrollment_status_pending_for_unlinked_player_still_resets_but_reports_unlinked(
     db, bridge_config, client, monkeypatch,
 ):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "843", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -5802,7 +5802,7 @@ async def test_enrollment_status_pending_for_unlinked_player_still_resets_but_re
 
     import QBcore
     monkeypatch.setattr(QBcore, "bot", _fake_admin_bot(843, 42, is_admin=True))
-    monkeypatch.setattr("qapbot.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
+    monkeypatch.setattr("clashcontrol.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
     contacted = []
     monkeypatch.setattr(
         CACHE, "send_user_dm_detailed",
@@ -5839,7 +5839,7 @@ async def test_enrollment_status_propagates_to_another_guild_pooling_the_same_pl
 
     import QBcore
     monkeypatch.setattr(QBcore, "bot", _fake_admin_bot(844, 42, is_admin=True))
-    monkeypatch.setattr("qapbot.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
+    monkeypatch.setattr("clashcontrol.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
 
     resp = await client.post(
         "/api/cwl/enrollment/status",
@@ -5859,15 +5859,15 @@ async def test_player_dm_button_overrides_a_later_admin_status_last_action_wins(
     while the player's DM is still sitting unanswered, then the player clicks Opt Out. The
     player's answer is the later action, so it must win — which it does precisely because
     Confirmed never retracted their DM."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import CwlSignupResponseButton
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import CwlSignupResponseButton
 
     event_id = await _seed_status_event(db, "846")
     db.upsert_cwl_signup_sync(event_id, "#P1", "PlayerOne", "70", None, "template_confirm", "pending")
 
     import QBcore
     monkeypatch.setattr(QBcore, "bot", _fake_admin_bot(846, 42, is_admin=True))
-    monkeypatch.setattr("qapbot.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
+    monkeypatch.setattr("clashcontrol.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
 
     resp = await client.post(
         "/api/cwl/enrollment/status",
@@ -5898,7 +5898,7 @@ async def test_enrollment_status_rejects_bad_status_non_admin_and_missing_event(
     import QBcore
 
     monkeypatch.setattr(QBcore, "bot", _fake_admin_bot(847, 42, is_admin=True))
-    monkeypatch.setattr("qapbot.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
+    monkeypatch.setattr("clashcontrol.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
 
     # 400 — 'withdrawn' is legacy-only and deliberately not admin-settable.
     resp = await client.post(
@@ -5940,7 +5940,7 @@ async def test_enrollment_status_rejects_bad_status_non_admin_and_missing_event(
 async def test_enrollment_status_rejects_a_draft_event(db, bridge_config, client, monkeypatch):
     """Nothing has been enrolled yet in a draft event, so there is no status to override — the
     same guard notify_new_cwl_pool_members() already applies before DMing anyone."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "849", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -5971,7 +5971,7 @@ async def test_enrollment_status_pending_never_redms_a_stale_owner_of_an_unassig
     snapshots (cwl_signups.dmed_discord_id and cwl_player_season_status.dmed_discord_id) still
     name whoever was DMed months ago — falling back to them would re-stamp that stale owner AND
     aim a fresh DM at someone who no longer owns the account."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "850", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -5999,7 +5999,7 @@ async def test_enrollment_status_pending_never_redms_a_stale_owner_of_an_unassig
     deleted: list = []
     import QBcore
     monkeypatch.setattr(QBcore, "bot", _fake_dm_bot(850, 42, deleted))
-    monkeypatch.setattr("qapbot.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
+    monkeypatch.setattr("clashcontrol.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
     contacted = []
     monkeypatch.setattr(
         CACHE, "send_user_dm_detailed",
@@ -6051,7 +6051,7 @@ async def _link_player_prefs_account(
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_player_prefs_get_no_linked_accounts_returns_empty(db, bridge_config, client):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     CACHE.db_manager = db
     await db.conn.execute("INSERT OR IGNORE INTO guild_config (guild_id) VALUES ('950')")
@@ -6074,7 +6074,7 @@ async def test_player_prefs_get_no_linked_accounts_returns_empty(db, bridge_conf
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_player_prefs_get_one_account_no_event(db, bridge_config, client):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     CACHE.db_manager = db
     await db.conn.execute("INSERT OR IGNORE INTO guild_config (guild_id) VALUES ('951')")
@@ -6103,7 +6103,7 @@ async def test_player_prefs_get_one_account_no_event(db, bridge_config, client):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_player_prefs_get_three_accounts_sorted_by_name(db, bridge_config, client):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     CACHE.db_manager = db
     await db.conn.execute("INSERT OR IGNORE INTO guild_config (guild_id) VALUES ('952')")
@@ -6124,8 +6124,8 @@ async def test_player_prefs_get_three_accounts_sorted_by_name(db, bridge_config,
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_player_prefs_get_season_rows_assigned_and_unassigned(db, bridge_config, client):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import assign_cwl_player_sync
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import assign_cwl_player_sync
 
     await _seed_guild_and_clans(db, "953", {"#CLANX": "Xylo"})
     CACHE.db_manager = db
@@ -6164,7 +6164,7 @@ async def test_player_prefs_get_season_rows_assigned_and_unassigned(db, bridge_c
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_player_prefs_post_applies_change_and_returns_rebuilt_payload(db, bridge_config, client):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     CACHE.db_manager = db
     await db.conn.execute("INSERT OR IGNORE INTO guild_config (guild_id) VALUES ('954')")
@@ -6189,7 +6189,7 @@ async def test_player_prefs_post_applies_change_and_returns_rebuilt_payload(db, 
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_player_prefs_post_null_player_tag_applies_to_all_owned_accounts(db, bridge_config, client):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     CACHE.db_manager = db
     await db.conn.execute("INSERT OR IGNORE INTO guild_config (guild_id) VALUES ('955')")
@@ -6230,7 +6230,7 @@ async def test_get_player_links_sync_returns_preferred_league_rank(db):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_player_prefs_post_rejects_a_player_tag_owned_by_someone_else(db, bridge_config, client):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     CACHE.db_manager = db
     await db.conn.execute("INSERT OR IGNORE INTO guild_config (guild_id) VALUES ('956')")
@@ -6316,7 +6316,7 @@ async def test_player_prefs_status_rejects_a_different_accounts_signup(db, bridg
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_player_prefs_status_rejects_when_enrollment_not_open(db, bridge_config, client):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "959", {"#CLANY": "Yankee"})
     CACHE.db_manager = db
@@ -6341,7 +6341,7 @@ async def test_player_prefs_status_rejects_when_enrollment_not_open(db, bridge_c
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_player_prefs_status_no_event_returns_409(db, bridge_config, client):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     CACHE.db_manager = db
     await db.conn.execute("INSERT OR IGNORE INTO guild_config (guild_id) VALUES ('960')")
@@ -6362,7 +6362,7 @@ async def _seed_cross_guild_invite(db, monkeypatch):
     invited the user's account #X1 into its signup_open 2026-10 event. #X2 is linked but not
     invited anywhere."""
     import QBcore
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, "980", {})
     await _seed_guild_and_clans(db, "981", {"#CLANB": "Bravo"})
@@ -6436,7 +6436,7 @@ async def test_player_prefs_status_acts_on_the_inviting_servers_event(db, bridge
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_admin_may_set_bench_on_an_extended_signup_guild(db, bridge_config, client, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     event_id = await _seed_status_event(db, "860")
     CACHE.server_config["860"]["cwl_signup_mode"] = "extended"
@@ -6444,7 +6444,7 @@ async def test_admin_may_set_bench_on_an_extended_signup_guild(db, bridge_config
 
     import QBcore
     monkeypatch.setattr(QBcore, "bot", _fake_admin_bot(860, 42, is_admin=True))
-    monkeypatch.setattr("qapbot.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
+    monkeypatch.setattr("clashcontrol.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
 
     resp = await client.post(
         "/api/cwl/enrollment/status",
@@ -6462,7 +6462,7 @@ async def test_admin_may_set_bench_on_an_extended_signup_guild(db, bridge_config
 @pytest.mark.asyncio
 async def test_admin_may_not_set_bench_where_it_is_not_enabled(db, bridge_config, client, monkeypatch):
     """Standard sign-up guild, and the player isn't on any extended one either."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     event_id = await _seed_status_event(db, "861")
     CACHE.server_config["861"]["cwl_signup_mode"] = "standard"
@@ -6476,7 +6476,7 @@ async def test_admin_may_not_set_bench_where_it_is_not_enabled(db, bridge_config
 
     import QBcore
     monkeypatch.setattr(QBcore, "bot", _fake_admin_bot(861, 42, is_admin=True))
-    monkeypatch.setattr("qapbot.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
+    monkeypatch.setattr("clashcontrol.ui_cwl_roster.refresh_cwl_management_hub_message", AsyncMock())
 
     resp = await client.post(
         "/api/cwl/enrollment/status",
@@ -6493,7 +6493,7 @@ async def test_admin_may_not_set_bench_where_it_is_not_enabled(db, bridge_config
 async def test_auto_passive_is_never_admin_settable(db, bridge_config, client, monkeypatch):
     """Like auto_confirmed: it means "a standing preference seeded this", which an admin must not
     assert on the player's behalf."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     event_id = await _seed_status_event(db, "862")
     CACHE.server_config["862"]["cwl_signup_mode"] = "extended"
@@ -6516,7 +6516,7 @@ async def test_auto_passive_is_never_admin_settable(db, bridge_config, client, m
 async def test_enrollment_payload_carries_signup_mode_and_per_player_bench_flag(
     db, bridge_config, client, monkeypatch,
 ):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     event_id = await _seed_status_event(db, "863")
     CACHE.server_config["863"]["cwl_signup_mode"] = "extended"
@@ -6545,7 +6545,7 @@ async def test_enrollment_payload_carries_signup_mode_and_per_player_bench_flag(
 async def test_standard_guild_sees_the_real_bench_status_too(db, bridge_config, client, monkeypatch):
     """Project owner's decision: show the player's real status everywhere — a Bench player keeps
     the Bench icon on a standard-sign-up board rather than being disguised as confirmed."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     event_id = await _seed_status_event(db, "864")
     CACHE.server_config["864"]["cwl_signup_mode"] = "standard"
@@ -6583,7 +6583,7 @@ async def _get_screen(client, instance_id, guild_id="71", user_id="72"):
 @pytest.mark.asyncio
 async def test_screen_claimed_by_instance_survives_pop_out_but_not_a_new_launch(bridge_config, client, monkeypatch):
     """The Launch-button bug: /cwl preferences once, and every later Launch reopened it."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     monkeypatch.setattr(CACHE, "pending_cwl_activity_screen", {("71", "72"): "player_prefs"})
     monkeypatch.setattr(CACHE, "cwl_activity_instance_claims", {})
@@ -6598,7 +6598,7 @@ async def test_screen_claimed_by_instance_survives_pop_out_but_not_a_new_launch(
 @pytest.mark.asyncio
 async def test_screen_fresh_click_wins_over_an_instance_claim(bridge_config, client, monkeypatch):
     """Another CWL button clicked while the Activity is still open (same instance)."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     monkeypatch.setattr(CACHE, "pending_cwl_activity_screen", {("71", "72"): "clan_config"})
     monkeypatch.setattr(CACHE, "cwl_activity_instance_claims", {})
@@ -6613,7 +6613,7 @@ async def test_screen_fresh_click_wins_over_an_instance_claim(bridge_config, cli
 @pytest.mark.asyncio
 async def test_screen_without_instance_id_keeps_the_old_non_destructive_read(bridge_config, client, monkeypatch):
     """An Activity client older than #0136 (deploy order): nothing is popped."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     monkeypatch.setattr(CACHE, "pending_cwl_activity_screen", {("71", "72"): "enrollment"})
     monkeypatch.setattr(CACHE, "cwl_activity_instance_claims", {})
@@ -6625,7 +6625,7 @@ async def test_screen_without_instance_id_keeps_the_old_non_destructive_read(bri
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_dm_guild_claimed_by_instance(bridge_config, client, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     monkeypatch.setattr(CACHE, "pending_cwl_dm_guild", {"73": 1145641080621109312})
     monkeypatch.setattr(CACHE, "cwl_activity_instance_claims", {})
@@ -6643,8 +6643,8 @@ async def test_dm_guild_claimed_by_instance(bridge_config, client, monkeypatch):
 
 @pytest.mark.discord
 def test_instance_claims_are_capped(monkeypatch):
-    from qapbot import web_bridge
-    from qapbot.cache_manager import CACHE
+    from clashcontrol import web_bridge
+    from clashcontrol.cache_manager import CACHE
 
     monkeypatch.setattr(CACHE, "cwl_activity_instance_claims", {})
     monkeypatch.setattr(web_bridge, "_MAX_ACTIVITY_INSTANCE_CLAIMS", 3)
@@ -6671,7 +6671,7 @@ async def _i18n_lang(client, **params):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_i18n_discord_locale_beats_guild_language(bridge_config, client):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     CACHE.server_config["920"] = {"language": "de"}
     CACHE.user_accounts.pop("921", None)
@@ -6684,7 +6684,7 @@ async def test_i18n_discord_locale_beats_guild_language(bridge_config, client):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_i18n_manually_chosen_bot_language_beats_discord_locale(bridge_config, client):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     CACHE.user_accounts["922"] = {"user_language": "la", "user_language_locked": True}
 
@@ -6697,7 +6697,7 @@ async def test_i18n_discord_locale_beats_an_auto_bot_language(bridge_config, cli
     """Live PROD finding 2026-09-25: an unlocked ("auto") language is only the bot's own guess
     from an older interaction (it stored "en" for a Spanish Discord) — the current Discord
     language wins on the landing page; without discord_locale the stored one still applies."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     CACHE.user_accounts["925"] = {"user_language": "en", "user_language_locked": False}
 
@@ -6708,7 +6708,7 @@ async def test_i18n_discord_locale_beats_an_auto_bot_language(bridge_config, cli
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_i18n_unsupported_discord_locale_falls_back_to_guild(bridge_config, client):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     CACHE.server_config["923"] = {"language": "de"}
     CACHE.user_accounts.pop("924", None)

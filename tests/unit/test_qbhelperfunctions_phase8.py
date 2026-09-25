@@ -214,7 +214,7 @@ async def test_delete_leaderboard_messages_for_context_builds_mode_string(monkey
         }
         captured["matched"] = bool(predicate("k", sample))
 
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.QBdiscocmdshelper as helper
 
     monkeypatch.setattr(helper, "_delete_messages_by_filter", _fake_delete)
 

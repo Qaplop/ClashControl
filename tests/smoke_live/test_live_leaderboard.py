@@ -26,7 +26,7 @@ def _required_env(name: str) -> str:
 async def test_live_leaderboard_posts_and_deletes_message(review_timeout_seconds: int):
     import discord
 
-    from qapbot.formatting import render_leaderboard
+    from clashcontrol.formatting import render_leaderboard
 
     _required_env("DISCORD_TOKEN_DEV")
     _required_env("DISCORD_GUILD_ID")

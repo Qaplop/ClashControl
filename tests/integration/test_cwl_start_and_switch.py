@@ -17,7 +17,7 @@ import pytest
 
 os.environ.setdefault("DISCORD_TOKEN", "test-token")
 
-from qapbot.db_manager import WarHistoryDB
+from clashcontrol.db_manager import WarHistoryDB
 
 SEASON = "2026-09"
 
@@ -36,7 +36,7 @@ async def db(tmp_path):
 @pytest.fixture(autouse=True)
 def _cache_db(db, monkeypatch):
     """Point CACHE at the temp DB and give every test a clean server_config/user_accounts."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     monkeypatch.setattr(CACHE, "db_manager", db, raising=False)
     monkeypatch.setattr(CACHE, "server_config", {}, raising=False)
@@ -50,7 +50,7 @@ def _dm_guard_off(monkeypatch):
     """CONFIG.cwl_dm_restrict_to_admin defaults to True on this dev machine, which would skip every
     recipient. Rebinding the module-level CONFIG works because _dm_guard_blocks imports it locally
     (same technique as test_cwl_start_enrollment.py's own guard tests)."""
-    import qapbot.config as config_module
+    import clashcontrol.config as config_module
 
     monkeypatch.setattr(
         config_module, "CONFIG",
@@ -59,7 +59,7 @@ def _dm_guard_off(monkeypatch):
 
 
 async def _seed_guild_and_clans(db: WarHistoryDB, guild_id: str, clan_tags=("#CLAN1",)) -> None:
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await db._conn.execute("INSERT OR IGNORE INTO guild_config (guild_id) VALUES (?)", (guild_id,))
     for tag in clan_tags:
@@ -110,7 +110,7 @@ def _assign(db: WarHistoryDB, event_id: int, player_tag: str, clan_tag: str) -> 
 @pytest.mark.asyncio
 async def test_start_targets_split_green_and_amber(db):
     """A player already in their assigned clan is green; one still elsewhere is amber."""
-    from qapbot.QBdiscocmdshelper_cwl import resolve_cwl_announcement_targets_sync
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_cwl_announcement_targets_sync
 
     guild_id = "100"
     await _seed_guild_and_clans(db, guild_id, ("#CLAN1", "#CLAN2"))
@@ -140,7 +140,7 @@ async def test_start_targets_split_green_and_amber(db):
 async def test_start_targets_unknown_current_clan_is_amber(db):
     """No current clan on record must render AMBER, never green — green would assert something we
     cannot back up, while amber's "be in X before Y" stays true wherever they are."""
-    from qapbot.QBdiscocmdshelper_cwl import resolve_cwl_announcement_targets_sync
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_cwl_announcement_targets_sync
 
     guild_id = "101"
     await _seed_guild_and_clans(db, guild_id)
@@ -160,7 +160,7 @@ async def test_start_targets_unknown_current_clan_is_amber(db):
 @pytest.mark.asyncio
 async def test_start_targets_group_one_users_accounts_together(db):
     """A main and an alt in different clans belong in ONE DM, each carrying its own start time."""
-    from qapbot.QBdiscocmdshelper_cwl import resolve_cwl_announcement_targets_sync
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_cwl_announcement_targets_sync
 
     guild_id = "102"
     await _seed_guild_and_clans(db, guild_id, ("#CLAN1", "#CLAN2"))
@@ -188,7 +188,7 @@ async def test_start_targets_group_one_users_accounts_together(db):
 async def test_start_targets_exclude_non_participating_and_notified(db):
     """An assignment pointing at a clan that isn't a column here ("Assigned to other Guild") is
     another guild's business; an already-notified one must not be announced twice."""
-    from qapbot.QBdiscocmdshelper_cwl import resolve_cwl_announcement_targets_sync
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_cwl_announcement_targets_sync
 
     guild_id = "103"
     await _seed_guild_and_clans(db, guild_id, ("#CLAN1", "#OTHER"))
@@ -213,7 +213,7 @@ async def test_start_targets_exclude_non_participating_and_notified(db):
 async def test_start_targets_unlinked_player_is_named_not_dmed(db):
     """An unlinked account can't be reached at all — it must be counted AND named, since that's
     exactly who a lead has to chase by hand."""
-    from qapbot.QBdiscocmdshelper_cwl import resolve_cwl_announcement_targets_sync
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_cwl_announcement_targets_sync
 
     guild_id = "104"
     await _seed_guild_and_clans(db, guild_id)
@@ -232,7 +232,7 @@ async def test_start_targets_unlinked_player_is_named_not_dmed(db):
 
 @pytest.mark.asyncio
 async def test_start_targets_missing_start_time_is_reported(db):
-    from qapbot.QBdiscocmdshelper_cwl import resolve_cwl_announcement_targets_sync
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_cwl_announcement_targets_sync
 
     guild_id = "105"
     await _seed_guild_and_clans(db, guild_id, ("#CLAN1", "#CLAN2"))
@@ -254,7 +254,7 @@ async def test_start_targets_missing_start_time_is_reported(db):
 async def test_start_cwl_refuses_when_a_clan_has_no_start_time(db):
     """The surviving half of the original Phase 4 Finalize gate: no partial send, and the caller
     gets the offending clans back so it can name them."""
-    from qapbot.QBdiscocmdshelper_cwl import announce_cwl_rosters
+    from clashcontrol.QBdiscocmdshelper_cwl import announce_cwl_rosters
 
     guild_id = "110"
     await _seed_guild_and_clans(db, guild_id, ("#CLAN1", "#CLAN2"))
@@ -276,8 +276,8 @@ async def test_start_cwl_refuses_when_a_clan_has_no_start_time(db):
 
 @pytest.mark.asyncio
 async def test_start_cwl_sends_marks_notified_and_announces(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import announce_cwl_rosters
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import announce_cwl_rosters
 
     guild_id = "111"
     await _seed_guild_and_clans(db, guild_id)
@@ -312,8 +312,8 @@ async def test_start_cwl_sends_marks_notified_and_announces(db, monkeypatch):
 @pytest.mark.asyncio
 async def test_start_cwl_amber_dm_carries_the_clan_join_link(db, monkeypatch):
     """The amber variant's whole point (project owner's spec): a direct link to the assigned clan."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import announce_cwl_rosters
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import announce_cwl_rosters
 
     guild_id = "112"
     await _seed_guild_and_clans(db, guild_id, ("#CLAN1", "#CLAN2"))
@@ -342,9 +342,9 @@ async def test_start_cwl_amber_dm_carries_the_clan_join_link(db, monkeypatch):
 async def test_start_cwl_respects_the_dm_guard(db, monkeypatch):
     """The guard that keeps DEV testing from blasting real members must apply here like everywhere
     else — and a guarded recipient must NOT be marked notified, or they'd never be reachable."""
-    import qapbot.config as config_module
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import announce_cwl_rosters
+    import clashcontrol.config as config_module
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import announce_cwl_rosters
 
     guild_id = "113"
     await _seed_guild_and_clans(db, guild_id)
@@ -387,7 +387,7 @@ async def test_start_cwl_respects_the_dm_guard(db, monkeypatch):
     ],
 )
 def test_due_alarm_stage(hours_left, already_sent, expected):
-    from qapbot.QBdiscocmdshelper_cwl import _due_cwl_alarm_stage
+    from clashcontrol.QBdiscocmdshelper_cwl import _due_cwl_alarm_stage
 
     assert _due_cwl_alarm_stage(hours_left, already_sent) == expected
 
@@ -398,8 +398,8 @@ def test_due_alarm_stage(hours_left, already_sent, expected):
 
 @pytest.mark.asyncio
 async def test_switch_sweep_records_a_player_who_moved(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import check_cwl_roster_switches
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import check_cwl_roster_switches
 
     guild_id = "120"
     await _seed_guild_and_clans(db, guild_id, ("#CLAN1", "#CLAN2"))
@@ -431,8 +431,8 @@ async def test_switch_sweep_records_a_player_who_moved(db, monkeypatch):
 @pytest.mark.asyncio
 async def test_switch_sweep_escalates_once_per_stage(db, monkeypatch):
     """An every-cycle sweep must not re-nag inside one threshold window."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import check_cwl_roster_switches
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import check_cwl_roster_switches
 
     guild_id = "121"
     await _seed_guild_and_clans(db, guild_id, ("#CLAN1", "#CLAN2"))
@@ -459,8 +459,8 @@ async def test_switch_sweep_escalates_once_per_stage(db, monkeypatch):
 async def test_switch_sweep_stops_once_the_clan_roster_locks(db, monkeypatch):
     """Both lock triggers, and the fact that a locked clan goes quiet: nagging someone about a
     roster they can no longer join is actively wrong, not merely wasteful."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import check_cwl_roster_switches
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import check_cwl_roster_switches
 
     guild_id = "122"
     await _seed_guild_and_clans(db, guild_id, ("#CLAN1", "#CLAN2"))
@@ -494,7 +494,7 @@ async def test_switch_sweep_stops_once_the_clan_roster_locks(db, monkeypatch):
 async def test_lock_fallback_trigger_is_the_league_group_row(db):
     """A private-warlog clan never yields an is_cwl war row — the cwl_league_groups row is what
     covers it."""
-    from qapbot.QBdiscocmdshelper_cwl import check_cwl_roster_switches
+    from clashcontrol.QBdiscocmdshelper_cwl import check_cwl_roster_switches
 
     guild_id = "123"
     await _seed_guild_and_clans(db, guild_id)
@@ -515,7 +515,7 @@ async def test_lock_fallback_trigger_is_the_league_group_row(db):
 
 @pytest.mark.asyncio
 async def test_lock_is_write_once_across_repeated_sweeps(db):
-    from qapbot.QBdiscocmdshelper_cwl import check_cwl_roster_switches
+    from clashcontrol.QBdiscocmdshelper_cwl import check_cwl_roster_switches
 
     guild_id = "124"
     await _seed_guild_and_clans(db, guild_id)
@@ -540,8 +540,8 @@ async def test_lock_is_write_once_across_repeated_sweeps(db):
 @pytest.mark.asyncio
 async def test_sweep_ignores_events_that_never_started_cwl(db, monkeypatch):
     """Only 'announced' events are monitored — a roster still being edited must not fire alarms."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import check_cwl_roster_switches
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import check_cwl_roster_switches
 
     guild_id = "125"
     await _seed_guild_and_clans(db, guild_id, ("#CLAN1", "#CLAN2"))
@@ -570,8 +570,8 @@ async def test_coordinators_get_one_roster_report_before_the_start(db, monkeypat
     player-alarm stage, 90 minutes earlier and saying nearly the same thing. Two near-identical
     leadership DMs is the same avalanche problem this feature avoids everywhere else, so the
     coordinator path was consolidated onto the richer of the two."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import check_cwl_roster_switches
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import check_cwl_roster_switches
 
     guild_id = "126"
     await _seed_guild_and_clans(db, guild_id, ("#CLAN1", "#CLAN2"))
@@ -607,7 +607,7 @@ async def test_still_missing_section_lists_players_and_locked_clans(db, monkeypa
     the CWL Management Hub can't diverge."""
     from unittest.mock import MagicMock
 
-    from qapbot.QBdiscocmdshelper_cwl import (
+    from clashcontrol.QBdiscocmdshelper_cwl import (
         check_cwl_roster_switches, format_clan_management_cwl_management,
     )
 
@@ -622,7 +622,7 @@ async def test_still_missing_section_lists_players_and_locked_clans(db, monkeypa
         "UPDATE guild_config SET cwl_selected_season = ? WHERE guild_id = ?", (SEASON, guild_id)
     )
     await db._conn.commit()
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     CACHE.server_config[guild_id]["cwl_selected_season"] = SEASON
     await _seed_player(db, "u1", "#P1", "#CLAN2", "Straggler")
     _assign(db, event_id, "#P1", "#CLAN1")
@@ -653,8 +653,8 @@ async def test_still_missing_section_lists_players_and_locked_clans(db, monkeypa
 async def test_unreachable_player_stage_is_still_bumped(db, monkeypatch):
     """An unlinked player can never be DMed — bumping their stage anyway is what stops the sweep
     retrying them every cycle forever. The coordinator escalation covers them instead."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import check_cwl_roster_switches
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import check_cwl_roster_switches
 
     guild_id = "127"
     await _seed_guild_and_clans(db, guild_id, ("#CLAN1", "#CLAN2"))

@@ -15,7 +15,7 @@ import pytest
 
 @pytest.fixture()
 def pending(monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     fresh: dict = {}
     monkeypatch.setattr(CACHE, "pending_registration_dm_guild", fresh)
@@ -38,7 +38,7 @@ def _guild(guild_id: int, name: str = "Clan Server", member_ids=()):
 @pytest.mark.asyncio
 async def test_registration_in_server_sends_ephemeral_hub(mock_interaction, pending):
     import QBdiscordcmds
-    from qapbot.ui_registration import RegistrationView
+    from clashcontrol.ui_registration import RegistrationView
 
     await QBdiscordcmds.registration.callback(mock_interaction)  # type: ignore[arg-type]
 
@@ -54,7 +54,7 @@ async def test_registration_in_server_sends_ephemeral_hub(mock_interaction, pend
 @pytest.mark.asyncio
 async def test_registration_in_dm_without_shared_server_explains(mock_interaction, monkeypatch, pending):
     import QBdiscordcmds
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.QBdiscocmdshelper as helper
 
     monkeypatch.setattr(helper, "get_dm_registration_guild_ids", lambda _client, _uid: [])
     mock_interaction.guild = None
@@ -72,8 +72,8 @@ async def test_registration_in_dm_without_shared_server_explains(mock_interactio
 @pytest.mark.asyncio
 async def test_registration_in_dm_with_one_server_sends_ephemeral_hub(mock_interaction, monkeypatch, pending):
     import QBdiscordcmds
-    import qapbot.QBdiscocmdshelper as helper
-    from qapbot.ui_registration import RegistrationView
+    import clashcontrol.QBdiscocmdshelper as helper
+    from clashcontrol.ui_registration import RegistrationView
 
     monkeypatch.setattr(helper, "get_dm_registration_guild_ids", lambda _client, _uid: [777])
     mock_interaction.guild = None
@@ -93,8 +93,8 @@ async def test_registration_in_dm_with_one_server_sends_ephemeral_hub(mock_inter
 @pytest.mark.asyncio
 async def test_registration_in_dm_with_several_servers_turns_picker_into_hub(mock_interaction, monkeypatch, pending):
     import QBdiscordcmds
-    import qapbot.QBdiscocmdshelper as helper
-    from qapbot.ui_registration import RegistrationView
+    import clashcontrol.QBdiscocmdshelper as helper
+    from clashcontrol.ui_registration import RegistrationView
 
     captured = {}
 
@@ -140,7 +140,7 @@ def test_registration_is_listed_in_help_and_dm_capable():
 
 @pytest.mark.discord
 def test_dm_registration_guild_ids_needs_membership_and_clans(monkeypatch):
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.QBdiscocmdshelper as helper
 
     clans = {1: ["#A"], 2: [], 3: ["#C"]}
     monkeypatch.setattr(helper, "get_guild_clans_including_member_config", lambda gid: clans[gid])
@@ -153,7 +153,7 @@ def test_dm_registration_guild_ids_needs_membership_and_clans(monkeypatch):
 
 @pytest.mark.discord
 def test_get_interaction_guild_prefers_interaction_guild(pending):
-    from qapbot.QBdiscocmdshelper import get_interaction_guild
+    from clashcontrol.QBdiscocmdshelper import get_interaction_guild
 
     interaction = MagicMock()
     pending[str(interaction.user.id)] = 999
@@ -162,7 +162,7 @@ def test_get_interaction_guild_prefers_interaction_guild(pending):
 
 @pytest.mark.discord
 def test_get_interaction_guild_in_dm_uses_recorded_server(pending):
-    from qapbot.QBdiscocmdshelper import get_interaction_guild
+    from clashcontrol.QBdiscocmdshelper import get_interaction_guild
 
     interaction = MagicMock()
     interaction.guild = None
@@ -178,7 +178,7 @@ def test_get_interaction_guild_in_dm_uses_recorded_server(pending):
 
 @pytest.mark.discord
 def test_resolve_guild_id_in_dm_message_own_server_wins_and_is_recorded(pending):
-    from qapbot.ui_registration import RegistrationView
+    from clashcontrol.ui_registration import RegistrationView
 
     interaction = MagicMock()
     interaction.guild = None
@@ -191,8 +191,8 @@ def test_resolve_guild_id_in_dm_message_own_server_wins_and_is_recorded(pending)
 
 @pytest.mark.discord
 def test_resolve_guild_id_in_dm_after_restart(monkeypatch, pending):
-    import qapbot.QBdiscocmdshelper as helper
-    from qapbot.ui_registration import RegistrationView
+    import clashcontrol.QBdiscocmdshelper as helper
+    from clashcontrol.ui_registration import RegistrationView
 
     interaction = MagicMock()
     interaction.guild = None
@@ -211,8 +211,8 @@ def test_resolve_guild_id_in_dm_after_restart(monkeypatch, pending):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_link_button_in_dm_without_server_asks_to_rerun(monkeypatch, pending):
-    import qapbot.QBdiscocmdshelper as helper
-    from qapbot.ui_registration import RegistrationView
+    import clashcontrol.QBdiscocmdshelper as helper
+    from clashcontrol.ui_registration import RegistrationView
 
     monkeypatch.setattr(helper, "get_dm_registration_guild_ids", lambda _client, _uid: [])
     interaction = MagicMock()
@@ -236,8 +236,8 @@ async def test_link_button_in_dm_without_server_asks_to_rerun(monkeypatch, pendi
 
 @pytest.mark.discord
 def test_command_mention_uses_synced_ids_for_both_sync_shapes(monkeypatch):
-    from qapbot.cache_manager import CACHE
-    import qapbot.QBdiscocmdshelper as helper
+    from clashcontrol.cache_manager import CACHE
+    import clashcontrol.QBdiscocmdshelper as helper
 
     monkeypatch.setattr(CACHE, "app_command_ids", {})
     assert helper.command_mention("registration") == "`/registration`"  # before the sync
@@ -254,9 +254,9 @@ def test_command_mention_uses_synced_ids_for_both_sync_shapes(monkeypatch):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_cwl_preferences_dm_not_linked_reply_links_registration(mock_interaction, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     import QBdiscordcmds
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.QBdiscocmdshelper as helper
 
     monkeypatch.setattr(CACHE, "app_command_ids", {"registration": "123"})
     monkeypatch.setattr(helper, "get_dm_caller_matched_guild_ids", lambda _uid: [])
@@ -275,8 +275,8 @@ def test_command_ids_ignore_context_menus_with_the_same_name(monkeypatch):
     Live order from Discord: user menu, slash command, message menu — the mention must use the
     slash command's id, or clicking it in /help never shows the options."""
     import discord
-    from qapbot.cache_manager import CACHE
-    import qapbot.QBdiscocmdshelper as helper
+    from clashcontrol.cache_manager import CACHE
+    import clashcontrol.QBdiscocmdshelper as helper
 
     monkeypatch.setattr(CACHE, "app_command_ids", {})
     message_menu = MagicMock()

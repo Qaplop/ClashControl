@@ -20,7 +20,7 @@ class _FakeCache:
 
 @pytest.mark.discord
 def test_check_bot_admin_only(mock_interaction):
-    from qapbot.QBdiscocmdshelper import check_bot_admin_only
+    from clashcontrol.QBdiscocmdshelper import check_bot_admin_only
 
     mock_interaction.user.__str__ = lambda self=None: "BotAdmin"  # type: ignore[assignment]
     assert check_bot_admin_only(mock_interaction, "BotAdmin") is True
@@ -29,7 +29,7 @@ def test_check_bot_admin_only(mock_interaction):
 
 @pytest.mark.discord
 def test_check_bot_admin_only_numeric_id(mock_interaction):
-    from qapbot.QBdiscocmdshelper import check_bot_admin_only
+    from clashcontrol.QBdiscocmdshelper import check_bot_admin_only
 
     # mock_interaction.user.id == 123456789 (conftest)
     assert check_bot_admin_only(mock_interaction, "123456789") is True
@@ -40,8 +40,8 @@ def test_check_bot_admin_only_numeric_id(mock_interaction):
 
 @pytest.mark.discord
 def test_check_bot_admin_or_tester(mock_interaction, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper import check_bot_admin_or_tester
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper import check_bot_admin_or_tester
 
     monkeypatch.setattr(CACHE, "testers", {"999999999"})
     # mock_interaction.user.id == 123456789 (conftest)
@@ -55,7 +55,7 @@ def test_check_bot_admin_or_tester(mock_interaction, monkeypatch):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_check_admin_permissions_numeric_id(mock_interaction):
-    from qapbot.QBdiscocmdshelper import check_admin_permissions
+    from clashcontrol.QBdiscocmdshelper import check_admin_permissions
 
     # mock_interaction.user.id == 123456789 (conftest)
     assert await check_admin_permissions(mock_interaction, "123456789") is True
@@ -65,7 +65,7 @@ async def test_check_admin_permissions_numeric_id(mock_interaction):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_check_admin_permissions_fallback_user_string(mock_interaction):
-    from qapbot.QBdiscocmdshelper import check_admin_permissions
+    from clashcontrol.QBdiscocmdshelper import check_admin_permissions
 
     mock_interaction.user.__str__ = lambda self=None: "ServerAdmin"  # type: ignore[assignment]
     assert await check_admin_permissions(mock_interaction, "ServerAdmin") is True
@@ -75,7 +75,7 @@ async def test_check_admin_permissions_fallback_user_string(mock_interaction):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_send_and_track_sends_and_tracks(monkeypatch: pytest.MonkeyPatch, mock_interaction):
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.QBdiscocmdshelper as helper
 
     fake_cache = _FakeCache()
     monkeypatch.setattr(helper, "CACHE", fake_cache)

@@ -25,8 +25,8 @@ import pytest
 
 os.environ.setdefault("DISCORD_TOKEN", "test-token")
 
-from qapbot.constants import cwl_season_window_closed
-from qapbot.db_manager import WarHistoryDB
+from clashcontrol.constants import cwl_season_window_closed
+from clashcontrol.db_manager import WarHistoryDB
 from QBhelperfunctions import cwl_group_all_rounds_ended
 
 
@@ -197,7 +197,7 @@ async def test_sync_war_stats_twin_matches_the_async_one(db):
 async def test_sweep_marks_a_group_whose_season_window_has_closed(db, monkeypatch):
     """The ~45% case: no war data for anyone in the group, so all_ended can never fire -- the
     time-based condition is the only thing that resolves it."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     import QBhelperfunctions as H
 
     monkeypatch.setattr(CACHE, "db_manager", db)
@@ -214,7 +214,7 @@ async def test_sweep_marks_a_group_whose_season_window_has_closed(db, monkeypatc
 async def test_sweep_marks_an_in_window_group_that_completed_every_round(db, monkeypatch):
     """all_ended still fires early, without waiting for the window to close -- which is why both
     conditions are kept rather than replacing one with the other."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     import QBhelperfunctions as H
 
     monkeypatch.setattr(CACHE, "db_manager", db)
@@ -236,7 +236,7 @@ async def test_sweep_marks_an_in_window_group_that_completed_every_round(db, mon
 @pytest.mark.asyncio
 async def test_sweep_leaves_an_in_window_incomplete_group_alone(db, monkeypatch):
     """A CWL still in progress must never be marked -- that is what would freeze a live season."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     import QBhelperfunctions as H
 
     monkeypatch.setattr(CACHE, "db_manager", db)
@@ -247,7 +247,7 @@ async def test_sweep_leaves_an_in_window_incomplete_group_alone(db, monkeypatch)
     # 2026-09-15 and this test started failing. A bonus-CWL key dated today ("YYYY-MM-DD")
     # opens its window today, so it stays in-window no matter when the suite runs, and the real
     # cwl_season_window_closed() is still exercised (unlike patching it away).
-    from qapbot.constants import cwl_season_window_closed
+    from clashcontrol.constants import cwl_season_window_closed
 
     season = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     assert cwl_season_window_closed(season) is False, f"precondition: {season} must be in-window"
@@ -267,7 +267,7 @@ async def test_sweep_leaves_an_in_window_incomplete_group_alone(db, monkeypatch)
 async def test_sweep_runs_five_batches_per_call_and_rotates_the_cursor(db, monkeypatch):
     """Project owner's spec: 5 batches per update cycle. Each is its own to_thread hop, run
     sequentially so the event loop breathes between them."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     import QBhelperfunctions as H
 
     monkeypatch.setattr(CACHE, "db_manager", db)
@@ -298,7 +298,7 @@ async def test_sweep_runs_five_batches_per_call_and_rotates_the_cursor(db, monke
 async def test_sweep_wraps_the_cursor_at_the_end_of_the_rotation(db, monkeypatch):
     """A short page means the rotation finished. Without the wrap, the cursor would sit past the
     last group forever and the ~45% that can never complete would stop being re-checked."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     import QBhelperfunctions as H
 
     monkeypatch.setattr(CACHE, "db_manager", db)
@@ -317,7 +317,7 @@ async def test_sweep_never_writes_standings(db, monkeypatch):
     """The whole reason option A was safe to ship: the sweep sets the flag only, so
     update_cwl_group_stats()'s freeze short-circuit (cwl_ended AND non-NULL stats) stays disarmed
     and a swept group still recomputes its standings live on the next render."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     import QBhelperfunctions as H
 
     monkeypatch.setattr(CACHE, "db_manager", db)
@@ -341,7 +341,7 @@ async def test_sweep_never_writes_standings(db, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_sweep_is_a_no_op_once_everything_is_marked(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     import QBhelperfunctions as H
 
     monkeypatch.setattr(CACHE, "db_manager", db)

@@ -33,8 +33,8 @@ def _row(tag: str, *, user: str, message_id: str, guild: str = "1", status: str 
 
 def _wire(monkeypatch, rows: List[Dict[str, Any]], *, modes: Dict[str, str], members: Dict[str, List[int]],
           event_status: str = "signup_open", message_content: str = "Please confirm below"):
-    from qapbot.cache_manager import CACHE
-    import qapbot.QBdiscocmdshelper_cwl as helper
+    from clashcontrol.cache_manager import CACHE
+    import clashcontrol.QBdiscocmdshelper_cwl as helper
 
     CACHE.server_config.clear()
     for guild_id, mode in modes.items():
@@ -82,7 +82,7 @@ def _wire(monkeypatch, rows: List[Dict[str, Any]], *, modes: Dict[str, str], mem
 
 @pytest.mark.asyncio
 async def test_pending_dm_of_this_guilds_member_is_upgraded(monkeypatch):
-    from qapbot.QBdiscocmdshelper_cwl import upgrade_pending_cwl_dms_for_bench
+    from clashcontrol.QBdiscocmdshelper_cwl import upgrade_pending_cwl_dms_for_bench
 
     edits, _ = _wire(
         monkeypatch, [_row("#P1", user="777", message_id="100")],
@@ -99,7 +99,7 @@ async def test_pending_dm_of_this_guilds_member_is_upgraded(monkeypatch):
 async def test_explanation_is_appended_not_replacing_existing_text(monkeypatch):
     """A roster-update DM also says where and when the player plays — a wholesale re-render would
     throw that away."""
-    from qapbot.QBdiscocmdshelper_cwl import upgrade_pending_cwl_dms_for_bench
+    from clashcontrol.QBdiscocmdshelper_cwl import upgrade_pending_cwl_dms_for_bench
 
     edits, _ = _wire(
         monkeypatch, [_row("#P1", user="777", message_id="100")],
@@ -117,7 +117,7 @@ async def test_explanation_is_appended_not_replacing_existing_text(monkeypatch):
 async def test_running_twice_is_a_no_op_the_second_time(monkeypatch):
     """Idempotent: a DM that already offers Bench is neither edited again nor counted, so the
     admin isn't told that N invitations were updated when none were."""
-    from qapbot.QBdiscocmdshelper_cwl import upgrade_pending_cwl_dms_for_bench
+    from clashcontrol.QBdiscocmdshelper_cwl import upgrade_pending_cwl_dms_for_bench
 
     edits, message = _wire(
         monkeypatch, [_row("#P1", user="777", message_id="100")],
@@ -133,7 +133,7 @@ async def test_running_twice_is_a_no_op_the_second_time(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_one_multi_account_dm_is_edited_once_with_every_pending_account(monkeypatch):
-    from qapbot.QBdiscocmdshelper_cwl import upgrade_pending_cwl_dms_for_bench
+    from clashcontrol.QBdiscocmdshelper_cwl import upgrade_pending_cwl_dms_for_bench
 
     edits, _ = _wire(
         monkeypatch,
@@ -149,7 +149,7 @@ async def test_one_multi_account_dm_is_edited_once_with_every_pending_account(mo
 @pytest.mark.asyncio
 async def test_dm_sent_by_another_guild_is_upgraded_for_a_member_of_this_one(monkeypatch):
     """The Bench rule is player-based, so the DM another guild sent still gets the option."""
-    from qapbot.QBdiscocmdshelper_cwl import upgrade_pending_cwl_dms_for_bench
+    from clashcontrol.QBdiscocmdshelper_cwl import upgrade_pending_cwl_dms_for_bench
 
     _wire(
         monkeypatch, [_row("#P1", user="777", message_id="100", guild="2")],
@@ -161,7 +161,7 @@ async def test_dm_sent_by_another_guild_is_upgraded_for_a_member_of_this_one(mon
 
 @pytest.mark.asyncio
 async def test_non_member_of_the_switching_guild_is_left_alone(monkeypatch):
-    from qapbot.QBdiscocmdshelper_cwl import upgrade_pending_cwl_dms_for_bench
+    from clashcontrol.QBdiscocmdshelper_cwl import upgrade_pending_cwl_dms_for_bench
 
     edits, _ = _wire(
         monkeypatch, [_row("#P1", user="888", message_id="100", guild="2")],
@@ -174,7 +174,7 @@ async def test_non_member_of_the_switching_guild_is_left_alone(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_nothing_happens_while_the_event_is_still_a_draft(monkeypatch):
-    from qapbot.QBdiscocmdshelper_cwl import upgrade_pending_cwl_dms_for_bench
+    from clashcontrol.QBdiscocmdshelper_cwl import upgrade_pending_cwl_dms_for_bench
 
     edits, _ = _wire(
         monkeypatch, [_row("#P1", user="777", message_id="100")],
@@ -187,7 +187,7 @@ async def test_nothing_happens_while_the_event_is_still_a_draft(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_a_deleted_dm_is_skipped_not_fatal(monkeypatch):
-    from qapbot.QBdiscocmdshelper_cwl import upgrade_pending_cwl_dms_for_bench
+    from clashcontrol.QBdiscocmdshelper_cwl import upgrade_pending_cwl_dms_for_bench
 
     edits, message = _wire(
         monkeypatch,

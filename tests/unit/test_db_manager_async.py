@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Optional
 import aiosqlite
 import pytest
 
-from qapbot.db_manager import WarHistoryDB
+from clashcontrol.db_manager import WarHistoryDB
 
 
 async def _create_db() -> WarHistoryDB:

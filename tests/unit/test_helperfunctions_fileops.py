@@ -14,7 +14,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from qapbot.exceptions import WarProcessingError
+from clashcontrol.exceptions import WarProcessingError
 
 
 # ---------------------------------------------------------------------------

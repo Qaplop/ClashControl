@@ -38,7 +38,7 @@ def _split_embed_stub(_embed: discord.Embed, max_size: int = 4000) -> list[disco
     ],
 )
 async def test_send_and_track_validation_errors(mock_interaction: Any, kwargs: Dict[str, Any], expected: str):
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.QBdiscocmdshelper as helper
 
     with pytest.raises(Exception) as exc:
         await helper.send_and_track(mock_interaction, **kwargs)
@@ -49,7 +49,7 @@ async def test_send_and_track_validation_errors(mock_interaction: Any, kwargs: D
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_send_and_track_ephemeral_content(mock_interaction: Any, monkeypatch: pytest.MonkeyPatch):
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.QBdiscocmdshelper as helper
 
     fake_cache = _FakeCache()
     monkeypatch.setattr(helper, "CACHE", fake_cache)
@@ -68,7 +68,7 @@ async def test_send_and_track_ephemeral_content(mock_interaction: Any, monkeypat
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_send_and_track_ephemeral_embed_split(mock_interaction: Any, monkeypatch: pytest.MonkeyPatch):
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.QBdiscocmdshelper as helper
 
     fake_cache = _FakeCache()
     monkeypatch.setattr(helper, "CACHE", fake_cache)
@@ -93,7 +93,7 @@ async def test_send_and_track_ephemeral_embed_split(mock_interaction: Any, monke
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_send_and_track_status_preserves_last_two_old_entries(mock_interaction: Any, monkeypatch: pytest.MonkeyPatch):
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.QBdiscocmdshelper as helper
 
     fake_cache = _FakeCache()
     fake_cache.leaderboard_messages = {
@@ -144,7 +144,7 @@ async def test_send_and_track_status_preserves_last_two_old_entries(mock_interac
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_send_and_track_embed_truncates_long_title_and_footer(mock_interaction: Any, monkeypatch: pytest.MonkeyPatch):
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.QBdiscocmdshelper as helper
 
     fake_cache = _FakeCache()
     monkeypatch.setattr(helper, "CACHE", fake_cache)
@@ -175,7 +175,7 @@ async def test_send_and_track_embed_truncates_long_title_and_footer(mock_interac
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_get_clan_family_autocomplete_choices_factory_modes(monkeypatch: pytest.MonkeyPatch):
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.QBdiscocmdshelper as helper
 
     fake_cache = _FakeCache()
     fake_cache.clan_name_cache = {

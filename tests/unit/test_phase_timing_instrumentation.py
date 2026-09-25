@@ -15,7 +15,7 @@ class TestRoleSyncTiming:
     """#0099 — [ROLE-SYNC] logged '15 synced, 0 errors' with no duration."""
 
     def _src(self) -> str:
-        import qapbot.guild_role_manager as grm
+        import clashcontrol.guild_role_manager as grm
         return inspect.getsource(grm.sync_all_roles_for_guild)
 
     def test_completion_line_reports_elapsed(self):

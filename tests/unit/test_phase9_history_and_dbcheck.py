@@ -9,7 +9,7 @@ from typing import Any, Dict
 import pytest
 
 import QBhelperfunctions as hf
-from qapbot.QBdiscocmdshelper_admin_command import check_database_consistency
+from clashcontrol.QBdiscocmdshelper_admin_command import check_database_consistency
 
 
 class _FakeDbManager:
@@ -171,7 +171,7 @@ def test_process_war_history_new_war_appends_and_invalidates_cache(tmp_path: Pat
 
 @pytest.mark.smoke
 def test_check_database_consistency_db_manager_missing(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    import qapbot.cache_manager as cm
+    import clashcontrol.cache_manager as cm
 
     monkeypatch.setattr(cm, "CACHE", SimpleNamespace(db_manager=None))
 
@@ -183,7 +183,7 @@ def test_check_database_consistency_db_manager_missing(monkeypatch: pytest.Monke
 
 @pytest.mark.smoke
 def test_check_database_consistency_missing_db_file(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    import qapbot.cache_manager as cm
+    import clashcontrol.cache_manager as cm
 
     monkeypatch.setattr(cm, "CACHE", SimpleNamespace(db_manager=_FakeDbManager()))
 
@@ -195,7 +195,7 @@ def test_check_database_consistency_missing_db_file(monkeypatch: pytest.MonkeyPa
 
 @pytest.mark.smoke
 def test_check_database_consistency_query_exception(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    import qapbot.cache_manager as cm
+    import clashcontrol.cache_manager as cm
 
     db_file = tmp_path / "qapbot.db"
     db_file.write_text("", encoding="utf-8")
@@ -210,7 +210,7 @@ def test_check_database_consistency_query_exception(monkeypatch: pytest.MonkeyPa
 
 @pytest.mark.smoke
 def test_check_database_consistency_success_paths(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    import qapbot.cache_manager as cm
+    import clashcontrol.cache_manager as cm
 
     data_dir = tmp_path / "data"
     archive_dir = data_dir / "archive"

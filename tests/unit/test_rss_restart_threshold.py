@@ -24,7 +24,7 @@ os.environ.setdefault("DISCORD_TOKEN", "test-token")
 import pytest
 
 import QBcore
-from qapbot.config import CONFIG
+from clashcontrol.config import CONFIG
 
 
 class TestConfigDefaults:
@@ -50,17 +50,17 @@ class TestConfigDefaults:
         ("RSS_RESTART_MIN_UPTIME_MINUTES", "rss_restart_min_uptime_minutes", 90),
     ])
     def test_env_overridable_without_a_deploy(self, monkeypatch, env, field, expected):
-        from qapbot.config import load_config
+        from clashcontrol.config import load_config
         monkeypatch.setenv(env, str(expected))
         assert getattr(load_config(), field) == expected
 
     def test_can_be_switched_off_entirely(self, monkeypatch):
-        from qapbot.config import load_config
+        from clashcontrol.config import load_config
         monkeypatch.setenv("RSS_RESTART_ENABLED", "false")
         assert load_config().rss_restart_enabled is False
 
     def test_unparseable_threshold_falls_back_rather_than_crashing_startup(self, monkeypatch):
-        from qapbot.config import load_config
+        from clashcontrol.config import load_config
         monkeypatch.setenv("RSS_RESTART_THRESHOLD_MB", "six gigabytes")
         assert load_config().rss_restart_threshold_mb == 6144
 
@@ -103,7 +103,7 @@ class TestRestartPrimitives:
         trace through one function. Two hand-maintained copies is exactly how the gen(1)
         scoping fix would silently regress on one path only."""
         import inspect
-        from qapbot.QBdiscocmdshelper_admin_command import (
+        from clashcontrol.QBdiscocmdshelper_admin_command import (
             handle_memory_profile,
             start_memtrace_baseline,
         )
@@ -114,7 +114,7 @@ class TestRestartPrimitives:
         """The 16.5s Discord freeze came from an unscoped gc.collect() here. Pinned in the
         shared helper so neither caller can reintroduce a full gen-2 sweep."""
         import inspect
-        from qapbot.QBdiscocmdshelper_admin_command import start_memtrace_baseline
+        from clashcontrol.QBdiscocmdshelper_admin_command import start_memtrace_baseline
         src = inspect.getsource(start_memtrace_baseline)
         assert "gc.collect, 1" in src, "priming collect is no longer scoped to gen(1)"
 
@@ -127,8 +127,8 @@ class TestCycleIntegration:
     @staticmethod
     def _block() -> str:
         import inspect
-        import QapBot
-        src = inspect.getsource(QapBot.periodic_main)
+        import ClashControl
+        src = inspect.getsource(ClashControl.periodic_main)
         start = src.index("[RSS-RESTART]")
         return src[start - 2000:start + 4000]
 

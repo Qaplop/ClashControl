@@ -8,8 +8,8 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from qapbot import i18n
-from qapbot.i18n import language_from_discord_locale
+from clashcontrol import i18n
+from clashcontrol.i18n import language_from_discord_locale
 
 
 @pytest.fixture(autouse=True)
@@ -30,7 +30,7 @@ def test_language_from_discord_locale(locale, expected):
 @pytest.mark.asyncio
 @pytest.mark.parametrize(("locale", "expected"), [("es-ES", "es"), ("zh-CN", "zh"), ("de", "de"), ("fr", "en")])
 async def test_update_user_metadata_auto_language_uses_every_bot_language(monkeypatch, locale, expected):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     monkeypatch.setattr(CACHE, "users_loaded", True)
     monkeypatch.setattr(CACHE, "user_accounts", {"42": {"display_name": "x", "user_language": "en", "players": []}})
@@ -44,7 +44,7 @@ async def test_update_user_metadata_auto_language_uses_every_bot_language(monkey
 
 @pytest.mark.asyncio
 async def test_update_user_metadata_keeps_a_locked_language(monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     monkeypatch.setattr(CACHE, "users_loaded", True)
     monkeypatch.setattr(

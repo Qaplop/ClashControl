@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import pytest
 
-from qapbot.db_manager import WarHistoryDB
+from clashcontrol.db_manager import WarHistoryDB
 
 
 @pytest.fixture
@@ -310,7 +310,7 @@ class TestPlayerNameFtsRowidMigration:
         next backfill call must detect the mismatch and rebuild even though row counts already
         match — the old row-count-only guard would otherwise treat this as "already backfilled"
         and skip it forever."""
-        from qapbot.db_manager import PLAYER_NAME_FTS_ROWID_SCHEME_KEY, PLAYER_NAME_FTS_ROWID_SCHEME_VALUE
+        from clashcontrol.db_manager import PLAYER_NAME_FTS_ROWID_SCHEME_KEY, PLAYER_NAME_FTS_ROWID_SCHEME_VALUE
 
         # initialize()'s own backfill call already set the marker (for the then-empty DB) during
         # fixture setup — clear it to simulate "never migrated" before seeding old-scheme rows.
@@ -360,7 +360,7 @@ class TestPlayerNameFtsRowidMigration:
         """Once the marker is set, re-running the backfill must not rebuild again (covered
         indirectly by test_backfill_is_idempotent's row-count assertions; this asserts the
         marker itself is stable across repeat calls)."""
-        from qapbot.db_manager import PLAYER_NAME_FTS_ROWID_SCHEME_KEY, PLAYER_NAME_FTS_ROWID_SCHEME_VALUE
+        from clashcontrol.db_manager import PLAYER_NAME_FTS_ROWID_SCHEME_KEY, PLAYER_NAME_FTS_ROWID_SCHEME_VALUE
 
         db.update_player_name_index_sync([("#A1", "Alice", "2026-08-17T00:00")])
         await db._backfill_player_name_search_if_needed()
@@ -377,7 +377,7 @@ class TestCacheManagerSearchPlayerNames:
 
     @pytest.mark.integration
     async def test_delegates_to_sqlite(self, db):
-        from qapbot.cache_manager import CacheManager
+        from clashcontrol.cache_manager import CacheManager
 
         db.update_player_name_index_sync([("#A1", "Alice", "2026-08-17T00:00")])
 
@@ -389,7 +389,7 @@ class TestCacheManagerSearchPlayerNames:
     def test_returns_empty_when_db_manager_not_ready(self):
         """Defensive guard for the early-startup window before db_manager is set — must not
         raise AttributeError."""
-        from qapbot.cache_manager import CacheManager
+        from clashcontrol.cache_manager import CacheManager
 
         cache = CacheManager.__new__(CacheManager)
         cache.db_manager = None

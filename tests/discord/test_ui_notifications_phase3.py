@@ -24,7 +24,7 @@ def _format_settings_stub(*_args: object, **_kwargs: object) -> str:
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_war_notification_activate_with_missing_user_shows_error(monkeypatch: pytest.MonkeyPatch, mock_interaction):
-    import qapbot.ui_notifications as ui
+    import clashcontrol.ui_notifications as ui
 
     fake_cache = _FakeCache()
     monkeypatch.setattr(ui, "CACHE", fake_cache)
@@ -41,7 +41,7 @@ async def test_war_notification_activate_with_missing_user_shows_error(monkeypat
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_war_notification_activate_enables_defaults_and_edits_message(monkeypatch: pytest.MonkeyPatch, mock_interaction):
-    import qapbot.ui_notifications as ui
+    import clashcontrol.ui_notifications as ui
 
     fake_cache = _FakeCache()
     user_id = str(mock_interaction.user.id)
@@ -65,7 +65,7 @@ async def test_war_notification_activate_enables_defaults_and_edits_message(monk
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_unified_notification_interaction_check_blocks_other_user(mock_interaction):
-    from qapbot.ui_notifications import UnifiedNotificationView
+    from clashcontrol.ui_notifications import UnifiedNotificationView
 
     view = UnifiedNotificationView(
         user_id="999999",
@@ -83,9 +83,9 @@ async def test_unified_notification_interaction_check_blocks_other_user(mock_int
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_unified_change_type_updates_cache_and_message(monkeypatch: pytest.MonkeyPatch, mock_interaction):
-    import qapbot.ui_notifications as ui
-    import qapbot.QBdiscocmdshelper as helper
-    import qapbot.cache_manager as cache_manager_module
+    import clashcontrol.ui_notifications as ui
+    import clashcontrol.QBdiscocmdshelper as helper
+    import clashcontrol.cache_manager as cache_manager_module
 
     fake_cache = _FakeCache()
     user_id = str(mock_interaction.user.id)
@@ -122,9 +122,9 @@ async def test_unified_change_type_updates_cache_and_message(monkeypatch: pytest
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_language_selection_auto_sets_locale_and_persists(monkeypatch: pytest.MonkeyPatch, mock_interaction):
-    import qapbot.ui_notifications as ui
-    import qapbot.QBdiscocmdshelper as helper
-    import qapbot.cache_manager as cache_manager_module
+    import clashcontrol.ui_notifications as ui
+    import clashcontrol.QBdiscocmdshelper as helper
+    import clashcontrol.cache_manager as cache_manager_module
 
     fake_cache = _FakeCache()
     user_id = str(mock_interaction.user.id)
@@ -165,7 +165,7 @@ async def test_language_selection_auto_sets_locale_and_persists(monkeypatch: pyt
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_language_selection_interaction_check_blocks_other_user(mock_interaction):
-    from qapbot.ui_notifications import LanguageSelectionView, UnifiedNotificationView
+    from clashcontrol.ui_notifications import LanguageSelectionView, UnifiedNotificationView
 
     parent = UnifiedNotificationView(
         user_id="123",

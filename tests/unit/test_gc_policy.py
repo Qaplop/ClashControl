@@ -22,7 +22,7 @@ The current policy is the established pattern for latency-sensitive Python:
   - gc.freeze() after startup, keeping the large static caches out of every scan
   - the nightly full sweep kept as a backstop, plus an RSS-triggered restart as a safety net
 
-See qapbot/docs/PERFORMANCE_TUNING.md and tests/unit/test_gc_policy_promotion.py.
+See clashcontrol/docs/PERFORMANCE_TUNING.md and tests/unit/test_gc_policy_promotion.py.
 
 NOTE this is only half the story. An earlier version of this docstring called the garbage
 "unavoidable"; that was wrong. `release_war_object()` severs those back-references after the
@@ -32,7 +32,7 @@ load-bearing underneath it: the young-gen collect is only sufficient *because* a
 collection is off, and it still catches whatever cyclic garbage the rest of the process makes.
 
 These tests pin the properties that make that safe. They are deliberately about GC
-*semantics* rather than about QapBot's startup path, which cannot be imported in a unit test.
+*semantics* rather than about ClashControl's startup path, which cannot be imported in a unit test.
 """
 from __future__ import annotations
 
@@ -230,61 +230,61 @@ class TestChunkedCollection:
     """
 
     def test_collects_once_per_interval_and_only_gen0(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        import QapBot
+        import ClashControl
 
         seen: List[Any] = []
-        monkeypatch.setattr(QapBot, "_CHUNK_COLLECT_EVERY", 5)
-        monkeypatch.setattr(QapBot, "_chunk_collect_counter", 0)
-        monkeypatch.setattr(QapBot.gc, "collect", lambda *a, **k: seen.append(a[0] if a else None) or 0)
+        monkeypatch.setattr(ClashControl, "_CHUNK_COLLECT_EVERY", 5)
+        monkeypatch.setattr(ClashControl, "_chunk_collect_counter", 0)
+        monkeypatch.setattr(ClashControl.gc, "collect", lambda *a, **k: seen.append(a[0] if a else None) or 0)
 
         for _ in range(12):
-            QapBot.maybe_chunk_collect()
+            ClashControl.maybe_chunk_collect()
 
         assert len(seen) == 2, f"expected 2 slices in 12 calls at interval 5, got {len(seen)}"
         assert set(seen) == {0}, "slices must be generation-0 only — a deeper sweep is the pause we are avoiding"
 
     def test_disabled_by_zero(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """GC_CHUNK_EVERY=0 must fully disable slicing, for A/B and for debugging."""
-        import QapBot
+        import ClashControl
 
         seen: List[Any] = []
-        monkeypatch.setattr(QapBot, "_CHUNK_COLLECT_EVERY", 0)
-        monkeypatch.setattr(QapBot, "_chunk_collect_counter", 0)
-        monkeypatch.setattr(QapBot.gc, "collect", lambda *a, **k: seen.append(1) or 0)
+        monkeypatch.setattr(ClashControl, "_CHUNK_COLLECT_EVERY", 0)
+        monkeypatch.setattr(ClashControl, "_chunk_collect_counter", 0)
+        monkeypatch.setattr(ClashControl.gc, "collect", lambda *a, **k: seen.append(1) or 0)
 
         for _ in range(50):
-            QapBot.maybe_chunk_collect()
+            ClashControl.maybe_chunk_collect()
 
         assert seen == []
 
     def test_never_raises_into_a_cycle(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """A failed teardown must not fail an update cycle."""
-        import QapBot
+        import ClashControl
 
         def _boom(*_a: Any, **_k: Any) -> int:
             raise RuntimeError("gc exploded")
 
-        monkeypatch.setattr(QapBot, "_CHUNK_COLLECT_EVERY", 1)
-        monkeypatch.setattr(QapBot, "_chunk_collect_counter", 0)
-        monkeypatch.setattr(QapBot.gc, "collect", _boom)
+        monkeypatch.setattr(ClashControl, "_CHUNK_COLLECT_EVERY", 1)
+        monkeypatch.setattr(ClashControl, "_chunk_collect_counter", 0)
+        monkeypatch.setattr(ClashControl.gc, "collect", _boom)
 
-        QapBot.maybe_chunk_collect()  # must not propagate
+        ClashControl.maybe_chunk_collect()  # must not propagate
 
     def test_deliberate_flag_is_always_cleared(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """A stuck flag would mislabel every later automatic pause as [GC-SCHEDULED] — the one
         signal that tells us the GC policy has lapsed."""
-        import QapBot
+        import ClashControl
 
         def _boom(*_a: Any, **_k: Any) -> int:
             raise RuntimeError("gc exploded")
 
-        monkeypatch.setattr(QapBot, "_CHUNK_COLLECT_EVERY", 1)
-        monkeypatch.setattr(QapBot, "_chunk_collect_counter", 0)
-        monkeypatch.setattr(QapBot.gc, "collect", _boom)
+        monkeypatch.setattr(ClashControl, "_CHUNK_COLLECT_EVERY", 1)
+        monkeypatch.setattr(ClashControl, "_chunk_collect_counter", 0)
+        monkeypatch.setattr(ClashControl.gc, "collect", _boom)
 
-        QapBot.maybe_chunk_collect()
+        ClashControl.maybe_chunk_collect()
 
-        assert QapBot._gc_deliberate is False
+        assert ClashControl._gc_deliberate is False
 
     def test_slicing_lowers_the_worst_pause(self, isolated_gc) -> None:
         """The actual claim, measured rather than asserted structurally."""

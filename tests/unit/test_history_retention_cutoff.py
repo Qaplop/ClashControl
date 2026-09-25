@@ -30,8 +30,8 @@ import pytest
 
 os.environ.setdefault("DISCORD_TOKEN", "test-token")
 
-import qapbot.config as config_module  # noqa: E402
-from qapbot.db_manager import WarHistoryDB  # noqa: E402
+import clashcontrol.config as config_module  # noqa: E402
+from clashcontrol.db_manager import WarHistoryDB  # noqa: E402
 
 
 def _first_of_previous_month(d: datetime.date) -> datetime.date:
@@ -141,7 +141,7 @@ CWL_DAYS = range(1, 11)  # CWL season runs days 1-10 of each month
 
 def _cutoff_series(days_value: int, start=datetime.date(2026, 1, 1), n=730):
     """(date, cutoff) for each day, computed the way production does."""
-    import qapbot.config as cfg
+    import clashcontrol.config as cfg
     original = cfg.CONFIG
     cfg.CONFIG = dataclasses.replace(original, history_retention_days=days_value)
     try:
@@ -179,7 +179,7 @@ def test_configured_retention_never_migrates_cwl_data_during_a_cwl_season():
     two years) — the heaviest migration nights stacked on the heaviest update-cycle
     nights. The band 71-78 is the only one that avoids it entirely.
     """
-    import qapbot.config as cfg
+    import clashcontrol.config as cfg
     offenders = [d for d in _cwl_migration_days(cfg.CONFIG.history_retention_days)
                  if d.day in CWL_DAYS]
     assert not offenders, (
@@ -192,7 +192,7 @@ def test_configured_retention_never_migrates_cwl_data_during_a_cwl_season():
 def test_configured_retention_advances_the_cutoff_smoothly():
     """No freeze-then-jump. Below 61 the floor binds and the cutoff jumps up to 12 days at
     once — landing on the 1st of the month, which is the cliff the redesign removed."""
-    import qapbot.config as cfg
+    import clashcontrol.config as cfg
     jump = _max_cutoff_jump(cfg.CONFIG.history_retention_days)
     assert jump <= 1, (
         "history_retention_days={} lets the cutoff jump {} days at once; the walk must "

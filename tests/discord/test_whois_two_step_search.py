@@ -23,7 +23,7 @@ import QBdiscordcmds  # noqa: E402
 class TestBuildGuildPlayerNameMatches:
     def _set_guild_clans(self, monkeypatch, tags):
         monkeypatch.setattr(
-            "qapbot.QBdiscocmdshelper.get_guild_clans_including_member_config",
+            "clashcontrol.QBdiscocmdshelper.get_guild_clans_including_member_config",
             lambda guild_id: list(tags),
         )
 
@@ -140,7 +140,7 @@ def _no_guild_clans(monkeypatch):
     """Default: no guild clans configured, so the guild pass always contributes nothing and
     every test starts from a clean, predictable baseline unless it opts into guild matches."""
     monkeypatch.setattr(
-        "qapbot.QBdiscocmdshelper.get_guild_clans_including_member_config", lambda guild_id: []
+        "clashcontrol.QBdiscocmdshelper.get_guild_clans_including_member_config", lambda guild_id: []
     )
 
 
@@ -165,7 +165,7 @@ class TestWhoisSlashTwoStepSearch:
         a working result, not the too-short message — the guild pass has no length floor."""
         mock_interaction.guild_id = 987654321
         monkeypatch.setattr(
-            "qapbot.QBdiscocmdshelper.get_guild_clans_including_member_config",
+            "clashcontrol.QBdiscocmdshelper.get_guild_clans_including_member_config",
             lambda guild_id: ["#CLAN1"],
         )
         member = MagicMock()
@@ -220,7 +220,7 @@ class TestWhoisSlashTwoStepSearch:
         include the guild member's tag, then asserting the guild member is still present."""
         mock_interaction.guild_id = 987654321
         monkeypatch.setattr(
-            "qapbot.QBdiscocmdshelper.get_guild_clans_including_member_config",
+            "clashcontrol.QBdiscocmdshelper.get_guild_clans_including_member_config",
             lambda guild_id: ["#CLAN1"],
         )
         member = MagicMock()
@@ -247,7 +247,7 @@ class TestWhoisSlashTwoStepSearch:
             captured["options"] = options
             return MagicMock()
 
-        monkeypatch.setattr("qapbot.ui_common.GenericSelectView", _capture_view)
+        monkeypatch.setattr("clashcontrol.ui_common.GenericSelectView", _capture_view)
 
         await QBdiscordcmds.whois_slash.callback(mock_interaction, user=None, player="alphabet")  # type: ignore[arg-type]
 
@@ -261,7 +261,7 @@ class TestWhoisSlashTwoStepSearch:
         appear exactly once, from the guild pass, not duplicated by the global fallback."""
         mock_interaction.guild_id = 987654321
         monkeypatch.setattr(
-            "qapbot.QBdiscocmdshelper.get_guild_clans_including_member_config",
+            "clashcontrol.QBdiscocmdshelper.get_guild_clans_including_member_config",
             lambda guild_id: ["#CLAN1"],
         )
         member = MagicMock()

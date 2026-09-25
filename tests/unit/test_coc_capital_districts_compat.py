@@ -1,5 +1,5 @@
 """
-Tests for qapbot.coc_health.apply_coc_library_patches()'s clanCapital shim.
+Tests for clashcontrol.coc_health.apply_coc_library_patches()'s clanCapital shim.
 
 Background (2026-08-31/09-01 PROD incident): coc.py 4.0.0's Clan._from_data
 guards on `clanCapital` being truthy but then indexes `["districts"]`
@@ -19,7 +19,7 @@ from __future__ import annotations
 import coc  # type: ignore[import-untyped]
 import pytest
 
-from qapbot.coc_health import apply_coc_library_patches
+from clashcontrol.coc_health import apply_coc_library_patches
 
 
 def _clan_payload(clan_capital):

@@ -11,7 +11,7 @@ import pytest
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_update_user_metadata_from_interaction_calls_cache(monkeypatch: pytest.MonkeyPatch):
-    import qapbot.ui_common as ui
+    import clashcontrol.ui_common as ui
 
     fake_cache = SimpleNamespace(update_user_metadata=AsyncMock())
     monkeypatch.setattr(ui, "CACHE", fake_cache, raising=False)
@@ -25,7 +25,7 @@ async def test_update_user_metadata_from_interaction_calls_cache(monkeypatch: py
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_update_user_metadata_from_interaction_swallows_errors(monkeypatch: pytest.MonkeyPatch):
-    import qapbot.ui_common as ui
+    import clashcontrol.ui_common as ui
 
     fake_cache = SimpleNamespace(update_user_metadata=AsyncMock(side_effect=RuntimeError("boom")))
     monkeypatch.setattr(ui, "CACHE", fake_cache, raising=False)
@@ -37,7 +37,7 @@ async def test_update_user_metadata_from_interaction_swallows_errors(monkeypatch
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_generic_select_view_limits_options_and_forwards_selection():
-    from qapbot.ui_common import GenericSelectView
+    from clashcontrol.ui_common import GenericSelectView
 
     callback = AsyncMock()
     options = [discord.SelectOption(label=f"Option {i}", value=f"v{i}") for i in range(30)]
@@ -59,8 +59,8 @@ async def test_generic_select_view_limits_options_and_forwards_selection():
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_language_select_view_success_path(monkeypatch: pytest.MonkeyPatch):
-    import qapbot.i18n as i18n
-    from qapbot.ui_common import LanguageSelectView
+    import clashcontrol.i18n as i18n
+    from clashcontrol.ui_common import LanguageSelectView
 
     def _t_success(key: str, **kwargs: Any) -> str:
         return f"{key}:{kwargs.get('lang_name', '')}"
@@ -93,8 +93,8 @@ async def test_language_select_view_success_path(monkeypatch: pytest.MonkeyPatch
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_language_select_view_failure_path(monkeypatch: pytest.MonkeyPatch):
-    import qapbot.i18n as i18n
-    from qapbot.ui_common import LanguageSelectView
+    import clashcontrol.i18n as i18n
+    from clashcontrol.ui_common import LanguageSelectView
 
     def _t_failure(key: str, **kwargs: Any) -> str:
         _ = kwargs
@@ -135,7 +135,7 @@ async def test_language_select_view_failure_path(monkeypatch: pytest.MonkeyPatch
 async def test_check_maintenance_block_returns_false_when_not_in_maintenance(monkeypatch: pytest.MonkeyPatch):
     """Normal operation — helper returns False so callers proceed."""
     import QBcore as _qbcore
-    from qapbot.ui_common import check_maintenance_block
+    from clashcontrol.ui_common import check_maintenance_block
 
     monkeypatch.setattr(_qbcore, "maintenance_mode", False)
     monkeypatch.setattr(_qbcore, "db_maintenance_mode", False)
@@ -150,7 +150,7 @@ async def test_check_maintenance_block_returns_false_when_not_in_maintenance(mon
 async def test_check_maintenance_block_blocks_during_maintenance(monkeypatch: pytest.MonkeyPatch):
     """Full maintenance mode — helper returns True and sends ephemeral msg."""
     import QBcore as _qbcore
-    from qapbot.ui_common import check_maintenance_block
+    from clashcontrol.ui_common import check_maintenance_block
 
     monkeypatch.setattr(_qbcore, "maintenance_mode", True)
     monkeypatch.setattr(_qbcore, "db_maintenance_mode", False)
@@ -173,7 +173,7 @@ async def test_check_maintenance_block_blocks_during_maintenance(monkeypatch: py
 async def test_check_maintenance_block_blocks_during_db_maintenance(monkeypatch: pytest.MonkeyPatch):
     """DB maintenance mode — helper returns True and sends ephemeral msg."""
     import QBcore as _qbcore
-    from qapbot.ui_common import check_maintenance_block
+    from clashcontrol.ui_common import check_maintenance_block
 
     monkeypatch.setattr(_qbcore, "maintenance_mode", False)
     monkeypatch.setattr(_qbcore, "db_maintenance_mode", True)
@@ -193,7 +193,7 @@ async def test_check_maintenance_block_blocks_during_db_maintenance(monkeypatch:
 async def test_check_maintenance_block_uses_followup_when_response_done(monkeypatch: pytest.MonkeyPatch):
     """When the interaction response is already consumed, use followup."""
     import QBcore as _qbcore
-    from qapbot.ui_common import check_maintenance_block
+    from clashcontrol.ui_common import check_maintenance_block
 
     monkeypatch.setattr(_qbcore, "maintenance_mode", True)
     monkeypatch.setattr(_qbcore, "db_maintenance_mode", False)

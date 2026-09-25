@@ -14,7 +14,7 @@ import pytest
 
 def _make_db(tmp_path):
     """Create a real SQLite DB with war_history table and return (db_manager, db_path)."""
-    from qapbot.db_manager import WarHistoryDB
+    from clashcontrol.db_manager import WarHistoryDB
     db_path = str(tmp_path / "test.db")
     conn = sqlite3.connect(db_path)
     conn.execute("""
@@ -53,14 +53,14 @@ class TestCheckIntegritySync:
         assert errors == []
 
     def test_no_db_path_raises(self):
-        from qapbot.db_manager import WarHistoryDB
+        from clashcontrol.db_manager import WarHistoryDB
         dm = WarHistoryDB.__new__(WarHistoryDB)
         dm.db_path = None
         with pytest.raises(RuntimeError, match="not initialized"):
             dm.check_integrity_sync()
 
     def test_corrupt_db(self, tmp_path):
-        from qapbot.db_manager import WarHistoryDB
+        from clashcontrol.db_manager import WarHistoryDB
         bad_path = str(tmp_path / "corrupt.db")
         with open(bad_path, "w") as f:
             f.write("not a sqlite database")

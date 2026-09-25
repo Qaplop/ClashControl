@@ -2,9 +2,9 @@
 //
 //   cd activity/client && npm run build:emoji
 //
-// Reads qapbot/icons/emoji_manifest.json (the same list the bot uploads from) and writes one
-// lossless WebP per entry to qapbot/icons/emoji/<name>.webp. Run it whenever a master in
-// qapbot/icons/ changes or a manifest entry is added; the output is committed, so the bot never
+// Reads clashcontrol/icons/emoji_manifest.json (the same list the bot uploads from) and writes one
+// lossless WebP per entry to clashcontrol/icons/emoji/<name>.webp. Run it whenever a master in
+// clashcontrol/icons/ changes or a manifest entry is added; the output is committed, so the bot never
 // converts anything at runtime. See plans/app-emoji-migration.md.
 //
 // - SVG masters are rasterised at 128x128 (Discord's recommended emoji size).
@@ -18,7 +18,7 @@ import { fileURLToPath } from 'node:url'
 import sharp from 'sharp'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
-const iconsDir = path.resolve(here, '../../../qapbot/icons')
+const iconsDir = path.resolve(here, '../../../clashcontrol/icons')
 const outDir = path.join(iconsDir, 'emoji')
 const SVG_SIZE = 128
 const MAX_BYTES = 256 * 1024 // Discord's upload limit

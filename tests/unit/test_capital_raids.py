@@ -1,7 +1,7 @@
 """Clan Capital raid weekend tracking, leaderboards and reminders (tracker #0115).
 
 Design: plans/tracker-0115-capital-raid-leaderboards.md. Game rules:
-qapbot/docs/COC_GAME_MECHANICS.md § Clan Capital Raid Weekends.
+clashcontrol/docs/COC_GAME_MECHANICS.md § Clan Capital Raid Weekends.
 """
 from __future__ import annotations
 
@@ -18,11 +18,11 @@ import pytest
 
 os.environ.setdefault("DISCORD_TOKEN", "test-token")
 
-from qapbot.cache_manager import CACHE
-from qapbot.constants import coc_timestamp_to_iso, current_raid_season_bounds, is_capital_raid_window
-from qapbot.db_manager import WarHistoryDB
-from qapbot.formatting import MODE_REGISTRY, apply_cwl_mode_suffix, render_leaderboard
-import qapbot.war_notifications as wn
+from clashcontrol.cache_manager import CACHE
+from clashcontrol.constants import coc_timestamp_to_iso, current_raid_season_bounds, is_capital_raid_window
+from clashcontrol.db_manager import WarHistoryDB
+from clashcontrol.formatting import MODE_REGISTRY, apply_cwl_mode_suffix, render_leaderboard
+import clashcontrol.war_notifications as wn
 import QBhelperfunctions as qh
 
 S1, E1 = "2026-09-11T07:00:00Z", "2026-09-14T07:00:00Z"   # last weekend

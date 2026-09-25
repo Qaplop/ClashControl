@@ -193,8 +193,8 @@ class TestFreezeMustNotCaptureTransientData:
 
     def test_nightly_path_no_longer_unfreezes_or_refreezes(self):
         import inspect
-        import QapBot
-        code = _code_only(inspect.getsource(QapBot.run_nightly_maintenance_routine))
+        import ClashControl
+        code = _code_only(inspect.getsource(ClashControl.run_nightly_maintenance_routine))
         assert "gc.unfreeze()" not in code, "the nightly unfreeze is back"
         assert "gc.freeze()" not in code, (
             "the nightly re-freeze is back — it captures whatever is live at 03:00, and the "
@@ -204,8 +204,8 @@ class TestFreezeMustNotCaptureTransientData:
     def test_startup_freeze_is_the_only_freeze(self):
         """One freeze, at startup, covering only the genuinely-permanent caches."""
         import inspect
-        import QapBot
-        code = _code_only(inspect.getsource(QapBot))
+        import ClashControl
+        code = _code_only(inspect.getsource(ClashControl))
         assert code.count("gc.freeze()") == 1, (
             "expected exactly one gc.freeze() call (the startup one); found "
             f"{code.count('gc.freeze()')}"
@@ -216,29 +216,29 @@ class TestFreezeMustNotCaptureTransientData:
 class TestConfigDefaults:
     def test_automatic_collection_is_on_by_default(self):
         """This is the reversal. Disabling it is what caused #0106."""
-        from qapbot.config import CONFIG
+        from clashcontrol.config import CONFIG
         assert CONFIG.gc_automatic is True
 
     def test_per_cycle_collect_is_off_by_default(self):
-        from qapbot.config import CONFIG
+        from clashcontrol.config import CONFIG
         assert CONFIG.gc_per_cycle_collect is False
 
     def test_threshold0_is_raised_well_above_the_cpython_default(self):
         """Raising threshold0 is what attacks promotion at source: objects are promoted only
         by surviving a collection, so collecting less often in gen-0 means most die by
         refcounting first. CPython's own default is 2000 since 3.12."""
-        from qapbot.config import CONFIG
+        from clashcontrol.config import CONFIG
         assert CONFIG.gc_threshold0 >= 20_000
 
     @pytest.mark.parametrize("env,expected", [("0", False), ("false", False), ("1", True)])
     def test_gc_automatic_env_override(self, monkeypatch, env, expected):
         """GC_AUTOMATIC keeps its historical name; only the default flipped."""
-        from qapbot.config import load_config
+        from clashcontrol.config import load_config
         monkeypatch.setenv("GC_AUTOMATIC", env)
         assert load_config().gc_automatic is expected
 
     def test_threshold_override_and_bad_value_fallback(self, monkeypatch):
-        from qapbot.config import load_config
+        from clashcontrol.config import load_config
         monkeypatch.setenv("GC_THRESHOLD0", "12345")
         assert load_config().gc_threshold0 == 12345
         monkeypatch.setenv("GC_THRESHOLD0", "lots")
@@ -248,11 +248,11 @@ class TestConfigDefaults:
         """Raised 10 -> 30 on 2026-09-09. Measured over 25h on PROD (build 39): gen-1 spent
         51% of the total stall budget to reclaim 12% of the objects, while every one of the
         95 >=3s ACK-deadline breaches was a gen-2 collection and none were gen-1."""
-        from qapbot.config import CONFIG
+        from clashcontrol.config import CONFIG
         assert CONFIG.gc_threshold1 > 10
 
     def test_threshold1_override_and_bad_value_fallback(self, monkeypatch):
-        from qapbot.config import load_config
+        from clashcontrol.config import load_config
         monkeypatch.setenv("GC_THRESHOLD1", "17")
         assert load_config().gc_threshold1 == 17
         monkeypatch.setenv("GC_THRESHOLD1", "plenty")
@@ -265,8 +265,8 @@ class TestWiring:
 
     def test_per_cycle_collect_is_gated_on_the_config_flag(self):
         import inspect
-        import QapBot
-        src = inspect.getsource(QapBot.periodic_main)
+        import ClashControl
+        src = inspect.getsource(ClashControl.periodic_main)
         assert "CONFIG.gc_per_cycle_collect" in src, (
             "the per-cycle gc.collect(1) is no longer gated — it would run unconditionally "
             "again, which is exactly the promotion pump"
@@ -276,8 +276,8 @@ class TestWiring:
         """The bug this guards: the original block passed `_t1_old` straight through, so a
         gc_threshold1 value would have been silently ignored."""
         import inspect
-        import QapBot
-        src = _code_only(inspect.getsource(QapBot))
+        import ClashControl
+        src = _code_only(inspect.getsource(ClashControl))
         i = src.index("gc.set_threshold(")
         call = src[i:i + 200]
         assert "CONFIG.gc_threshold0" in call and "CONFIG.gc_threshold1" in call, call
@@ -285,14 +285,14 @@ class TestWiring:
     def test_gc_stats_delta_reports_per_generation_counts(self):
         """The tuning instrument: [GC-AUTO] only logs collections >=0.5s, so without this we
         cannot see how OFTEN CPython collects, which is what threshold0 tuning needs."""
-        import QapBot
-        QapBot._gc_stats_prev = None
-        assert "baseline" in QapBot._gc_stats_delta()      # first call has no baseline
+        import ClashControl
+        ClashControl._gc_stats_prev = None
+        assert "baseline" in ClashControl._gc_stats_delta()      # first call has no baseline
         gc.collect(0)
-        out = QapBot._gc_stats_delta()
+        out = ClashControl._gc_stats_delta()
         assert "gen0=" in out and "gen2=" in out, out
 
     def test_gc_stats_delta_never_raises(self, monkeypatch):
-        import QapBot
+        import ClashControl
         monkeypatch.setattr(gc, "get_stats", lambda: (_ for _ in ()).throw(RuntimeError("boom")))
-        assert QapBot._gc_stats_delta() == "n/a"
+        assert ClashControl._gc_stats_delta() == "n/a"

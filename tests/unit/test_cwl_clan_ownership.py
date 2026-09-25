@@ -1,6 +1,6 @@
 """Tests for cross-guild shared CWL clan ownership resolution and the sharing orchestrator
 (CWL_ROSTER_PLANNING_PLAN.md, 2026-08-15): resolve_cwl_clan_owner() and
-ensure_cwl_clan_sharing() in qapbot/QBdiscocmdshelper_cwl.py.
+ensure_cwl_clan_sharing() in clashcontrol/QBdiscocmdshelper_cwl.py.
 """
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ import pytest
 
 os.environ.setdefault("DISCORD_TOKEN", "test-token")
 
-from qapbot.db_manager import WarHistoryDB
+from clashcontrol.db_manager import WarHistoryDB
 
 
 @pytest.fixture
@@ -86,8 +86,8 @@ def _make_bot(guild_members: dict) -> MagicMock:
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_leader_outranks_coleader_across_guilds(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import resolve_cwl_clan_owner
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_cwl_clan_owner
     import QBcore
 
     await _seed_user_player(db, "111", "#LEADER_TAG", verified=False)  # guild 100's leader, unverified
@@ -116,8 +116,8 @@ async def test_leader_outranks_coleader_across_guilds(db, monkeypatch):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_verified_breaks_tie_within_same_rank(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import resolve_cwl_clan_owner
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_cwl_clan_owner
     import QBcore
 
     await _seed_user_player(db, "111", "#COLEADER_A", verified=False)
@@ -151,8 +151,8 @@ async def test_native_family_guild_wins_tie_over_acting_guild(db, monkeypatch):
     server, plus a personal/test/alliance server). Before this fix, the acting guild always won
     such a tie purely because affected_guild_ids lists it first; the clan's real native-family
     guild must win instead."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import resolve_cwl_clan_owner
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_cwl_clan_owner
     import QBcore
 
     await _seed_user_player(db, "111", "#LEADER_TAG", verified=False)
@@ -182,8 +182,8 @@ async def test_native_family_guild_wins_tie_over_acting_guild(db, monkeypatch):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_linked_account_not_a_member_of_any_affected_guild_is_ignored(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import resolve_cwl_clan_owner
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_cwl_clan_owner
     import QBcore
 
     await _seed_user_player(db, "111", "#LEADER_TAG", verified=True)
@@ -208,8 +208,8 @@ async def test_linked_account_not_a_member_of_any_affected_guild_is_ignored(db, 
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_no_leader_or_coleader_at_all_falls_back_unresolved(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import resolve_cwl_clan_owner
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_cwl_clan_owner
     import QBcore
 
     monkeypatch.setattr(CACHE, "db_manager", db)
@@ -230,8 +230,8 @@ async def test_no_leader_or_coleader_at_all_falls_back_unresolved(db, monkeypatc
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_coc_api_failure_falls_back_unresolved_without_crashing(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import resolve_cwl_clan_owner
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_cwl_clan_owner
     import QBcore
 
     monkeypatch.setattr(CACHE, "db_manager", db)
@@ -250,8 +250,8 @@ async def test_coc_api_failure_falls_back_unresolved_without_crashing(db, monkey
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_resolves_owner_event_id_for_the_winning_guild(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import resolve_cwl_clan_owner
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_cwl_clan_owner
     import QBcore
 
     await _seed_guild_and_clan(db, "100")
@@ -279,8 +279,8 @@ async def test_resolves_owner_event_id_for_the_winning_guild(db, monkeypatch):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_ensure_sharing_noop_when_clan_not_shared(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import ensure_cwl_clan_sharing
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import ensure_cwl_clan_sharing
 
     await _seed_guild_and_clan(db, "100", "#CLAN1")
     monkeypatch.setattr(CACHE, "db_manager", db)
@@ -295,8 +295,8 @@ async def test_ensure_sharing_noop_when_clan_not_shared(db, monkeypatch):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_ensure_sharing_creates_shared_clan_on_first_detection(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import ensure_cwl_clan_sharing
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import ensure_cwl_clan_sharing
     import QBcore
 
     await _seed_guild_and_clan(db, "100", "#CLAN1")
@@ -331,8 +331,8 @@ async def test_ensure_sharing_creates_shared_clan_on_first_detection(db, monkeyp
 async def test_ensure_sharing_attaches_to_already_established_shared_clan(db, monkeypatch):
     """A third guild adding an already-shared clan just attaches — no re-resolution, owner
     stays whoever was already resolved."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import ensure_cwl_clan_sharing
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import ensure_cwl_clan_sharing
 
     await _seed_guild_and_clan(db, "100", "#CLAN1")
     await _seed_guild_and_clan(db, "300", "#CLAN1")
@@ -360,8 +360,8 @@ async def test_ensure_sharing_attaches_to_already_established_shared_clan(db, mo
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_shared_clan_info_empty_for_event_with_no_shared_clans(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import get_cwl_event_shared_clan_info_sync
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import get_cwl_event_shared_clan_info_sync
 
     await _seed_guild_and_clan(db, "100", "#CLAN1")
     monkeypatch.setattr(CACHE, "db_manager", db)
@@ -374,8 +374,8 @@ async def test_shared_clan_info_empty_for_event_with_no_shared_clans(db, monkeyp
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_shared_clan_info_reports_other_guilds(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import get_cwl_event_shared_clan_info_sync
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import get_cwl_event_shared_clan_info_sync
 
     await _seed_guild_and_clan(db, "100", "#CLAN1")
     await _seed_guild_and_clan(db, "200", "#CLAN1")
@@ -398,8 +398,8 @@ async def test_shared_clan_info_reports_other_guilds(db, monkeypatch):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_prune_or_detach_preserves_data_and_repoints_owner_when_other_guild_remains(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import prune_or_detach_shared_clans_before_deletion
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import prune_or_detach_shared_clans_before_deletion
     import QBcore
 
     await _seed_guild_and_clan(db, "100", "#CLAN1")
@@ -439,8 +439,8 @@ async def test_prune_or_detach_preserves_data_and_repoints_owner_when_other_guil
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_prune_or_detach_does_not_repoint_when_deleting_guild_is_not_owner(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import prune_or_detach_shared_clans_before_deletion
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import prune_or_detach_shared_clans_before_deletion
 
     await _seed_guild_and_clan(db, "100", "#CLAN1")
     await _seed_guild_and_clan(db, "200", "#CLAN1")
@@ -465,8 +465,8 @@ async def test_prune_or_detach_does_not_repoint_when_deleting_guild_is_not_owner
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_prune_or_detach_deletes_shared_record_when_last_guild_leaves(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import prune_or_detach_shared_clans_before_deletion
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import prune_or_detach_shared_clans_before_deletion
 
     await _seed_guild_and_clan(db, "100", "#CLAN1")
     monkeypatch.setattr(CACHE, "db_manager", db)
@@ -502,8 +502,8 @@ async def _seed_two_shared_guilds(db: WarHistoryDB, owner_guild_id: str, target_
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_evict_owner_removes_target_guild(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import evict_guild_from_shared_clan
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import evict_guild_from_shared_clan
 
     monkeypatch.setattr(CACHE, "db_manager", db)
     shared_clan_id, _, target_event_id = await _seed_two_shared_guilds(db, "100", "200")
@@ -521,8 +521,8 @@ async def test_evict_owner_removes_target_guild(db, monkeypatch):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_evict_rejects_non_owner(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import evict_guild_from_shared_clan
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import evict_guild_from_shared_clan
 
     monkeypatch.setattr(CACHE, "db_manager", db)
     shared_clan_id, _, _ = await _seed_two_shared_guilds(db, "100", "200")
@@ -538,8 +538,8 @@ async def test_evict_rejects_non_owner(db, monkeypatch):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_evict_rejects_evicting_self(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import evict_guild_from_shared_clan
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import evict_guild_from_shared_clan
 
     monkeypatch.setattr(CACHE, "db_manager", db)
     await _seed_two_shared_guilds(db, "100", "200")
@@ -552,8 +552,8 @@ async def test_evict_rejects_evicting_self(db, monkeypatch):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_evict_not_shared_returns_error(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import evict_guild_from_shared_clan
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import evict_guild_from_shared_clan
 
     monkeypatch.setattr(CACHE, "db_manager", db)
 
@@ -569,8 +569,8 @@ async def test_evict_not_shared_returns_error(db, monkeypatch):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_sync_shared_roster_mirrors_missing_players_into_every_attached_guild(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import sync_cwl_shared_clan_roster_to_local_pools
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import sync_cwl_shared_clan_roster_to_local_pools
 
     monkeypatch.setattr(CACHE, "db_manager", db)
     shared_clan_id, owner_event_id, target_event_id = await _seed_two_shared_guilds(db, "100", "200")
@@ -594,8 +594,8 @@ async def test_sync_shared_roster_never_overwrites_an_existing_local_signup(db, 
     has its OWN local cwl_signups row for that player_tag — e.g. they're a genuine family member
     who already responded via DM with their own preferred_league_rank — mirroring must never
     overwrite it with a placeholder guest row."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import sync_cwl_shared_clan_roster_to_local_pools
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import sync_cwl_shared_clan_roster_to_local_pools
 
     monkeypatch.setattr(CACHE, "db_manager", db)
     shared_clan_id, _, target_event_id = await _seed_two_shared_guilds(db, "100", "200")
@@ -647,8 +647,8 @@ async def _seed_real_cwl_attack(db: WarHistoryDB, war_id: str, clan_tag: str, pl
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_auto_assign_fills_empty_clan_with_prior_cwl_members(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import auto_assign_prior_cwl_members
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import auto_assign_prior_cwl_members
 
     monkeypatch.setattr(CACHE, "db_manager", db)
     await _seed_guild_and_clan(db, "300", "#CLAN1")
@@ -682,8 +682,8 @@ async def test_auto_assign_seeds_other_qualifying_members_even_when_some_already
     clan is not controlled by its own guild." A re-added clan can already carry a couple of
     deliberately locked survivors from before its removal — those must NOT block every other
     genuinely-qualifying player from getting auto-assigned too."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import auto_assign_prior_cwl_members
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import auto_assign_prior_cwl_members
 
     monkeypatch.setattr(CACHE, "db_manager", db)
     await _seed_guild_and_clan(db, "301", "#CLAN1")
@@ -710,8 +710,8 @@ async def test_auto_assign_never_re_places_a_player_already_placed_in_this_clan(
     to clan_tag (even if they'd otherwise also qualify via prior CWL history there) is left
     completely alone, so a locked/admin_override placement is never silently downgraded to a
     plain 'suggested' one by a later re-add."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import auto_assign_prior_cwl_members
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import auto_assign_prior_cwl_members
 
     monkeypatch.setattr(CACHE, "db_manager", db)
     await _seed_guild_and_clan(db, "307", "#CLAN1")
@@ -732,8 +732,8 @@ async def test_auto_assign_never_re_places_a_player_already_placed_in_this_clan(
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_auto_assign_writes_to_shared_table_for_a_shared_clan(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import auto_assign_prior_cwl_members
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import auto_assign_prior_cwl_members
 
     monkeypatch.setattr(CACHE, "db_manager", db)
     shared_clan_id, owner_event_id, target_event_id = await _seed_two_shared_guilds(db, "302", "303")
@@ -766,8 +766,8 @@ async def test_auto_assign_writes_to_shared_table_for_a_shared_clan(db, monkeypa
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_detach_on_deactivation_removes_non_owner_guild_leaves_record_intact(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import detach_guild_from_shared_clan_on_deactivation
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import detach_guild_from_shared_clan_on_deactivation
 
     monkeypatch.setattr(CACHE, "db_manager", db)
     shared_clan_id, _, target_event_id = await _seed_two_shared_guilds(db, "100", "200")
@@ -788,8 +788,8 @@ async def test_detach_on_deactivation_repoints_ownership_when_owner_deactivates(
     """The branch the end-to-end flow test in test_web_bridge.py does NOT exercise (its acting
     guild was never the owner there): the OWNER guild itself deactivates the clan — must repoint
     ownership to a remaining guild, not leave a departed guild as the frozen owner forever."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import detach_guild_from_shared_clan_on_deactivation
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import detach_guild_from_shared_clan_on_deactivation
     import QBcore
 
     await _seed_user_player(db, "222", "#COLEADER_TAG", verified=True)  # guild 200's co-leader
@@ -819,8 +819,8 @@ async def test_detach_on_deactivation_repoints_ownership_when_owner_deactivates(
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_detach_on_deactivation_prunes_record_when_last_guild_deactivates(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import detach_guild_from_shared_clan_on_deactivation
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import detach_guild_from_shared_clan_on_deactivation
 
     await _seed_guild_and_clan(db, "100", "#CLAN1")
     monkeypatch.setattr(CACHE, "db_manager", db)
@@ -837,8 +837,8 @@ async def test_detach_on_deactivation_prunes_record_when_last_guild_deactivates(
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_detach_on_deactivation_is_a_no_op_when_clan_never_shared(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import detach_guild_from_shared_clan_on_deactivation
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import detach_guild_from_shared_clan_on_deactivation
 
     monkeypatch.setattr(CACHE, "db_manager", db)
 
@@ -849,8 +849,8 @@ async def test_detach_on_deactivation_is_a_no_op_when_clan_never_shared(db, monk
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_detach_on_deactivation_is_a_no_op_when_guild_not_actually_attached(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import detach_guild_from_shared_clan_on_deactivation
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import detach_guild_from_shared_clan_on_deactivation
 
     monkeypatch.setattr(CACHE, "db_manager", db)
     shared_clan_id, _, _ = await _seed_two_shared_guilds(db, "100", "200")
@@ -880,8 +880,8 @@ async def _seed_cross_assigned_real_member(db: WarHistoryDB, target_event_id: in
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_detach_converts_cross_assigned_real_member_into_a_guest_player(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import detach_guild_from_shared_clan_on_deactivation
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import detach_guild_from_shared_clan_on_deactivation
 
     monkeypatch.setattr(CACHE, "db_manager", db)
     # Owner = 200 (so guild 100, the one cross-assigning and detaching, is never the owner —
@@ -917,8 +917,8 @@ async def test_detach_does_not_convert_a_real_members_own_family_assignment(db, 
     specifically for a player assigned to a DIFFERENT clan than the one being detached, which is
     already the exact condition the code checks; this just confirms a member with NO cross-clan
     assignment at all (still Unassigned) is left alone too."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import detach_guild_from_shared_clan_on_deactivation
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import detach_guild_from_shared_clan_on_deactivation
 
     monkeypatch.setattr(CACHE, "db_manager", db)
     _, _, target_event_id = await _seed_two_shared_guilds(db, "200", "100")
@@ -932,8 +932,8 @@ async def test_detach_does_not_convert_a_real_members_own_family_assignment(db, 
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_purge_orphaned_shared_clan_guests_removes_foreign_placement_entirely(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import (
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import (
         detach_guild_from_shared_clan_on_deactivation,
         purge_orphaned_shared_clan_guests_sync,
     )
@@ -962,8 +962,8 @@ async def test_purge_orphaned_shared_clan_guests_removes_foreign_placement_entir
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_purge_orphaned_shared_clan_guests_is_a_no_op_for_a_never_cross_assigned_player(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import purge_orphaned_shared_clan_guests_sync
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import purge_orphaned_shared_clan_guests_sync
 
     monkeypatch.setattr(CACHE, "db_manager", db)
     shared_clan_id, _, target_event_id = await _seed_two_shared_guilds(db, "200", "100")
@@ -985,8 +985,8 @@ async def test_purge_orphaned_shared_clan_guests_is_a_no_op_for_a_never_cross_as
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_detach_mirrors_confirmed_shared_roster_into_local_orphaned_assignment(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import detach_guild_from_shared_clan_on_deactivation
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import detach_guild_from_shared_clan_on_deactivation
 
     monkeypatch.setattr(CACHE, "db_manager", db)
     shared_clan_id, _, target_event_id = await _seed_two_shared_guilds(db, "200", "100")
@@ -1021,8 +1021,8 @@ async def test_detach_does_not_mirror_a_non_confirmed_shared_roster_player(db, m
     """A pending/declined shared-roster row was never actually "assigned" to the clan
     (only status='confirmed' counts as an assignment for a shared clan — see
     _build_enrollment_payload's merge) — must not be mirrored as an orphaned assignment."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import detach_guild_from_shared_clan_on_deactivation
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import detach_guild_from_shared_clan_on_deactivation
 
     monkeypatch.setattr(CACHE, "db_manager", db)
     shared_clan_id, _, target_event_id = await _seed_two_shared_guilds(db, "200", "100")
@@ -1051,8 +1051,8 @@ async def test_detach_does_not_mirror_a_real_members_own_deliberate_self_assignm
     serves a different purpose, namely a player that is rightfully member of the current player
     pool... but is assigned to another guild's roster" — a real direct member of the clan itself
     was never "rightfully in this guild's pool" to begin with."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import detach_guild_from_shared_clan_on_deactivation
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import detach_guild_from_shared_clan_on_deactivation
 
     monkeypatch.setattr(CACHE, "db_manager", db)
     shared_clan_id, _, target_event_id = await _seed_two_shared_guilds(db, "200", "100")
@@ -1083,8 +1083,8 @@ async def test_detach_does_not_mirror_an_auto_seeded_or_auto_assigned_confirmed_
     if_empty's "prior CWL history" seed — a passive side effect of the clan being added, not a
     deliberate cross-guild placement) must NOT be mirrored, unlike a genuine admin_override
     drag-and-drop (covered by the sibling test above)."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import detach_guild_from_shared_clan_on_deactivation
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import detach_guild_from_shared_clan_on_deactivation
 
     monkeypatch.setattr(CACHE, "db_manager", db)
     shared_clan_id, _, target_event_id = await _seed_two_shared_guilds(db, "200", "100")
@@ -1113,8 +1113,8 @@ async def test_detach_no_longer_deletes_a_players_existing_local_mirror(db, monk
     the plain-clan branch (shared is None) — this test was never revisited when rule f shipped,
     so it kept locking in the pre-rule-f (now wrong) behavior. Deletion now only ever happens via
     the explicit "Remove" button (remove_cwl_guest_clan)."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import detach_guild_from_shared_clan_on_deactivation
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import detach_guild_from_shared_clan_on_deactivation
 
     monkeypatch.setattr(CACHE, "db_manager", db)
     shared_clan_id, _, target_event_id = await _seed_two_shared_guilds(db, "200", "100")
@@ -1141,8 +1141,8 @@ async def test_detach_never_deletes_a_genuine_local_signup_sharing_a_shared_rost
     cleanup gates on (2026-08-16 follow-up: the source-field check turned out too narrow, since
     auto_assign_prior_cwl_members_if_empty() itself writes local rows with source='auto_assigned'/
     'auto_seeded' whenever it runs before a clan is detected as shared)."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import detach_guild_from_shared_clan_on_deactivation
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import detach_guild_from_shared_clan_on_deactivation
 
     monkeypatch.setattr(CACHE, "db_manager", db)
     shared_clan_id, _, target_event_id = await _seed_two_shared_guilds(db, "200", "100")
@@ -1168,8 +1168,8 @@ async def test_orphaned_assignment_gets_purged_when_owning_guild_reassigns_elsew
     that already cleans up foreign guests (test_purge_orphaned_shared_clan_guests_removes_
     foreign_placement_entirely) must also clean up this guild's own now-stale local copy the
     moment the clan's real owning guild reassigns that exact player away from the shared clan."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import detach_guild_from_shared_clan_on_deactivation, purge_orphaned_shared_clan_guests_sync
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import detach_guild_from_shared_clan_on_deactivation, purge_orphaned_shared_clan_guests_sync
 
     monkeypatch.setattr(CACHE, "db_manager", db)
     shared_clan_id, _, target_event_id = await _seed_two_shared_guilds(db, "200", "100")
@@ -1195,8 +1195,8 @@ async def test_remove_guest_clan_purges_local_pool_even_when_clan_is_shared(db, 
     THIS guild's own local cwl_signups/cwl_assignments rows for the clan's real current members
     (only whatever happens to already be registered in cwl_shared_clan_players). Fixed by running
     the local cleanup unconditionally, after the shared-detach step."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import remove_cwl_guest_clan
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import remove_cwl_guest_clan
 
     monkeypatch.setattr(CACHE, "db_manager", db)
     monkeypatch.setattr(CACHE, "server_config", {"100": {"member_clans": [], "member_families": []}})
@@ -1231,8 +1231,8 @@ async def test_remove_guest_clan_still_preserves_a_deliberate_admin_override_pla
     above: that test proves ordinary (non-deliberate) members DO get purged by Remove; this one
     proves a genuine deliberate placement still does NOT, exactly like it survives a mere
     Uncheck (test_detach_mirrors_confirmed_shared_roster_into_local_orphaned_assignment)."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import remove_cwl_guest_clan
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import remove_cwl_guest_clan
 
     monkeypatch.setattr(CACHE, "db_manager", db)
     monkeypatch.setattr(CACHE, "server_config", {"100": {"member_clans": [], "member_families": []}})
@@ -1264,8 +1264,8 @@ async def test_remove_guest_clan_preserves_a_member_drag_assigned_into_a_family_
     the FAMILY clan, not the shared clan being removed — _cleanup_local_pool_for_plain_clan_
     deactivation_sync's preservation check used to only look at an assignment scoped to the clan
     being removed, so it never found this one and deleted it (and the player's signup) anyway."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import remove_cwl_guest_clan
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import remove_cwl_guest_clan
 
     monkeypatch.setattr(CACHE, "db_manager", db)
     monkeypatch.setattr(CACHE, "server_config", {"100": {"member_clans": ["#FAMILY_CLAN"], "member_families": []}})
@@ -1302,8 +1302,8 @@ async def test_remove_guest_clan_purges_local_mirror_for_a_player_who_since_left
     member, no local assignment pointing at clan_tag) — their mirror row lingered forever, later
     showing up as an oddly "individually removable" guest player the admin never actually
     invited."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import remove_cwl_guest_clan, sync_cwl_shared_clan_roster_to_local_pools
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import remove_cwl_guest_clan, sync_cwl_shared_clan_roster_to_local_pools
 
     monkeypatch.setattr(CACHE, "db_manager", db)
     monkeypatch.setattr(CACHE, "server_config", {"100": {"member_clans": [], "member_families": []}})
@@ -1347,8 +1347,8 @@ async def test_remove_shared_guest_clan_clears_stale_pointer_for_a_real_family_m
     real pool member) but the stale assignment must be cleared — left alone, the board renders
     them stuck in "Assigned to other Guild" forever once #CLAN1 is removed, even though they're
     just an ordinary family-clan member who should show as Unassigned."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import remove_cwl_guest_clan
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import remove_cwl_guest_clan
 
     monkeypatch.setattr(CACHE, "db_manager", db)
     monkeypatch.setattr(CACHE, "server_config", {"100": {"member_clans": ["#FAMILY_CLAN"], "member_families": []}})
@@ -1387,8 +1387,8 @@ async def test_remove_shared_guest_clan_clears_stale_pointer_for_a_real_family_m
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_plain_guest_clan_detach_removes_auto_assigned_and_auto_seeded_players(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import remove_cwl_guest_clan
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import remove_cwl_guest_clan
 
     monkeypatch.setattr(CACHE, "db_manager", db)
     monkeypatch.setattr(CACHE, "server_config", {"300": {"member_clans": [], "member_families": []}})
@@ -1421,8 +1421,8 @@ async def test_plain_guest_clan_remove_preserves_deliberate_cross_assignment_to_
     admin_override players (see test_detach_converts_cross_assigned_real_member_into_a_guest_player
     above), except here the local cwl_assignments row already IS the real assignment (no shared
     table to mirror from), so preserving it is simply not deleting it."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import remove_cwl_guest_clan
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import remove_cwl_guest_clan
 
     monkeypatch.setattr(CACHE, "db_manager", db)
     monkeypatch.setattr(CACHE, "server_config", {"301": {"member_clans": [], "member_families": []}})
@@ -1461,8 +1461,8 @@ async def test_plain_guest_clan_remove_purges_deliberate_assignment_into_the_rem
     placement points at the clan being fully removed: that column/roster is gone entirely, so a
     player manually placed into their own clan's column must be purged exactly like any other
     ordinary (non-deliberate) direct member of that clan."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import remove_cwl_guest_clan
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import remove_cwl_guest_clan
 
     monkeypatch.setattr(CACHE, "db_manager", db)
     monkeypatch.setattr(CACHE, "server_config", {"307": {"member_clans": [], "member_families": []}})
@@ -1499,8 +1499,8 @@ async def test_shared_guest_clan_remove_purges_own_member_deliberately_placed_in
     not enough on its own to preserve this: #BASEMENT was never "one of guild 100's own players
     assigned to another guild," they're simply a foreign player whose guest invitation just ended,
     same as every other ordinary member of the removed clan."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import remove_cwl_guest_clan
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import remove_cwl_guest_clan
 
     monkeypatch.setattr(CACHE, "db_manager", db)
     monkeypatch.setattr(CACHE, "server_config", {"100": {"member_clans": [], "member_families": []}})
@@ -1532,8 +1532,8 @@ async def test_plain_guest_clan_detach_never_deletes_a_genuine_family_members_si
     removing staycalm the error becomes obvious" — real family-clan members were stuck rendering
     as "Assigned to other Guild" forever otherwise, since this cleanup already correctly refused
     to delete their pool membership but never cleared the resulting dangling pointer)."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import remove_cwl_guest_clan
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import remove_cwl_guest_clan
 
     monkeypatch.setattr(CACHE, "db_manager", db)
     monkeypatch.setattr(CACHE, "server_config", {"302": {"member_clans": ["#FAMILY_CLAN"], "member_families": []}})
@@ -1577,8 +1577,8 @@ async def test_plain_guest_clan_detach_never_deletes_a_genuine_family_members_si
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_plain_guest_clan_detach_removes_discord_linked_alt_in_unrelated_clan(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import remove_cwl_guest_clan
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import remove_cwl_guest_clan
 
     monkeypatch.setattr(CACHE, "db_manager", db)
     monkeypatch.setattr(CACHE, "server_config", {"303": {"member_clans": [], "member_families": []}})
@@ -1604,8 +1604,8 @@ async def test_plain_guest_clan_detach_removes_discord_linked_alt_in_unrelated_c
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_plain_guest_clan_detach_keeps_discord_linked_alt_in_family_clan_unconditionally(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import remove_cwl_guest_clan
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import remove_cwl_guest_clan
 
     monkeypatch.setattr(CACHE, "db_manager", db)
     # No cwl_enrollment_include_all_linked_accounts set at all — family protection must not
@@ -1635,8 +1635,8 @@ async def test_plain_guest_clan_detach_keeps_discord_linked_alt_in_family_clan_u
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_plain_guest_clan_detach_keeps_discord_linked_alt_in_other_guest_clan_when_toggle_on(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import remove_cwl_guest_clan
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import remove_cwl_guest_clan
 
     monkeypatch.setattr(CACHE, "db_manager", db)
     monkeypatch.setattr(CACHE, "server_config", {
@@ -1669,8 +1669,8 @@ async def test_plain_guest_clan_detach_keeps_discord_linked_alt_in_other_guest_c
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_plain_guest_clan_detach_removes_discord_linked_alt_in_other_guest_clan_when_toggle_off(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import remove_cwl_guest_clan
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import remove_cwl_guest_clan
 
     monkeypatch.setattr(CACHE, "db_manager", db)
     # cwl_enrollment_include_all_linked_accounts left off (default False).

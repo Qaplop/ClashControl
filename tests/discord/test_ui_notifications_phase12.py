@@ -24,9 +24,9 @@ def _make_users(count: int) -> Dict[str, Dict[str, Any]]:
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_unified_change_mode_missing_user_shows_error(monkeypatch: pytest.MonkeyPatch):
-    import qapbot.ui_notifications as ui
-    import qapbot.cache_manager as cache_manager_module
-    import qapbot.i18n as i18n_module
+    import clashcontrol.ui_notifications as ui
+    import clashcontrol.cache_manager as cache_manager_module
+    import clashcontrol.i18n as i18n_module
 
     interaction = make_interaction()
     cache = FakeCache()
@@ -51,9 +51,9 @@ async def test_unified_change_mode_missing_user_shows_error(monkeypatch: pytest.
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_unified_change_language_missing_user_shows_error(monkeypatch: pytest.MonkeyPatch):
-    import qapbot.ui_notifications as ui
-    import qapbot.cache_manager as cache_manager_module
-    import qapbot.i18n as i18n_module
+    import clashcontrol.ui_notifications as ui
+    import clashcontrol.cache_manager as cache_manager_module
+    import clashcontrol.i18n as i18n_module
 
     interaction = make_interaction()
     cache = FakeCache()
@@ -78,10 +78,10 @@ async def test_unified_change_language_missing_user_shows_error(monkeypatch: pyt
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_language_selected_manual_sets_lock_and_persists(monkeypatch: pytest.MonkeyPatch):
-    import qapbot.ui_notifications as ui
-    import qapbot.QBdiscocmdshelper as helper
-    import qapbot.cache_manager as cache_manager_module
-    import qapbot.i18n as i18n_module
+    import clashcontrol.ui_notifications as ui
+    import clashcontrol.QBdiscocmdshelper as helper
+    import clashcontrol.cache_manager as cache_manager_module
+    import clashcontrol.i18n as i18n_module
 
     interaction = make_interaction()
     user_id = str(interaction.user.id)
@@ -124,8 +124,8 @@ async def test_language_selected_manual_sets_lock_and_persists(monkeypatch: pyte
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_language_selected_missing_values_returns_early(monkeypatch: pytest.MonkeyPatch):
-    import qapbot.ui_notifications as ui
-    import qapbot.i18n as i18n_module
+    import clashcontrol.ui_notifications as ui
+    import clashcontrol.i18n as i18n_module
 
     interaction = make_interaction()
     interaction.data = {}
@@ -153,8 +153,8 @@ async def test_language_selected_missing_values_returns_early(monkeypatch: pytes
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_notification_settings_user_select_pagination_actions(monkeypatch: pytest.MonkeyPatch):
-    import qapbot.ui_notifications as ui
-    import qapbot.i18n as i18n_module
+    import clashcontrol.ui_notifications as ui
+    import clashcontrol.i18n as i18n_module
 
     interaction = make_interaction()
     monkeypatch.setattr(i18n_module, "t", identity_t)
@@ -184,9 +184,9 @@ async def test_notification_settings_user_select_pagination_actions(monkeypatch:
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_notification_settings_user_select_prefills_from_cache(monkeypatch: pytest.MonkeyPatch):
-    import qapbot.ui_notifications as ui
-    import qapbot.cache_manager as cache_manager_module
-    import qapbot.i18n as i18n_module
+    import clashcontrol.ui_notifications as ui
+    import clashcontrol.cache_manager as cache_manager_module
+    import clashcontrol.i18n as i18n_module
 
     interaction = make_interaction()
     monkeypatch.setattr(i18n_module, "t", identity_t)
@@ -227,9 +227,9 @@ async def test_notification_settings_user_select_prefills_from_cache(monkeypatch
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_notification_settings_apply_clan_scope_no_affected_users(monkeypatch: pytest.MonkeyPatch):
-    import qapbot.ui_notifications as ui
-    import qapbot.cache_manager as cache_manager_module
-    import qapbot.i18n as i18n_module
+    import clashcontrol.ui_notifications as ui
+    import clashcontrol.cache_manager as cache_manager_module
+    import clashcontrol.i18n as i18n_module
 
     interaction = make_interaction()
     monkeypatch.setattr(i18n_module, "t", identity_t)
@@ -265,11 +265,11 @@ async def test_notification_settings_apply_clan_scope_no_affected_users(monkeypa
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_notification_settings_apply_user_scope_updates_and_refreshes(monkeypatch: pytest.MonkeyPatch):
-    import qapbot.ui_notifications as ui
-    import qapbot.cache_manager as cache_manager_module
-    import qapbot.i18n as i18n_module
-    import qapbot.QBdiscocmdshelper as helper
-    import qapbot.ui_clan_management as clan_mgmt
+    import clashcontrol.ui_notifications as ui
+    import clashcontrol.cache_manager as cache_manager_module
+    import clashcontrol.i18n as i18n_module
+    import clashcontrol.QBdiscocmdshelper as helper
+    import clashcontrol.ui_clan_management as clan_mgmt
 
     interaction = make_interaction()
     monkeypatch.setattr(i18n_module, "t", identity_t)

@@ -29,7 +29,7 @@ import pytest
 os.environ.setdefault("DISCORD_TOKEN", "test-token")
 
 import QBcore  # noqa: E402
-from qapbot.ui_common import check_maintenance_block  # noqa: E402
+from clashcontrol.ui_common import check_maintenance_block  # noqa: E402
 
 
 def _interaction():
@@ -59,7 +59,7 @@ def _clean_flags(monkeypatch):
 
 @pytest.mark.asyncio
 class TestComponentGuard:
-    """qapbot.ui_common.check_maintenance_block — buttons, selects, modals."""
+    """clashcontrol.ui_common.check_maintenance_block — buttons, selects, modals."""
 
     async def test_migration_alone_does_not_block(self):
         QBcore.db_migration_active = True

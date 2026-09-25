@@ -1,6 +1,6 @@
 """Double-click guards on confirm/apply buttons (Cardinal Rule 7, 2026-09-23).
 
-qapbot.ui_common's claim_action / release_action / lock_buttons / unlock_buttons are the shared
+clashcontrol.ui_common's claim_action / release_action / lock_buttons / unlock_buttons are the shared
 mechanism every side-effecting confirm step uses: the first click claims the view before any
 await, later clicks are acknowledged silently and do nothing, and the buttons are shown greyed out
 as the click's own response. CWL-specific dialogs are covered in test_ui_cwl_roster.py.
@@ -37,7 +37,7 @@ def _two_button_view() -> discord.ui.View:
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_claim_action_rejects_second_click_silently():
-    from qapbot.ui_common import action_in_flight, claim_action
+    from clashcontrol.ui_common import action_in_flight, claim_action
 
     view = _two_button_view()
     first, second = _click(), _click()
@@ -53,7 +53,7 @@ async def test_claim_action_rejects_second_click_silently():
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_release_action_allows_a_retry():
-    from qapbot.ui_common import claim_action, release_action
+    from clashcontrol.ui_common import claim_action, release_action
 
     view = _two_button_view()
     assert await claim_action(view, _click()) is True
@@ -64,7 +64,7 @@ async def test_release_action_allows_a_retry():
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_lock_buttons_disables_everything_as_the_first_response():
-    from qapbot.ui_common import lock_buttons
+    from clashcontrol.ui_common import lock_buttons
 
     view = _two_button_view()
     click = _click()
@@ -79,7 +79,7 @@ async def test_lock_buttons_disables_everything_as_the_first_response():
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_lock_buttons_edits_original_response_when_already_answered():
-    from qapbot.ui_common import lock_buttons
+    from clashcontrol.ui_common import lock_buttons
 
     view = _two_button_view()
     click = _click()
@@ -94,7 +94,7 @@ async def test_lock_buttons_edits_original_response_when_already_answered():
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_unlock_buttons_restores_previous_disabled_state_and_releases():
-    from qapbot.ui_common import action_in_flight, claim_action, lock_buttons, unlock_buttons
+    from clashcontrol.ui_common import action_in_flight, claim_action, lock_buttons, unlock_buttons
 
     view = _two_button_view()  # "No" starts disabled on purpose
     click = _click()
@@ -117,9 +117,9 @@ async def test_unlock_buttons_restores_previous_disabled_state_and_releases():
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_import_data_confirm_applies_once_on_double_click(monkeypatch):
-    import qapbot.import_clashperk_userlist as importer
-    import qapbot.QBdiscocmdshelper as helper
-    from qapbot.ui_clan_management import ImportDataConfirmView
+    import clashcontrol.import_clashperk_userlist as importer
+    import clashcontrol.QBdiscocmdshelper as helper
+    from clashcontrol.ui_clan_management import ImportDataConfirmView
 
     apply_mock = MagicMock(return_value=(None, 1, 0, 0, []))
     monkeypatch.setattr(importer, "apply_import_changes", apply_mock)
@@ -142,8 +142,8 @@ async def test_import_data_confirm_applies_once_on_double_click(monkeypatch):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_import_data_cancel_is_ignored_while_confirm_runs(monkeypatch):
-    from qapbot.ui_clan_management import ImportDataConfirmView
-    from qapbot.ui_common import claim_action
+    from clashcontrol.ui_clan_management import ImportDataConfirmView
+    from clashcontrol.ui_common import claim_action
 
     view = ImportDataConfirmView(
         original_interaction=_click(), user_accounts={}, results={}, clan_name="Alpha",
@@ -160,8 +160,8 @@ async def test_import_data_cancel_is_ignored_while_confirm_runs(monkeypatch):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_unlink_all_confirm_unlinks_once_on_double_click(monkeypatch):
-    import qapbot.QBdiscocmdshelper as helper
-    from qapbot.ui_registration import UnlinkAllConfirmView
+    import clashcontrol.QBdiscocmdshelper as helper
+    from clashcontrol.ui_registration import UnlinkAllConfirmView
 
     unlink_mock = AsyncMock(return_value=2)
     monkeypatch.setattr(helper, "unlink_all_players", unlink_mock)
@@ -182,8 +182,8 @@ async def test_unlink_all_confirm_unlinks_once_on_double_click(monkeypatch):
 async def test_notification_settings_apply_reenables_buttons_afterwards(monkeypatch):
     """The settings dialog stays open after Apply — its buttons come back once the run ends,
     even on the early-return path (user scope with nobody selected)."""
-    from qapbot.ui_common import action_in_flight
-    from qapbot.ui_notifications import NotificationSettingsView
+    from clashcontrol.ui_common import action_in_flight
+    from clashcontrol.ui_notifications import NotificationSettingsView
 
     view = NotificationSettingsView.__new__(NotificationSettingsView)
     discord.ui.View.__init__(view, timeout=60)
@@ -204,7 +204,7 @@ async def test_notification_settings_apply_reenables_buttons_afterwards(monkeypa
 # ---------------------------------------------------------------------------
 
 _GUARDED_HANDLERS = {
-    "qapbot/ui_cwl_roster.py": {
+    "clashcontrol/ui_cwl_roster.py": {
         "CwlDeleteSeasonConfirmView": ["_on_confirm", "_on_cancel"],
         "CwlStartEnrollmentConfirmView": ["_on_confirm", "_on_cancel"],
         "CwlNotifyNewMembersConfirmView": ["_on_confirm", "_on_cancel"],
@@ -213,7 +213,7 @@ _GUARDED_HANDLERS = {
         "CwlRemindPendingConfirmView": ["_on_confirm", "_on_cancel"],
         "CwlCarryOverPromptView": ["_finish"],
     },
-    "qapbot/ui_clan_management.py": {
+    "clashcontrol/ui_clan_management.py": {
         "RoleDeleteConfirmationView": ["_on_confirm", "_on_cancel"],
         "ConfirmDeleteClanRolesView": ["_on_delete", "_on_keep"],
         "CwlLineupRemovalConfirmView": ["_on_confirm", "_on_cancel"],
@@ -229,12 +229,12 @@ _GUARDED_HANDLERS = {
         "EditFamilyView": ["_on_save"],
         "WelcomeMessageConfigView": ["_on_save", "_on_cancel"],
     },
-    "qapbot/ui_registration.py": {
+    "clashcontrol/ui_registration.py": {
         "UnlinkConfirmView": ["_on_confirm", "_on_cancel"],
         "UnlinkAllConfirmView": ["_on_confirm", "_on_cancel"],
     },
-    "qapbot/ui_tracker.py": {"BotSetupView": ["_on_save"]},
-    "qapbot/ui_notifications.py": {
+    "clashcontrol/ui_tracker.py": {"BotSetupView": ["_on_save"]},
+    "clashcontrol/ui_notifications.py": {
         "NotificationSettingsView": ["_on_apply"],
         "WarNotificationPromptView": ["activate_button", "skip_button"],
     },

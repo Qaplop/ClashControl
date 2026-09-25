@@ -36,8 +36,8 @@ def _guild_with_role(guild_id: int, role: MagicMock, members: Dict[int, MagicMoc
 
 @pytest.mark.asyncio
 async def test_coordinator_role_is_added_to_configured_coordinators(monkeypatch):
-    from qapbot.cache_manager import CACHE
-    import qapbot.guild_role_manager as grm
+    from clashcontrol.cache_manager import CACHE
+    import clashcontrol.guild_role_manager as grm
 
     role = MagicMock()
     role.name = "CWL Coordinator"
@@ -64,8 +64,8 @@ async def test_coordinator_role_kept_while_still_coordinator_of_another_clan(mon
     """The rule this sync exists to get right: dropping someone as coordinator of clan A must NOT
     strip the role while they are still coordinator of clan B — the target set is the union across
     every configured clan, not a per-clan view."""
-    from qapbot.cache_manager import CACHE
-    import qapbot.guild_role_manager as grm
+    from clashcontrol.cache_manager import CACHE
+    import clashcontrol.guild_role_manager as grm
 
     role = MagicMock()
     role.name = "CWL Coordinator"
@@ -90,8 +90,8 @@ async def test_coordinator_role_kept_while_still_coordinator_of_another_clan(mon
 
 @pytest.mark.asyncio
 async def test_coordinator_role_removed_from_a_former_coordinator(monkeypatch):
-    from qapbot.cache_manager import CACHE
-    import qapbot.guild_role_manager as grm
+    from clashcontrol.cache_manager import CACHE
+    import clashcontrol.guild_role_manager as grm
 
     role = MagicMock()
     role.name = "CWL Coordinator"
@@ -119,8 +119,8 @@ async def test_coordinator_role_removed_from_a_former_coordinator(monkeypatch):
 async def test_coordinator_role_sync_noops_when_no_role_linked(monkeypatch):
     """No linked role is the default for every guild — must be a clean no-op, never an error and
     never a role lookup."""
-    from qapbot.cache_manager import CACHE
-    import qapbot.guild_role_manager as grm
+    from clashcontrol.cache_manager import CACHE
+    import clashcontrol.guild_role_manager as grm
 
     guild = MagicMock()
     guild.id = 9604
@@ -138,8 +138,8 @@ async def test_coordinator_role_sync_noops_when_no_role_linked(monkeypatch):
 def _prepare_channel_notification(monkeypatch, *, is_cwl: bool, coordinators: List[str]):
     """Wire up the minimum CACHE/QBcore/CONFIG state _send_channel_war_notification needs, and
     return (module, war_data, sent) where `sent` collects the channel.send kwargs."""
-    import qapbot.war_notifications as wn
-    from qapbot.cache_manager import CACHE
+    import clashcontrol.war_notifications as wn
+    from clashcontrol.cache_manager import CACHE
 
     guild_id = "9700"
     clan_tag = "#CLAN1"
@@ -229,8 +229,8 @@ async def test_cwl_settings_embed_shows_the_linked_coordinator_role():
     """Live report (2026-08-30): the coordinator role had a Configure button but no readout, so
     the settings screen couldn't answer "is a role linked, and which one?" without opening the
     sub-screen — every other setting on that screen already states its current value."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import format_clan_management_cwl_settings
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import format_clan_management_cwl_settings
 
     role = MagicMock()
     role.mention = "@cwl-coordinator"
@@ -254,8 +254,8 @@ async def test_cwl_settings_embed_reports_a_deleted_role_as_not_linked():
     """A role_id that no longer resolves is exactly what an admin needs to notice here, and it is
     also what sync_cwl_coordinator_role() effectively treats it as (logs and no-ops) — so it must
     read as not-linked, never as a dangling raw id."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import format_clan_management_cwl_settings
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import format_clan_management_cwl_settings
 
     guild = MagicMock()
     guild.id = 9802

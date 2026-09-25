@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import pytest
 
-from QapBot import RECHECK_JITTER_SECONDS, compute_recheck_offset_seconds
+from ClashControl import RECHECK_JITTER_SECONDS, compute_recheck_offset_seconds
 
 
 TAGS = [f"#C{i:06d}" for i in range(5000)]
@@ -45,7 +45,7 @@ class TestComputeRecheckOffsetSeconds:
 
         code = (
             "import sys; sys.path.insert(0, r'.');"
-            "from QapBot import compute_recheck_offset_seconds as f;"
+            "from ClashControl import compute_recheck_offset_seconds as f;"
             "print(','.join(str(f(f'#C{i:06d}')) for i in range(20)))"
         )
         out = subprocess.run(

@@ -15,15 +15,15 @@ import pytest
 @pytest.fixture
 def fake_cache(monkeypatch: pytest.MonkeyPatch):
     """Lightweight fake CACHE for ownership function tests."""
-    import qapbot.cache_manager
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.cache_manager
+    import clashcontrol.QBdiscocmdshelper as helper
 
     class _FakeCache:
         def __init__(self) -> None:
             self.user_accounts: Dict[str, Dict[str, Any]] = {}
 
     cache = _FakeCache()
-    monkeypatch.setattr(qapbot.cache_manager, "CACHE", cache)
+    monkeypatch.setattr(clashcontrol.cache_manager, "CACHE", cache)
     monkeypatch.setattr(helper, "CACHE", cache)
     return cache
 
@@ -36,7 +36,7 @@ class TestGetVerifiedPlayerOwnerEdges:
 
     @pytest.mark.smoke
     def test_unverified_player_returns_none(self, fake_cache) -> None:
-        from qapbot.QBdiscocmdshelper import get_verified_player_owner
+        from clashcontrol.QBdiscocmdshelper import get_verified_player_owner
 
         fake_cache.user_accounts["111"] = {
             "display_name": "Owner",
@@ -46,7 +46,7 @@ class TestGetVerifiedPlayerOwnerEdges:
 
     @pytest.mark.smoke
     def test_skips_unassigned_pool(self, fake_cache) -> None:
-        from qapbot.QBdiscocmdshelper import get_verified_player_owner
+        from clashcontrol.QBdiscocmdshelper import get_verified_player_owner
 
         fake_cache.user_accounts["UNASSIGNED"] = {
             "display_name": "Pool",
@@ -56,7 +56,7 @@ class TestGetVerifiedPlayerOwnerEdges:
 
     @pytest.mark.smoke
     def test_self_lookup_returns_none(self, fake_cache) -> None:
-        from qapbot.QBdiscocmdshelper import get_verified_player_owner
+        from clashcontrol.QBdiscocmdshelper import get_verified_player_owner
 
         fake_cache.user_accounts["111"] = {
             "display_name": "Self",
@@ -67,7 +67,7 @@ class TestGetVerifiedPlayerOwnerEdges:
 
     @pytest.mark.smoke
     def test_empty_players_list(self, fake_cache) -> None:
-        from qapbot.QBdiscocmdshelper import get_verified_player_owner
+        from clashcontrol.QBdiscocmdshelper import get_verified_player_owner
 
         fake_cache.user_accounts["111"] = {
             "display_name": "NoPlayers",
@@ -77,14 +77,14 @@ class TestGetVerifiedPlayerOwnerEdges:
 
     @pytest.mark.smoke
     def test_none_user_entry(self, fake_cache) -> None:
-        from qapbot.QBdiscocmdshelper import get_verified_player_owner
+        from clashcontrol.QBdiscocmdshelper import get_verified_player_owner
 
         fake_cache.user_accounts["111"] = None
         assert get_verified_player_owner("#P1", "222") is None
 
     @pytest.mark.smoke
     def test_players_not_a_list(self, fake_cache) -> None:
-        from qapbot.QBdiscocmdshelper import get_verified_player_owner
+        from clashcontrol.QBdiscocmdshelper import get_verified_player_owner
 
         fake_cache.user_accounts["111"] = {
             "display_name": "BadFormat",
@@ -94,7 +94,7 @@ class TestGetVerifiedPlayerOwnerEdges:
 
     @pytest.mark.smoke
     def test_multiple_users_finds_verified_owner(self, fake_cache) -> None:
-        from qapbot.QBdiscocmdshelper import get_verified_player_owner
+        from clashcontrol.QBdiscocmdshelper import get_verified_player_owner
 
         fake_cache.user_accounts["111"] = {
             "display_name": "NotOwner",
@@ -115,7 +115,7 @@ class TestGetAnyPlayerOwnerEdges:
 
     @pytest.mark.smoke
     def test_returns_verified_status(self, fake_cache) -> None:
-        from qapbot.QBdiscocmdshelper import get_any_player_owner
+        from clashcontrol.QBdiscocmdshelper import get_any_player_owner
 
         fake_cache.user_accounts["111"] = {
             "display_name": "Owner",
@@ -130,7 +130,7 @@ class TestGetAnyPlayerOwnerEdges:
 
     @pytest.mark.smoke
     def test_returns_unverified_link(self, fake_cache) -> None:
-        from qapbot.QBdiscocmdshelper import get_any_player_owner
+        from clashcontrol.QBdiscocmdshelper import get_any_player_owner
 
         fake_cache.user_accounts["111"] = {
             "display_name": "Linker",
@@ -142,7 +142,7 @@ class TestGetAnyPlayerOwnerEdges:
 
     @pytest.mark.smoke
     def test_no_owner_returns_none(self, fake_cache) -> None:
-        from qapbot.QBdiscocmdshelper import get_any_player_owner
+        from clashcontrol.QBdiscocmdshelper import get_any_player_owner
 
         fake_cache.user_accounts["111"] = {
             "display_name": "Other",
@@ -152,7 +152,7 @@ class TestGetAnyPlayerOwnerEdges:
 
     @pytest.mark.smoke
     def test_skips_unassigned(self, fake_cache) -> None:
-        from qapbot.QBdiscocmdshelper import get_any_player_owner
+        from clashcontrol.QBdiscocmdshelper import get_any_player_owner
 
         fake_cache.user_accounts["UNASSIGNED"] = {
             "display_name": "Pool",
@@ -162,7 +162,7 @@ class TestGetAnyPlayerOwnerEdges:
 
     @pytest.mark.smoke
     def test_skips_requesting_user(self, fake_cache) -> None:
-        from qapbot.QBdiscocmdshelper import get_any_player_owner
+        from clashcontrol.QBdiscocmdshelper import get_any_player_owner
 
         fake_cache.user_accounts["111"] = {
             "display_name": "Self",
@@ -172,7 +172,7 @@ class TestGetAnyPlayerOwnerEdges:
 
     @pytest.mark.smoke
     def test_missing_display_name_uses_default(self, fake_cache) -> None:
-        from qapbot.QBdiscocmdshelper import get_any_player_owner
+        from clashcontrol.QBdiscocmdshelper import get_any_player_owner
 
         fake_cache.user_accounts["111"] = {
             "players": [{"player_tag": "#P1", "player_name": "X"}],
@@ -183,7 +183,7 @@ class TestGetAnyPlayerOwnerEdges:
 
     @pytest.mark.smoke
     def test_missing_verified_defaults_false(self, fake_cache) -> None:
-        from qapbot.QBdiscocmdshelper import get_any_player_owner
+        from clashcontrol.QBdiscocmdshelper import get_any_player_owner
 
         fake_cache.user_accounts["111"] = {
             "display_name": "Owner",

@@ -30,8 +30,8 @@ def _players(count: int, prefix: str = "#P") -> list[dict]:
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_unlink_all_moves_every_account_to_unassigned(monkeypatch: pytest.MonkeyPatch) -> None:
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper import unlink_all_players
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper import unlink_all_players
 
     monkeypatch.setattr(CACHE, "user_accounts", {"111": {"players": _players(60)}})
     monkeypatch.setattr(CACHE, "persist_user", AsyncMock())
@@ -50,8 +50,8 @@ async def test_unlink_all_moves_every_account_to_unassigned(monkeypatch: pytest.
 @pytest.mark.asyncio
 async def test_unlink_all_persists_once_per_side_regardless_of_count(monkeypatch: pytest.MonkeyPatch) -> None:
     """The whole point of batching: O(1) DB writes, not O(n)."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper import unlink_all_players
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper import unlink_all_players
 
     monkeypatch.setattr(CACHE, "user_accounts", {"111": {"players": _players(60)}})
     persist_mock = AsyncMock()
@@ -67,8 +67,8 @@ async def test_unlink_all_persists_once_per_side_regardless_of_count(monkeypatch
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_unlink_all_no_accounts_returns_zero_and_skips_persist(monkeypatch: pytest.MonkeyPatch) -> None:
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper import unlink_all_players
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper import unlink_all_players
 
     monkeypatch.setattr(CACHE, "user_accounts", {"111": {"players": []}})
     persist_mock = AsyncMock()
@@ -83,8 +83,8 @@ async def test_unlink_all_no_accounts_returns_zero_and_skips_persist(monkeypatch
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_unlink_all_unknown_user_returns_zero(monkeypatch: pytest.MonkeyPatch) -> None:
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper import unlink_all_players
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper import unlink_all_players
 
     monkeypatch.setattr(CACHE, "user_accounts", {})
     persist_mock = AsyncMock()
@@ -101,8 +101,8 @@ async def test_unlink_all_unknown_user_returns_zero(monkeypatch: pytest.MonkeyPa
 async def test_unlink_all_dedupes_against_already_unassigned_tag(monkeypatch: pytest.MonkeyPatch) -> None:
     """Mirrors unlink_player()'s edge-case handling: a tag already sitting in the UNASSIGNED
     pool (e.g. a prior partial operation) must not be duplicated there."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper import unlink_all_players
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper import unlink_all_players
 
     monkeypatch.setattr(CACHE, "user_accounts", {
         "111": {"players": _players(3)},
@@ -122,7 +122,7 @@ async def test_unlink_all_dedupes_against_already_unassigned_tag(monkeypatch: py
 # ---------------------------------------------------------------------------
 
 def _make_view(user_id="111", guild_id=987654321, account_count=60):
-    from qapbot.ui_registration import UnlinkAllConfirmView
+    from clashcontrol.ui_registration import UnlinkAllConfirmView
 
     parent_view = MagicMock()
     parent_view._build_message_content = MagicMock(return_value="parent overview")
@@ -150,7 +150,7 @@ def _make_interaction():
 @pytest.mark.asyncio
 async def test_on_confirm_defers_before_slow_work(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        "qapbot.QBdiscocmdshelper.unlink_all_players", AsyncMock(return_value=60)
+        "clashcontrol.QBdiscocmdshelper.unlink_all_players", AsyncMock(return_value=60)
     )
 
     view = _make_view()
@@ -170,7 +170,7 @@ async def test_on_confirm_defers_before_slow_work(monkeypatch: pytest.MonkeyPatc
 @pytest.mark.asyncio
 async def test_on_confirm_calls_unlink_all_once_with_user_id(monkeypatch: pytest.MonkeyPatch) -> None:
     unlink_mock = AsyncMock(return_value=60)
-    monkeypatch.setattr("qapbot.QBdiscocmdshelper.unlink_all_players", unlink_mock)
+    monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.unlink_all_players", unlink_mock)
 
     view = _make_view(user_id="111")
     interaction = _make_interaction()
@@ -184,7 +184,7 @@ async def test_on_confirm_calls_unlink_all_once_with_user_id(monkeypatch: pytest
 @pytest.mark.asyncio
 async def test_on_confirm_shows_empty_state_with_no_view(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        "qapbot.QBdiscocmdshelper.unlink_all_players", AsyncMock(return_value=60)
+        "clashcontrol.QBdiscocmdshelper.unlink_all_players", AsyncMock(return_value=60)
     )
 
     view = _make_view()
@@ -201,10 +201,10 @@ async def test_on_confirm_shows_empty_state_with_no_view(monkeypatch: pytest.Mon
 @pytest.mark.asyncio
 async def test_on_confirm_syncs_roles_once_when_in_guild(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        "qapbot.QBdiscocmdshelper.unlink_all_players", AsyncMock(return_value=60)
+        "clashcontrol.QBdiscocmdshelper.unlink_all_players", AsyncMock(return_value=60)
     )
     sync_mock = AsyncMock()
-    monkeypatch.setattr("qapbot.guild_role_manager.sync_roles_for_user", sync_mock)
+    monkeypatch.setattr("clashcontrol.guild_role_manager.sync_roles_for_user", sync_mock)
 
     view = _make_view(user_id="111", guild_id=987654321)
     interaction = _make_interaction()

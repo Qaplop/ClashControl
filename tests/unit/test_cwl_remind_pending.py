@@ -11,7 +11,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from qapbot.db_manager import WarHistoryDB
+from clashcontrol.db_manager import WarHistoryDB
 
 
 @pytest.fixture
@@ -62,8 +62,8 @@ class TestSplitPendingSignupsByLink:
 
     @pytest.mark.asyncio
     async def test_no_signups_is_zero_zero(self, db):
-        from qapbot.cache_manager import CACHE
-        from qapbot.QBdiscocmdshelper_cwl import split_cwl_pending_signups_by_link_sync
+        from clashcontrol.cache_manager import CACHE
+        from clashcontrol.QBdiscocmdshelper_cwl import split_cwl_pending_signups_by_link_sync
 
         event_id = await _seed(db, "801", "#CLANA")
         CACHE.db_manager = db
@@ -72,8 +72,8 @@ class TestSplitPendingSignupsByLink:
 
     @pytest.mark.asyncio
     async def test_splits_linked_from_unlinked_pending(self, db):
-        from qapbot.cache_manager import CACHE
-        from qapbot.QBdiscocmdshelper_cwl import split_cwl_pending_signups_by_link_sync
+        from clashcontrol.cache_manager import CACHE
+        from clashcontrol.QBdiscocmdshelper_cwl import split_cwl_pending_signups_by_link_sync
 
         event_id = await _seed(db, "802", "#CLANB")
         CACHE.db_manager = db
@@ -90,8 +90,8 @@ class TestSplitPendingSignupsByLink:
         """Tracker #0079: the reported symptom exactly — "Ausstehend" said 2 while the board showed
         a single ❓. The second player was linked and pending but had never been sent a DM, so the
         board drew "Not Invited Yet" for them while this counter still called them pending."""
-        from qapbot.cache_manager import CACHE
-        from qapbot.QBdiscocmdshelper_cwl import split_cwl_pending_signups_by_link_sync
+        from clashcontrol.cache_manager import CACHE
+        from clashcontrol.QBdiscocmdshelper_cwl import split_cwl_pending_signups_by_link_sync
 
         event_id = await _seed(db, "804", "#CLAND")
         CACHE.db_manager = db
@@ -106,8 +106,8 @@ class TestSplitPendingSignupsByLink:
 
     @pytest.mark.asyncio
     async def test_non_pending_rows_are_excluded_from_both_halves(self, db):
-        from qapbot.cache_manager import CACHE
-        from qapbot.QBdiscocmdshelper_cwl import split_cwl_pending_signups_by_link_sync
+        from clashcontrol.cache_manager import CACHE
+        from clashcontrol.QBdiscocmdshelper_cwl import split_cwl_pending_signups_by_link_sync
 
         event_id = await _seed(db, "803", "#CLANC")
         CACHE.db_manager = db
@@ -128,8 +128,8 @@ class TestResolvePendingReminderTargets:
     async def test_groups_multiple_pending_accounts_under_one_discord_user(self, db):
         """The whole point of tracker #0038's redesign: one combined reminder per Discord user,
         not one DM per account."""
-        from qapbot.cache_manager import CACHE
-        from qapbot.QBdiscocmdshelper_cwl import resolve_cwl_pending_reminder_targets_sync
+        from clashcontrol.cache_manager import CACHE
+        from clashcontrol.QBdiscocmdshelper_cwl import resolve_cwl_pending_reminder_targets_sync
 
         event_id = await _seed(db, "804", "#CLAND")
         CACHE.db_manager = db
@@ -146,8 +146,8 @@ class TestResolvePendingReminderTargets:
 
     @pytest.mark.asyncio
     async def test_unlinked_pending_account_is_skipped_not_grouped(self, db):
-        from qapbot.cache_manager import CACHE
-        from qapbot.QBdiscocmdshelper_cwl import resolve_cwl_pending_reminder_targets_sync
+        from clashcontrol.cache_manager import CACHE
+        from clashcontrol.QBdiscocmdshelper_cwl import resolve_cwl_pending_reminder_targets_sync
 
         event_id = await _seed(db, "805", "#CLANE")
         CACHE.db_manager = db
@@ -163,8 +163,8 @@ class TestResolvePendingReminderTargets:
         """A permanent opt-out must not be re-pinged just because its signup row still reads
         'pending' — same honouring resolve_cwl_pool_dm_targets_sync already applies at invite
         time."""
-        from qapbot.cache_manager import CACHE
-        from qapbot.QBdiscocmdshelper_cwl import resolve_cwl_pending_reminder_targets_sync
+        from clashcontrol.cache_manager import CACHE
+        from clashcontrol.QBdiscocmdshelper_cwl import resolve_cwl_pending_reminder_targets_sync
 
         event_id = await _seed(db, "806", "#CLANF")
         CACHE.db_manager = db
@@ -178,8 +178,8 @@ class TestResolvePendingReminderTargets:
 
     @pytest.mark.asyncio
     async def test_confirmed_and_declined_signups_are_not_pool_members(self, db):
-        from qapbot.cache_manager import CACHE
-        from qapbot.QBdiscocmdshelper_cwl import resolve_cwl_pending_reminder_targets_sync
+        from clashcontrol.cache_manager import CACHE
+        from clashcontrol.QBdiscocmdshelper_cwl import resolve_cwl_pending_reminder_targets_sync
 
         event_id = await _seed(db, "807", "#CLANG")
         CACHE.db_manager = db
@@ -194,8 +194,8 @@ class TestResolvePendingReminderTargets:
     async def test_uses_the_live_link_not_the_stale_snapshot_owner(self, db):
         """Same "live wins over a stale snapshot" rule as resolve_cwl_pool_dm_targets_sync (Pitfall
         37) — an account re-linked to someone else must group under the NEW owner."""
-        from qapbot.cache_manager import CACHE
-        from qapbot.QBdiscocmdshelper_cwl import resolve_cwl_pending_reminder_targets_sync
+        from clashcontrol.cache_manager import CACHE
+        from clashcontrol.QBdiscocmdshelper_cwl import resolve_cwl_pending_reminder_targets_sync
 
         event_id = await _seed(db, "808", "#CLANH")
         CACHE.db_manager = db
@@ -216,16 +216,16 @@ class TestResolvePendingReminderTargets:
 class TestHasCwlPendingSignupsToRemind:
     @pytest.mark.asyncio
     async def test_false_when_event_missing(self, db):
-        from qapbot.cache_manager import CACHE
-        from qapbot.QBdiscocmdshelper_cwl import has_cwl_pending_signups_to_remind
+        from clashcontrol.cache_manager import CACHE
+        from clashcontrol.QBdiscocmdshelper_cwl import has_cwl_pending_signups_to_remind
 
         CACHE.db_manager = db
         assert has_cwl_pending_signups_to_remind(809, "2026-09") is False
 
     @pytest.mark.asyncio
     async def test_false_while_event_is_still_draft(self, db):
-        from qapbot.cache_manager import CACHE
-        from qapbot.QBdiscocmdshelper_cwl import has_cwl_pending_signups_to_remind
+        from clashcontrol.cache_manager import CACHE
+        from clashcontrol.QBdiscocmdshelper_cwl import has_cwl_pending_signups_to_remind
 
         await _seed(db, "810", "#CLANI")
         CACHE.db_manager = db
@@ -236,8 +236,8 @@ class TestHasCwlPendingSignupsToRemind:
 
     @pytest.mark.asyncio
     async def test_true_once_a_dmable_pending_signup_exists(self, db):
-        from qapbot.cache_manager import CACHE
-        from qapbot.QBdiscocmdshelper_cwl import has_cwl_pending_signups_to_remind
+        from clashcontrol.cache_manager import CACHE
+        from clashcontrol.QBdiscocmdshelper_cwl import has_cwl_pending_signups_to_remind
 
         event_id = await _seed(db, "811", "#CLANJ")
         db.update_cwl_event_status_sync(event_id, "signup_open")
@@ -250,8 +250,8 @@ class TestHasCwlPendingSignupsToRemind:
     @pytest.mark.asyncio
     async def test_false_when_only_unlinked_pending_signups_exist(self, db):
         """Mirrors the season-overview split: an unlinked pending account has nobody to remind."""
-        from qapbot.cache_manager import CACHE
-        from qapbot.QBdiscocmdshelper_cwl import has_cwl_pending_signups_to_remind
+        from clashcontrol.cache_manager import CACHE
+        from clashcontrol.QBdiscocmdshelper_cwl import has_cwl_pending_signups_to_remind
 
         event_id = await _seed(db, "812", "#CLANK")
         db.update_cwl_event_status_sync(event_id, "signup_open")
@@ -272,16 +272,16 @@ class TestCountCwlPoolMembersMissingDm:
 
     @pytest.mark.asyncio
     async def test_zero_when_no_event(self, db):
-        from qapbot.cache_manager import CACHE
-        from qapbot.QBdiscocmdshelper_cwl import count_cwl_pool_members_missing_dm
+        from clashcontrol.cache_manager import CACHE
+        from clashcontrol.QBdiscocmdshelper_cwl import count_cwl_pool_members_missing_dm
 
         CACHE.db_manager = db
         assert count_cwl_pool_members_missing_dm(813, "2026-09") == 0
 
     @pytest.mark.asyncio
     async def test_zero_while_event_is_still_draft(self, db):
-        from qapbot.cache_manager import CACHE
-        from qapbot.QBdiscocmdshelper_cwl import count_cwl_pool_members_missing_dm
+        from clashcontrol.cache_manager import CACHE
+        from clashcontrol.QBdiscocmdshelper_cwl import count_cwl_pool_members_missing_dm
 
         await _seed(db, "814", "#CLANL")
         CACHE.db_manager = db
@@ -291,8 +291,8 @@ class TestCountCwlPoolMembersMissingDm:
 
     @pytest.mark.asyncio
     async def test_counts_dmable_pool_members_never_contacted(self, db):
-        from qapbot.cache_manager import CACHE
-        from qapbot.QBdiscocmdshelper_cwl import count_cwl_pool_members_missing_dm
+        from clashcontrol.cache_manager import CACHE
+        from clashcontrol.QBdiscocmdshelper_cwl import count_cwl_pool_members_missing_dm
 
         event_id = await _seed(db, "815", "#CLANM")
         db.update_cwl_event_status_sync(event_id, "signup_open")
@@ -306,8 +306,8 @@ class TestCountCwlPoolMembersMissingDm:
 
     @pytest.mark.asyncio
     async def test_already_dmed_members_are_not_counted(self, db):
-        from qapbot.cache_manager import CACHE
-        from qapbot.QBdiscocmdshelper_cwl import count_cwl_pool_members_missing_dm
+        from clashcontrol.cache_manager import CACHE
+        from clashcontrol.QBdiscocmdshelper_cwl import count_cwl_pool_members_missing_dm
 
         event_id = await _seed(db, "816", "#CLANN")
         db.update_cwl_event_status_sync(event_id, "signup_open")
@@ -330,8 +330,8 @@ class TestCountCwlPoolMembersMissingDm:
         standing preference. enrollmentBoard.ts's hasVisibleRealStatus() never shows such a
         player as "Not Invited Yet" (only a 'pending' row without dm_sent gets that treatment),
         so this count must agree and exclude it too."""
-        from qapbot.cache_manager import CACHE
-        from qapbot.QBdiscocmdshelper_cwl import count_cwl_pool_members_missing_dm
+        from clashcontrol.cache_manager import CACHE
+        from clashcontrol.QBdiscocmdshelper_cwl import count_cwl_pool_members_missing_dm
 
         event_id = await _seed(db, "819", "#CLANQ")
         db.update_cwl_event_status_sync(event_id, "signup_open")
@@ -344,8 +344,8 @@ class TestCountCwlPoolMembersMissingDm:
     @pytest.mark.asyncio
     async def test_unlinked_pool_members_are_not_counted(self, db):
         """Nobody to DM — mirrors resolve_cwl_pool_dm_targets_sync's own skipped_unlinked bucket."""
-        from qapbot.cache_manager import CACHE
-        from qapbot.QBdiscocmdshelper_cwl import count_cwl_pool_members_missing_dm
+        from clashcontrol.cache_manager import CACHE
+        from clashcontrol.QBdiscocmdshelper_cwl import count_cwl_pool_members_missing_dm
 
         event_id = await _seed(db, "817", "#CLANO")
         db.update_cwl_event_status_sync(event_id, "signup_open")
@@ -356,8 +356,8 @@ class TestCountCwlPoolMembersMissingDm:
 
     @pytest.mark.asyncio
     async def test_boolean_sibling_matches_the_count(self, db):
-        from qapbot.cache_manager import CACHE
-        from qapbot.QBdiscocmdshelper_cwl import has_cwl_pool_members_missing_dm
+        from clashcontrol.cache_manager import CACHE
+        from clashcontrol.QBdiscocmdshelper_cwl import has_cwl_pool_members_missing_dm
 
         event_id = await _seed(db, "818", "#CLANP")
         db.update_cwl_event_status_sync(event_id, "signup_open")
@@ -377,8 +377,8 @@ class TestRerenderCwlDmAfterResponse:
     @pytest.mark.asyncio
     async def test_single_account_scope_finalizes_with_view_none(self, db):
         """Byte-identical to the pre-unification single-account invitation behavior."""
-        from qapbot.cache_manager import CACHE
-        from qapbot.ui_cwl_roster import rerender_cwl_dm_after_response
+        from clashcontrol.cache_manager import CACHE
+        from clashcontrol.ui_cwl_roster import rerender_cwl_dm_after_response
 
         event_id = await _seed(db, "820", "#CLANQ")
         CACHE.db_manager = db
@@ -406,8 +406,8 @@ class TestRerenderCwlDmAfterResponse:
 
     @pytest.mark.asyncio
     async def test_two_of_three_still_pending_rerenders_with_their_buttons(self, db):
-        from qapbot.cache_manager import CACHE
-        from qapbot.ui_cwl_roster import CwlReminderResponseButton, rerender_cwl_dm_after_response
+        from clashcontrol.cache_manager import CACHE
+        from clashcontrol.ui_cwl_roster import CwlReminderResponseButton, rerender_cwl_dm_after_response
 
         event_id = await _seed(db, "821", "#CLANR")
         CACHE.db_manager = db
@@ -441,8 +441,8 @@ class TestRerenderCwlDmAfterResponse:
         """Once the third and final account is answered, the message finalizes exactly like the
         single-account case — there is no distinct "group finalized" wording in the
         pre-unification code, so none is invented here either."""
-        from qapbot.cache_manager import CACHE
-        from qapbot.ui_cwl_roster import rerender_cwl_dm_after_response
+        from clashcontrol.cache_manager import CACHE
+        from clashcontrol.ui_cwl_roster import rerender_cwl_dm_after_response
 
         event_id = await _seed(db, "822", "#CLANS")
         CACHE.db_manager = db
@@ -475,8 +475,8 @@ class TestRerenderCwlDmAfterResponse:
 
     @pytest.mark.asyncio
     async def test_scope_ignores_accounts_pointing_at_a_different_message_id(self, db):
-        from qapbot.cache_manager import CACHE
-        from qapbot.ui_cwl_roster import CwlReminderResponseButton, rerender_cwl_dm_after_response
+        from clashcontrol.cache_manager import CACHE
+        from clashcontrol.ui_cwl_roster import CwlReminderResponseButton, rerender_cwl_dm_after_response
 
         event_id = await _seed(db, "823", "#CLANT")
         CACHE.db_manager = db
@@ -508,8 +508,8 @@ class TestRerenderCwlDmAfterResponse:
     async def test_no_interaction_path_edits_the_message_directly(self, db):
         """The whole point of this function: it must be drivable WITHOUT an Interaction, for a
         future non-Discord caller (e.g. the Activity's own DM reconciliation)."""
-        from qapbot.cache_manager import CACHE
-        from qapbot.ui_cwl_roster import rerender_cwl_dm_after_response
+        from clashcontrol.cache_manager import CACHE
+        from clashcontrol.ui_cwl_roster import rerender_cwl_dm_after_response
 
         event_id = await _seed(db, "824", "#CLANU")
         CACHE.db_manager = db

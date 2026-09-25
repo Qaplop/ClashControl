@@ -3,7 +3,7 @@ import { utcStringToLocalParts } from './timeFormat'
 
 const ROSTER_SIZES = [5, 15, 30] as const
 
-// Mirrors qapbot/web_bridge.py's GUEST_SEARCH_MIN_NEEDLE_TAG/_TEXT exactly (2026-08-17,
+// Mirrors clashcontrol/web_bridge.py's GUEST_SEARCH_MIN_NEEDLE_TAG/_TEXT exactly (2026-08-17,
 // CWL_PROD_PERFORMANCE_FIX_PLAN.md P0 Step 5) — checking client-side too means a too-short query
 // never even fires the debounced fetch, instead of round-tripping to the bridge just to get an
 // empty-results response back. The server-side check is still the real guard (never trust the
@@ -74,7 +74,7 @@ function localPartsToUtcString(date: string, time: string): string {
  * "Guests" section (2026-08-15, project owner's spec — invite a clan or individual player from
  * outside this guild's own family): a guest CLAN result is just appended to `working` and goes
  * through the exact same `onSave` path as every other row — nothing guest-specific about it
- * server-side (see qapbot/web_bridge.py's _search_cwl_guests docstring for why). A guest PLAYER
+ * server-side (see clashcontrol/web_bridge.py's _search_cwl_guests docstring for why). A guest PLAYER
  * result is a genuinely separate, immediate action via `onGuestPlayerAdd` — it doesn't touch
  * `working` or `cwl_event_clans` at all, it writes straight to `cwl_signups`, so it can't be
  * batched into the same Save button; it applies the moment "Add" is clicked, independent of
@@ -378,7 +378,7 @@ export function renderClanConfigTable(
             participating: true,
             roster_size: 15,
             // Same default a never-configured clan already gets from the backend payload
-            // (qapbot/web_bridge.py's _build_clan_config_payload: "1st of the season's month at
+            // (clashcontrol/web_bridge.py's _build_clan_config_payload: "1st of the season's month at
             // 08:00 UTC") — null here left the date picker showing empty placeholders instead of
             // a real default (live-testing feedback, 2026-08-15).
             cwl_start_at: seasonStartUtc,

@@ -5,7 +5,7 @@ import pytest
 
 @pytest.fixture
 async def db(tmp_path):
-    from qapbot.db_manager import WarHistoryDB
+    from clashcontrol.db_manager import WarHistoryDB
 
     db_path = tmp_path / "qapbot_cache_test.db"
     manager = WarHistoryDB()
@@ -18,8 +18,8 @@ async def db(tmp_path):
 
 @pytest.fixture
 def cache(db, monkeypatch: pytest.MonkeyPatch):
-    from qapbot.cache_manager import CacheManager
-    import qapbot.cache_manager as cache_manager_module
+    from clashcontrol.cache_manager import CacheManager
+    import clashcontrol.cache_manager as cache_manager_module
 
     manager = CacheManager()
     manager.db_manager = db

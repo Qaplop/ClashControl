@@ -9,7 +9,7 @@ Immediate next steps:
 - Block players from CWL participation (just show an icon not a real technical blocking!) e.g. when players miss attack and are punished for that
 - Known lower-priority follow-up (not fixed,
   admin-only/rarely invoked, no crash risk): the `/admin` CWL-group-backfill
-  handler in qapbot/QBdiscocmdshelper_admin_command.py
+  handler in clashcontrol/QBdiscocmdshelper_admin_command.py
   (`_handle_backfill_cwl_groups_inner`) filters war_summary by `cwl_season` alone
   without a supporting index (existing index is `(clan_tag, cwl_season)`),
   which likely full-scans hot+history war_summary; low impact since it's a
@@ -19,7 +19,7 @@ Immediate next steps:
   can grow ~4x current ~320K files during CWL) — revisit incremental
   archive-filename index if it grows significantly above the current ~1s
   baseline. Full risk analysis + deferred implementation plan in
-  qapbot/docs/ARCHIVE_SCAN_PERFORMANCE_ANALYSIS.md
+  clashcontrol/docs/ARCHIVE_SCAN_PERFORMANCE_ANALYSIS.md
 - Check [PHASE-3B-SCAN-TIMING] (tier3_stat_calls, elapsed) during the next CWL
   season. PHASE 3B's ~26K-clan candidate scan is expected to hit Tier 3
   (real os.path.getmtime() syscalls) much more often during CWL, since more
@@ -61,9 +61,9 @@ change for this.
 
 ### D5. Oversized functions (structural debt, refactor only with a reason) — [verified]
 The worst offenders, for when a feature touches them anyway:
-- `main()` QapBot.py ~579-1640 (~1060 lines, Phases 1-3 inline)
+- `main()` ClashControl.py ~579-1640 (~1060 lines, Phases 1-3 inline)
 - `admin()` QBdiscordcmds.py ~1176+ (~1200 lines incl. inline modal classes)
-- `periodic_main()` QapBot.py ~1883-2380 (~500 lines)
+- `periodic_main()` ClashControl.py ~1883-2380 (~500 lines)
 - `generate_cwlinfo_embeds()` QBhelperfunctions.py ~1786-2264 (~478 lines)
 - `save_war_object()` cache_manager.py ~2255-2633 (~378 lines)
 Rule of thumb per project convention: don't refactor these standalone (huge diff, high regression

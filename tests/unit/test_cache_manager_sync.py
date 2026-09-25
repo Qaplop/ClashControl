@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import pytest
 
-from qapbot.cache_manager import CacheManager
+from clashcontrol.cache_manager import CacheManager
 
 
 # ---------------------------------------------------------------------------
@@ -81,7 +81,7 @@ class TestGetWarFileStats:
     REAL worker thread that can insert/pop temp_war_metadata entries while this method runs on
     the event-loop thread. Two coroutines on the same event loop can't interleave without an
     await, but two genuine OS threads can race at the bytecode level. Fixed by snapshotting with
-    list(...values()) before iterating (the same idiom QapBot.py's cycle code already uses for
+    list(...values()) before iterating (the same idiom ClashControl.py's cycle code already uses for
     clan_name_cache) -- these tests reproduce the underlying "mutate while iterating" hazard
     deterministically (no real threads needed: mutating a dict's size while its live .values()
     view is being iterated raises regardless of what triggers the mutation), by having one

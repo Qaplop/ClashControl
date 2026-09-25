@@ -2,7 +2,7 @@
 
 The Activity renders cwl_bench.svg, and Discord can't render an SVG at all, which is why the text
 used 🪑: a brown chair sitting next to the board's blue bench. The bot now ships the icon as an
-application emoji (qapbot/icons/emoji/cwl_bench.webp, BotEmojis.CWL_BENCH) and uses it in DMs,
+application emoji (clashcontrol/icons/emoji/cwl_bench.webp, BotEmojis.CWL_BENCH) and uses it in DMs,
 buttons and settings text, falling back to 🪑 only if that never resolves. The upload/resolution
 machinery itself is covered by test_application_emojis.py.
 """
@@ -20,7 +20,7 @@ CHAIR = "\U0001fa91"
 @pytest.fixture(autouse=True)
 def _reset_resolved_emoji():
     """Every test starts from "not resolved yet" and leaves no resolved id behind."""
-    import qapbot.emojis as emojis
+    import clashcontrol.emojis as emojis
 
     saved = dict(emojis._resolved)
     emojis._resolved.clear()
@@ -34,7 +34,7 @@ def _reset_resolved_emoji():
 # ---------------------------------------------------------------------------
 
 def test_no_translation_string_contains_the_chair_emoji():
-    for path in glob.glob("qapbot/translations/*.json"):
+    for path in glob.glob("clashcontrol/translations/*.json"):
         data = json.load(open(path, encoding="utf-8"))
 
         def walk(node, trail=""):
@@ -48,7 +48,7 @@ def test_no_translation_string_contains_the_chair_emoji():
 
 
 def test_bench_strings_carry_the_placeholder_instead():
-    en = json.load(open("qapbot/translations/en.json", encoding="utf-8"))
+    en = json.load(open("clashcontrol/translations/en.json", encoding="utf-8"))
     assert "{bench}" in en["cwl"]["template"]["dm_body_bench"]
     assert "{bench}" in en["cwl"]["template"]["bench_msg"]
     assert "{bench}" in en["cwl"]["start"]["dm_line_bench_suffix"]
@@ -62,7 +62,7 @@ def test_bench_strings_carry_the_placeholder_instead():
 # ---------------------------------------------------------------------------
 
 def test_falls_back_to_the_chair_until_resolved():
-    from qapbot.emojis import bench_button_emoji, bench_emoji
+    from clashcontrol.emojis import bench_button_emoji, bench_emoji
 
     assert bench_emoji() == CHAIR
     assert bench_button_emoji() == CHAIR
@@ -71,7 +71,7 @@ def test_falls_back_to_the_chair_until_resolved():
 def test_resolved_emoji_is_used_for_text_and_buttons():
     import discord
 
-    import qapbot.emojis as emojis
+    import clashcontrol.emojis as emojis
 
     emojis._resolved["CWL_BENCH"] = "<:cwl_bench:1455513859715629076>"
     assert emojis.bench_emoji() == "<:cwl_bench:1455513859715629076>"
@@ -98,8 +98,8 @@ def _answer_buttons(view: Any) -> list[tuple[str, Any]]:
 def test_every_answer_button_carries_its_app_icon():
     """2026-09-23: confirm and opt-out got their app icons too (gcheck/redx), so all three buttons
     match the icons in the DM text above them."""
-    import qapbot.emojis as emojis
-    from qapbot.ui_cwl_roster import build_cwl_reminder_response_view, build_cwl_signup_response_view
+    import clashcontrol.emojis as emojis
+    from clashcontrol.ui_cwl_roster import build_cwl_reminder_response_view, build_cwl_signup_response_view
 
     emojis._resolved.update({
         "GCHECK": "<:gcheck:1552060584176914601>",
@@ -122,8 +122,8 @@ def test_every_answer_button_carries_its_app_icon():
 
 
 def test_dm_texts_use_the_app_icons_not_unicode():
-    import qapbot.emojis as emojis
-    from qapbot.i18n import t
+    import clashcontrol.emojis as emojis
+    from clashcontrol.i18n import t
 
     emojis._resolved.update({"GCHECK": "<:gcheck:1552060584176914601>", "REDX": "<:redx:1552060584176914602>"})
     body = t('cwl.template.dm_body_bench', guild_id=None, season="2026-10", player_name="Alpha",
@@ -139,8 +139,8 @@ def test_dm_texts_use_the_app_icons_not_unicode():
 def test_opt_out_reply_uses_the_opt_out_app_icon_in_every_language():
     """2026-09-23 live report: the "has opted out" DM reply still showed a 👍 while Confirm and
     Bench replies used their app icons — it must carry the same icon as the Opt Out button."""
-    import qapbot.emojis as emojis
-    from qapbot.i18n import _translation_manager
+    import clashcontrol.emojis as emojis
+    from clashcontrol.i18n import _translation_manager
 
     emojis._resolved.update({"REDX": "<:redx:1552060584176914602>"})
     for lang in ("en", "de", "es", "zh", "la"):
@@ -152,8 +152,8 @@ def test_opt_out_reply_uses_the_opt_out_app_icon_in_every_language():
 
 
 def test_dm_body_and_finalize_text_render_the_resolved_emoji():
-    import qapbot.emojis as emojis
-    from qapbot.i18n import t
+    import clashcontrol.emojis as emojis
+    from clashcontrol.i18n import t
 
     emojis._resolved["CWL_BENCH"] = "<:cwl_bench:1455513859715629077>"
 

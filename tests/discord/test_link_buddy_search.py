@@ -22,8 +22,8 @@ USER_ID = "123"
 @pytest.fixture
 def buddy_env(monkeypatch):
     """Guild with one clan; returns (get_player_list mock, user_data, persist mock)."""
-    import qapbot.QBdiscocmdshelper as helper
-    from qapbot.cache_manager import CACHE
+    import clashcontrol.QBdiscocmdshelper as helper
+    from clashcontrol.cache_manager import CACHE
 
     user_data: dict[str, Any] = {
         "players": [{"player_tag": "#OWN1", "player_name": "Qaplop"}],
@@ -46,7 +46,7 @@ def buddy_env(monkeypatch):
 
 
 def _modal(query: str):
-    from qapbot.ui_notifications import LinkBuddyModal
+    from clashcontrol.ui_notifications import LinkBuddyModal
 
     modal = LinkBuddyModal(user_id=USER_ID, parent_view=MagicMock(), original_interaction=None)
     modal.guild_id = GUILD_ID
@@ -80,7 +80,7 @@ async def test_current_clan_member_without_war_history_is_found_by_name(buddy_en
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_searching_an_own_account_says_so_instead_of_not_found(buddy_env):
-    from qapbot.i18n import t
+    from clashcontrol.i18n import t
 
     _, user_data, persist = buddy_env
     interaction = _interaction()
@@ -96,7 +96,7 @@ async def test_searching_an_own_account_says_so_instead_of_not_found(buddy_env):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_searching_an_already_watched_buddy_says_so(buddy_env):
-    from qapbot.i18n import t
+    from clashcontrol.i18n import t
 
     _, _, persist = buddy_env
     interaction = _interaction()
@@ -110,7 +110,7 @@ async def test_searching_an_already_watched_buddy_says_so(buddy_env):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_unknown_name_still_reports_not_found(buddy_env):
-    from qapbot.i18n import t
+    from clashcontrol.i18n import t
 
     _, _, persist = buddy_env
     interaction = _interaction()

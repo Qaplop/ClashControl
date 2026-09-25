@@ -16,7 +16,7 @@ it (silently write `war_tag`'s value into `end_time` and vice versa).
 """
 import pytest
 
-from qapbot.db_manager import WarHistoryDB
+from clashcontrol.db_manager import WarHistoryDB
 
 
 @pytest.mark.asyncio

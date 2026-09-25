@@ -41,7 +41,7 @@ def _players(count: int, prefix: str = "#P") -> list[dict]:
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_single_page_has_no_pagination_row(monkeypatch: pytest.MonkeyPatch) -> None:
-    import qapbot.ui_registration as ui
+    import clashcontrol.ui_registration as ui
 
     cache = FakeCache()
     cache.user_accounts["123"] = {"players": _players(10)}
@@ -59,7 +59,7 @@ async def test_single_page_has_no_pagination_row(monkeypatch: pytest.MonkeyPatch
 @pytest.mark.asyncio
 async def test_60_accounts_paginates_at_25_per_page(monkeypatch: pytest.MonkeyPatch) -> None:
     """The exact shape of tracker #45: a user with far more than 25 accounts."""
-    import qapbot.ui_registration as ui
+    import clashcontrol.ui_registration as ui
 
     cache = FakeCache()
     cache.user_accounts["123"] = {"players": _players(60)}
@@ -81,7 +81,7 @@ async def test_60_accounts_paginates_at_25_per_page(monkeypatch: pytest.MonkeyPa
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_page_next_and_prev_walk_through_all_accounts(monkeypatch: pytest.MonkeyPatch) -> None:
-    import qapbot.ui_registration as ui
+    import clashcontrol.ui_registration as ui
 
     cache = FakeCache()
     cache.user_accounts["123"] = {"players": _players(60)}
@@ -124,7 +124,7 @@ async def test_page_next_and_prev_walk_through_all_accounts(monkeypatch: pytest.
 @pytest.mark.asyncio
 async def test_page_turn_clears_stale_selection(monkeypatch: pytest.MonkeyPatch) -> None:
     """A selection made on page 1 must not silently drive an action after paging away."""
-    import qapbot.ui_registration as ui
+    import clashcontrol.ui_registration as ui
 
     cache = FakeCache()
     cache.user_accounts["123"] = {"players": _players(30)}
@@ -150,7 +150,7 @@ async def test_page_turn_clears_stale_selection(monkeypatch: pytest.MonkeyPatch)
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_pagination_note_appears_in_overview_text(monkeypatch: pytest.MonkeyPatch) -> None:
-    import qapbot.ui_registration as ui
+    import clashcontrol.ui_registration as ui
 
     cache = FakeCache()
     cache.user_accounts["123"] = {"players": _players(30)}
@@ -160,7 +160,7 @@ async def test_pagination_note_appears_in_overview_text(monkeypatch: pytest.Monk
     view = ui.AccountManagementView(user_id="123", guild_id=1, display_name="Alice")
     content = view._build_message_content()
 
-    # _build_message_content() locally re-imports t() from qapbot.i18n (not the module-level
+    # _build_message_content() locally re-imports t() from clashcontrol.i18n (not the module-level
     # `ui.t` this test monkeypatches), so the real translation renders here.
     assert "1" in content and "25" in content and "30" in content
 
@@ -172,7 +172,7 @@ async def test_pagination_note_appears_in_overview_text(monkeypatch: pytest.Monk
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_action_view_link_new_is_a_button_not_a_select_option(monkeypatch: pytest.MonkeyPatch) -> None:
-    import qapbot.ui_registration as ui
+    import clashcontrol.ui_registration as ui
 
     monkeypatch.setattr(ui, "t", identity_t)
     interaction = make_interaction()
@@ -193,7 +193,7 @@ async def test_action_view_link_new_is_a_button_not_a_select_option(monkeypatch:
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_action_view_select_paginates_unverified_players(monkeypatch: pytest.MonkeyPatch) -> None:
-    import qapbot.ui_registration as ui
+    import clashcontrol.ui_registration as ui
 
     monkeypatch.setattr(ui, "t", identity_t)
     interaction = make_interaction()
@@ -225,7 +225,7 @@ async def test_action_view_select_paginates_unverified_players(monkeypatch: pyte
 async def test_refresh_click_guards_against_reentrant_second_click(monkeypatch: pytest.MonkeyPatch) -> None:
     """A second click (here: Next page) landing while Refresh's CoC API fetch is still in
     flight must be dropped, not run a second overlapping edit against the same message."""
-    import qapbot.ui_registration as ui
+    import clashcontrol.ui_registration as ui
 
     cache = FakeCache()
     cache.user_accounts["123"] = {"players": _players(5)}
@@ -269,7 +269,7 @@ async def test_refresh_click_guards_against_reentrant_second_click(monkeypatch: 
 async def test_page_next_guards_against_reentrant_second_click(monkeypatch: pytest.MonkeyPatch) -> None:
     """Same guard, exercised on the page-turn handler itself (the button tracker #0056's
     reporter — ~60 accounts, 3 pages — had every reason to click quickly through)."""
-    import qapbot.ui_registration as ui
+    import clashcontrol.ui_registration as ui
 
     cache = FakeCache()
     cache.user_accounts["123"] = {"players": _players(60)}

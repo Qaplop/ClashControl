@@ -9,9 +9,9 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from qapbot.mcp import tracker_mcp
-from qapbot.mcp.tracker_bridge_client import TrackerBridgeError
-from qapbot.mcp.tracker_envelope import sanitize_field, wrap_untrusted
+from clashcontrol.mcp import tracker_mcp
+from clashcontrol.mcp.tracker_bridge_client import TrackerBridgeError
+from clashcontrol.mcp.tracker_envelope import sanitize_field, wrap_untrusted
 
 
 # -- envelope / sanitizing (plan §6.6) ---------------------------------

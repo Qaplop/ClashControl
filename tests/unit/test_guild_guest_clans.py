@@ -14,7 +14,7 @@ import pytest
 
 os.environ.setdefault("DISCORD_TOKEN", "test-token")
 
-from qapbot.db_manager import WarHistoryDB
+from clashcontrol.db_manager import WarHistoryDB
 
 GUILD = "111"
 FAMILY_CLAN = "#FAM1"
@@ -141,7 +141,7 @@ NOW = datetime(2026, 9, 22, 12, 0, tzinfo=timezone.utc)
     ],
 )
 def test_is_cwl_event_active_or_upcoming(event: Dict[str, Any], expected: bool):
-    from qapbot.QBdiscocmdshelper_cwl import is_cwl_event_active_or_upcoming
+    from clashcontrol.QBdiscocmdshelper_cwl import is_cwl_event_active_or_upcoming
 
     assert is_cwl_event_active_or_upcoming(event, now=NOW) is expected
 
@@ -150,7 +150,7 @@ def test_is_cwl_event_active_or_upcoming(event: Dict[str, Any], expected: bool):
 
 @pytest.fixture
 def cache(monkeypatch, db):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     monkeypatch.setattr(CACHE, "db_manager", db)
     monkeypatch.setattr(CACHE, "server_config", {GUILD: {"member_clans": [FAMILY_CLAN], "member_families": ["FAM"]}})
@@ -165,7 +165,7 @@ def cache(monkeypatch, db):
 
 
 async def test_register_persists_guests_and_makes_them_tracked(db, cache):
-    from qapbot.QBdiscocmdshelper_cwl import register_cwl_guest_clans_for_event
+    from clashcontrol.QBdiscocmdshelper_cwl import register_cwl_guest_clans_for_event
 
     event_ids = await _seed(db)
     newly_added = await register_cwl_guest_clans_for_event(int(GUILD), event_ids["2026-09"], "2026-09")
@@ -180,7 +180,7 @@ async def test_register_persists_guests_and_makes_them_tracked(db, cache):
 
 
 async def test_guest_clan_stays_out_of_the_cwl_family(db, cache):
-    from qapbot.QBdiscocmdshelper_cwl import resolve_guild_member_clan_tags
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_guild_member_clan_tags
 
     await cache.register_guild_guest_clans(GUILD, {GUEST: "2026-09"})
 
@@ -188,7 +188,7 @@ async def test_guest_clan_stays_out_of_the_cwl_family(db, cache):
 
 
 async def test_removal_blocked_while_a_season_is_upcoming(db, cache):
-    from qapbot.QBdiscocmdshelper_cwl import remove_guild_guest_clan_checked
+    from clashcontrol.QBdiscocmdshelper_cwl import remove_guild_guest_clan_checked
 
     await _seed(db)
     upcoming = db.create_cwl_event_sync(GUILD, "2099-01", "1")
@@ -202,7 +202,7 @@ async def test_removal_blocked_while_a_season_is_upcoming(db, cache):
 
 
 async def test_removal_of_past_guest_clears_db_cache_and_tracking(db, cache):
-    from qapbot.QBdiscocmdshelper_cwl import remove_guild_guest_clan_checked
+    from clashcontrol.QBdiscocmdshelper_cwl import remove_guild_guest_clan_checked
 
     await _seed(db)  # GUEST only on 2026-08/2026-09 — both over by the time this test runs
     await cache.register_guild_guest_clans(GUILD, {GUEST: "2026-09"})
@@ -217,13 +217,13 @@ async def test_removal_of_past_guest_clears_db_cache_and_tracking(db, cache):
 
 
 async def test_removal_of_unknown_clan_is_refused(db, cache):
-    from qapbot.QBdiscocmdshelper_cwl import remove_guild_guest_clan_checked
+    from clashcontrol.QBdiscocmdshelper_cwl import remove_guild_guest_clan_checked
 
     assert (await remove_guild_guest_clan_checked(int(GUILD), GUEST))["error"] == "not_a_guest"
 
 
 async def test_overview_lists_guests_with_lock_state(db, cache):
-    from qapbot.QBdiscocmdshelper_cwl import get_guild_guest_clans_overview_sync
+    from clashcontrol.QBdiscocmdshelper_cwl import get_guild_guest_clans_overview_sync
 
     await _seed(db)
     await cache.register_guild_guest_clans(GUILD, {GUEST: "2026-09", CANCELLED_GUEST: "2026-10"})
@@ -238,7 +238,7 @@ async def test_overview_lists_guests_with_lock_state(db, cache):
 # ── Member-role eligibility ──────────────────────────────────────────────────
 
 def test_guest_clan_member_is_eligible_for_member_role(cache):
-    from qapbot.QBdiscocmdshelper import is_player_in_member_clans
+    from clashcontrol.QBdiscocmdshelper import is_player_in_member_clans
 
     assert is_player_in_member_clans(GUEST, int(GUILD)) is False
     cache.guild_guest_clans[GUILD] = {GUEST: {"first_invited_season": "2026-09", "last_invited_season": "2026-09"}}
@@ -250,7 +250,7 @@ def test_guest_clan_member_is_eligible_for_member_role(cache):
 async def test_role_sync_grants_member_role_but_not_coc_leader_role_to_guest(monkeypatch, cache):
     import discord
 
-    from qapbot import guild_role_manager
+    from clashcontrol import guild_role_manager
 
     cache.guild_guest_clans[GUILD] = {GUEST: {"first_invited_season": "2026-09", "last_invited_season": "2026-09"}}
     cache.server_config[GUILD].update({
@@ -281,7 +281,7 @@ async def test_role_sync_grants_member_role_but_not_coc_leader_role_to_guest(mon
 # ── 24h member-list freshness ────────────────────────────────────────────────
 
 def test_member_list_freshness(monkeypatch, cache):
-    from qapbot.QBdiscocmdshelper_cwl import _cwl_clan_member_list_is_fresh
+    from clashcontrol.QBdiscocmdshelper_cwl import _cwl_clan_member_list_is_fresh
 
     fake_coc = MagicMock()
     fake_coc.members_refreshed_at = {GUEST: NOW - timedelta(hours=2)}
@@ -299,7 +299,7 @@ def test_member_list_freshness(monkeypatch, cache):
 
 
 async def test_ensure_refetches_a_guest_clan_whose_member_list_is_stale(monkeypatch, db, cache):
-    from qapbot.QBdiscocmdshelper_cwl import ensure_cwl_clan_membership_tracked
+    from clashcontrol.QBdiscocmdshelper_cwl import ensure_cwl_clan_membership_tracked
 
     await db._conn.execute("INSERT OR IGNORE INTO clans (clan_tag, name) VALUES (?, 'G')", (GUEST,))
     await db._conn.execute("INSERT OR IGNORE INTO users (discord_id, display_name) VALUES ('UNASSIGNED', 'UNASSIGNED')")

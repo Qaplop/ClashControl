@@ -42,7 +42,7 @@ import os
 import sys
 import builtins
 
-from qapbot.emojis import BotEmojis
+from clashcontrol.emojis import BotEmojis
 import platform
 import psutil
 import QBcore
@@ -54,12 +54,12 @@ from QBhelperfunctions import (
     build_cwl_opponent_embeds, parse_month_argument, resolve_subscription_period,
     coc_clan_profile_url, coc_player_profile_url, LEADERBOARD_SCOPES,
 )
-from QapBot import GLOBAL_GUILD_ID, run_nightly_maintenance_routine, is_history_migration_due
-from qapbot.config import CONFIG
-from qapbot.cache_manager import CACHE
-from qapbot.discord_health import get_simple_discord_stats
+from ClashControl import GLOBAL_GUILD_ID, run_nightly_maintenance_routine, is_history_migration_due
+from clashcontrol.config import CONFIG
+from clashcontrol.cache_manager import CACHE
+from clashcontrol.discord_health import get_simple_discord_stats
 from dotenv import load_dotenv
-from qapbot.QBdiscocmdshelper import (  # type: ignore[attr-defined]
+from clashcontrol.QBdiscocmdshelper import (  # type: ignore[attr-defined]
     _get_clan_tag, normalize_clan_tag, normalize_family_tag, send_and_track,  # type: ignore[misc]
     delete_leaderboard_messages_for_clan_channel, get_clan_family_autocomplete_choices,
     get_mode_autocomplete_choices,
@@ -69,7 +69,7 @@ from qapbot.QBdiscocmdshelper import (  # type: ignore[attr-defined]
     verify_and_update_player, is_already_subscribed, cleanup_stale_messages_for_channel,  # type: ignore[attr-defined]
     validate_and_add_clan_to_cache, resolve_guild_context, command_mention
 )
-from qapbot.i18n import t  # type: ignore[attr-defined]
+from clashcontrol.i18n import t  # type: ignore[attr-defined]
 
 load_dotenv()
 SERVER_ADMIN = CONFIG.server_admin or os.getenv("SERVER_ADMIN", "")
@@ -186,7 +186,7 @@ async def subscribe(
             tag = resolved
 
     # Validate mode
-    from qapbot.formatting import MODE_REGISTRY, DEFAULT_MODE  # type: ignore[attr-defined]
+    from clashcontrol.formatting import MODE_REGISTRY, DEFAULT_MODE  # type: ignore[attr-defined]
     valid_modes = set(MODE_REGISTRY.keys())  # type: ignore[arg-type]
     requested_mode = mode.lower() if mode else DEFAULT_MODE
     
@@ -361,7 +361,7 @@ async def unsubscribe(
     
     # Validate mode if provided
     if mode:
-        from qapbot.formatting import MODE_REGISTRY  # type: ignore[attr-defined]
+        from clashcontrol.formatting import MODE_REGISTRY  # type: ignore[attr-defined]
         valid_modes = set(MODE_REGISTRY.keys()) | {"playerregistration"}  # type: ignore[arg-type]
         requested_mode = mode.lower()
         
@@ -559,7 +559,7 @@ async def leaderboard(
     cwl_season: Optional[str] = None
     season_period: Optional[Tuple[int, int]] = None
     if season:
-        from qapbot.constants import normalize_cwl_season
+        from clashcontrol.constants import normalize_cwl_season
         cwl_season = normalize_cwl_season(season.strip())
         _sp = cwl_season.split("-")
         year = int(_sp[0])
@@ -596,7 +596,7 @@ async def leaderboard(
     tags: List[str] = []
     per_tag_modes: List[str] = []
 
-    from qapbot.formatting import MODE_REGISTRY, DEFAULT_MODE, apply_cwl_mode_suffix, RAID_MODES  # type: ignore[attr-defined]
+    from clashcontrol.formatting import MODE_REGISTRY, DEFAULT_MODE, apply_cwl_mode_suffix, RAID_MODES  # type: ignore[attr-defined]
     valid_modes = set(MODE_REGISTRY.keys())  # type: ignore[arg-type]
 
     def apply_cwl(m: str) -> str:
@@ -749,7 +749,7 @@ async def leaderboard(
             # (tracker #0115) — month=None is how generate_leaderboard_text() is told so.
             period_month = None
         if per_tag_modes[i] == 'currentraid':
-            from qapbot.constants import is_capital_raid_window
+            from clashcontrol.constants import is_capital_raid_window
             if is_capital_raid_window():
                 # Freshen the running weekend first (same idea as the war refresh above);
                 # otherwise the data is at most one update cycle old.
@@ -862,7 +862,7 @@ async def leaderboard_clan_autocomplete(interaction: discord.Interaction, curren
     from every guild the caller is linked to via their registered CoC accounts."""
     if interaction.guild_id:
         return await get_clan_family_autocomplete_choices(current, guild_id=str(interaction.guild_id), mode="guild_first")
-    from qapbot.QBdiscocmdshelper import get_dm_caller_matched_guild_ids
+    from clashcontrol.QBdiscocmdshelper import get_dm_caller_matched_guild_ids
     guild_ids = [str(g) for g in get_dm_caller_matched_guild_ids(str(interaction.user.id))]
     return await get_clan_family_autocomplete_choices(current, guild_ids=guild_ids, mode="guild_first")
 
@@ -933,7 +933,7 @@ async def highlightme(interaction: discord.Interaction):
             if isinstance(p, dict) and p.get('player_tag'):
                 highlight_player_ids.add(p['player_tag'])
 
-    from qapbot.formatting import DEFAULT_MODE, leaderboard_text_has_highlight  # type: ignore[attr-defined]
+    from clashcontrol.formatting import DEFAULT_MODE, leaderboard_text_has_highlight  # type: ignore[attr-defined]
 
     reposted = 0
     if highlight_player_ids:
@@ -954,7 +954,7 @@ async def highlightme(interaction: discord.Interaction):
                 mode=mode, highlight_player_ids=highlight_player_ids,
             )
             # Mirror the automatic posting loop's "no data yet this month" fallback
-            # (post_leaderboards_to_subscribed_channels in QapBot.py) so the content
+            # (post_leaderboards_to_subscribed_channels in ClashControl.py) so the content
             # rendered here matches whatever is actually posted right now. Note:
             # month_range/year (the message's tracking key) intentionally stay as the
             # current period — only the fallback TEXT comes from the previous month —
@@ -987,8 +987,8 @@ async def highlightme(interaction: discord.Interaction):
 
 # ---------------------------------------------------------------------------
 # Bug/feature tracker (BUG_FEATURE_TRACKER_PLAN.md Phase 3) — thin wrappers around the shared
-# qapbot.ui_tracker.start_tracker_item() coroutine; only item_type differs between the two.
-# Registered conditionally (CONFIG.tracker_enabled) in QapBot.py's _setup_hook() — see plan §3.1.
+# clashcontrol.ui_tracker.start_tracker_item() coroutine; only item_type differs between the two.
+# Registered conditionally (CONFIG.tracker_enabled) in ClashControl.py's _setup_hook() — see plan §3.1.
 # ---------------------------------------------------------------------------
 
 @app_commands.command(name="bug", description=dev_mode + "Report a bug to the ClashControl maintainer.")
@@ -1012,7 +1012,7 @@ async def bug(
 ) -> None:
     """Open the bug-report modal (works in any guild the bot serves, and in DMs)."""
     _log_cmd(interaction, "bug")
-    from qapbot.ui_tracker import start_tracker_item
+    from clashcontrol.ui_tracker import start_tracker_item
     await start_tracker_item(interaction, "bug", attachment1, attachment2, attachment3)
 
 
@@ -1032,7 +1032,7 @@ async def feature(
 ) -> None:
     """Open the feature-request modal (works in any guild the bot serves, and in DMs)."""
     _log_cmd(interaction, "feature")
-    from qapbot.ui_tracker import start_tracker_item
+    from clashcontrol.ui_tracker import start_tracker_item
     await start_tracker_item(interaction, "feature", attachment1, attachment2, attachment3)
 
 
@@ -1112,7 +1112,7 @@ async def help(interaction: discord.Interaction, command: Optional[str] = None):
     If command parameter is provided, show detailed help for that command.
     Otherwise, show list of all available commands with short descriptions.
     """
-    from qapbot.i18n import t  # type: ignore[attr-defined]
+    from clashcontrol.i18n import t  # type: ignore[attr-defined]
 
     is_dm = interaction.guild is None
 
@@ -1265,7 +1265,7 @@ async def do_maintenance_shutdown() -> None:
         logging.warning(f"[MAINTENANCE] Error closing database: {e}")
 
     # Log lifetime stats before marking cleaned_up (async_cleanup will be a no-op after this)
-    from QapBot import log_lifetime_stats
+    from ClashControl import log_lifetime_stats
     log_lifetime_stats()
     # Mark cleaned_up so async_cleanup() on eventual exit doesn't double-close
     QBcore.cleaned_up = True
@@ -1326,7 +1326,7 @@ async def admin(
 
     # Handle MAINTENANCE_START action (bot admin only)
     if action_norm == "MAINTENANCE_START":
-        from qapbot.QBdiscocmdshelper import check_bot_admin_only
+        from clashcontrol.QBdiscocmdshelper import check_bot_admin_only
         if not check_bot_admin_only(interaction, CONFIG.server_admin):
             guild_id = interaction.guild.id if interaction.guild else None
             await interaction.response.send_message(
@@ -1404,7 +1404,7 @@ async def admin(
 
     # Handle MAINTENANCE_END action (bot admin only)
     if action_norm == "MAINTENANCE_END":
-        from qapbot.QBdiscocmdshelper import check_bot_admin_only
+        from clashcontrol.QBdiscocmdshelper import check_bot_admin_only
         if not check_bot_admin_only(interaction, CONFIG.server_admin):
             guild_id = interaction.guild.id if interaction.guild else None
             await interaction.response.send_message(
@@ -1432,7 +1432,7 @@ async def admin(
 
     # Handle RETRIEVE_CWL action (bot admin only)
     if action_norm == "RETRIEVE_CWL":
-        from qapbot.QBdiscocmdshelper import check_bot_admin_only
+        from clashcontrol.QBdiscocmdshelper import check_bot_admin_only
         if not check_bot_admin_only(interaction, CONFIG.server_admin):
             guild_id = interaction.guild.id if interaction.guild else None
             await interaction.response.send_message(
@@ -1454,7 +1454,7 @@ async def admin(
                     return
 
                 raw_tag = str(self.clantag.value)  # type: ignore[attr-defined]
-                from qapbot.QBdiscocmdshelper import normalize_clan_tag as _norm
+                from clashcontrol.QBdiscocmdshelper import normalize_clan_tag as _norm
                 clan_tag_norm = _norm(raw_tag)
                 if not clan_tag_norm:
                     guild_id = modal_interaction.guild.id if modal_interaction.guild else None
@@ -1487,7 +1487,7 @@ async def admin(
 
     # Handle BACKFILL_CWL_GROUPS action (bot admin only)
     if action_norm == "BACKFILL_CWL_GROUPS":
-        from qapbot.QBdiscocmdshelper import check_bot_admin_only
+        from clashcontrol.QBdiscocmdshelper import check_bot_admin_only
         if not check_bot_admin_only(interaction, CONFIG.server_admin):
             guild_id = interaction.guild.id if interaction.guild else None
             await interaction.response.send_message(
@@ -1506,7 +1506,7 @@ async def admin(
                 if not await _safe_defer(modal_interaction, thinking=True, ephemeral=True):
                     return
                 season = str(self.season_input.value).strip()  # type: ignore[attr-defined]
-                from qapbot.QBdiscocmdshelper_admin_command import handle_backfill_cwl_groups  # type: ignore[attr-defined]
+                from clashcontrol.QBdiscocmdshelper_admin_command import handle_backfill_cwl_groups  # type: ignore[attr-defined]
                 try:
                     message = await handle_backfill_cwl_groups(CACHE, season)
                     await modal_interaction.followup.send(message, ephemeral=True)
@@ -1523,7 +1523,7 @@ async def admin(
 
     # Handle WAR_PREDICT action (bot admin only)
     if action_norm == "WAR_PREDICT":
-        from qapbot.QBdiscocmdshelper import check_bot_admin_only
+        from clashcontrol.QBdiscocmdshelper import check_bot_admin_only
         if not check_bot_admin_only(interaction, CONFIG.server_admin):
             guild_id = interaction.guild.id if interaction.guild else None
             await interaction.response.send_message(
@@ -1534,7 +1534,7 @@ async def admin(
         class WarPredictModal(discord.ui.Modal, title="War Prediction"):
             # Label-wrapped (discord.py 2.7+): TextInput.label's getter/setter are deprecated in
             # favor of wrapping in discord.ui.Label, which now supplies the visible label instead
-            # (same idiom as qapbot/ui_tracker.py's TrackerItemModal). Every touch-point below
+            # (same idiom as clashcontrol/ui_tracker.py's TrackerItemModal). Every touch-point below
             # moved under `.component` accordingly (`.value`).
             clan1 = discord.ui.Label(
                 text="Clan 1 Tag (treated as \"our\" clan)",
@@ -1556,7 +1556,7 @@ async def admin(
             async def on_submit(self, modal_interaction: discord.Interaction) -> None:
                 if not await _safe_defer(modal_interaction, thinking=True, ephemeral=True):
                     return
-                from qapbot.QBdiscocmdshelper import normalize_clan_tag as _norm
+                from clashcontrol.QBdiscocmdshelper import normalize_clan_tag as _norm
                 guild_id = modal_interaction.guild.id if modal_interaction.guild else None
 
                 tag1 = _norm(str(self.clan1.component.value))  # type: ignore[attr-defined]
@@ -1755,7 +1755,7 @@ async def admin(
     # channel" can never be — the modal opens fine from a DM, it just can't succeed there. No
     # code change needed; documenting why this one stays effectively guild-scoped.
     if action_norm == "IMPORT_DATA":
-        from qapbot.QBdiscocmdshelper import check_bot_admin_only
+        from clashcontrol.QBdiscocmdshelper import check_bot_admin_only
         if not check_bot_admin_only(interaction, CONFIG.server_admin):
             guild_id = interaction.guild.id if interaction.guild else None
             await interaction.response.send_message(
@@ -1786,8 +1786,8 @@ async def admin(
                 
                 # Parse the ClashPerk embed
                 try:
-                    from qapbot.import_clashperk_userlist import parse_clashperk_embed, analyze_import_changes, DuplicatePlayerNamesError  # type: ignore[attr-defined]
-                    from qapbot.ui_clan_management import ImportDataConfirmView, SwitchViewContinueView
+                    from clashcontrol.import_clashperk_userlist import parse_clashperk_embed, analyze_import_changes, DuplicatePlayerNamesError  # type: ignore[attr-defined]
+                    from clashcontrol.ui_clan_management import ImportDataConfirmView, SwitchViewContinueView
                     
                     if not interaction.guild or not current_channel_id:
                         await modal_interaction.followup.send("❌ Command must be used in a guild channel.", ephemeral=True)
@@ -1930,7 +1930,7 @@ async def admin(
     if action_norm == "REFRESH_DATA":
         if not await _safe_defer(interaction, thinking=True, ephemeral=True):
             return
-        from qapbot.QBdiscocmdshelper import check_bot_admin_only, get_guild_clans_including_member_config
+        from clashcontrol.QBdiscocmdshelper import check_bot_admin_only, get_guild_clans_including_member_config
         guild_id = interaction.guild.id if interaction.guild else None
         if not check_bot_admin_only(interaction, CONFIG.server_admin):
             await interaction.followup.send(
@@ -2130,7 +2130,7 @@ async def admin(
             guild_id = interaction.guild.id if interaction.guild else None
             await interaction.followup.send(t('commands.errors.admin_required', guild_id=guild_id), ephemeral=True)
             return
-        from qapbot.QBdiscocmdshelper_admin_command import handle_cleanup_messages_channel  # type: ignore[attr-defined]
+        from clashcontrol.QBdiscocmdshelper_admin_command import handle_cleanup_messages_channel  # type: ignore[attr-defined]
         try:
             message = await handle_cleanup_messages_channel(interaction, interaction.channel, QBcore.bot, str(interaction.user))
             await interaction.followup.send(message, ephemeral=True)
@@ -2144,13 +2144,13 @@ async def admin(
     if action_norm == "CLEANUP_MESSAGES_ALL":
         if not await _safe_defer(interaction, thinking=True, ephemeral=True):
             return
-        from qapbot.QBdiscocmdshelper import check_bot_admin_only
+        from clashcontrol.QBdiscocmdshelper import check_bot_admin_only
         if not check_bot_admin_only(interaction, SERVER_ADMIN):
             guild_id = interaction.guild.id if interaction.guild else None
             await interaction.followup.send(
                 t('commands.errors.global_cleanup_restricted', guild_id=guild_id), ephemeral=True)
             return
-        from qapbot.QBdiscocmdshelper_admin_command import handle_cleanup_messages_all  # type: ignore[attr-defined]
+        from clashcontrol.QBdiscocmdshelper_admin_command import handle_cleanup_messages_all  # type: ignore[attr-defined]
         try:
             message = await handle_cleanup_messages_all(QBcore.bot, CACHE, str(interaction.user))
             await interaction.followup.send(message, ephemeral=True)
@@ -2164,7 +2164,7 @@ async def admin(
     if action_norm == "CHECK_LOGS":
         if not await _safe_defer(interaction, thinking=True, ephemeral=True):
             return
-        from qapbot.QBdiscocmdshelper import check_bot_admin_only
+        from clashcontrol.QBdiscocmdshelper import check_bot_admin_only
         if not check_bot_admin_only(interaction, SERVER_ADMIN):
             await interaction.followup.send(
                 "🔒 This command is restricted to the bot administrator.\n"
@@ -2173,7 +2173,7 @@ async def admin(
             )
             return
         
-        from qapbot.QBdiscocmdshelper_admin_command import scan_logs, format_log_summary, format_nightly_maintenance_stats
+        from clashcontrol.QBdiscocmdshelper_admin_command import scan_logs, format_log_summary, format_nightly_maintenance_stats
         import os
 
         log_dir = os.path.join(CONFIG.data_dir, "logs")
@@ -2194,7 +2194,7 @@ async def admin(
     if action_norm == "CHECK_DATA":
         if not await _safe_defer(interaction, thinking=True, ephemeral=True):
             return
-        from qapbot.QBdiscocmdshelper import check_bot_admin_only
+        from clashcontrol.QBdiscocmdshelper import check_bot_admin_only
         if not check_bot_admin_only(interaction, SERVER_ADMIN):
             await interaction.followup.send(
                 "🔒 This command is restricted to the bot administrator.\n"
@@ -2203,7 +2203,7 @@ async def admin(
             )
             return
         
-        from qapbot.QBdiscocmdshelper_admin_command import check_database_consistency, format_database_check_results
+        from clashcontrol.QBdiscocmdshelper_admin_command import check_database_consistency, format_database_check_results
         import os
         
         data_dir = CONFIG.data_dir
@@ -2225,7 +2225,7 @@ async def admin(
     if action_norm == "LIST_ALL_SUBSCRIPTIONS":
         if not await _safe_defer(interaction, thinking=True, ephemeral=True):
             return
-        from qapbot.QBdiscocmdshelper import check_bot_admin_only
+        from clashcontrol.QBdiscocmdshelper import check_bot_admin_only
         if not check_bot_admin_only(interaction, SERVER_ADMIN):
             await interaction.followup.send(
                 "🔒 This command is restricted to the bot administrator.\n"
@@ -2234,7 +2234,7 @@ async def admin(
             )
             return
         
-        from qapbot.QBdiscocmdshelper_admin_command import list_all_subscriptions  # type: ignore[attr-defined]
+        from clashcontrol.QBdiscocmdshelper_admin_command import list_all_subscriptions  # type: ignore[attr-defined]
         
         try:
             chunks = await list_all_subscriptions(QBcore.bot, CACHE)
@@ -2256,7 +2256,7 @@ async def admin(
         if interaction.guild is None:
             await interaction.followup.send(t('commands.errors.dms_only_error', guild_id=None), ephemeral=True)
             return
-        from qapbot.QBdiscocmdshelper import check_bot_admin_only
+        from clashcontrol.QBdiscocmdshelper import check_bot_admin_only
         if not check_bot_admin_only(interaction, SERVER_ADMIN):
             await interaction.followup.send(
                 "🔒 This command is restricted to the bot administrator.\n"
@@ -2308,7 +2308,7 @@ async def admin(
                 
                 try:
                     # Import war notification formatting functions
-                    from qapbot.war_notifications import _format_aggregated_reminder_message  # type: ignore[misc]
+                    from clashcontrol.war_notifications import _format_aggregated_reminder_message  # type: ignore[misc]
 
                     # Ensure user metadata is current (cache handles API calls internally)
                     user_data = await CACHE.ensure_user_metadata(str(selected_member.id))
@@ -2422,7 +2422,7 @@ async def admin(
         if interaction.guild is None:
             await interaction.followup.send(t('commands.errors.dms_only_error', guild_id=None), ephemeral=True)
             return
-        from qapbot.QBdiscocmdshelper import check_bot_admin_only
+        from clashcontrol.QBdiscocmdshelper import check_bot_admin_only
         if not check_bot_admin_only(interaction, SERVER_ADMIN):
             await interaction.followup.send(
                 "🔒 This command is restricted to the bot administrator.\n"
@@ -2552,14 +2552,14 @@ async def admin(
         if interaction.guild is None:
             await interaction.followup.send(t('commands.errors.dms_only_error', guild_id=None), ephemeral=True)
             return
-        from qapbot.QBdiscocmdshelper import check_bot_admin_only
+        from clashcontrol.QBdiscocmdshelper import check_bot_admin_only
         if not check_bot_admin_only(interaction, SERVER_ADMIN):
             await interaction.followup.send(
                 t('commands.errors.bot_admin_only', user_id=str(interaction.user.id), guild_id=interaction.guild.id),
                 ephemeral=True
             )
             return
-        from qapbot.ui_tracker import start_bot_setup
+        from clashcontrol.ui_tracker import start_bot_setup
         await start_bot_setup(interaction)
         return
 
@@ -2569,7 +2569,7 @@ async def admin(
         # compete for the event loop before send_message completes, causing a timeout.
         if not await _safe_defer(interaction, ephemeral=True):
             return
-        from qapbot.QBdiscocmdshelper import check_bot_admin_only
+        from clashcontrol.QBdiscocmdshelper import check_bot_admin_only
         if not check_bot_admin_only(interaction, CONFIG.server_admin):
             guild_id = interaction.guild.id if interaction.guild else None
             await interaction.followup.send(
@@ -2608,7 +2608,7 @@ async def admin(
     if action_norm == "OPTIMIZE_DB":
         if not await _safe_defer(interaction, ephemeral=True):
             return
-        from qapbot.QBdiscocmdshelper import check_bot_admin_only
+        from clashcontrol.QBdiscocmdshelper import check_bot_admin_only
         if not check_bot_admin_only(interaction, CONFIG.server_admin):
             guild_id = interaction.guild.id if interaction.guild else None
             await interaction.followup.send(
@@ -2683,14 +2683,14 @@ async def admin(
     if action_norm == "MEMORY_PROFILE":
         if not await _safe_defer(interaction, thinking=True, ephemeral=True):
             return
-        from qapbot.QBdiscocmdshelper import check_bot_admin_only
+        from clashcontrol.QBdiscocmdshelper import check_bot_admin_only
         if not check_bot_admin_only(interaction, SERVER_ADMIN):
             guild_id = interaction.guild.id if interaction.guild else None
             await interaction.followup.send(
                 t('commands.errors.bot_admin_only', guild_id=guild_id), ephemeral=True
             )
             return
-        from qapbot.QBdiscocmdshelper_admin_command import handle_memory_profile  # type: ignore[attr-defined]
+        from clashcontrol.QBdiscocmdshelper_admin_command import handle_memory_profile  # type: ignore[attr-defined]
         try:
             message = await handle_memory_profile(CACHE)
             await interaction.followup.send(message, ephemeral=True)
@@ -2749,8 +2749,8 @@ async def clan_management(interaction: discord.Interaction):
         return
     _log_cmd(interaction, "clan management")
     
-    from qapbot.QBdiscocmdshelper import format_clan_management_message, get_most_active_clan_for_guild, get_guild_clans_including_member_config
-    from qapbot.ui_clan_management import ClanManagementView
+    from clashcontrol.QBdiscocmdshelper import format_clan_management_message, get_most_active_clan_for_guild, get_guild_clans_including_member_config
+    from clashcontrol.ui_clan_management import ClanManagementView
     from QBhelperfunctions import generate_message_key_timestamp
     
     if not interaction.guild_id or not interaction.guild:
@@ -2948,7 +2948,7 @@ async def analyse_leaguegroup_clan_autocomplete(interaction: discord.Interaction
     offers the union of clans from every guild the caller is linked to."""
     if interaction.guild_id:
         return await get_clan_family_autocomplete_choices(current, guild_id=str(interaction.guild_id), mode="guild_first")
-    from qapbot.QBdiscocmdshelper import get_dm_caller_matched_guild_ids
+    from clashcontrol.QBdiscocmdshelper import get_dm_caller_matched_guild_ids
     guild_ids = [str(g) for g in get_dm_caller_matched_guild_ids(str(interaction.user.id))]
     return await get_clan_family_autocomplete_choices(current, guild_ids=guild_ids, mode="guild_first")
 
@@ -3171,7 +3171,7 @@ async def analyse_cwlopponent(interaction: discord.Interaction, clan: str) -> No
 
     count, resolved = _get_clan_tag(clan)
     if count == 0 or not resolved:
-        from qapbot.QBdiscocmdshelper import normalize_clan_tag as _norm_ct  # type: ignore[misc]
+        from clashcontrol.QBdiscocmdshelper import normalize_clan_tag as _norm_ct  # type: ignore[misc]
         normalized = _norm_ct(clan)
         if not normalized:
             await interaction.followup.send(
@@ -3352,7 +3352,7 @@ async def analyse_cwlopponent(interaction: discord.Interaction, clan: str) -> No
     )
 
     # ── Build dropdown with up to 7 opponents ─────────────────────────────────
-    from qapbot.ui_common import GenericSelectView  # type: ignore[misc]
+    from clashcontrol.ui_common import GenericSelectView  # type: ignore[misc]
     options: List[discord.SelectOption] = []
     for otag in opponent_tags_sorted[:7]:
         oname = CACHE.get_clan_name(otag, otag) or otag
@@ -3395,7 +3395,7 @@ async def analyse_cwlopponent_clan_autocomplete(interaction: discord.Interaction
     offers the union of clans from every guild the caller is linked to."""
     if interaction.guild_id:
         return await get_clan_family_autocomplete_choices(current, guild_id=str(interaction.guild_id), mode="guild_first")
-    from qapbot.QBdiscocmdshelper import get_dm_caller_matched_guild_ids
+    from clashcontrol.QBdiscocmdshelper import get_dm_caller_matched_guild_ids
     guild_ids = [str(g) for g in get_dm_caller_matched_guild_ids(str(interaction.user.id))]
     return await get_clan_family_autocomplete_choices(current, guild_ids=guild_ids, mode="guild_first")
 
@@ -3431,13 +3431,13 @@ async def cwl_preferences(interaction: discord.Interaction) -> None:
     every component-click caller of it already follows. In the picker case the launch is the
     first response of the picker's selection interaction instead.
     """
-    from qapbot.ui_cwl_roster import _launch_cwl_activity  # pyright: ignore[reportPrivateUsage]  # deliberately shared, see docstring above
+    from clashcontrol.ui_cwl_roster import _launch_cwl_activity  # pyright: ignore[reportPrivateUsage]  # deliberately shared, see docstring above
 
     if interaction.guild is not None:
         await _launch_cwl_activity(interaction, interaction.guild.id, "player_prefs")
         return
 
-    from qapbot.QBdiscocmdshelper import (
+    from clashcontrol.QBdiscocmdshelper import (
         _prompt_dm_guild_picker,  # pyright: ignore[reportPrivateUsage]
         get_dm_caller_matched_guild_ids,
     )
@@ -3488,12 +3488,12 @@ async def registration(interaction: discord.Interaction) -> None:
     clans and assign its roles from the DM (get_interaction_guild()). Deliberately not based on
     linked accounts like other DM commands: a new user has none yet.
     """
-    from qapbot.QBdiscocmdshelper import (
+    from clashcontrol.QBdiscocmdshelper import (
         _prompt_dm_guild_picker,  # pyright: ignore[reportPrivateUsage]
         get_dm_registration_guild_ids,
         get_playerregistration_message,
     )
-    from qapbot.ui_registration import RegistrationView
+    from clashcontrol.ui_registration import RegistrationView
 
     _log_cmd(interaction, "registration")
     user_id = str(interaction.user.id)
@@ -3808,7 +3808,7 @@ async def status(interaction: discord.Interaction, force_refresh: bool = False):
     clan_cache_memory = CACHE.coc_clan_cache.get_memory_usage_mb()
 
     # Get global DB statistics and archive file count in parallel (both are I/O-bound)
-    from qapbot.cache_manager import count_archive_files_sync
+    from clashcontrol.cache_manager import count_archive_files_sync
     db_stats, archive_file_count = await asyncio.gather(
         asyncio.to_thread(CACHE.db_manager.get_global_db_statistics_sync, force_refresh=force_refresh),  # type: ignore[union-attr]
         asyncio.to_thread(count_archive_files_sync, CONFIG.archive_dir),
@@ -3817,7 +3817,7 @@ async def status(interaction: discord.Interaction, force_refresh: bool = False):
     war_file_stats = CACHE.get_war_file_stats()
     
     # Get CoC API stats
-    from qapbot.coc_health import get_coc_stats
+    from clashcontrol.coc_health import get_coc_stats
     coc_stats = get_coc_stats()
     
     # Format CoC API stats section
@@ -3893,7 +3893,7 @@ async def status(interaction: discord.Interaction, force_refresh: bool = False):
         cycle_section = "No cycles completed yet\n"
     msg += f"\n**Update Cycle Stats (since last start)**\n{cycle_section}"
 
-    from qapbot.QBdiscocmdshelper_admin_command import format_nightly_maintenance_stats
+    from clashcontrol.QBdiscocmdshelper_admin_command import format_nightly_maintenance_stats
     nightly_maint_section = format_nightly_maintenance_stats(
         QBcore.nightly_maintenance_durations, os.path.join(CONFIG.data_dir, "logs")
     )
@@ -3914,7 +3914,7 @@ async def about(interaction: discord.Interaction) -> None:
     Must NOT defer()/send_message() first — LAUNCH_ACTIVITY has to be the first response (see
     _launch_cwl_activity's docstring); a refused launch falls back to the landing text there."""
     _log_cmd(interaction, "about")
-    from qapbot.ui_cwl_roster import _launch_cwl_activity  # pyright: ignore[reportPrivateUsage]  # shared with /cwl preferences
+    from clashcontrol.ui_cwl_roster import _launch_cwl_activity  # pyright: ignore[reportPrivateUsage]  # shared with /cwl preferences
 
     guild_id = interaction.guild.id if interaction.guild else None
     if guild_id is None:
@@ -4018,7 +4018,7 @@ async def list(
             await send_and_track(interaction, command_name='list_accounts', embed=empty_embed, ephemeral=True)
             return
 
-        from qapbot.formatting import best_practice_player_cell
+        from clashcontrol.formatting import best_practice_player_cell
 
         # Unicode left-to-right marks for proper text direction
         LRM = "\u200E"
@@ -4219,10 +4219,10 @@ async def list(
         total_untracked_count = sum(league_untracked.values())
         total = total_tracked_count + total_untracked_count
 
-        # Generate chart bytes using the shared helper in qapbot.chart_clans_per_league.
+        # Generate chart bytes using the shared helper in clashcontrol.chart_clans_per_league.
         # Run in a thread: matplotlib rendering is CPU-bound and blocks the event loop
         # for 15–20 s on slow server-machine hardware, preventing heartbeats → connection reset by Discord.
-        from qapbot.chart_clans_per_league import make_chart_bytes
+        from clashcontrol.chart_clans_per_league import make_chart_bytes
         import asyncio as _asyncio
         buf = io.BytesIO(await _asyncio.to_thread(make_chart_bytes, chart_data))
         await interaction.followup.send(
@@ -4242,7 +4242,7 @@ async def list(
     if action_norm == "TESTERS":
         if not await _safe_defer(interaction, thinking=True, ephemeral=True):
             return
-        from qapbot.QBdiscocmdshelper import check_bot_admin_only
+        from clashcontrol.QBdiscocmdshelper import check_bot_admin_only
         if not check_bot_admin_only(interaction, SERVER_ADMIN):
             await interaction.followup.send(
                 "🔒 This command is restricted to the bot administrator.",
@@ -4275,12 +4275,12 @@ async def list(
         if not await _safe_defer(interaction, thinking=True, ephemeral=True):
             return
         guild_id = interaction.guild.id if interaction.guild else None
-        from qapbot.QBdiscocmdshelper import check_bot_admin_only
+        from clashcontrol.QBdiscocmdshelper import check_bot_admin_only
         if not check_bot_admin_only(interaction, SERVER_ADMIN):
             await interaction.followup.send(t('commands.errors.bot_admin_required', guild_id=guild_id), ephemeral=True)
             return
 
-        from qapbot.QBdiscocmdshelper_cwl import resolve_current_cwl_season
+        from clashcontrol.QBdiscocmdshelper_cwl import resolve_current_cwl_season
 
         if season:
             # YYYY-MM only — the same shape resolve_current_cwl_season()/every cwl_events row
@@ -4453,7 +4453,7 @@ class _WhoisChartSelectView(discord.ui.View):
             opt.default = (opt.value == mode)
 
         try:
-            from qapbot.chart_player_report import (
+            from clashcontrol.chart_player_report import (
                 make_season_chart_bytes, make_last10_chart_bytes,
                 make_skill_chart_bytes, make_reliability_chart_bytes,
                 make_activity_chart_bytes,
@@ -4794,7 +4794,7 @@ async def _player_report_logic(
     _ch = interaction.channel
     _ch_id = str(_ch.id) if _ch else None
     if _ch_id:
-        from qapbot.QBdiscocmdshelper import _delete_messages_by_filter  # type: ignore[misc,attr-defined]
+        from clashcontrol.QBdiscocmdshelper import _delete_messages_by_filter  # type: ignore[misc,attr-defined]
         await _delete_messages_by_filter(
             _ch_id,
             lambda k, v: (
@@ -4949,7 +4949,7 @@ async def _whois_logic(interaction: discord.Interaction, user: Union[discord.Use
         is genuinely useful — only hero levels are missing. Sorts by its cached TH like any other
         row rather than being dumped at the bottom.
         """
-        from qapbot.emojis import BotEmojis
+        from clashcontrol.emojis import BotEmojis
 
         cached_th = player.get("th_level")
         status_icon = BotEmojis.VERIFIED if verified else BotEmojis.GCHECK
@@ -4985,7 +4985,7 @@ async def _whois_logic(interaction: discord.Interaction, user: Union[discord.Use
             th_level = player_obj.town_hall
             
             # Get verification status icon (same as clan management)
-            from qapbot.emojis import BotEmojis
+            from clashcontrol.emojis import BotEmojis
             if verified:
                 status_icon = BotEmojis.VERIFIED
             else:
@@ -5191,7 +5191,7 @@ def _build_guild_player_name_matches(guild_id: Optional[int], needle_lower: str)
     pre-redesign DM behavior."""
     if not guild_id:
         return []
-    from qapbot.QBdiscocmdshelper import get_guild_clans_including_member_config
+    from clashcontrol.QBdiscocmdshelper import get_guild_clans_including_member_config
     guild_clan_tags: set[str] = set(get_guild_clans_including_member_config(guild_id))
     if not guild_clan_tags:
         return []
@@ -5335,7 +5335,7 @@ async def whois_slash(
                 _log_cmd_done(interaction, "whois")
             else:
                 # Ambiguous — let user pick from a dropdown
-                from qapbot.ui_common import GenericSelectView
+                from clashcontrol.ui_common import GenericSelectView
                 options = [
                     discord.SelectOption(
                         label=m["player_name"][:100],
@@ -5445,7 +5445,7 @@ async def link_clan_autocomplete(interaction: discord.Interaction, current: str)
     offers the union of clans from every guild the caller is linked to."""
     if interaction.guild_id:
         return await get_clan_family_autocomplete_choices(current, guild_id=str(interaction.guild_id), mode="guild_first")
-    from qapbot.QBdiscocmdshelper import get_dm_caller_matched_guild_ids
+    from clashcontrol.QBdiscocmdshelper import get_dm_caller_matched_guild_ids
     guild_ids = [str(g) for g in get_dm_caller_matched_guild_ids(str(interaction.user.id))]
     return await get_clan_family_autocomplete_choices(current, guild_ids=guild_ids, mode="guild_first")
 
@@ -5517,7 +5517,7 @@ async def link_player(interaction: discord.Interaction, player: str) -> None:
         _log_cmd_done(interaction, "link player")
         return
 
-    from qapbot.ui_common import GenericSelectView
+    from clashcontrol.ui_common import GenericSelectView
     options = [
         discord.SelectOption(label=m["player_name"][:100], value=m["player_tag"], description=m["player_tag"])
         for m in matches
@@ -5538,7 +5538,7 @@ async def link_player(interaction: discord.Interaction, player: str) -> None:
 # ============================================================================
 # All UI components and helper functions have been moved to:
 # - Split UI modules: ui_common.py (GenericSelectView), ui_registration.py (RegistrationView, PlayerSubstringModal)
-# - qapbot/QBdiscocmdshelper.py (get_player_list, process_player_registration)
+# - clashcontrol/QBdiscocmdshelper.py (get_player_list, process_player_registration)
 # ============================================================================
 # NOTE: All administrative actions are now integrated into the single /admin command.
 # See the admin() function definition for all available actions and handlers.

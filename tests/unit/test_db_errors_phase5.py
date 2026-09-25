@@ -20,7 +20,7 @@ import pytest
 @pytest.fixture
 async def db(tmp_path):
     """Real async WarHistoryDB backed by a temp file."""
-    from qapbot.db_manager import WarHistoryDB
+    from clashcontrol.db_manager import WarHistoryDB
     inst = WarHistoryDB()
     db_path = str(tmp_path / "err_test.db")
     await inst.initialize(db_path)
@@ -88,9 +88,9 @@ class TestLoadAllTempWarStats:
         import dataclasses
         import json
         import QBcsvhandling
-        import qapbot.cache_manager as cache_manager_module
-        from qapbot.cache_manager import CacheManager
-        from qapbot.config import CONFIG
+        import clashcontrol.cache_manager as cache_manager_module
+        from clashcontrol.cache_manager import CacheManager
+        from clashcontrol.config import CONFIG
 
         # CONFIG is a frozen dataclass — swap the module-level name cache_manager
         # binds instead of mutating a field.
@@ -128,9 +128,9 @@ class TestLoadAllTempWarStats:
 
     def test_empty_clan_cache(self, tmp_path, monkeypatch):
         import dataclasses
-        import qapbot.cache_manager as cache_manager_module
-        from qapbot.cache_manager import CacheManager
-        from qapbot.config import CONFIG
+        import clashcontrol.cache_manager as cache_manager_module
+        from clashcontrol.cache_manager import CacheManager
+        from clashcontrol.config import CONFIG
 
         monkeypatch.setattr(cache_manager_module, "CONFIG", dataclasses.replace(CONFIG, data_dir=str(tmp_path)))
         cm = CacheManager.__new__(CacheManager)
@@ -150,7 +150,7 @@ class TestLoadAllTempWarStats:
 
 class TestCacheGetClanHistory:
     def test_success(self):
-        from qapbot.cache_manager import CacheManager
+        from clashcontrol.cache_manager import CacheManager
         cm = CacheManager.__new__(CacheManager)
         cm.db_manager = MagicMock()
         cm.clan_history = {}
@@ -161,7 +161,7 @@ class TestCacheGetClanHistory:
         assert cm.clan_history["#CL1"] == [{"WarID": "W1"}]
 
     def test_db_error_returns_empty(self):
-        from qapbot.cache_manager import CacheManager
+        from clashcontrol.cache_manager import CacheManager
         cm = CacheManager.__new__(CacheManager)
         cm.db_manager = MagicMock()
         cm.clan_history = {}
@@ -171,7 +171,7 @@ class TestCacheGetClanHistory:
         assert result == []
 
     def test_no_db_manager(self):
-        from qapbot.cache_manager import CacheManager
+        from clashcontrol.cache_manager import CacheManager
         cm = CacheManager.__new__(CacheManager)
         cm.db_manager = None
         cm.clan_history = {}
@@ -229,7 +229,7 @@ class TestProcessWarHistoryDictStartTime:
 class TestDeleteSubsForChannelError:
     @pytest.mark.asyncio
     async def test_error_propagates(self):
-        from qapbot.cache_manager import CacheManager
+        from clashcontrol.cache_manager import CacheManager
         cm = CacheManager.__new__(CacheManager)
         cm.subscriptions = {"G1": {"C1": [{"clan_tag": "#X"}]}}
         cm.db_manager = AsyncMock()
@@ -245,7 +245,7 @@ class TestDeleteSubsForChannelError:
 class TestSetClanFamilyError:
     @pytest.mark.asyncio
     async def test_error_propagates(self):
-        from qapbot.cache_manager import CacheManager
+        from clashcontrol.cache_manager import CacheManager
         cm = CacheManager.__new__(CacheManager)
         cm.clan_families = {}
         cm.db_manager = AsyncMock()
@@ -255,7 +255,7 @@ class TestSetClanFamilyError:
 
     @pytest.mark.asyncio
     async def test_persist_error_propagates(self):
-        from qapbot.cache_manager import CacheManager
+        from clashcontrol.cache_manager import CacheManager
         cm = CacheManager.__new__(CacheManager)
         cm.clan_families = {"F2": {"name": "F2", "clans": []}}
         cm.db_manager = AsyncMock()
@@ -271,7 +271,7 @@ class TestSetClanFamilyError:
 class TestSetUserAccountError:
     @pytest.mark.asyncio
     async def test_error_propagates(self):
-        from qapbot.cache_manager import CacheManager
+        from clashcontrol.cache_manager import CacheManager
         cm = CacheManager.__new__(CacheManager)
         cm.user_accounts = {}
         cm.users_loaded = True  # post-startup state; pre-load gate tested in test_cache_manager.py
@@ -282,7 +282,7 @@ class TestSetUserAccountError:
 
     @pytest.mark.asyncio
     async def test_persist_error_propagates(self):
-        from qapbot.cache_manager import CacheManager
+        from clashcontrol.cache_manager import CacheManager
         cm = CacheManager.__new__(CacheManager)
         cm.user_accounts = {"U2": {"display_name": "X"}}
         cm.users_loaded = True  # post-startup state; pre-load gate tested in test_cache_manager.py
@@ -299,7 +299,7 @@ class TestSetUserAccountError:
 class TestSetLeaderboardMessageError:
     @pytest.mark.asyncio
     async def test_error_propagates(self):
-        from qapbot.cache_manager import CacheManager
+        from clashcontrol.cache_manager import CacheManager
         cm = CacheManager.__new__(CacheManager)
         cm.leaderboard_messages = {}
         cm.db_manager = AsyncMock()

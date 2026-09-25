@@ -23,7 +23,7 @@ def _identity_t(key: str, **kwargs: Any) -> str:
 
 @pytest.mark.smoke
 def test_get_hours_until_war_end_parses_and_handles_invalid():
-    import qapbot.war_notifications as wn
+    import clashcontrol.war_notifications as wn
 
     assert wn._get_hours_until_war_end({"end_time": "<Timestamp seconds_until=7200>"}) == 2.0
     assert wn._get_hours_until_war_end({"end_time": "invalid"}) is None
@@ -31,7 +31,7 @@ def test_get_hours_until_war_end_parses_and_handles_invalid():
 
 @pytest.mark.smoke
 def test_get_war_id_strips_hashes():
-    import qapbot.war_notifications as wn
+    import clashcontrol.war_notifications as wn
 
     war_id = wn._get_war_id("#CLAN01", {"opponent": {"tag": "#OPP01"}})
     assert war_id == "CLAN01_OPP01"
@@ -39,7 +39,7 @@ def test_get_war_id_strips_hashes():
 
 @pytest.mark.smoke
 def test_should_notify_for_war_type_modes(monkeypatch: pytest.MonkeyPatch):
-    import qapbot.war_notifications as wn
+    import clashcontrol.war_notifications as wn
 
     cache = _FakeCache()
     cache.user_accounts = {
@@ -58,7 +58,7 @@ def test_should_notify_for_war_type_modes(monkeypatch: pytest.MonkeyPatch):
 
 @pytest.mark.smoke
 def test_get_player_discord_id_and_already_notified(monkeypatch: pytest.MonkeyPatch):
-    import qapbot.war_notifications as wn
+    import clashcontrol.war_notifications as wn
 
     cache = _FakeCache()
     cache.notification_state = {"WAR1": {"notified_players": {"P1": {"x": 1}}}}
@@ -75,7 +75,7 @@ def test_get_player_discord_id_and_already_notified(monkeypatch: pytest.MonkeyPa
 
 @pytest.mark.smoke
 def test_should_send_notification_once_and_repeated(monkeypatch: pytest.MonkeyPatch):
-    import qapbot.war_notifications as wn
+    import clashcontrol.war_notifications as wn
 
     cache = _FakeCache()
     cache.user_accounts = {
@@ -111,7 +111,7 @@ def test_should_send_notification_once_and_repeated(monkeypatch: pytest.MonkeyPa
 @pytest.mark.smoke
 @pytest.mark.asyncio
 async def test_record_notification_and_channel_notification(monkeypatch: pytest.MonkeyPatch):
-    import qapbot.war_notifications as wn
+    import clashcontrol.war_notifications as wn
 
     cache = _FakeCache()
     monkeypatch.setattr(wn, "CACHE", cache)
@@ -140,7 +140,7 @@ async def test_record_notification_and_channel_notification(monkeypatch: pytest.
 
 @pytest.mark.smoke
 def test_format_aggregated_message_contains_players(monkeypatch: pytest.MonkeyPatch):
-    import qapbot.war_notifications as wn
+    import clashcontrol.war_notifications as wn
 
     monkeypatch.setattr(wn, "t", _identity_t)
 
@@ -176,9 +176,9 @@ def test_get_active_wars_filters_by_state_and_time(monkeypatch: pytest.MonkeyPat
     """_get_active_wars uses CACHE.temp_war_metadata + temp_war_stats (zero I/O).
     Only in_war clans with positive hours remaining are returned.
     """
-    import qapbot.war_notifications as wn
+    import clashcontrol.war_notifications as wn
 
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     original_metadata = CACHE.temp_war_metadata.copy()
     original_stats = CACHE.temp_war_stats.copy()
     original_in_war = CACHE.in_war_clan_tags.copy()
@@ -241,7 +241,7 @@ async def test_unlinked_player_skipped_no_dm_sent(monkeypatch: pytest.MonkeyPatc
     Before the fix, int('UNASSIGNED') raised ValueError 23 times during a single war
     because the player 'Conan2502' had no linked Discord account.
     """
-    import qapbot.war_notifications as wn
+    import clashcontrol.war_notifications as wn
 
     war_data: dict = {
         "state": "in_war",
@@ -279,7 +279,7 @@ async def test_unlinked_player_skipped_no_dm_sent(monkeypatch: pytest.MonkeyPatc
 @pytest.mark.asyncio
 async def test_unlinked_player_does_not_block_valid_users(monkeypatch: pytest.MonkeyPatch) -> None:
     """Regression companion: a valid user in the same list still receives their DM."""
-    import qapbot.war_notifications as wn
+    import clashcontrol.war_notifications as wn
 
     war_data: dict = {
         "state": "in_war",

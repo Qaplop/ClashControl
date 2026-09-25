@@ -18,7 +18,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from qapbot.coc_cache import CoCClanCache
+from clashcontrol.coc_cache import CoCClanCache
 
 
 def _now() -> dt.datetime:
@@ -78,7 +78,7 @@ class TestProtectedEviction:
 
 class TestRefreshProtectedClanTags:
     def _mgr(self) -> Any:
-        from qapbot.cache_manager import CacheManager
+        from clashcontrol.cache_manager import CacheManager
 
         mgr = CacheManager.__new__(CacheManager)
         mgr.subscriptions = {"G1": {"C1": [{"clan_tag": "#SUB1"}, {"clan_tag": "#SUB2"}]}}
@@ -116,7 +116,7 @@ class TestRefreshProtectedClanTags:
 
     def test_degrades_on_a_partially_constructed_manager(self) -> None:
         """Test fixtures build CacheManager via __new__; this must not raise into a cycle."""
-        from qapbot.cache_manager import CacheManager
+        from clashcontrol.cache_manager import CacheManager
 
         bare = CacheManager.__new__(CacheManager)
         assert bare.refresh_protected_clan_tags() == 0
@@ -137,7 +137,7 @@ class TestStoreResult:
 
     @staticmethod
     def _cache(monkeypatch: pytest.MonkeyPatch) -> tuple[CoCClanCache, list[int]]:
-        import qapbot.coc_cache as mod
+        import clashcontrol.coc_cache as mod
         from unittest.mock import AsyncMock
 
         async def _retry(f: Any, **_k: Any) -> Any:

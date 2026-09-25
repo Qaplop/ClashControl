@@ -25,13 +25,13 @@ import pytest
 
 class TestCheckDatabaseConsistency:
     def _fn(self):
-        from qapbot.QBdiscocmdshelper_admin_command import check_database_consistency
+        from clashcontrol.QBdiscocmdshelper_admin_command import check_database_consistency
         return check_database_consistency
 
     def test_no_db_manager(self, monkeypatch):
         cache = MagicMock()
         cache.db_manager = None
-        monkeypatch.setattr("qapbot.cache_manager.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.cache_manager.CACHE", cache)
         result = self._fn()("data/qapbot.db", "data")
         assert result["integrity_ok"] is False
         assert "not initialized" in result["integrity_errors"][0]
@@ -39,7 +39,7 @@ class TestCheckDatabaseConsistency:
     def test_db_file_missing(self, monkeypatch, tmp_path):
         cache = MagicMock()
         cache.db_manager = MagicMock()
-        monkeypatch.setattr("qapbot.cache_manager.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.cache_manager.CACHE", cache)
         result = self._fn()(str(tmp_path / "missing.db"), str(tmp_path))
         assert result["integrity_ok"] is False
         assert "not found" in result["integrity_errors"][0]
@@ -55,7 +55,7 @@ class TestCheckDatabaseConsistency:
         }
         cache.db_manager.get_all_war_summaries_brief_sync.return_value = []
         cache.db_manager.get_recent_war_summaries_sync.return_value = []
-        monkeypatch.setattr("qapbot.cache_manager.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.cache_manager.CACHE", cache)
         result = self._fn()(str(db_path), str(tmp_path))
         assert result["integrity_ok"] is True
         assert result["total_records"] == 0
@@ -73,7 +73,7 @@ class TestCheckDatabaseConsistency:
         }
         cache.db_manager.get_all_war_summaries_brief_sync.return_value = []
         cache.db_manager.get_recent_war_summaries_sync.return_value = []
-        monkeypatch.setattr("qapbot.cache_manager.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.cache_manager.CACHE", cache)
         result = self._fn()(str(db_path), str(tmp_path), include_integrity=True)
         assert result["integrity_ok"] is False
         assert "some error" in result["integrity_errors"]
@@ -94,7 +94,7 @@ class TestCheckDatabaseConsistency:
             ("OPP12345_12346", "#CLAN1234", (now + timedelta(days=2)).isoformat(), 0),
         ]
         cache.db_manager.get_recent_war_summaries_sync.return_value = []
-        monkeypatch.setattr("qapbot.cache_manager.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.cache_manager.CACHE", cache)
         result = self._fn()(str(db_path), str(tmp_path))
         assert len(result["duplicate_wars"]) > 0
 
@@ -115,7 +115,7 @@ class TestCheckDatabaseConsistency:
         cache.db_manager.get_all_war_summary_keys_sync.return_value = frozenset()
         cache.db_manager.war_attacks_exist_sync.return_value = False  # Not in DB
         cache.db_manager.get_recent_war_summaries_sync.return_value = []
-        monkeypatch.setattr("qapbot.cache_manager.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.cache_manager.CACHE", cache)
         result = self._fn()(str(db_path), str(tmp_path), archive_dir=str(archive_dir))
         assert len(result["missing_from_db"]) >= 1
 
@@ -125,7 +125,7 @@ class TestCheckDatabaseConsistency:
         cache = MagicMock()
         cache.db_manager = MagicMock()
         cache.db_manager.check_integrity_sync.side_effect = Exception("DB crash")
-        monkeypatch.setattr("qapbot.cache_manager.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.cache_manager.CACHE", cache)
         result = self._fn()(str(db_path), str(tmp_path), include_integrity=True)
         assert "Database query failed" in result["integrity_errors"][0]
 
@@ -136,7 +136,7 @@ class TestCheckDatabaseConsistency:
 
 class TestFormatDatabaseCheckResultsDeep:
     def _fn(self):
-        from qapbot.QBdiscocmdshelper_admin_command import format_database_check_results
+        from clashcontrol.QBdiscocmdshelper_admin_command import format_database_check_results
         return format_database_check_results
 
     def test_all_ok(self):
@@ -200,7 +200,7 @@ class TestFormatDatabaseCheckResultsDeep:
 
 class TestFormatLogSummaryDeep:
     def _fn(self):
-        from qapbot.QBdiscocmdshelper_admin_command import format_log_summary
+        from clashcontrol.QBdiscocmdshelper_admin_command import format_log_summary
         return format_log_summary
 
     def test_with_errors_and_warnings(self):
@@ -248,7 +248,7 @@ class TestFormatLogSummaryDeep:
 
 class TestScanLogsDeep:
     def _fn(self):
-        from qapbot.QBdiscocmdshelper_admin_command import scan_logs
+        from clashcontrol.QBdiscocmdshelper_admin_command import scan_logs
         return scan_logs
 
     def test_multiple_rotated_logs(self, tmp_path):
@@ -303,7 +303,7 @@ class TestScanLogsDeep:
 
 class TestCheckCurrentWarsInTempDeep:
     def _fn(self):
-        from qapbot.QBdiscocmdshelper_admin_command import check_current_wars_in_temp
+        from clashcontrol.QBdiscocmdshelper_admin_command import check_current_wars_in_temp
         return check_current_wars_in_temp
 
     def _make_cache(self, in_war_tags, metadata, clan_names=None):
@@ -319,7 +319,7 @@ class TestCheckCurrentWarsInTempDeep:
         """No active wars → empty list."""
         from unittest.mock import patch
         cache = self._make_cache(set(), {})
-        with patch("qapbot.cache_manager.CACHE", cache):
+        with patch("clashcontrol.cache_manager.CACHE", cache):
             result = self._fn()(str(tmp_path))
         assert result == []
 
@@ -328,7 +328,7 @@ class TestCheckCurrentWarsInTempDeep:
         from unittest.mock import patch
         # Tag present in in_war but no metadata entry
         cache = self._make_cache({"#CLAN1"}, {})
-        with patch("qapbot.cache_manager.CACHE", cache):
+        with patch("clashcontrol.cache_manager.CACHE", cache):
             result = self._fn()(str(tmp_path))
         assert result == []
 
@@ -347,7 +347,7 @@ class TestCheckCurrentWarsInTempDeep:
         }
         names = {f"#C{i}": f"Clan{i}" for i in range(3)}
         cache = self._make_cache(tags, metadata, names)
-        with patch("qapbot.cache_manager.CACHE", cache):
+        with patch("clashcontrol.cache_manager.CACHE", cache):
             result = self._fn()(str(tmp_path))
         assert len(result) == 3
 
@@ -359,7 +359,7 @@ class TestCheckCurrentWarsInTempDeep:
             {"#C1": {"state": "inWar", "start_time": "", "end_time": "", "filepath": ""}},
             {"#C1": "Clan1"},
         )
-        with patch("qapbot.cache_manager.CACHE", cache):
+        with patch("clashcontrol.cache_manager.CACHE", cache):
             result = self._fn()(str(tmp_path))
         assert len(result) == 1
         assert result[0]["clan_tag"] == "#C1"

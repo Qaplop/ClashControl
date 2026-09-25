@@ -20,7 +20,7 @@ import pytest
 @pytest.fixture
 async def db(tmp_path):
     """Create a real async WarHistoryDB with in-memory-like temp file."""
-    from qapbot.db_manager import WarHistoryDB
+    from clashcontrol.db_manager import WarHistoryDB
     db = WarHistoryDB()
     db_path = str(tmp_path / "test.db")
     await db.initialize(db_path)
@@ -177,10 +177,10 @@ class TestInitialize:
 
     @pytest.mark.asyncio
     async def test_no_aiosqlite_raises(self, monkeypatch, tmp_path):
-        from qapbot.db_manager import WarHistoryDB
+        from clashcontrol.db_manager import WarHistoryDB
         d = WarHistoryDB()
         # Temporarily remove aiosqlite
-        import qapbot.db_manager as dm
+        import clashcontrol.db_manager as dm
         original = dm.aiosqlite
         dm.aiosqlite = None
         try:
@@ -197,7 +197,7 @@ class TestInitialize:
 class TestEnsureConnection:
     @pytest.mark.asyncio
     async def test_no_db_path_raises(self):
-        from qapbot.db_manager import WarHistoryDB
+        from clashcontrol.db_manager import WarHistoryDB
         d = WarHistoryDB()
         with pytest.raises(RuntimeError, match="not initialized"):
             await d._ensure_connection()
@@ -235,7 +235,7 @@ class TestEnsureConnection:
 class TestReconnect:
     @pytest.mark.asyncio
     async def test_no_db_path_raises(self):
-        from qapbot.db_manager import WarHistoryDB
+        from clashcontrol.db_manager import WarHistoryDB
         d = WarHistoryDB()
         with pytest.raises(RuntimeError, match="db_path not set"):
             await d._reconnect()

@@ -53,7 +53,7 @@ already references.
 
 ### Everything Phase 3 actually reads off the coc object
 
-Audited against `process_clan_war_data()` (QBhelperfunctions.py L7606-7768) and QapBot.py's
+Audited against `process_clan_war_data()` (QBhelperfunctions.py L7606-7768) and ClashControl.py's
 Phase-3 loop. The complete list is four things:
 
 | Used | Where | Already in the payload dict? |
@@ -61,7 +61,7 @@ Phase-3 loop. The complete list is four things:
 | `coc_war_obj.start_time` (raw str) | `raw_start`, L7660 | yes — `payload["start_time"]` |
 | `coc_war_obj.attacks_per_member` | L7724 | yes — `payload["attacks_per_member"]` |
 | `coc_war_obj.clan.members[*]` → `.tag`, `.name`, `.town_hall`, `.attacks[*].stars`, `.attacks[*].destruction`, `.best_opponent_attack.stars` | temp-stats build, L7728-7761 | yes — `payload["clan"]["members"][*]` carries `tag`, `name`, `townhall`, `attacks`, `bestOpponentAttack` |
-| `war_obj.end_time` | QapBot.py in_war smart-backdating | yes — `payload["end_time"]`, and also `temp_war_metadata[tag]["end_time"]` |
+| `war_obj.end_time` | ClashControl.py in_war smart-backdating | yes — `payload["end_time"]`, and also `temp_war_metadata[tag]["end_time"]` |
 
 `_opp_clan = getattr(coc_war_obj, 'opponent', None)` (L7659) is assigned and **never used** —
 dead local, delete it.
@@ -89,7 +89,7 @@ a DEV cycle (`git stash`-diff a few written files, or hash them before/after).
 return {'clan_tag': ..., 'war_obj': coc_war_obj, 'opponent_tag': ..., 'state': ...}
 ```
 
-Change `war_obj` → `war_payload` (the dict from step 1). Add `end_time` explicitly so QapBot.py's
+Change `war_obj` → `war_payload` (the dict from step 1). Add `end_time` explicitly so ClashControl.py's
 backdating never needs the coc object.
 
 **The one real complication:** `save_war_object()` does not always run or always cache.
@@ -113,7 +113,7 @@ document** — the payload uses a mix of snake_case and camelCase (`opponentAtta
 `bestOpponentAttack`, `previousBestOpponentAttack` alongside `townhall`, `map_position`), and
 that inconsistency is exactly where a silent zero-stars bug would hide.
 
-### Step 4 — QapBot.py Phase 3
+### Step 4 — ClashControl.py Phase 3
 
 `war_data.get('war_obj')` → use the carried `end_time` directly. The
 `_DT_RE.search(str(raw_end))` parse stays as-is (the payload stores the same
@@ -182,14 +182,14 @@ the post-`280537a` floor before starting this work, so the effort goes where the
 ## 9. Interaction with the 2026-09-04 GC work (read before starting)
 
 A day of GC work landed after this plan was written (builds 12-17, see
-`qapbot/docs/PERFORMANCE_TUNING.md`). It touches the same object graph, so the overlap needs
+`clashcontrol/docs/PERFORMANCE_TUNING.md`). It touches the same object graph, so the overlap needs
 stating precisely — **it is adjacent to this plan, not a partial implementation of it.**
 
 ### What that work did NOT do: reduce the peak
 
 `release_war_object()` severs coc.py's back-references so a war graph is freed by refcounting
 instead of waiting for a sweep. But it is called **in the Phase-3 loop**, after
-`process_clan_war_data()`. War objects are still created at `asyncio.gather()` (QapBot.py L1633)
+`process_clan_war_data()`. War objects are still created at `asyncio.gather()` (ClashControl.py L1633)
 and still live until their turn in Phase 3 (L1855). **The Phase-1/2 boundary peak this plan
 targets is completely unchanged.** That peak is what §4's 250 MB -> 60 MB claim is about, and it
 is still on the table.
@@ -200,7 +200,7 @@ which happens to share a root cause (coc.py's cyclic war graph).
 ### What that work DID do for this plan: de-risk §2, and remove one of its incidental benefits
 
 - **§2's audit is independently confirmed.** Tracing war-object consumers from scratch for the
-  sever work found exactly the same set: `.end_time` (QapBot.py's backdating), and `.clan`,
+  sever work found exactly the same set: `.end_time` (ClashControl.py's backdating), and `.clan`,
   `.opponent`, `.start_time`, `.attacks_per_member` in `process_clan_war_data()`. Two
   independent audits agreeing is the best evidence this table is complete.
 - **`_opp_clan` is still a dead local** (QBhelperfunctions.py, in `process_clan_war_data`) —
@@ -234,7 +234,7 @@ rather than allocator-level, and this plan's premise holds.
 But it also means **the memory-pressure justification is much weaker than when this was
 written**: a 3.5 GB peak on a 10 GB box is comfortable, not urgent. The remaining real prize is
 §4's last paragraph — making the peak proportional to cheap data so `_MAX_INACTIVE_PER_CYCLE`
-(QapBot.py L1413, currently 1500) can be raised. That is a 22h-SLA/throughput argument, not a
+(ClashControl.py L1413, currently 1500) can be raised. That is a 22h-SLA/throughput argument, not a
 memory-safety one. Re-scope the ticket accordingly before starting.
 
 ### Status unchanged
@@ -256,7 +256,7 @@ should cost ~0.10s. It costs ~1.29s. **So ~1.2s of the remaining pause is walkin
 young-generation objects, not freeing garbage.**
 
 That is precisely what this plan removes. Every `coc.ClanWar` held in `fetch_results` between
-the gather (QapBot.py L1633) and its turn in Phase 3 (L1855) is a live object the end-of-cycle
+the gather (ClashControl.py L1633) and its turn in Phase 3 (L1855) is a live object the end-of-cycle
 collect must walk. Neither `release_war_object()` (which acts after Phase 3) nor slicing (which
 removes only dead objects) touches it. Cutting retention from ~120-170 KB to ~40 KB per clan
 cuts that walk in the same proportion.
@@ -396,7 +396,7 @@ coc-object result is still what gets written, so corruption is impossible by con
 - `process_clan_war_data()` runs the comparison and logs
   `[PAYLOAD-PARITY] <clan> N field(s) differ ...`. Wrapped so a shadow failure can never affect
   the authoritative path.
-- §3 Step 4 done early: QapBot.py's smart-backdating now reads `war_data['end_time']`, falling
+- §3 Step 4 done early: ClashControl.py's smart-backdating now reads `war_data['end_time']`, falling
   back to the coc object only while Stage 2 carries both. Remove the fallback at Stage 3.
 - §5.4 respected: `war_payload` can be `None` (the `save_skip_no_clan` case) and Phase 3 simply
   skips the comparison.
@@ -467,8 +467,8 @@ return. Its complete consumer surface is three sites:
 | site | reads | Stage 3 action |
 |---|---|---|
 | `QBhelperfunctions.py:7829` (`process_clan_war_data`) | `clan`, `opponent`, `attacks_per_member`, `start_time` — that is all four | remap to payload keys (all four exist: `clan`, `opponent`, `attacks_per_member`, `start_time`) |
-| `QapBot.py:1949` | `release_war_object(war_data.get('war_obj'))` | delete the call, keep the function |
-| `QapBot.py:1980-1981` | `war_obj.end_time` backdating fallback | drop the fallback; `war_data['end_time']` already carries it since Stage 2 |
+| `ClashControl.py:1949` | `release_war_object(war_data.get('war_obj'))` | delete the call, keep the function |
+| `ClashControl.py:1980-1981` | `war_obj.end_time` backdating fallback | drop the fallback; `war_data['end_time']` already carries it since Stage 2 |
 
 The shadow comparison never covered those four attributes — it only ever compared the 9 stat
 fields — so that is the actual unverified surface, and it is answerable by code audit today.
@@ -497,7 +497,7 @@ Implemented 2026-09-05, same day as the Stage 2 checkpoint above.
 - `process_clan_war_data()` reads `_payload` for all four attributes. `start_time` is
   byte-identical (both sides are `str(coc_war_obj.start_time)`), and `attacks_per_member`'s
   differing payload default (0 vs 2) is absorbed by the pre-existing `or 2`.
-- QapBot.py: Phase-3 `finally` keeps only `maybe_chunk_collect()`; the backdating fallback and
+- ClashControl.py: Phase-3 `finally` keeps only `maybe_chunk_collect()`; the backdating fallback and
   the now-unused `release_war_object` import are gone.
 - Removed `_compare_shadow_stats()` + `TestShadowComparator` (would compare the payload against
   itself). Dropped a dead `_opp_clan` local.

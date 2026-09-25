@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import pytest
 
-from qapbot.db_manager import WarHistoryDB
+from clashcontrol.db_manager import WarHistoryDB
 
 
 @pytest.fixture
@@ -53,7 +53,7 @@ async def test_remove_tester_not_enrolled_is_a_noop(db):
 
 @pytest.mark.asyncio
 async def test_cache_load_testers_populates_set(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     monkeypatch.setattr(CACHE, "db_manager", db)
     await db.add_tester("111")
@@ -66,7 +66,7 @@ async def test_cache_load_testers_populates_set(db, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_cache_add_tester_write_through(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     monkeypatch.setattr(CACHE, "db_manager", db)
     monkeypatch.setattr(CACHE, "testers", set())
@@ -79,7 +79,7 @@ async def test_cache_add_tester_write_through(db, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_cache_remove_tester_write_through(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     monkeypatch.setattr(CACHE, "db_manager", db)
     monkeypatch.setattr(CACHE, "testers", {"111", "222"})

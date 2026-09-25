@@ -134,7 +134,7 @@ async def test_live_status_handler_posts_message_and_can_be_fetched(
 
             # Patch globals inside the already-imported modules (import here, after env checks)
             import QBdiscordcmds
-            import qapbot.QBdiscocmdshelper as helper
+            import clashcontrol.QBdiscocmdshelper as helper
 
             monkeypatch.setattr(QBdiscordcmds, "CACHE", fake_cache)
             monkeypatch.setattr(helper, "CACHE", fake_cache)

@@ -1,4 +1,4 @@
-"""End-to-end tests for qapbot/scripts/repair_history_schema_drift.py — the repair tool for the
+"""End-to-end tests for clashcontrol/scripts/repair_history_schema_drift.py — the repair tool for the
 2026-08-14 hot/history schema-drift incident (Cardinal Rule 1). See
 tests/unit/test_history_migration_column_alignment.py for the migration-code-level regression
 test; this file tests the standalone repair script itself against a synthetically drifted DB.
@@ -9,9 +9,9 @@ import sys
 
 import pytest
 
-from qapbot.db_manager import WarHistoryDB
+from clashcontrol.db_manager import WarHistoryDB
 
-_SCRIPT_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "qapbot", "scripts", "repair_history_schema_drift.py")
+_SCRIPT_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "clashcontrol", "scripts", "repair_history_schema_drift.py")
 _spec = importlib.util.spec_from_file_location("repair_history_schema_drift", _SCRIPT_PATH)
 assert _spec is not None and _spec.loader is not None
 repair_module = importlib.util.module_from_spec(_spec)

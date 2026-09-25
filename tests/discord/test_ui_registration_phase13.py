@@ -41,8 +41,8 @@ def _user_player(tag: str, name: str) -> Dict[str, Any]:
 @pytest.mark.asyncio
 async def test_psm_single_match_calls_process_registration(monkeypatch: pytest.MonkeyPatch) -> None:
     """One player matches the substring → process_player_registration called with that tag."""
-    import qapbot.ui_registration as ui
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.ui_registration as ui
+    import clashcontrol.QBdiscocmdshelper as helper
 
     interaction = make_interaction()
     cache = FakeCache()
@@ -74,9 +74,9 @@ async def test_psm_single_match_calls_process_registration(monkeypatch: pytest.M
 @pytest.mark.asyncio
 async def test_psm_valid_tag_input_calls_process_registration(monkeypatch: pytest.MonkeyPatch) -> None:
     """No list match, input looks like a CoC tag → normalize → process_player_registration."""
-    import qapbot.ui_registration as ui
-    import qapbot.QBdiscocmdshelper as helper
-    import qapbot.cache_manager as cm
+    import clashcontrol.ui_registration as ui
+    import clashcontrol.QBdiscocmdshelper as helper
+    import clashcontrol.cache_manager as cm
 
     interaction = make_interaction()
     cache = FakeCache()
@@ -109,9 +109,9 @@ async def test_psm_valid_tag_input_calls_process_registration(monkeypatch: pytes
 @pytest.mark.asyncio
 async def test_psm_invalid_input_sends_error_followup(monkeypatch: pytest.MonkeyPatch) -> None:
     """No list match and not a valid tag → followup.send error, no registration."""
-    import qapbot.ui_registration as ui
-    import qapbot.QBdiscocmdshelper as helper
-    import qapbot.cache_manager as cm
+    import clashcontrol.ui_registration as ui
+    import clashcontrol.QBdiscocmdshelper as helper
+    import clashcontrol.cache_manager as cm
 
     interaction = make_interaction()
     cache = FakeCache()
@@ -144,8 +144,8 @@ async def test_psm_invalid_input_sends_error_followup(monkeypatch: pytest.Monkey
 @pytest.mark.asyncio
 async def test_psm_two_matches_sends_select_dropdown(monkeypatch: pytest.MonkeyPatch) -> None:
     """2-25 matches → followup.send with a GenericSelectView for player selection."""
-    import qapbot.ui_registration as ui
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.ui_registration as ui
+    import clashcontrol.QBdiscocmdshelper as helper
 
     interaction = make_interaction()
     cache = FakeCache()
@@ -179,8 +179,8 @@ async def test_psm_two_matches_sends_select_dropdown(monkeypatch: pytest.MonkeyP
 @pytest.mark.asyncio
 async def test_psm_over25_matches_multiple_clans_shows_clan_filter(monkeypatch: pytest.MonkeyPatch) -> None:
     """>25 matches with multiple clans, not yet filtered → clan filter GenericSelectView sent."""
-    import qapbot.ui_registration as ui
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.ui_registration as ui
+    import clashcontrol.QBdiscocmdshelper as helper
 
     interaction = make_interaction()
     cache = FakeCache()
@@ -218,8 +218,8 @@ async def test_psm_over25_matches_multiple_clans_shows_clan_filter(monkeypatch: 
 @pytest.mark.asyncio
 async def test_psm_over25_matches_single_clan_sends_specific_error(monkeypatch: pytest.MonkeyPatch) -> None:
     """>25 matches with only one clan → too_many_matches_specific error, no view attached."""
-    import qapbot.ui_registration as ui
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.ui_registration as ui
+    import clashcontrol.QBdiscocmdshelper as helper
 
     interaction = make_interaction()
     cache = FakeCache()
@@ -257,9 +257,9 @@ async def test_psm_over25_matches_single_clan_sends_specific_error(monkeypatch: 
 @pytest.mark.asyncio
 async def test_psm_no_match_own_player_calls_complete_linking(monkeypatch: pytest.MonkeyPatch) -> None:
     """No clan-player match, but input matches user's own linked player → complete_account_linking_flow."""
-    import qapbot.ui_registration as ui
-    import qapbot.QBdiscocmdshelper as helper
-    import qapbot.cache_manager as cm
+    import clashcontrol.ui_registration as ui
+    import clashcontrol.QBdiscocmdshelper as helper
+    import clashcontrol.cache_manager as cm
 
     interaction = make_interaction()
     user_id = str(interaction.user.id)
@@ -301,8 +301,8 @@ async def test_verify_modal_happy_path_calls_war_notifications_check(monkeypatch
     2026-08-08: undeferred response.send_message() intermittently raised 10062 Unknown
     Interaction after that work ate into Discord's 3-second response window).
     """
-    import qapbot.ui_registration as ui
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.ui_registration as ui
+    import clashcontrol.QBdiscocmdshelper as helper
 
     interaction = make_interaction()
     user_id = str(interaction.user.id)
@@ -334,8 +334,8 @@ async def test_verify_modal_happy_path_calls_war_notifications_check(monkeypatch
 @pytest.mark.asyncio
 async def test_verify_modal_verification_failed_sends_error(monkeypatch: pytest.MonkeyPatch) -> None:
     """Valid token provided but verification fails → deferred response, then followup.send with error, no persist."""
-    import qapbot.ui_registration as ui
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.ui_registration as ui
+    import clashcontrol.QBdiscocmdshelper as helper
 
     interaction = make_interaction()
     user_id = str(interaction.user.id)
@@ -368,9 +368,9 @@ async def test_verify_modal_verification_failed_sends_error(monkeypatch: pytest.
 @pytest.mark.asyncio
 async def test_war_notifications_button_with_accounts_sends_unified_view(monkeypatch: pytest.MonkeyPatch) -> None:
     """User has linked accounts → defer + UnifiedNotificationView sent via followup (ephemeral)."""
-    import qapbot.ui_registration as ui
-    import qapbot.QBdiscocmdshelper as helper
-    import qapbot.ui_notifications as ui_notif
+    import clashcontrol.ui_registration as ui
+    import clashcontrol.QBdiscocmdshelper as helper
+    import clashcontrol.ui_notifications as ui_notif
 
     interaction = make_interaction()
     user_id = str(interaction.user.id)

@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import pytest
 
-from qapbot.db_manager import WarHistoryDB
+from clashcontrol.db_manager import WarHistoryDB
 
 
 @pytest.fixture
@@ -66,7 +66,7 @@ class TestNewSignupsAdoptTheGlobalResponse:
 
     @pytest.mark.asyncio
     async def test_seed_helper_adopts_an_existing_global_response(self, db):
-        import qapbot.QBdiscocmdshelper_cwl as cwl
+        import clashcontrol.QBdiscocmdshelper_cwl as cwl
 
         db.set_cwl_player_response_status_sync(
             "#ANSWERED", "2026-09", "Answered", "owner1", "confirmed", "2026-09-01T10:00Z", 1, "900",
@@ -75,14 +75,14 @@ class TestNewSignupsAdoptTheGlobalResponse:
 
     @pytest.mark.asyncio
     async def test_seed_helper_defaults_to_pending_without_a_global_row(self, db):
-        import qapbot.QBdiscocmdshelper_cwl as cwl
+        import clashcontrol.QBdiscocmdshelper_cwl as cwl
 
         assert cwl._seed_status_from_global_sync(db, "#NEVERSEEN", "2026-09") == "pending"
 
     @pytest.mark.asyncio
     async def test_seed_helper_is_season_scoped(self, db):
         """A response belongs to one season — last season's answer must not leak into this one."""
-        import qapbot.QBdiscocmdshelper_cwl as cwl
+        import clashcontrol.QBdiscocmdshelper_cwl as cwl
 
         db.set_cwl_player_response_status_sync(
             "#LASTSEASON", "2026-08", "Old", "owner1", "declined", "2026-08-01T10:00Z", 1, "900",
@@ -96,14 +96,14 @@ class TestNewSignupsAdoptTheGlobalResponse:
         placement or guest invite for a permanently-opted-out player produced a stray 'pending'
         row that never became 'declined' — silently contradicting the very preference this
         feature exists to honour. No existing_global response here, so opt-out alone decides."""
-        import qapbot.QBdiscocmdshelper_cwl as cwl
+        import clashcontrol.QBdiscocmdshelper_cwl as cwl
 
         await _link(db, "owner1", "#OPTEDOUT", cwl_permanent_optout=True)
         assert cwl._seed_status_from_global_sync(db, "#OPTEDOUT", "2026-09") == "declined"
 
     @pytest.mark.asyncio
     async def test_seed_helper_honours_permanent_optin(self, db):
-        import qapbot.QBdiscocmdshelper_cwl as cwl
+        import clashcontrol.QBdiscocmdshelper_cwl as cwl
 
         await _link(db, "owner1", "#OPTEDIN", cwl_permanent_optin=True)
         assert cwl._seed_status_from_global_sync(db, "#OPTEDIN", "2026-09") == "auto_confirmed"
@@ -112,7 +112,7 @@ class TestNewSignupsAdoptTheGlobalResponse:
     async def test_seed_helper_existing_global_response_beats_optin(self, db):
         """rule h still wins — a real answer already given for this season is never overridden by
         a standing preference, even via this single-player helper."""
-        import qapbot.QBdiscocmdshelper_cwl as cwl
+        import clashcontrol.QBdiscocmdshelper_cwl as cwl
 
         await _link(db, "owner1", "#BOTH", cwl_permanent_optin=True)
         db.set_cwl_player_response_status_sync(
@@ -124,7 +124,7 @@ class TestNewSignupsAdoptTheGlobalResponse:
     async def test_seed_helper_no_user_players_row_defaults_to_pending(self, db):
         """A player_tag with no linked account at all (never in user_players) has no preference
         to honour — same 'pending' default as before this feature existed."""
-        import qapbot.QBdiscocmdshelper_cwl as cwl
+        import clashcontrol.QBdiscocmdshelper_cwl as cwl
 
         assert cwl._seed_status_from_global_sync(db, "#NEVERLINKED", "2026-09") == "pending"
 
@@ -133,8 +133,8 @@ class TestNewSignupsAdoptTheGlobalResponse:
         """End-to-end through assign_cwl_player_sync's real drag-and-drop path (not just the
         helper in isolation) — an admin placing a permanently-opted-out player must not leave
         them showing as 'pending' on the board."""
-        from qapbot.cache_manager import CACHE
-        import qapbot.QBdiscocmdshelper_cwl as cwl
+        from clashcontrol.cache_manager import CACHE
+        import clashcontrol.QBdiscocmdshelper_cwl as cwl
 
         event_id = await _seed(db, "911", "#CLANI")
         CACHE.db_manager = db
@@ -149,8 +149,8 @@ class TestNewSignupsAdoptTheGlobalResponse:
     async def test_placement_creates_a_signup_carrying_the_global_response(self, db, monkeypatch):
         """assign_cwl_player_sync's placement path — the drag-and-drop route. A player already
         'declined' globally must not reappear as 'pending' in the guild that just placed them."""
-        from qapbot.cache_manager import CACHE
-        import qapbot.QBdiscocmdshelper_cwl as cwl
+        from clashcontrol.cache_manager import CACHE
+        import clashcontrol.QBdiscocmdshelper_cwl as cwl
 
         event_id = await _seed(db, "907", "#CLANG")
         CACHE.db_manager = db
@@ -168,8 +168,8 @@ class TestNewSignupsAdoptTheGlobalResponse:
         """The seeding is create-only. All four call sites sit inside
         `if get_cwl_signup_sync(...) is None` and that must stay true, or a placement would
         silently rewrite a status the local guild had already recorded."""
-        from qapbot.cache_manager import CACHE
-        import qapbot.QBdiscocmdshelper_cwl as cwl
+        from clashcontrol.cache_manager import CACHE
+        import clashcontrol.QBdiscocmdshelper_cwl as cwl
 
         event_id = await _seed(db, "909", "#CLANH")
         CACHE.db_manager = db
@@ -193,7 +193,7 @@ class TestCarryForwardWritesUseLiveOwner:
 
     @pytest.mark.asyncio
     async def test_migrating_a_local_roster_to_shared_writes_the_live_owner(self, db):
-        import qapbot.QBdiscocmdshelper_cwl as cwl
+        import clashcontrol.QBdiscocmdshelper_cwl as cwl
 
         event_id = await _seed(db, "905", "#CLANE")
         db.upsert_cwl_signup_sync(event_id, "#MIG", "Mig", "staleowner", None, "template_confirm", "confirmed")
@@ -210,7 +210,7 @@ class TestCarryForwardWritesUseLiveOwner:
     async def test_migration_keeps_the_snapshot_owner_for_a_never_linked_tag(self, db):
         """A guest tag added by search has no user_players row at all — there is nothing live to
         resolve, so the recorded owner (who really was DMed) must survive rather than be blanked."""
-        import qapbot.QBdiscocmdshelper_cwl as cwl
+        import clashcontrol.QBdiscocmdshelper_cwl as cwl
 
         event_id = await _seed(db, "906", "#CLANF")
         db.upsert_cwl_signup_sync(event_id, "#GUESTX", "GuestX", "guestowner", None, "guest_invite", "pending")
@@ -224,7 +224,7 @@ class TestCarryForwardWritesUseLiveOwner:
 
     @pytest.mark.asyncio
     async def test_live_owners_helper_omits_never_linked_tags(self, db):
-        import qapbot.QBdiscocmdshelper_cwl as cwl
+        import clashcontrol.QBdiscocmdshelper_cwl as cwl
 
         await _link(db, "someone", "#KNOWN1", clan_tag=None)
         result = cwl._live_owners_or_sync(db, ["#KNOWN1", "#UNKN0WN"])
@@ -233,7 +233,7 @@ class TestCarryForwardWritesUseLiveOwner:
 
     @pytest.mark.asyncio
     async def test_live_owners_helper_is_empty_for_no_tags(self, db):
-        import qapbot.QBdiscocmdshelper_cwl as cwl
+        import clashcontrol.QBdiscocmdshelper_cwl as cwl
 
         assert cwl._live_owners_or_sync(db, []) == {}
 
@@ -248,8 +248,8 @@ class TestDmTargetingUsesLiveOwner:
         """The live #29JQV2YCL case: a pooled player with NO current_clan_tag (so the clan-scoped
         `members` source structurally can't return them) whose signup row names a Discord user who
         no longer owns the account. Before the fix this DMed the wrong person."""
-        from qapbot.cache_manager import CACHE
-        import qapbot.QBdiscocmdshelper_cwl as cwl
+        from clashcontrol.cache_manager import CACHE
+        import clashcontrol.QBdiscocmdshelper_cwl as cwl
 
         event_id = await _seed(db, "901", "#CLANA")
         CACHE.db_manager = db
@@ -269,8 +269,8 @@ class TestDmTargetingUsesLiveOwner:
         owns it and nobody should be DMed about it. get_player_links_sync maps 'UNASSIGNED' to
         None, and the authoritative override has to apply that None rather than treat it as
         "no information" and keep the stale owner."""
-        from qapbot.cache_manager import CACHE
-        import qapbot.QBdiscocmdshelper_cwl as cwl
+        from clashcontrol.cache_manager import CACHE
+        import clashcontrol.QBdiscocmdshelper_cwl as cwl
 
         event_id = await _seed(db, "902", "#CLANB")
         CACHE.db_manager = db
@@ -289,8 +289,8 @@ class TestDmTargetingUsesLiveOwner:
         """Regression guard on the fix itself: the bug was deliberately NOT fixed by reordering
         the sources, because `members` (source 1) is also live and must keep winning over the
         snapshot. A player present in BOTH must resolve to the member row's owner."""
-        from qapbot.cache_manager import CACHE
-        import qapbot.QBdiscocmdshelper_cwl as cwl
+        from clashcontrol.cache_manager import CACHE
+        import clashcontrol.QBdiscocmdshelper_cwl as cwl
 
         event_id = await _seed(db, "903", "#CLANC")
         CACHE.db_manager = db
@@ -314,8 +314,8 @@ class TestDmTargetingUsesLiveOwner:
         """A guest tag added by search that was never linked has no user_players row at all, so
         get_player_links_sync returns nothing for it — the snapshot value is all we have and must
         survive, not be blanked by an over-eager override."""
-        from qapbot.cache_manager import CACHE
-        import qapbot.QBdiscocmdshelper_cwl as cwl
+        from clashcontrol.cache_manager import CACHE
+        import clashcontrol.QBdiscocmdshelper_cwl as cwl
 
         event_id = await _seed(db, "904", "#CLAND")
         CACHE.db_manager = db
@@ -338,8 +338,8 @@ class TestDmTargetingHonoursCwlPreferences:
 
     @pytest.mark.asyncio
     async def test_optout_without_dm_anyway_is_skipped_and_recorded_in_standing_no_dm(self, db, monkeypatch):
-        from qapbot.cache_manager import CACHE
-        import qapbot.QBdiscocmdshelper_cwl as cwl
+        from clashcontrol.cache_manager import CACHE
+        import clashcontrol.QBdiscocmdshelper_cwl as cwl
 
         event_id = await _seed(db, "905", "#CLANE")
         CACHE.db_manager = db
@@ -359,8 +359,8 @@ class TestDmTargetingHonoursCwlPreferences:
 
     @pytest.mark.asyncio
     async def test_optout_with_dm_anyway_is_still_a_dm_target(self, db, monkeypatch):
-        from qapbot.cache_manager import CACHE
-        import qapbot.QBdiscocmdshelper_cwl as cwl
+        from clashcontrol.cache_manager import CACHE
+        import clashcontrol.QBdiscocmdshelper_cwl as cwl
 
         event_id = await _seed(db, "906", "#CLANF")
         CACHE.db_manager = db
@@ -381,8 +381,8 @@ class TestDmTargetingHonoursCwlPreferences:
 
     @pytest.mark.asyncio
     async def test_optin_member_is_a_plain_dm_target_no_special_handling(self, db, monkeypatch):
-        from qapbot.cache_manager import CACHE
-        import qapbot.QBdiscocmdshelper_cwl as cwl
+        from clashcontrol.cache_manager import CACHE
+        import clashcontrol.QBdiscocmdshelper_cwl as cwl
 
         event_id = await _seed(db, "913", "#CLANK")
         CACHE.db_manager = db
@@ -406,8 +406,8 @@ class TestDmTargetingHonoursCwlPreferences:
         opt-out flag can only ever be resolved via the get_player_links_sync fallback merge. This
         is the exact gap Phase 4b-bis closes: without it, an opted-out guest player skipped from
         the DM would never get a cwl_signups row from ANY seed site."""
-        from qapbot.cache_manager import CACHE
-        import qapbot.QBdiscocmdshelper_cwl as cwl
+        from clashcontrol.cache_manager import CACHE
+        import clashcontrol.QBdiscocmdshelper_cwl as cwl
 
         event_id = await _seed(db, "914", "#CLANL")
         CACHE.db_manager = db
@@ -441,8 +441,8 @@ class TestDmBatchSeedsSignupRows:
         would skip every target here before the seeding path is even reached."""
         import dataclasses
 
-        import qapbot.config as config_module
-        import qapbot.QBdiscocmdshelper_cwl as cwl
+        import clashcontrol.config as config_module
+        import clashcontrol.QBdiscocmdshelper_cwl as cwl
 
         relaxed = dataclasses.replace(
             config_module.CONFIG, is_dev_mode=False, cwl_dm_restrict_to_admin=False
@@ -452,8 +452,8 @@ class TestDmBatchSeedsSignupRows:
 
     @pytest.mark.asyncio
     async def test_missing_signup_row_is_created_before_the_dm_goes_out(self, db, monkeypatch):
-        from qapbot.cache_manager import CACHE
-        import qapbot.QBdiscocmdshelper_cwl as cwl
+        from clashcontrol.cache_manager import CACHE
+        import clashcontrol.QBdiscocmdshelper_cwl as cwl
 
         event_id = await _seed(db, "920", "#CLANI")
         await _link(db, "owner1", "#NEWGUY")
@@ -482,8 +482,8 @@ class TestDmBatchSeedsSignupRows:
     async def test_only_each_players_first_dm_in_a_batch_carries_the_bench_legend(self, db, monkeypatch):
         """2026-09-23: the legend used to be repeated in every account's DM. Two accounts of one
         player plus one of another: each player's first DM gets it, the second account doesn't."""
-        from qapbot.cache_manager import CACHE
-        import qapbot.QBdiscocmdshelper_cwl as cwl
+        from clashcontrol.cache_manager import CACHE
+        import clashcontrol.QBdiscocmdshelper_cwl as cwl
 
         event_id = await _seed(db, "923", "#CLANK")
         for owner, tag in (("owner1", "#A1"), ("owner1", "#A2"), ("owner2", "#B1")):
@@ -508,8 +508,8 @@ class TestDmBatchSeedsSignupRows:
     async def test_seeded_row_adopts_the_global_response(self, db, monkeypatch):
         """Not a hardcoded 'pending' -- a player who already answered another guild's DM must
         not be contradicted (rule h)."""
-        from qapbot.cache_manager import CACHE
-        import qapbot.QBdiscocmdshelper_cwl as cwl
+        from clashcontrol.cache_manager import CACHE
+        import clashcontrol.QBdiscocmdshelper_cwl as cwl
 
         event_id = await _seed(db, "921", "#CLANJ")
         await _link(db, "owner1", "#ANSWERED2")
@@ -532,8 +532,8 @@ class TestDmBatchSeedsSignupRows:
     async def test_skipped_target_gets_no_row(self, db, monkeypatch):
         """A player skipped by the global dm_sent dedup never received this DM, so they must not
         gain a board entry as a side effect of it."""
-        from qapbot.cache_manager import CACHE
-        import qapbot.QBdiscocmdshelper_cwl as cwl
+        from clashcontrol.cache_manager import CACHE
+        import clashcontrol.QBdiscocmdshelper_cwl as cwl
 
         event_id = await _seed(db, "923", "#CLANK")
         other_event_id = await _seed(db, "924", "#CLANK2")
@@ -559,8 +559,8 @@ class TestDmBatchSeedsSignupRows:
 
     @pytest.mark.asyncio
     async def test_existing_row_is_never_clobbered(self, db, monkeypatch):
-        from qapbot.cache_manager import CACHE
-        import qapbot.QBdiscocmdshelper_cwl as cwl
+        from clashcontrol.cache_manager import CACHE
+        import clashcontrol.QBdiscocmdshelper_cwl as cwl
 
         event_id = await _seed(db, "925", "#CLANL")
         await _link(db, "owner1", "#KEEP2")
@@ -596,8 +596,8 @@ class TestDmBatchRechecksLinkBeforeSending:
     def _allow_dms(self, monkeypatch):
         import dataclasses
 
-        import qapbot.config as config_module
-        import qapbot.QBdiscocmdshelper_cwl as cwl
+        import clashcontrol.config as config_module
+        import clashcontrol.QBdiscocmdshelper_cwl as cwl
 
         relaxed = dataclasses.replace(
             config_module.CONFIG, is_dev_mode=False, cwl_dm_restrict_to_admin=False
@@ -610,8 +610,8 @@ class TestDmBatchRechecksLinkBeforeSending:
         """No user_players row at all for this tag -- the pool resolver should never have handed
         this target over with a real discord_id in the first place, but the batch must not trust
         it blindly regardless of how it got here."""
-        from qapbot.cache_manager import CACHE
-        import qapbot.QBdiscocmdshelper_cwl as cwl
+        from clashcontrol.cache_manager import CACHE
+        import clashcontrol.QBdiscocmdshelper_cwl as cwl
 
         event_id = await _seed(db, "926", "#CLANM")
         CACHE.db_manager = db
@@ -632,8 +632,8 @@ class TestDmBatchRechecksLinkBeforeSending:
     async def test_unlinked_after_pool_resolution_is_skipped_not_dmed(self, db, monkeypatch):
         """The exact race: linked at pool-resolution time, unlinked before the send loop reaches
         them."""
-        from qapbot.cache_manager import CACHE
-        import qapbot.QBdiscocmdshelper_cwl as cwl
+        from clashcontrol.cache_manager import CACHE
+        import clashcontrol.QBdiscocmdshelper_cwl as cwl
 
         event_id = await _seed(db, "927", "#CLANN")
         await _link(db, "owner1", "#RACED")
@@ -658,8 +658,8 @@ class TestDmBatchRechecksLinkBeforeSending:
     async def test_relinked_to_a_different_owner_dms_the_new_owner(self, db, monkeypatch):
         """The live re-check also picks up a re-link to someone ELSE, not just an unlink -- same
         "live wins over a stale snapshot" rule already applied at pool-build time."""
-        from qapbot.cache_manager import CACHE
-        import qapbot.QBdiscocmdshelper_cwl as cwl
+        from clashcontrol.cache_manager import CACHE
+        import clashcontrol.QBdiscocmdshelper_cwl as cwl
 
         event_id = await _seed(db, "928", "#CLANO")
         await _link(db, "new_owner", "#RELINKED")

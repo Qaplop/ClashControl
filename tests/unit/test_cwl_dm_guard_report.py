@@ -14,7 +14,7 @@ os.environ.setdefault("DISCORD_TOKEN", "test-token")
 
 @pytest.fixture
 def cache(monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     db = MagicMock()
     db.get_current_clan_tags_for_players_sync = MagicMock(return_value={
@@ -26,7 +26,7 @@ def cache(monkeypatch):
 
 
 def test_report_groups_by_current_clan_sorted_with_no_clan_last(cache):
-    from qapbot.QBdiscocmdshelper_cwl import format_cwl_dm_guard_skipped_report
+    from clashcontrol.QBdiscocmdshelper_cwl import format_cwl_dm_guard_skipped_report
 
     skipped = [
         {"player_tag": "#P1", "player_name": "zed"},
@@ -48,13 +48,13 @@ def test_report_groups_by_current_clan_sorted_with_no_clan_last(cache):
 
 
 def test_report_is_empty_when_nobody_was_skipped(cache):
-    from qapbot.QBdiscocmdshelper_cwl import format_cwl_dm_guard_skipped_report
+    from clashcontrol.QBdiscocmdshelper_cwl import format_cwl_dm_guard_skipped_report
 
     assert format_cwl_dm_guard_skipped_report([], 1, "42") == []
 
 
 def test_report_splits_under_discord_limit_on_line_boundaries(cache):
-    from qapbot.QBdiscocmdshelper_cwl import DISCORD_MESSAGE_LIMIT, format_cwl_dm_guard_skipped_report
+    from clashcontrol.QBdiscocmdshelper_cwl import DISCORD_MESSAGE_LIMIT, format_cwl_dm_guard_skipped_report
 
     skipped = [{"player_tag": f"#T{i:04d}", "player_name": "x" * 40} for i in range(200)]
     messages = format_cwl_dm_guard_skipped_report(skipped, 1, "42")
@@ -66,8 +66,8 @@ def test_report_splits_under_discord_limit_on_line_boundaries(cache):
 
 
 async def test_batch_records_players_skipped_by_dm_guard(monkeypatch):
-    from qapbot import QBdiscocmdshelper_cwl as cwl
-    from qapbot.cache_manager import CACHE
+    from clashcontrol import QBdiscocmdshelper_cwl as cwl
+    from clashcontrol.cache_manager import CACHE
 
     db = MagicMock()
     db.get_cwl_player_season_dm_status_bulk_sync = MagicMock(return_value={})
@@ -91,8 +91,8 @@ async def test_batch_records_players_skipped_by_dm_guard(monkeypatch):
 @pytest.fixture
 def guarded(monkeypatch):
     """A season open for DMs, with the DM guard blocking every recipient."""
-    from qapbot import QBdiscocmdshelper_cwl as cwl
-    from qapbot.cache_manager import CACHE
+    from clashcontrol import QBdiscocmdshelper_cwl as cwl
+    from clashcontrol.cache_manager import CACHE
 
     db = MagicMock()
     db.get_cwl_event_sync = MagicMock(return_value={"id": 7, "status": "signup_open"})
@@ -126,7 +126,7 @@ async def test_announce_rosters_records_dm_guard_skipped(guarded, monkeypatch):
 
 
 async def test_remind_pending_records_dm_guard_skipped(guarded, monkeypatch):
-    from qapbot.web_bridge import remind_pending_cwl_players
+    from clashcontrol.web_bridge import remind_pending_cwl_players
 
     monkeypatch.setattr(guarded, "resolve_cwl_pending_reminder_targets_sync", lambda *a: {
         "groups": {"10": list(ACCOUNTS)}, "skipped_unlinked": 0, "skipped_optout": 0,

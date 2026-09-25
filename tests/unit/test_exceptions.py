@@ -3,9 +3,9 @@ import pytest
 
 @pytest.mark.smoke
 def test_qapbot_error_str_includes_context_when_present():
-    from qapbot.exceptions import QapBotError
+    from clashcontrol.exceptions import ClashControlError
 
-    exc = QapBotError("boom", context={"user_id": "123"})
+    exc = ClashControlError("boom", context={"user_id": "123"})
     assert exc.message == "boom"
     assert exc.context["user_id"] == "123"
     assert "boom" in str(exc)
@@ -14,8 +14,8 @@ def test_qapbot_error_str_includes_context_when_present():
 
 @pytest.mark.smoke
 def test_specific_exception_is_qapbot_error_subclass():
-    from qapbot.exceptions import ConfigurationError, QapBotError
+    from clashcontrol.exceptions import ConfigurationError, ClashControlError
 
     exc = ConfigurationError("bad config")
-    assert isinstance(exc, QapBotError)
+    assert isinstance(exc, ClashControlError)
     assert exc.message == "bad config"

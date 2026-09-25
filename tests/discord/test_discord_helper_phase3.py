@@ -21,7 +21,7 @@ class _Phase3Cache:
 
 @pytest.mark.discord
 def test_split_message_into_chunks_preserves_code_blocks():
-    from qapbot.QBdiscocmdshelper import _split_message_into_chunks
+    from clashcontrol.QBdiscocmdshelper import _split_message_into_chunks
 
     content = "```line1\nline2\nline3\nline4\nline5```"
     chunks = _split_message_into_chunks(content, max_size=16)
@@ -38,7 +38,7 @@ def test_split_message_into_chunks_preserves_ansi_tag_on_every_chunk():
     rendered the raw ANSI escape sequences as literal garbage text instead of interpreting
     them as color codes (only post_leaderboard_to_discord's guild-mode splitter, a separate
     ansi-aware implementation, handled this correctly)."""
-    from qapbot.QBdiscocmdshelper import _split_message_into_chunks
+    from clashcontrol.QBdiscocmdshelper import _split_message_into_chunks
 
     lines = [f"line{i}" for i in range(20)]
     content = "```ansi\n" + "\n".join(lines) + "```"
@@ -55,7 +55,7 @@ def test_split_message_into_chunks_preserves_ansi_tag_on_every_chunk():
 def test_split_message_into_chunks_non_ansi_code_block_unaffected():
     """Backward-compat guard: a non-ansi code block (the common case — /status, /list,
     /subscriptions, etc.) must still split with bare ``` fences, not gain a spurious tag."""
-    from qapbot.QBdiscocmdshelper import _split_message_into_chunks
+    from clashcontrol.QBdiscocmdshelper import _split_message_into_chunks
 
     lines = [f"Tag {i}   Name of clan {i}" for i in range(20)]
     content = "```" + "\n".join(lines) + "```"
@@ -68,7 +68,7 @@ def test_split_message_into_chunks_non_ansi_code_block_unaffected():
 
 @pytest.mark.discord
 def test_split_embed_by_description_splits_and_adds_part_footer():
-    from qapbot.QBdiscocmdshelper import _split_embed_by_description
+    from clashcontrol.QBdiscocmdshelper import _split_embed_by_description
 
     description = "\n".join(f"line-{i}" for i in range(20))
     embed = discord.Embed(title="Title", description=description, color=discord.Color.blue())
@@ -83,7 +83,7 @@ def test_split_embed_by_description_splits_and_adds_part_footer():
 
 @pytest.mark.discord
 def test_clan_tag_normalization_and_resolve_by_name(monkeypatch: pytest.MonkeyPatch):
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.QBdiscocmdshelper as helper
 
     cache = _Phase3Cache()
     cache.clan_name_cache = {
@@ -103,7 +103,7 @@ def test_clan_tag_normalization_and_resolve_by_name(monkeypatch: pytest.MonkeyPa
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_set_primary_account_updates_flags_and_persists(monkeypatch: pytest.MonkeyPatch):
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.QBdiscocmdshelper as helper
 
     cache = _Phase3Cache()
     cache.user_accounts = {
@@ -128,7 +128,7 @@ async def test_set_primary_account_updates_flags_and_persists(monkeypatch: pytes
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_unlink_player_moves_to_unassigned_and_persists(monkeypatch: pytest.MonkeyPatch):
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.QBdiscocmdshelper as helper
 
     cache = _Phase3Cache()
     cache.user_accounts = {

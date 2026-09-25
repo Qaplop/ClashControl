@@ -29,7 +29,7 @@ import pytest
 
 def _make_cm():
     """Create a CacheManager instance with a mocked db_manager."""
-    from qapbot.cache_manager import CacheManager
+    from clashcontrol.cache_manager import CacheManager
     cm = CacheManager()
     cm.db_manager = MagicMock()
     # Make all db_manager methods async
@@ -66,7 +66,7 @@ class TestLoadClanNameCache:
 
     @pytest.mark.asyncio
     async def test_no_db_raises_runtime(self):
-        from qapbot.cache_manager import CacheManager
+        from clashcontrol.cache_manager import CacheManager
         cm = CacheManager()
         with pytest.raises(RuntimeError, match="Database manager not initialized"):
             await cm.load_clan_name_cache()
@@ -139,7 +139,7 @@ class TestLoadUserAccounts:
 
     @pytest.mark.asyncio
     async def test_no_db_raises_runtime(self):
-        from qapbot.cache_manager import CacheManager
+        from clashcontrol.cache_manager import CacheManager
         cm = CacheManager()
         with pytest.raises(RuntimeError):
             await cm.load_user_accounts()
@@ -166,7 +166,7 @@ class TestLoadNotificationState:
 
     @pytest.mark.asyncio
     async def test_no_db_raises_runtime(self):
-        from qapbot.cache_manager import CacheManager
+        from clashcontrol.cache_manager import CacheManager
         cm = CacheManager()
         with pytest.raises(RuntimeError):
             await cm.load_notification_state()
@@ -193,7 +193,7 @@ class TestLoadServerConfig:
 
     @pytest.mark.asyncio
     async def test_no_db_raises_runtime(self):
-        from qapbot.cache_manager import CacheManager
+        from clashcontrol.cache_manager import CacheManager
         cm = CacheManager()
         with pytest.raises(RuntimeError):
             await cm.load_server_config()
@@ -476,22 +476,22 @@ class TestRemoveChannelSubscriptions:
 class TestGetCurrentWarData:
     def test_no_files_returns_none(self):
         cm = _make_cm()
-        with patch("qapbot.cache_manager.glob.glob", return_value=[]):
+        with patch("clashcontrol.cache_manager.glob.glob", return_value=[]):
             assert cm.get_current_war_data("#L2J0C0PY") is None
 
     def test_loads_latest_file(self):
         cm = _make_cm()
         war_data = {"state": "inWar", "clan": {"tag": "#C1"}}
-        with patch("qapbot.cache_manager.glob.glob", return_value=["file1.json"]):
-            with patch("qapbot.cache_manager.os.path.getmtime", return_value=1000):
+        with patch("clashcontrol.cache_manager.glob.glob", return_value=["file1.json"]):
+            with patch("clashcontrol.cache_manager.os.path.getmtime", return_value=1000):
                 with patch("builtins.open", mock_open(read_data=json.dumps(war_data))):
                     result = cm.get_current_war_data("#C1")
                     assert result == war_data
 
     def test_corrupted_file_returns_none(self):
         cm = _make_cm()
-        with patch("qapbot.cache_manager.glob.glob", return_value=["bad.json"]):
-            with patch("qapbot.cache_manager.os.path.getmtime", return_value=1000):
+        with patch("clashcontrol.cache_manager.glob.glob", return_value=["bad.json"]):
+            with patch("clashcontrol.cache_manager.os.path.getmtime", return_value=1000):
                 with patch("builtins.open", mock_open(read_data="not json")):
                     assert cm.get_current_war_data("#C1") is None
 
@@ -506,7 +506,7 @@ class TestGetCurrentWarFromApi:
         cm = _make_cm()
         cm.coc_client = MagicMock()
         war = MagicMock()
-        with patch("qapbot.cache_manager.coc_retry", new_callable=AsyncMock, return_value=war) as mock_retry:
+        with patch("clashcontrol.cache_manager.coc_retry", new_callable=AsyncMock, return_value=war) as mock_retry:
             result = await cm.get_current_war_from_api("#C1")
             assert result == war
             mock_retry.assert_awaited_once()
@@ -525,7 +525,7 @@ class TestGetLeagueWar:
         cm = _make_cm()
         cm.coc_client = MagicMock()
         war = MagicMock()
-        with patch("qapbot.cache_manager.coc_retry", new_callable=AsyncMock, return_value=war):
+        with patch("clashcontrol.cache_manager.coc_retry", new_callable=AsyncMock, return_value=war):
             result = await cm.get_league_war("#WAR123")
             assert result == war
 

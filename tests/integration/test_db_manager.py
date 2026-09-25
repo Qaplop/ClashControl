@@ -6,7 +6,7 @@ import pytest
 
 @pytest.fixture
 async def db(tmp_path):
-    from qapbot.db_manager import WarHistoryDB
+    from clashcontrol.db_manager import WarHistoryDB
 
     db_path = tmp_path / "qapbot_test.db"
     manager = WarHistoryDB()

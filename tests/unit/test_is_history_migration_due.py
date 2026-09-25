@@ -1,5 +1,5 @@
 """
-Tests for QapBot.is_history_migration_due().
+Tests for ClashControl.is_history_migration_due().
 
 Successor to test_is_monthly_migration_due.py, rewritten for the 2026-09-01 rolling
 redesign. The old function had two modes (`ignore_in_process_claim`), a `day == 1` gate,
@@ -24,7 +24,7 @@ from types import SimpleNamespace
 import pytest
 
 os.environ.setdefault("DISCORD_TOKEN", "test-token")
-import QapBot  # noqa: E402
+import ClashControl  # noqa: E402
 
 
 class _FakeDBManager:
@@ -60,41 +60,41 @@ class _FakeDBManager:
 class TestDueLogic:
     async def test_due_when_reached_cutoff_is_behind_target(self, monkeypatch):
         monkeypatch.setattr(
-            QapBot, "CACHE",
+            ClashControl, "CACHE",
             SimpleNamespace(db_manager=_FakeDBManager(reached="2026-07-01", oldest=None)),
         )
-        assert await QapBot.is_history_migration_due() is True
+        assert await ClashControl.is_history_migration_due() is True
 
     async def test_not_due_when_reached_cutoff_equals_target(self, monkeypatch):
         """Steady state on a night when nothing new has aged out."""
         monkeypatch.setattr(
-            QapBot, "CACHE",
+            ClashControl, "CACHE",
             SimpleNamespace(db_manager=_FakeDBManager(reached="2026-07-03", oldest=None)),
         )
-        assert await QapBot.is_history_migration_due() is False
+        assert await ClashControl.is_history_migration_due() is False
 
     async def test_not_due_when_reached_cutoff_is_ahead_of_target(self, monkeypatch):
         """Retention was lengthened, or the clock moved back. Never migrate backwards."""
         monkeypatch.setattr(
-            QapBot, "CACHE",
+            ClashControl, "CACHE",
             SimpleNamespace(db_manager=_FakeDBManager(reached="2026-08-01", oldest=None)),
         )
-        assert await QapBot.is_history_migration_due() is False
+        assert await ClashControl.is_history_migration_due() is False
 
     async def test_no_marker_and_no_old_rows_is_not_due(self, monkeypatch):
         """First run against a fresh/empty DB must not report due forever."""
         db = _FakeDBManager(reached=None, oldest=None)
-        monkeypatch.setattr(QapBot, "CACHE", SimpleNamespace(db_manager=db))
-        assert await QapBot.is_history_migration_due() is False
+        monkeypatch.setattr(ClashControl, "CACHE", SimpleNamespace(db_manager=db))
+        assert await ClashControl.is_history_migration_due() is False
         assert db.oldest_probe_calls == 1
 
     async def test_no_marker_but_old_rows_present_is_due(self, monkeypatch):
         """First run after deploy, with real data below the cutoff."""
         db = _FakeDBManager(reached=None, oldest="2026-06-10")
-        monkeypatch.setattr(QapBot, "CACHE", SimpleNamespace(db_manager=db))
-        assert await QapBot.is_history_migration_due() is True
+        monkeypatch.setattr(ClashControl, "CACHE", SimpleNamespace(db_manager=db))
+        assert await ClashControl.is_history_migration_due() is True
         assert db.oldest_probe_calls == 1
 
     async def test_no_db_manager_is_not_due(self, monkeypatch):
-        monkeypatch.setattr(QapBot, "CACHE", SimpleNamespace(db_manager=None))
-        assert await QapBot.is_history_migration_due() is False
+        monkeypatch.setattr(ClashControl, "CACHE", SimpleNamespace(db_manager=None))
+        assert await ClashControl.is_history_migration_due() is False

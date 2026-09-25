@@ -31,7 +31,7 @@ def _make_role(role_id: int):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_guild_admin_passes(mock_interaction):
-    from qapbot.QBdiscocmdshelper import check_admin_or_leader_permission
+    from clashcontrol.QBdiscocmdshelper import check_admin_or_leader_permission
 
     mock_interaction.user = _make_member(is_admin=True)
     result = await check_admin_or_leader_permission(mock_interaction, "999", {})
@@ -41,7 +41,7 @@ async def test_guild_admin_passes(mock_interaction):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_configured_bot_admin_passes_regardless_of_roles(mock_interaction):
-    from qapbot.QBdiscocmdshelper import check_admin_or_leader_permission
+    from clashcontrol.QBdiscocmdshelper import check_admin_or_leader_permission
 
     mock_interaction.user = _make_member(is_admin=False)
     mock_interaction.user.id = 555
@@ -52,7 +52,7 @@ async def test_configured_bot_admin_passes_regardless_of_roles(mock_interaction)
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_leader_role_holder_passes(mock_interaction):
-    from qapbot.QBdiscocmdshelper import check_admin_or_leader_permission
+    from clashcontrol.QBdiscocmdshelper import check_admin_or_leader_permission
 
     mock_interaction.user = _make_member(roles=[_make_role(1001)], is_admin=False)
     guild_config = {"coc_role_leader_id": "1001", "coc_role_coleader_id": "1002"}
@@ -63,7 +63,7 @@ async def test_leader_role_holder_passes(mock_interaction):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_coleader_role_holder_passes(mock_interaction):
-    from qapbot.QBdiscocmdshelper import check_admin_or_leader_permission
+    from clashcontrol.QBdiscocmdshelper import check_admin_or_leader_permission
 
     mock_interaction.user = _make_member(roles=[_make_role(1002)], is_admin=False)
     guild_config = {"coc_role_leader_id": "1001", "coc_role_coleader_id": "1002"}
@@ -74,7 +74,7 @@ async def test_coleader_role_holder_passes(mock_interaction):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_regular_member_without_role_fails(mock_interaction):
-    from qapbot.QBdiscocmdshelper import check_admin_or_leader_permission
+    from clashcontrol.QBdiscocmdshelper import check_admin_or_leader_permission
 
     mock_interaction.user = _make_member(roles=[_make_role(5555)], is_admin=False)  # unrelated role
     guild_config = {"coc_role_leader_id": "1001", "coc_role_coleader_id": "1002"}
@@ -86,7 +86,7 @@ async def test_regular_member_without_role_fails(mock_interaction):
 @pytest.mark.asyncio
 async def test_no_leader_roles_configured_fails_cleanly_for_non_admin(mock_interaction):
     """Guild has never set up the CoC-rank auto-role feature — must not crash, just deny."""
-    from qapbot.QBdiscocmdshelper import check_admin_or_leader_permission
+    from clashcontrol.QBdiscocmdshelper import check_admin_or_leader_permission
 
     mock_interaction.user = _make_member(roles=[_make_role(1)], is_admin=False)
     assert await check_admin_or_leader_permission(mock_interaction, "999", {}) is False
@@ -97,7 +97,7 @@ async def test_no_leader_roles_configured_fails_cleanly_for_non_admin(mock_inter
 async def test_dm_context_with_no_matching_admin_fails_closed(mock_interaction):
     """interaction.user is not a discord.Member at all (DM invocation, no resolved_guild_id) —
     the role-holder check has nothing to check against and must fail closed, not raise."""
-    from qapbot.QBdiscocmdshelper import check_admin_or_leader_permission
+    from clashcontrol.QBdiscocmdshelper import check_admin_or_leader_permission
 
     mock_interaction.user = MagicMock()  # plain User, not a Member — isinstance check fails
     mock_interaction.guild = None
@@ -116,8 +116,8 @@ async def test_dm_context_with_no_matching_admin_fails_closed(mock_interaction):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_check_cwl_admin_or_leader_permission_allows_leader(mock_interaction):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import _check_cwl_admin_or_leader_permission
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import _check_cwl_admin_or_leader_permission
 
     mock_interaction.guild.id = 9401
     mock_interaction.user = _make_member(roles=[_make_role(1001)])
@@ -129,8 +129,8 @@ async def test_check_cwl_admin_or_leader_permission_allows_leader(mock_interacti
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_check_cwl_admin_or_leader_permission_rejects_regular_member(mock_interaction):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import _check_cwl_admin_or_leader_permission
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import _check_cwl_admin_or_leader_permission
 
     mock_interaction.guild.id = 9402
     mock_interaction.user = _make_member(roles=[])
@@ -149,8 +149,8 @@ async def test_check_cwl_admin_or_leader_permission_rejects_regular_member(mock_
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_check_cwl_admin_or_leader_permission_allows_admin_without_leader_role(mock_interaction):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import _check_cwl_admin_or_leader_permission
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import _check_cwl_admin_or_leader_permission
 
     mock_interaction.guild.id = 9403
     mock_interaction.user = _make_member(is_admin=True)

@@ -21,8 +21,8 @@ What matters here, and why:
 """
 import pytest
 
-from qapbot.db_manager import WarHistoryDB
-import qapbot.db_manager as db_manager_module
+from clashcontrol.db_manager import WarHistoryDB
+import clashcontrol.db_manager as db_manager_module
 
 
 @pytest.mark.asyncio

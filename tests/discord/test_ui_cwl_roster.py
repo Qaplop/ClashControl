@@ -16,7 +16,7 @@ import pytest
 
 os.environ.setdefault("DISCORD_TOKEN", "test-token")
 
-from qapbot.db_manager import WarHistoryDB
+from clashcontrol.db_manager import WarHistoryDB
 
 
 @pytest.fixture
@@ -35,7 +35,7 @@ def _bypass_cwl_admin_check(monkeypatch):
     """Every CWL settings/management callback re-checks admin permissions per-callback (not
     just at open) — bypass it by default so these tests exercise the CWL-specific logic, not
     the (separately-tested, in test_dm_interaction_foundation.py) permission-check machinery."""
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.QBdiscocmdshelper as helper
 
     async def _always_admin(*args, **kwargs):
         return True
@@ -52,14 +52,14 @@ async def _seed_guild_and_clans(db: WarHistoryDB, guild_id: str, clan_tags: Dict
 
 # ---------------------------------------------------------------------------
 # CWL_LEAGUE_RANKS — tracker #0047 (this picker list had drifted stale and was missing the
-# Legend/Titan tiers CoC added above Champion). Now derived from qapbot/constants.py's
+# Legend/Titan tiers CoC added above Champion). Now derived from clashcontrol/constants.py's
 # CWL_LEAGUE_ORDER (the codebase's actual single source of truth for the ladder) instead of a
 # second hand-maintained copy, so it can't drift the same way again.
 # ---------------------------------------------------------------------------
 
 def test_cwl_league_ranks_includes_current_league_tiers_highest_first():
-    from qapbot.constants import CWL_LEAGUE_ORDER
-    from qapbot.ui_cwl_roster import CWL_LEAGUE_RANKS
+    from clashcontrol.constants import CWL_LEAGUE_ORDER
+    from clashcontrol.ui_cwl_roster import CWL_LEAGUE_RANKS
 
     assert CWL_LEAGUE_RANKS[0] == "Legend League"
     assert CWL_LEAGUE_RANKS[1:4] == ["Titan League I", "Titan League II", "Titan League III"]
@@ -83,8 +83,8 @@ async def test_notify_cwl_clan_shared_reports_unresolved_ownership_honestly(monk
     owner() (QBdiscocmdshelper_cwl.py) already correctly detects "no resolvable Leader/Co-Leader
     anywhere" and returns owner_resolution_method='unresolved_first_claimer'; this notification
     just always claimed "real in-game Leader/Co-Leader" ownership regardless of that."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import notify_cwl_clan_shared
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import notify_cwl_clan_shared
 
     CACHE.clan_name_cache = {"#AKATSUKI": {"name": "!!AKATSUKI!!"}}
 
@@ -93,7 +93,7 @@ async def test_notify_cwl_clan_shared_reports_unresolved_ownership_honestly(monk
     async def fake_post(guild_id, message, discord_id):
         posted.append((guild_id, message))
 
-    monkeypatch.setattr("qapbot.ui_cwl_roster._post_cwl_shared_clan_notice", fake_post)
+    monkeypatch.setattr("clashcontrol.ui_cwl_roster._post_cwl_shared_clan_notice", fake_post)
 
     import QBcore
     fake_guild = MagicMock()
@@ -124,8 +124,8 @@ async def test_notify_cwl_clan_shared_reports_unresolved_ownership_honestly(monk
 async def test_notify_cwl_clan_shared_still_names_a_real_resolved_owner(monkeypatch):
     """Sibling case — a genuinely resolved owner (leader/co-leader found) must still get the
     original, accurate ownership claim, unaffected by the unresolved-case fix."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import notify_cwl_clan_shared
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import notify_cwl_clan_shared
 
     CACHE.clan_name_cache = {"#CLAN1": {"name": "Alpha"}}
 
@@ -134,7 +134,7 @@ async def test_notify_cwl_clan_shared_still_names_a_real_resolved_owner(monkeypa
     async def fake_post(guild_id, message, discord_id):
         posted.append((guild_id, message))
 
-    monkeypatch.setattr("qapbot.ui_cwl_roster._post_cwl_shared_clan_notice", fake_post)
+    monkeypatch.setattr("clashcontrol.ui_cwl_roster._post_cwl_shared_clan_notice", fake_post)
 
     import QBcore
     fake_guild = MagicMock()
@@ -167,8 +167,8 @@ async def test_notify_cwl_clan_shared_still_names_a_real_resolved_owner(monkeypa
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_format_clan_management_message_dispatches_cwl_settings(monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper import format_clan_management_message
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper import format_clan_management_message
 
     CACHE.server_config["555"] = {}
     guild = MagicMock()
@@ -187,8 +187,8 @@ async def test_format_clan_management_message_dispatches_cwl_settings(monkeypatc
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_format_clan_management_message_dispatches_cwl_management(monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper import format_clan_management_message
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper import format_clan_management_message
 
     CACHE.server_config["556"] = {}
     CACHE.db_manager = None  # no event configured -> "no event" branch, no DB needed
@@ -209,7 +209,7 @@ async def test_format_clan_management_message_default_still_registrations(monkey
     """Regression guard: adding the two new elif branches must not shift the trailing bare
     `else` — an unrecognized/omitted mode must still default to registrations, not silently
     render the wrong (or a CWL) screen."""
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.QBdiscocmdshelper as helper
 
     called = {}
 
@@ -236,8 +236,8 @@ def test_clan_management_view_cwl_settings_mode_constructs_without_row_conflict(
     reserves row 0 (refresh) and row 2 (mode select) regardless of mode — constructing with
     mode="cwl_settings" must not raise (would, if add_cwl_settings_components() placed
     anything on those rows)."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_clan_management import ClanManagementView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_clan_management import ClanManagementView
 
     CACHE.server_config["555"] = {}
     guild = MagicMock()
@@ -258,8 +258,8 @@ def test_clan_management_view_cwl_settings_mode_constructs_without_row_conflict(
 def test_player_hub_toggle_button_present_disabled_state():
     """plans/cwl-personal-hub.md Phase 2b — presence/label/style when the Player CWL Settings
     Hub is currently disabled (the default for every guild)."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import add_cwl_settings_components
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import add_cwl_settings_components
 
     CACHE.server_config["557"] = {"cwl_player_hub_message_enabled": False}
     view = discord.ui.View(timeout=None)
@@ -273,8 +273,8 @@ def test_player_hub_toggle_button_present_disabled_state():
 
 @pytest.mark.discord
 def test_player_hub_toggle_button_present_enabled_state():
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import add_cwl_settings_components
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import add_cwl_settings_components
 
     CACHE.server_config["558"] = {"cwl_player_hub_message_enabled": True}
     view = discord.ui.View(timeout=None)
@@ -302,8 +302,8 @@ def test_toggle_button_color_reflects_its_own_action_not_current_state(
     that deactivates/stops something, success for one that activates/starts it), not the
     feature's current on/off state -- the previous code colored a button green whenever the
     underlying flag was already True, which made "Deactivate ..." render green."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import add_cwl_settings_components
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import add_cwl_settings_components
 
     for enabled, expected_style, expected_prefix in [
         (True, discord.ButtonStyle.danger, enabled_label_prefix),
@@ -326,8 +326,8 @@ def test_toggle_button_color_reflects_its_own_action_not_current_state(
 async def test_player_hub_toggle_guards_when_no_channel_set(db, mock_interaction):
     """Attempting to enable with no channel configured yet must not flip the flag — same guard
     the admin hub toggle already has."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import add_cwl_settings_components
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import add_cwl_settings_components
 
     guild_id_str = str(mock_interaction.guild.id)
     CACHE.db_manager = db
@@ -351,8 +351,8 @@ async def test_player_hub_toggle_guards_when_no_channel_set(db, mock_interaction
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_player_hub_toggle_flips_flag_and_persists_when_channel_set(db, mock_interaction, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import add_cwl_settings_components
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import add_cwl_settings_components
 
     guild_id_str = str(mock_interaction.guild.id)
     CACHE.db_manager = db
@@ -391,8 +391,8 @@ async def test_player_hub_toggle_flips_flag_and_persists_when_channel_set(db, mo
 async def test_cwl_management_toggle_reposts_before_refreshing(db, mock_interaction, monkeypatch):
     """The repost must complete (be awaited) before the parent view is refreshed, not merely
     kicked off in the background — otherwise refresh_cwl_view() can run against stale state."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import add_cwl_settings_components
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import add_cwl_settings_components
 
     guild_id_str = str(mock_interaction.guild.id)
     CACHE.db_manager = db
@@ -403,7 +403,7 @@ async def test_cwl_management_toggle_reposts_before_refreshing(db, mock_interact
     async def fake_repost(*, only_if_not_bottom, guild_id):
         events.append("repost")
 
-    monkeypatch.setattr("QapBot.repost_cwl_management_messages", fake_repost)
+    monkeypatch.setattr("ClashControl.repost_cwl_management_messages", fake_repost)
 
     class _FakeParentView(discord.ui.View):
         async def refresh_cwl_view(self, interaction: discord.Interaction, mode: str) -> None:
@@ -423,8 +423,8 @@ async def test_cwl_management_toggle_reposts_before_refreshing(db, mock_interact
 async def test_cwl_management_toggle_guards_against_reentrant_double_click(db, mock_interaction, monkeypatch):
     """A second click landing while the first is still mid-flight (e.g. blocked inside the
     repost call) must be dropped, not run a second overlapping toggle+repost+refresh cycle."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import add_cwl_settings_components
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import add_cwl_settings_components
 
     guild_id_str = str(mock_interaction.guild.id)
     CACHE.db_manager = db
@@ -438,7 +438,7 @@ async def test_cwl_management_toggle_guards_against_reentrant_double_click(db, m
         call_count += 1
         await release.wait()
 
-    monkeypatch.setattr("QapBot.repost_cwl_management_messages", fake_repost)
+    monkeypatch.setattr("ClashControl.repost_cwl_management_messages", fake_repost)
 
     view = discord.ui.View(timeout=None)
     add_cwl_settings_components(view, mock_interaction.guild.id)
@@ -466,8 +466,8 @@ async def test_cwl_management_toggle_guards_against_reentrant_double_click(db, m
 @pytest.mark.asyncio
 async def test_player_hub_toggle_guards_against_reentrant_double_click(db, mock_interaction, monkeypatch):
     """Same re-entrancy guard as the admin hub toggle above, for the Player CWL Settings Hub."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import add_cwl_settings_components
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import add_cwl_settings_components
 
     guild_id_str = str(mock_interaction.guild.id)
     CACHE.db_manager = db
@@ -481,7 +481,7 @@ async def test_player_hub_toggle_guards_against_reentrant_double_click(db, mock_
         call_count += 1
         await release.wait()
 
-    monkeypatch.setattr("QapBot.repost_cwl_player_hub_messages", fake_repost)
+    monkeypatch.setattr("ClashControl.repost_cwl_player_hub_messages", fake_repost)
 
     view = discord.ui.View(timeout=None)
     add_cwl_settings_components(view, mock_interaction.guild.id)
@@ -504,11 +504,11 @@ async def test_player_hub_toggle_guards_against_reentrant_double_click(db, mock_
 
 @pytest.mark.discord
 def test_clan_management_view_cwl_management_mode_constructs_without_row_conflict():
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     CACHE.server_config["556"] = {}
     CACHE.db_manager = None
-    from qapbot.ui_clan_management import ClanManagementView
+    from clashcontrol.ui_clan_management import ClanManagementView
 
     guild = MagicMock()
     guild.id = 556
@@ -532,8 +532,8 @@ def test_clan_management_view_registers_open_cwl_settings_session():
     """Tracker #0070 follow-up: constructing a /clan management view in cwl_settings or
     cwl_management mode registers it into CACHE.cwl_settings_open_view, so a mutation made
     elsewhere (the anchored Hub message) can push a refresh back to this session."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_clan_management import ClanManagementView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_clan_management import ClanManagementView
 
     CACHE.server_config["9601"] = {}
     CACHE.db_manager = None
@@ -551,8 +551,8 @@ def test_clan_management_view_registers_open_cwl_settings_session():
 
 @pytest.mark.discord
 def test_clan_management_view_does_not_register_for_unrelated_modes():
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_clan_management import ClanManagementView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_clan_management import ClanManagementView
 
     CACHE.server_config["9602"] = {}
     CACHE.db_manager = None
@@ -575,8 +575,8 @@ async def test_refresh_cwl_view_works_without_a_live_interaction():
     """The whole point of the registry: a mutation from the anchored Hub message has no
     interaction belonging to this session at all, only a guild_id — refresh_cwl_view() must be
     callable with interaction=None, deriving the guild from self.sent_message instead."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_clan_management import ClanManagementView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_clan_management import ClanManagementView
 
     CACHE.server_config["9605"] = {}
     CACHE.db_manager = None
@@ -598,8 +598,8 @@ async def test_refresh_cwl_view_works_without_a_live_interaction():
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_push_refresh_to_open_cwl_settings_session_calls_tracked_view():
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_clan_management import push_refresh_to_open_cwl_settings_session
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_clan_management import push_refresh_to_open_cwl_settings_session
 
     fake_view = MagicMock()
     fake_view.refresh_cwl_view = AsyncMock()
@@ -613,8 +613,8 @@ async def test_push_refresh_to_open_cwl_settings_session_calls_tracked_view():
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_push_refresh_to_open_cwl_settings_session_noop_when_none_tracked():
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_clan_management import push_refresh_to_open_cwl_settings_session
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_clan_management import push_refresh_to_open_cwl_settings_session
 
     CACHE.cwl_settings_open_view.pop("9604", None)
     await push_refresh_to_open_cwl_settings_session(9604, "cwl_settings")  # must not raise
@@ -622,8 +622,8 @@ async def test_push_refresh_to_open_cwl_settings_session_noop_when_none_tracked(
 
 @pytest.mark.discord
 def test_clan_management_view_cwl_mode_select_options_present():
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_clan_management import ClanManagementView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_clan_management import ClanManagementView
 
     CACHE.server_config["557"] = {}
     guild = MagicMock()
@@ -646,7 +646,7 @@ def test_clan_management_view_cwl_mode_select_options_present():
 
 @pytest.mark.discord
 def test_cwl_management_channel_slot_registered():
-    from qapbot.ui_clan_management import DEFAULT_CHANNEL_SLOTS
+    from clashcontrol.ui_clan_management import DEFAULT_CHANNEL_SLOTS
 
     slot = next((s for s in DEFAULT_CHANNEL_SLOTS if s.key == "cwl_management"), None)
     assert slot is not None
@@ -659,7 +659,7 @@ def test_cwl_player_hub_channel_slot_registered():
     """plans/cwl-personal-hub.md Phase 2a — the "Configure Channels" button on the cwl_settings
     screen needs zero new select/button/handler code for a new slot, per ChannelSlotConfig's own
     docstring guarantee; this is the data-only change that adds it."""
-    from qapbot.ui_clan_management import CWL_CONFIG_CHANNEL_SLOTS, DEFAULT_CHANNEL_SLOTS
+    from clashcontrol.ui_clan_management import CWL_CONFIG_CHANNEL_SLOTS, DEFAULT_CHANNEL_SLOTS
 
     slot = next((s for s in DEFAULT_CHANNEL_SLOTS if s.key == "cwl_player_hub"), None)
     assert slot is not None
@@ -673,8 +673,8 @@ def test_cwl_player_hub_channel_slot_registered():
 
 @pytest.mark.discord
 def test_cwl_player_hub_channel_change_is_tracked():
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_clan_management import _track_cwl_player_hub_channel_change
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_clan_management import _track_cwl_player_hub_channel_change
 
     guild_id_str = "888"
     CACHE.server_config[guild_id_str] = {}
@@ -691,9 +691,9 @@ async def test_channel_configuration_view_apply_refreshes_hub_and_closes_ephemer
     point b) used to crash on Apply because it hardcoded a call to _refresh_config_view(),
     which only ClanManagementView has — CwlManagementHubView doesn't. Also covers that the
     ephemeral sub-screen actually closes itself once applied, which it never did before."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_clan_management import ChannelConfigurationView, CWL_CONFIG_CHANNEL_SLOTS
-    from qapbot.ui_cwl_roster import CwlManagementHubView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_clan_management import ChannelConfigurationView, CWL_CONFIG_CHANNEL_SLOTS
+    from clashcontrol.ui_cwl_roster import CwlManagementHubView
 
     guild_id_str = str(mock_interaction.guild.id)
     CACHE.db_manager = db
@@ -731,9 +731,9 @@ async def test_channel_apply_triggers_immediate_repost_for_cwl_slots(db, mock_in
     the channel while the hub message is enabled doesn't properly delete the message in the old
     channel and repost it in the new"). Only the slot(s) whose channel actually changed this
     apply should fire; an untouched slot must not."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_clan_management import ChannelConfigurationView, CWL_CONFIG_CHANNEL_SLOTS
-    from qapbot.ui_cwl_roster import CwlManagementHubView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_clan_management import ChannelConfigurationView, CWL_CONFIG_CHANNEL_SLOTS
+    from clashcontrol.ui_cwl_roster import CwlManagementHubView
 
     guild_id_str = str(mock_interaction.guild.id)
     CACHE.db_manager = db
@@ -749,8 +749,8 @@ async def test_channel_apply_triggers_immediate_repost_for_cwl_slots(db, mock_in
     async def fake_repost_cwl_player_hub(*, only_if_not_bottom, guild_id):
         calls.append("cwl_player_hub")
 
-    monkeypatch.setattr("QapBot.repost_cwl_management_messages", fake_repost_cwl_management)
-    monkeypatch.setattr("QapBot.repost_cwl_player_hub_messages", fake_repost_cwl_player_hub)
+    monkeypatch.setattr("ClashControl.repost_cwl_management_messages", fake_repost_cwl_management)
+    monkeypatch.setattr("ClashControl.repost_cwl_player_hub_messages", fake_repost_cwl_player_hub)
 
     hub_view = CwlManagementHubView()
     new_channel = MagicMock()
@@ -779,7 +779,7 @@ async def test_channel_apply_triggers_immediate_repost_for_cwl_slots(db, mock_in
 
 @pytest.mark.discord
 def test_cwl_management_hub_view_constructs_with_toggle_buttons():
-    from qapbot.ui_cwl_roster import CwlManagementHubView
+    from clashcontrol.ui_cwl_roster import CwlManagementHubView
 
     view = CwlManagementHubView()
     assert len(view.children) == 4
@@ -796,7 +796,7 @@ async def test_cwl_management_hub_help_button_opens_ephemeral_help_view(mock_int
     """tracker #0080: the Help button opens a fresh ephemeral CwlHelpView via send_message,
     rather than editing the anchored Hub message itself — this is documentation, not a Hub mode,
     so it must not disturb whichever screen (Settings/Season Management) is currently open."""
-    from qapbot.ui_cwl_roster import CwlHelpView, CwlManagementHubView
+    from clashcontrol.ui_cwl_roster import CwlHelpView, CwlManagementHubView
 
     view = CwlManagementHubView()
     await view._on_help(mock_interaction)
@@ -814,8 +814,8 @@ async def test_cwl_help_view_toggle_switches_between_overview_and_details(mock_i
     """tracker #0080: the two-layer help — a single toggle button flips CwlHelpView between the
     compact overview and the fuller step-by-step details, editing the same ephemeral message
     each time rather than opening a new one."""
-    from qapbot.i18n import t
-    from qapbot.ui_cwl_roster import CwlHelpView
+    from clashcontrol.i18n import t
+    from clashcontrol.ui_cwl_roster import CwlHelpView
 
     view = CwlHelpView(guild_id=987654321)
     assert view.expanded is False
@@ -843,7 +843,7 @@ def test_cwl_management_hub_view_holds_no_per_guild_instance_state():
     """Regression guard for the shared-instance bug this phase caught during review: a single
     CwlManagementHubView instance serves every guild's anchored message via add_view(), so it
     must never cache "current mode" (or any other per-guild value) as instance state."""
-    from qapbot.ui_cwl_roster import CwlManagementHubView
+    from clashcontrol.ui_cwl_roster import CwlManagementHubView
 
     view = CwlManagementHubView()
     assert not hasattr(view, "mode")
@@ -855,8 +855,8 @@ def test_cwl_management_hub_view_holds_no_per_guild_instance_state():
 async def test_cwl_management_hub_view_refresh_button_rerenders_current_mode(monkeypatch):
     """Last-resort manual fallback (2026-08-10) — clicking it must re-render whichever mode is
     currently shown, not always default back to cwl_management."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import CwlManagementHubView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import CwlManagementHubView
 
     CACHE.db_manager = None
     CACHE.server_config["778"] = {}
@@ -869,7 +869,7 @@ async def test_cwl_management_hub_view_refresh_button_rerenders_current_mode(mon
     async def _always_admin(*args, **kwargs):
         return True
 
-    import qapbot.ui_cwl_roster as ui_cwl_roster_module
+    import clashcontrol.ui_cwl_roster as ui_cwl_roster_module
     monkeypatch.setattr(ui_cwl_roster_module, "_check_cwl_admin_permission", _always_admin)
 
     view = CwlManagementHubView()
@@ -884,8 +884,8 @@ async def test_cwl_management_hub_view_refresh_button_rerenders_current_mode(mon
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_cwl_management_hub_view_refresh_fetches_and_edits_tracked_message(monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import CwlManagementHubView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import CwlManagementHubView
 
     CACHE.server_config["777"] = {
         "cwl_management_channel_id": "111",
@@ -916,8 +916,8 @@ async def test_cwl_management_hub_view_refresh_fetches_and_edits_tracked_message
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_cwl_management_hub_view_refresh_noop_without_tracked_message():
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import CwlManagementHubView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import CwlManagementHubView
 
     CACHE.server_config["778"] = {}  # never configured
     interaction = MagicMock()
@@ -950,7 +950,7 @@ def _make_action_row(*components: MagicMock) -> MagicMock:
 
 @pytest.mark.discord
 def test_detect_cwl_management_hub_mode_settings_active():
-    from qapbot.ui_cwl_roster import _detect_cwl_management_hub_mode
+    from clashcontrol.ui_cwl_roster import _detect_cwl_management_hub_mode
 
     message = MagicMock()
     message.components = [
@@ -964,7 +964,7 @@ def test_detect_cwl_management_hub_mode_settings_active():
 
 @pytest.mark.discord
 def test_detect_cwl_management_hub_mode_management_active():
-    from qapbot.ui_cwl_roster import _detect_cwl_management_hub_mode
+    from clashcontrol.ui_cwl_roster import _detect_cwl_management_hub_mode
 
     message = MagicMock()
     message.components = [
@@ -978,7 +978,7 @@ def test_detect_cwl_management_hub_mode_management_active():
 
 @pytest.mark.discord
 def test_detect_cwl_management_hub_mode_defaults_to_management_when_undetectable():
-    from qapbot.ui_cwl_roster import _detect_cwl_management_hub_mode
+    from clashcontrol.ui_cwl_roster import _detect_cwl_management_hub_mode
 
     message = MagicMock()
     message.components = []
@@ -992,8 +992,8 @@ async def test_refresh_hub_message_without_mode_preserves_settings_screen(monkey
     message is CURRENTLY showing (detected live), never force a specific one — a background
     refresh triggered from elsewhere must not flip an admin's Season-Management view to Settings
     or vice versa."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import refresh_cwl_management_hub_message
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import refresh_cwl_management_hub_message
 
     CACHE.server_config["779"] = {
         "cwl_management_channel_id": "111",
@@ -1027,7 +1027,7 @@ async def test_refresh_hub_message_without_mode_preserves_settings_screen(monkey
     async def fake_management_builder(guild):
         raise AssertionError("management builder must not run when the message is on Settings")
 
-    import qapbot.QBdiscocmdshelper_cwl as helper_cwl
+    import clashcontrol.QBdiscocmdshelper_cwl as helper_cwl
     monkeypatch.setattr(helper_cwl, "format_clan_management_cwl_settings", fake_settings_builder)
     monkeypatch.setattr(helper_cwl, "format_clan_management_cwl_management", fake_management_builder)
 
@@ -1040,9 +1040,9 @@ async def test_refresh_hub_message_without_mode_preserves_settings_screen(monkey
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_player_hub_toggle_refreshes_admin_anchored_hub_message(db, monkeypatch, mock_interaction):
-    from qapbot.cache_manager import CACHE
-    import qapbot.ui_cwl_roster as ui_cwl_roster_module
-    from qapbot.ui_cwl_roster import _make_cwl_settings_toggle_player_hub_callback
+    from clashcontrol.cache_manager import CACHE
+    import clashcontrol.ui_cwl_roster as ui_cwl_roster_module
+    from clashcontrol.ui_cwl_roster import _make_cwl_settings_toggle_player_hub_callback
 
     guild_id_str = str(mock_interaction.guild.id)
     CACHE.db_manager = db
@@ -1051,8 +1051,8 @@ async def test_player_hub_toggle_refreshes_admin_anchored_hub_message(db, monkey
     async def fake_repost(*args, **kwargs):
         return None
 
-    import QapBot
-    monkeypatch.setattr(QapBot, "repost_cwl_player_hub_messages", fake_repost)
+    import ClashControl
+    monkeypatch.setattr(ClashControl, "repost_cwl_player_hub_messages", fake_repost)
 
     hub_refresh = AsyncMock()
     monkeypatch.setattr(ui_cwl_roster_module, "refresh_cwl_management_hub_message", hub_refresh)
@@ -1069,9 +1069,9 @@ async def test_player_hub_toggle_refreshes_admin_anchored_hub_message(db, monkey
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_include_all_accounts_toggle_refreshes_admin_anchored_hub_message(db, monkeypatch, mock_interaction):
-    from qapbot.cache_manager import CACHE
-    import qapbot.ui_cwl_roster as ui_cwl_roster_module
-    from qapbot.ui_cwl_roster import _make_cwl_settings_toggle_include_all_accounts_callback
+    from clashcontrol.cache_manager import CACHE
+    import clashcontrol.ui_cwl_roster as ui_cwl_roster_module
+    from clashcontrol.ui_cwl_roster import _make_cwl_settings_toggle_include_all_accounts_callback
 
     guild_id_str = str(mock_interaction.guild.id)
     CACHE.db_manager = db
@@ -1092,9 +1092,9 @@ async def test_include_all_accounts_toggle_refreshes_admin_anchored_hub_message(
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_retention_modal_submit_refreshes_admin_anchored_hub_message(db, monkeypatch, mock_interaction):
-    from qapbot.cache_manager import CACHE
-    import qapbot.ui_cwl_roster as ui_cwl_roster_module
-    from qapbot.ui_cwl_roster import CwlRetentionModal
+    from clashcontrol.cache_manager import CACHE
+    import clashcontrol.ui_cwl_roster as ui_cwl_roster_module
+    from clashcontrol.ui_cwl_roster import CwlRetentionModal
 
     guild_id_str = str(mock_interaction.guild.id)
     CACHE.db_manager = db
@@ -1123,9 +1123,9 @@ async def test_retention_modal_submit_refreshes_admin_anchored_hub_message(db, m
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_hub_enable_toggle_pushes_refresh_to_open_clan_management_session(db, monkeypatch, mock_interaction):
-    import qapbot.ui_clan_management as ui_clan_management_module
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import add_cwl_settings_components
+    import clashcontrol.ui_clan_management as ui_clan_management_module
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import add_cwl_settings_components
 
     guild_id_str = str(mock_interaction.guild.id)
     CACHE.db_manager = db
@@ -1134,7 +1134,7 @@ async def test_hub_enable_toggle_pushes_refresh_to_open_clan_management_session(
     async def fake_repost(*, only_if_not_bottom, guild_id):
         return None
 
-    monkeypatch.setattr("QapBot.repost_cwl_management_messages", fake_repost)
+    monkeypatch.setattr("ClashControl.repost_cwl_management_messages", fake_repost)
 
     push_refresh = AsyncMock()
     monkeypatch.setattr(ui_clan_management_module, "push_refresh_to_open_cwl_settings_session", push_refresh)
@@ -1151,9 +1151,9 @@ async def test_hub_enable_toggle_pushes_refresh_to_open_clan_management_session(
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_player_hub_toggle_pushes_refresh_to_open_clan_management_session(db, monkeypatch, mock_interaction):
-    import qapbot.ui_clan_management as ui_clan_management_module
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import _make_cwl_settings_toggle_player_hub_callback
+    import clashcontrol.ui_clan_management as ui_clan_management_module
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import _make_cwl_settings_toggle_player_hub_callback
 
     guild_id_str = str(mock_interaction.guild.id)
     CACHE.db_manager = db
@@ -1162,11 +1162,11 @@ async def test_player_hub_toggle_pushes_refresh_to_open_clan_management_session(
     async def fake_repost(*args, **kwargs):
         return None
 
-    import QapBot
-    monkeypatch.setattr(QapBot, "repost_cwl_player_hub_messages", fake_repost)
+    import ClashControl
+    monkeypatch.setattr(ClashControl, "repost_cwl_player_hub_messages", fake_repost)
 
     hub_refresh = AsyncMock()
-    import qapbot.ui_cwl_roster as ui_cwl_roster_module
+    import clashcontrol.ui_cwl_roster as ui_cwl_roster_module
     monkeypatch.setattr(ui_cwl_roster_module, "refresh_cwl_management_hub_message", hub_refresh)
     push_refresh = AsyncMock()
     monkeypatch.setattr(ui_clan_management_module, "push_refresh_to_open_cwl_settings_session", push_refresh)
@@ -1183,15 +1183,15 @@ async def test_player_hub_toggle_pushes_refresh_to_open_clan_management_session(
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_include_all_accounts_toggle_pushes_refresh_to_open_clan_management_session(db, monkeypatch, mock_interaction):
-    import qapbot.ui_clan_management as ui_clan_management_module
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import _make_cwl_settings_toggle_include_all_accounts_callback
+    import clashcontrol.ui_clan_management as ui_clan_management_module
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import _make_cwl_settings_toggle_include_all_accounts_callback
 
     guild_id_str = str(mock_interaction.guild.id)
     CACHE.db_manager = db
     CACHE.server_config[guild_id_str] = {}
 
-    import qapbot.ui_cwl_roster as ui_cwl_roster_module
+    import clashcontrol.ui_cwl_roster as ui_cwl_roster_module
     monkeypatch.setattr(ui_cwl_roster_module, "refresh_cwl_management_hub_message", AsyncMock())
     push_refresh = AsyncMock()
     monkeypatch.setattr(ui_clan_management_module, "push_refresh_to_open_cwl_settings_session", push_refresh)
@@ -1208,15 +1208,15 @@ async def test_include_all_accounts_toggle_pushes_refresh_to_open_clan_managemen
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_retention_modal_submit_pushes_refresh_to_open_clan_management_session(db, monkeypatch, mock_interaction):
-    import qapbot.ui_clan_management as ui_clan_management_module
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import CwlRetentionModal
+    import clashcontrol.ui_clan_management as ui_clan_management_module
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import CwlRetentionModal
 
     guild_id_str = str(mock_interaction.guild.id)
     CACHE.db_manager = db
     CACHE.server_config[guild_id_str] = {}
 
-    import qapbot.ui_cwl_roster as ui_cwl_roster_module
+    import clashcontrol.ui_cwl_roster as ui_cwl_roster_module
     monkeypatch.setattr(ui_cwl_roster_module, "refresh_cwl_management_hub_message", AsyncMock())
     push_refresh = AsyncMock()
     monkeypatch.setattr(ui_clan_management_module, "push_refresh_to_open_cwl_settings_session", push_refresh)
@@ -1236,7 +1236,7 @@ async def test_retention_modal_submit_pushes_refresh_to_open_clan_management_ses
 
 @pytest.mark.discord
 def test_cwl_retention_modal_seeds_default_option():
-    from qapbot.ui_cwl_roster import CwlRetentionModal
+    from clashcontrol.ui_cwl_roster import CwlRetentionModal
 
     parent = MagicMock()
     modal = CwlRetentionModal(parent, guild_id=777, current_months=12)
@@ -1249,8 +1249,8 @@ def test_cwl_retention_modal_seeds_default_option():
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_cwl_retention_modal_persists_selection(db, mock_interaction):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import CwlRetentionModal
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import CwlRetentionModal
 
     guild_id_str = str(mock_interaction.guild.id)
     CACHE.db_manager = db
@@ -1279,7 +1279,7 @@ async def test_cwl_retention_modal_persists_selection(db, mock_interaction):
 
 @pytest.mark.discord
 def test_get_clan_war_league_reads_from_clan_name_cache():
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     CACHE.clan_name_cache = {
         "#CLAN1": {"name": "Alpha", "war_league": "Crystal League I"},
@@ -1299,7 +1299,7 @@ def test_get_clan_war_league_reads_from_clan_name_cache():
 
 @pytest.mark.discord
 def test_cwl_league_rank_orders_highest_first():
-    from qapbot.QBdiscocmdshelper_cwl import cwl_league_rank
+    from clashcontrol.QBdiscocmdshelper_cwl import cwl_league_rank
 
     assert cwl_league_rank("Legend League") > cwl_league_rank("Titan League I")
     assert cwl_league_rank("Titan League I") > cwl_league_rank("Champion League I")
@@ -1310,7 +1310,7 @@ def test_cwl_league_rank_orders_highest_first():
 
 @pytest.mark.discord
 def test_cwl_start_at_discord_timestamp_renders_native_markup():
-    from qapbot.QBdiscocmdshelper_cwl import cwl_start_at_discord_timestamp
+    from clashcontrol.QBdiscocmdshelper_cwl import cwl_start_at_discord_timestamp
 
     result = cwl_start_at_discord_timestamp("2026-09-01T08:00Z")
     assert result is not None
@@ -1322,7 +1322,7 @@ def test_cwl_start_at_discord_timestamp_renders_native_markup():
 
 @pytest.mark.discord
 def test_timezone_abbreviation_reflects_dst_state_at_season_start():
-    from qapbot.QBdiscocmdshelper_cwl import timezone_abbreviation
+    from clashcontrol.QBdiscocmdshelper_cwl import timezone_abbreviation
 
     assert timezone_abbreviation("Europe/Berlin", "2026-09") == "CEST"  # summer -> DST active
     assert timezone_abbreviation("Europe/Berlin", "2026-12") == "CET"   # winter -> DST inactive
@@ -1332,7 +1332,7 @@ def test_timezone_abbreviation_reflects_dst_state_at_season_start():
 
 @pytest.mark.discord
 def test_timezone_abbreviation_falls_back_to_the_raw_name_on_bad_input():
-    from qapbot.QBdiscocmdshelper_cwl import timezone_abbreviation
+    from clashcontrol.QBdiscocmdshelper_cwl import timezone_abbreviation
 
     assert timezone_abbreviation("Not/A_Real_Zone", "2026-09") == "Not/A_Real_Zone"
     assert timezone_abbreviation("UTC", "not-a-season") == "UTC"
@@ -1340,8 +1340,8 @@ def test_timezone_abbreviation_falls_back_to_the_raw_name_on_bad_input():
 
 @pytest.mark.discord
 def test_resolve_selected_cwl_season_prefers_persisted_selection(db):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import resolve_selected_cwl_season
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_selected_cwl_season
 
     CACHE.db_manager = db
     CACHE.server_config["9999"] = {"cwl_selected_season": "2026-02"}
@@ -1351,8 +1351,8 @@ def test_resolve_selected_cwl_season_prefers_persisted_selection(db):
 
 @pytest.mark.discord
 def test_resolve_selected_cwl_season_falls_back_without_persisted_selection():
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import resolve_current_cwl_season, resolve_selected_cwl_season
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_current_cwl_season, resolve_selected_cwl_season
 
     CACHE.db_manager = None
     CACHE.server_config["8887"] = {}
@@ -1363,8 +1363,8 @@ def test_resolve_selected_cwl_season_falls_back_without_persisted_selection():
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_format_clan_management_cwl_management_sorts_by_tier_and_renders_compact_table(db):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import format_clan_management_cwl_management
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import format_clan_management_cwl_management
 
     await _seed_guild_and_clans(db, "6543", {"#CLAN1": "Bronze Clan", "#CLAN2": "Champion Clan"})
     CACHE.db_manager = db
@@ -1405,8 +1405,8 @@ async def test_format_clan_management_cwl_management_sorts_by_tier_and_renders_c
 async def test_format_clan_management_cwl_management_shifts_start_time_by_guild_timezone(db):
     """The table can't use Discord's native per-viewer <t:...> markup (not parsed inside code
     blocks), so it falls back to the guild's one configured timezone_name instead."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import format_clan_management_cwl_management
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import format_clan_management_cwl_management
 
     await _seed_guild_and_clans(db, "6544", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -1434,8 +1434,8 @@ async def test_format_clan_management_cwl_management_shifts_start_time_by_guild_
 async def test_format_clan_management_cwl_management_applies_dst_correctly(db):
     """The whole point of a real IANA zone (over a raw UTC offset) is DST-awareness — a summer
     start (CEST, UTC+2) and a winter start (CET, UTC+1) in the same zone must shift differently."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import format_clan_management_cwl_management
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import format_clan_management_cwl_management
 
     await _seed_guild_and_clans(db, "6545", {"#CLAN1": "Alpha", "#CLAN2": "Bravo"})
     CACHE.db_manager = db
@@ -1468,8 +1468,8 @@ async def test_format_clan_management_cwl_management_applies_dst_correctly(db):
 
 @pytest.mark.discord
 def test_cwl_management_delete_button_disabled_without_event():
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import add_cwl_management_components
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import add_cwl_management_components
 
     CACHE.server_config["333"] = {}
     CACHE.db_manager = None  # no event configured -> disabled
@@ -1484,8 +1484,8 @@ def test_cwl_management_delete_button_disabled_without_event():
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_cwl_delete_season_confirm_view_confirm_deletes_and_refreshes(db, mock_interaction):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import CwlDeleteSeasonConfirmView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import CwlDeleteSeasonConfirmView
 
     await _seed_guild_and_clans(db, "444", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -1514,8 +1514,8 @@ async def test_cwl_delete_season_confirm_view_retracts_stale_enrollment_dms(db, 
     buttons sitting live-looking (though no longer functional) in their DMs. _on_confirm must
     snapshot the DM refs BEFORE delete_cwl_event_sync() clears cwl_player_season_status (see that
     function's own docstring), then best-effort retract the actual DM messages."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import CwlDeleteSeasonConfirmView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import CwlDeleteSeasonConfirmView
 
     await _seed_guild_and_clans(db, "448", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -1531,7 +1531,7 @@ async def test_cwl_delete_season_confirm_view_retracts_stale_enrollment_dms(db, 
     confirm_view = CwlDeleteSeasonConfirmView(parent_view=parent, guild_id=448, event_id=event_id, season="2026-09")
 
     cleanup_mock = AsyncMock(return_value={"deleted": 1, "failed": 0})
-    monkeypatch.setattr("qapbot.QBdiscocmdshelper_cwl.cleanup_stale_cwl_enrollment_dms", cleanup_mock)
+    monkeypatch.setattr("clashcontrol.QBdiscocmdshelper_cwl.cleanup_stale_cwl_enrollment_dms", cleanup_mock)
 
     await confirm_view._on_confirm(mock_interaction)
 
@@ -1550,8 +1550,8 @@ async def test_cwl_delete_season_confirm_view_retracts_stale_enrollment_dms(db, 
 @pytest.mark.asyncio
 async def test_cwl_delete_season_confirm_view_skips_cleanup_when_nobody_was_dmed(db, mock_interaction, monkeypatch):
     """No dm_refs to retract — the Discord-API cleanup call must not even be attempted."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import CwlDeleteSeasonConfirmView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import CwlDeleteSeasonConfirmView
 
     await _seed_guild_and_clans(db, "449", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -1564,7 +1564,7 @@ async def test_cwl_delete_season_confirm_view_skips_cleanup_when_nobody_was_dmed
     confirm_view = CwlDeleteSeasonConfirmView(parent_view=parent, guild_id=449, event_id=event_id, season="2026-09")
 
     cleanup_mock = AsyncMock()
-    monkeypatch.setattr("qapbot.QBdiscocmdshelper_cwl.cleanup_stale_cwl_enrollment_dms", cleanup_mock)
+    monkeypatch.setattr("clashcontrol.QBdiscocmdshelper_cwl.cleanup_stale_cwl_enrollment_dms", cleanup_mock)
 
     await confirm_view._on_confirm(mock_interaction)
 
@@ -1577,9 +1577,9 @@ async def test_cwl_delete_season_confirm_view_warns_about_shared_clans(db, mock_
     """2026-08-15 (delete-season guard) — a clan shared with another guild shows up in the
     warning text, but deleting still proceeds: this guild's own event is fully removed while
     the OTHER guild's attachment to the shared clan (and its roster) survives untouched."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import get_cwl_event_shared_clan_info_sync
-    from qapbot.ui_cwl_roster import CwlDeleteSeasonConfirmView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import get_cwl_event_shared_clan_info_sync
+    from clashcontrol.ui_cwl_roster import CwlDeleteSeasonConfirmView
 
     await _seed_guild_and_clans(db, "446", {"#CLAN1": "Alpha"})
     await db.conn.execute("INSERT OR IGNORE INTO guild_config (guild_id) VALUES ('447')")
@@ -1617,8 +1617,8 @@ async def test_cwl_delete_season_confirm_view_warns_about_shared_clans(db, mock_
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_cwl_delete_season_confirm_view_cancel_does_not_delete(db, mock_interaction):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import CwlDeleteSeasonConfirmView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import CwlDeleteSeasonConfirmView
 
     await _seed_guild_and_clans(db, "555", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -1650,8 +1650,8 @@ def _second_click() -> AsyncMock:
 async def test_cwl_delete_season_confirm_greys_out_buttons_immediately(db, mock_interaction):
     """2026-09-23, project owner: "Yes, Delete" stayed clickable during the multi-second
     deletion. The click's own response now shows every button disabled plus a "deleting…" line."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import CwlDeleteSeasonConfirmView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import CwlDeleteSeasonConfirmView
 
     await _seed_guild_and_clans(db, "556", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -1673,8 +1673,8 @@ async def test_cwl_delete_season_confirm_greys_out_buttons_immediately(db, mock_
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_cwl_delete_season_second_click_and_cancel_do_nothing(db, mock_interaction, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import CwlDeleteSeasonConfirmView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import CwlDeleteSeasonConfirmView
 
     await _seed_guild_and_clans(db, "557", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -1704,10 +1704,10 @@ async def test_cwl_delete_season_second_click_and_cancel_do_nothing(db, mock_int
 @pytest.mark.asyncio
 async def test_cwl_confirm_permission_failure_releases_the_claim(db, mock_interaction, monkeypatch):
     """A denied click must not block a later, legitimate one."""
-    import qapbot.QBdiscocmdshelper as helper
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_common import action_in_flight
-    from qapbot.ui_cwl_roster import CwlDeleteSeasonConfirmView
+    import clashcontrol.QBdiscocmdshelper as helper
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_common import action_in_flight
+    from clashcontrol.ui_cwl_roster import CwlDeleteSeasonConfirmView
 
     await _seed_guild_and_clans(db, "558", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -1739,9 +1739,9 @@ async def test_cwl_carry_over_prompt_creates_season_once_on_double_click(monkeyp
     """Yes and No both create the season — a second click (either button) must not create it
     again. The prompt can't grey its buttons out (the Activity launch needs the first response),
     so the claim alone stops it."""
-    import qapbot.ui_cwl_roster as roster
-    import qapbot.web_bridge as web_bridge
-    from qapbot.ui_cwl_roster import CwlCarryOverPromptView
+    import clashcontrol.ui_cwl_roster as roster
+    import clashcontrol.web_bridge as web_bridge
+    from clashcontrol.ui_cwl_roster import CwlCarryOverPromptView
 
     monkeypatch.setattr(roster, "_refresh_parent", AsyncMock())
     monkeypatch.setattr(roster, "_launch_cwl_activity", AsyncMock())
@@ -1767,8 +1767,8 @@ async def test_cwl_carry_over_prompt_creates_season_once_on_double_click(monkeyp
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_cwl_management_open_web_callback_sends_launch_activity(mock_interaction):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import _make_cwl_management_open_web_callback
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import _make_cwl_management_open_web_callback
 
     mock_interaction.id = 123456789
     mock_interaction.token = "test-token"
@@ -1795,7 +1795,7 @@ async def test_cwl_management_open_web_callback_falls_back_if_launch_activity_re
     """If Discord ever rejects LAUNCH_ACTIVITY from a plain component interaction (the risk
     CWL_CLAN_CONFIG_ACTIVITY_PLAN.md flagged as unverified for this path), admins should get a
     clear ephemeral hint instead of a silently dead button."""
-    from qapbot.ui_cwl_roster import _make_cwl_management_open_web_callback
+    from clashcontrol.ui_cwl_roster import _make_cwl_management_open_web_callback
 
     mock_interaction.client.http.request = AsyncMock(side_effect=RuntimeError("boom"))
     mock_interaction.response.is_done = MagicMock(return_value=False)
@@ -1814,8 +1814,8 @@ async def test_cwl_management_open_web_callback_falls_back_if_launch_activity_re
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_cwl_management_open_enrollment_web_callback_sends_launch_activity(mock_interaction):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import _make_cwl_management_open_enrollment_web_callback
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import _make_cwl_management_open_enrollment_web_callback
 
     mock_interaction.id = 987654321
     mock_interaction.token = "test-token-2"
@@ -1837,7 +1837,7 @@ async def test_cwl_management_open_enrollment_web_callback_sends_launch_activity
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_cwl_management_open_enrollment_web_callback_falls_back_if_launch_activity_rejected(mock_interaction):
-    from qapbot.ui_cwl_roster import _make_cwl_management_open_enrollment_web_callback
+    from clashcontrol.ui_cwl_roster import _make_cwl_management_open_enrollment_web_callback
 
     mock_interaction.client.http.request = AsyncMock(side_effect=RuntimeError("boom"))
     mock_interaction.response.is_done = MagicMock(return_value=False)
@@ -1863,9 +1863,9 @@ async def test_add_season_creates_event_directly_when_no_previous_data(db, mock_
     automatically as a logical consequence of adding a new season" — verified here via the
     LAUNCH_ACTIVITY interaction-response callback, same mechanism/assertion pattern as
     test_cwl_management_open_web_callback_sends_launch_activity below."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import resolve_current_cwl_season
-    from qapbot.ui_cwl_roster import _make_cwl_management_add_season_callback
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_current_cwl_season
+    from clashcontrol.ui_cwl_roster import _make_cwl_management_add_season_callback
 
     await _seed_guild_and_clans(db, "1111", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -1908,9 +1908,9 @@ async def test_add_season_auto_enables_family_clans_when_no_previous_data_at_all
     genuinely brand-new guild, or a guild whose prior season also had zero clans enabled) and
     skips the carry-over prompt entirely, leaving zero cwl_event_clans rows — the exact same
     "nothing checked" symptom via a completely different code path."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import resolve_current_cwl_season
-    from qapbot.ui_cwl_roster import _make_cwl_management_add_season_callback
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_current_cwl_season
+    from clashcontrol.ui_cwl_roster import _make_cwl_management_add_season_callback
 
     await _seed_guild_and_clans(db, "1112", {"#CLAN1": "Alpha", "#CLAN2": "Bravo"})
     CACHE.db_manager = db
@@ -1941,9 +1941,9 @@ async def test_add_season_auto_enables_family_clans_when_no_previous_data_at_all
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_add_season_rejects_when_season_already_exists(db, mock_interaction):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import resolve_current_cwl_season
-    from qapbot.ui_cwl_roster import _make_cwl_management_add_season_callback
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_current_cwl_season
+    from clashcontrol.ui_cwl_roster import _make_cwl_management_add_season_callback
 
     await _seed_guild_and_clans(db, "2222", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -1966,9 +1966,9 @@ async def test_add_season_rejects_when_season_already_exists(db, mock_interactio
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_add_season_offers_carry_over_prompt_when_previous_data_exists(db, mock_interaction):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import resolve_current_cwl_season
-    from qapbot.ui_cwl_roster import _make_cwl_management_add_season_callback, CwlCarryOverPromptView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_current_cwl_season
+    from clashcontrol.ui_cwl_roster import _make_cwl_management_add_season_callback, CwlCarryOverPromptView
 
     await _seed_guild_and_clans(db, "3333", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -1999,8 +1999,8 @@ async def test_cwl_carry_over_prompt_yes_presets_participating_from_real_war_his
     participating flags — it looks up which family clans actually played CWL last season (real
     war_summary data) and pre-sets true/false across the FULL family, while the other settings
     (roster_size etc.) still carry over from the previous config where one existed."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import CwlCarryOverPromptView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import CwlCarryOverPromptView
 
     await _seed_guild_and_clans(db, "4444", {"#CLAN1": "Alpha", "#CLAN2": "Bravo"})
     CACHE.db_manager = db
@@ -2065,8 +2065,8 @@ async def test_cwl_carry_over_prompt_yes_auto_enables_all_when_none_played_last_
     tracked CWL history at all (brand new to the bot, or simply took a season off) would
     otherwise get a freshly-created season where every single family clan defaults to
     participating=False, handing the admin a table with nothing checked."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import CwlCarryOverPromptView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import CwlCarryOverPromptView
 
     await _seed_guild_and_clans(db, "4445", {"#CLAN1": "Alpha", "#CLAN2": "Bravo"})
     CACHE.db_manager = db
@@ -2101,8 +2101,8 @@ async def test_cwl_carry_over_prompt_yes_leaves_real_split_alone(db, mock_intera
     """The auto-enable-all fallback must NOT fire when the family is a genuine mix of played/
     didn't-play — that split is real, useful information from actual war history, not a
     degenerate all-False case that needs rescuing."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import CwlCarryOverPromptView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import CwlCarryOverPromptView
 
     await _seed_guild_and_clans(db, "4446", {"#CLAN1": "Alpha", "#CLAN2": "Bravo"})
     CACHE.db_manager = db
@@ -2134,8 +2134,8 @@ async def test_cwl_carry_over_prompt_yes_leaves_real_split_alone(db, mock_intera
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_cwl_carry_over_prompt_no_creates_without_copying(db, mock_interaction):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import CwlCarryOverPromptView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import CwlCarryOverPromptView
 
     await _seed_guild_and_clans(db, "5555", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -2164,8 +2164,8 @@ async def test_cwl_carry_over_prompt_no_creates_without_copying(db, mock_interac
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_season_select_callback_persists_selection_and_refreshes(db, mock_interaction):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import _make_cwl_management_season_select_callback
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import _make_cwl_management_season_select_callback
 
     await _seed_guild_and_clans(db, "6666", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -2186,8 +2186,8 @@ async def test_season_select_callback_persists_selection_and_refreshes(db, mock_
 
 @pytest.mark.discord
 def test_season_select_absent_without_any_events(db):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import add_cwl_management_components
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import add_cwl_management_components
 
     CACHE.db_manager = db
     CACHE.server_config["7777"] = {}
@@ -2203,8 +2203,8 @@ def test_season_select_absent_without_any_events(db):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_season_select_present_and_configure_enabled_once_a_season_exists(db):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import add_cwl_management_components
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import add_cwl_management_components
 
     await _seed_guild_and_clans(db, "8888", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -2227,9 +2227,9 @@ async def test_add_season_button_hidden_when_current_season_already_exists(db):
     """2026-08-16, live-testing feedback, project owner's spec: "when adding a new season is not
     possible, the corresponding button should not be visible" — a deliberate exception to this
     screen's usual "present but greyed out" convention (see button_add_season's own comment)."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import resolve_current_cwl_season
-    from qapbot.ui_cwl_roster import add_cwl_management_components
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_current_cwl_season
+    from clashcontrol.ui_cwl_roster import add_cwl_management_components
 
     await _seed_guild_and_clans(db, "8889", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -2245,8 +2245,8 @@ async def test_add_season_button_hidden_when_current_season_already_exists(db):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_add_season_button_visible_when_current_season_does_not_exist(db):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import add_cwl_management_components
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import add_cwl_management_components
 
     await _seed_guild_and_clans(db, "8890", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -2271,8 +2271,8 @@ def _notify_new_members_button(view: discord.ui.View):
 async def test_notify_new_members_button_absent_while_draft(db):
     """Rule h (2026-08-18, CWL_ENROLLMENT_PLAYER_POOL_REDESIGN_PLAN.md) — the button only makes
     sense once enrollment has actually started (a draft event has no DMs sent yet at all)."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import add_cwl_management_components
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import add_cwl_management_components
 
     await _seed_guild_and_clans(db, "8891", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -2295,8 +2295,8 @@ async def test_notify_new_members_button_absent_while_draft(db):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_notify_new_members_button_absent_when_everyone_already_dmed(db):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import add_cwl_management_components
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import add_cwl_management_components
 
     await _seed_guild_and_clans(db, "8892", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -2321,8 +2321,8 @@ async def test_notify_new_members_button_absent_when_everyone_already_dmed(db):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_notify_new_members_button_present_when_someone_missing_dm(db):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import add_cwl_management_components
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import add_cwl_management_components
 
     await _seed_guild_and_clans(db, "8893", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -2360,7 +2360,7 @@ def _announce_rosters_button(view: discord.ui.View):
 
 
 async def _seed_announce_rosters_scenario(db, guild_id: str, *, status: str, assign: bool) -> int:
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clans(db, guild_id, {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -2388,7 +2388,7 @@ async def _seed_announce_rosters_scenario(db, guild_id: str, *, status: str, ass
 @pytest.mark.asyncio
 async def test_announce_rosters_button_absent_while_draft(db):
     """Nothing is assigned yet while an event is still a draft, so there is no roster to announce."""
-    from qapbot.ui_cwl_roster import add_cwl_management_components
+    from clashcontrol.ui_cwl_roster import add_cwl_management_components
 
     await _seed_announce_rosters_scenario(db, "8901", status="draft", assign=True)
 
@@ -2401,7 +2401,7 @@ async def test_announce_rosters_button_absent_while_draft(db):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_announce_rosters_button_absent_when_nobody_is_assigned(db):
-    from qapbot.ui_cwl_roster import add_cwl_management_components
+    from clashcontrol.ui_cwl_roster import add_cwl_management_components
 
     await _seed_announce_rosters_scenario(db, "8902", status="signup_open", assign=False)
 
@@ -2414,7 +2414,7 @@ async def test_announce_rosters_button_absent_when_nobody_is_assigned(db):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_announce_rosters_button_present_when_an_assigned_player_is_unannounced(db):
-    from qapbot.ui_cwl_roster import add_cwl_management_components
+    from clashcontrol.ui_cwl_roster import add_cwl_management_components
 
     await _seed_announce_rosters_scenario(db, "8903", status="signup_open", assign=True)
 
@@ -2436,7 +2436,7 @@ async def test_announce_rosters_button_disappears_once_everyone_is_announced(db)
     Once the season is announced (Preparation phase) that row-4 slot belongs to "Send Roster
     Updates" instead (2026-08-30, spec item 4 trigger (c)), so a late arrival surfaces THAT button,
     highlighted — not a second first-announcement."""
-    from qapbot.ui_cwl_roster import add_cwl_management_components
+    from clashcontrol.ui_cwl_roster import add_cwl_management_components
 
     event_id = await _seed_announce_rosters_scenario(db, "8904", status="announced", assign=True)
     db.mark_cwl_assignment_notified_sync(event_id, "#P1", True, "#CLAN1")
@@ -2483,8 +2483,8 @@ def _start_button(view: discord.ui.View):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_start_enrollment_button_disabled_without_event(db):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import add_cwl_management_components
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import add_cwl_management_components
 
     CACHE.db_manager = db
     CACHE.server_config["9001"] = {}
@@ -2498,8 +2498,8 @@ async def test_start_enrollment_button_disabled_without_event(db):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_start_enrollment_button_disabled_without_participating_clans(db):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import add_cwl_management_components
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import add_cwl_management_components
 
     await _seed_guild_and_clans(db, "9002", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -2519,8 +2519,8 @@ async def test_start_enrollment_button_replaced_by_manage_assignment_once_signup
     "Manage Assignment" button (CWL_ROSTER_PLANNING_PLAN.md "Manage Enrollment" slice 5) — the
     old "Start Enrollment" custom_id no longer exists at all, rather than sticking around
     disabled."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import add_cwl_management_components
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import add_cwl_management_components
 
     await _seed_guild_and_clans(db, "9003", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -2541,8 +2541,8 @@ async def test_start_enrollment_button_replaced_by_manage_assignment_once_signup
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_start_enrollment_button_enabled_for_draft_event_with_clans(db):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import add_cwl_management_components
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import add_cwl_management_components
 
     await _seed_guild_and_clans(db, "9004", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -2561,8 +2561,8 @@ async def test_start_enrollment_button_enabled_for_draft_event_with_clans(db):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_start_enrollment_callback_opens_confirm_view(db, mock_interaction):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import CwlStartEnrollmentConfirmView, _make_cwl_management_start_enrollment_callback
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import CwlStartEnrollmentConfirmView, _make_cwl_management_start_enrollment_callback
 
     await _seed_guild_and_clans(db, "9005", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -2587,8 +2587,8 @@ async def test_start_enrollment_callback_opens_confirm_view(db, mock_interaction
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_start_enrollment_confirm_view_confirm_starts_enrollment_and_refreshes(db, mock_interaction, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import CwlStartEnrollmentConfirmView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import CwlStartEnrollmentConfirmView
 
     await _seed_guild_and_clans(db, "9006", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -2618,7 +2618,7 @@ async def test_start_enrollment_confirm_view_confirm_starts_enrollment_and_refre
     # enrollment start is finished" — true zero-click auto-launch isn't achievable (see
     # CwlOpenEnrollmentView's own docstring), so the completion message carries a one-click
     # "Open Teams Management" follow-up button instead of a bare `view=None`.
-    from qapbot.ui_cwl_roster import CwlOpenEnrollmentView
+    from clashcontrol.ui_cwl_roster import CwlOpenEnrollmentView
 
     assert isinstance(kwargs["view"], CwlOpenEnrollmentView)
     assert kwargs["view"].guild_id == 9006
@@ -2634,9 +2634,9 @@ async def test_start_enrollment_sends_dm_guard_report_only_in_dev(mock_interacti
     DM guard held back (per clan); PROD shows only the count in the summary."""
     import dataclasses
 
-    from qapbot import QBdiscocmdshelper_cwl as cwl
-    from qapbot import config as config_module
-    from qapbot.ui_cwl_roster import CwlStartEnrollmentConfirmView
+    from clashcontrol import QBdiscocmdshelper_cwl as cwl
+    from clashcontrol import config as config_module
+    from clashcontrol.ui_cwl_roster import CwlStartEnrollmentConfirmView
 
     monkeypatch.setattr(config_module, "CONFIG", dataclasses.replace(config_module.CONFIG, is_dev_mode=is_dev_mode))
     summary = {
@@ -2669,8 +2669,8 @@ async def test_start_enrollment_sends_dm_guard_report_only_in_dev(mock_interacti
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_open_enrollment_view_button_launches_activity(mock_interaction):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import CwlOpenEnrollmentView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import CwlOpenEnrollmentView
 
     mock_interaction.id = 42
     mock_interaction.token = "test-token"
@@ -2691,8 +2691,8 @@ async def test_open_enrollment_view_button_launches_activity(mock_interaction):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_start_enrollment_confirm_view_cancel_does_not_start(db, mock_interaction):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import CwlStartEnrollmentConfirmView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import CwlStartEnrollmentConfirmView
 
     await _seed_guild_and_clans(db, "9007", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -2718,7 +2718,7 @@ async def test_start_enrollment_confirm_view_cancel_does_not_start(db, mock_inte
 class TestCwlSignupResponseButton:
     def test_template_matches_valid_custom_id(self):
         import re
-        from qapbot.ui_cwl_roster import CWL_SIGNUP_RESPONSE_TEMPLATE
+        from clashcontrol.ui_cwl_roster import CWL_SIGNUP_RESPONSE_TEMPLATE
 
         m = re.match(CWL_SIGNUP_RESPONSE_TEMPLATE, "cwl:signup:confirm:42:#ABC12")
         assert m is not None
@@ -2728,7 +2728,7 @@ class TestCwlSignupResponseButton:
 
     def test_template_rejects_malformed_custom_id(self):
         import re
-        from qapbot.ui_cwl_roster import CWL_SIGNUP_RESPONSE_TEMPLATE
+        from clashcontrol.ui_cwl_roster import CWL_SIGNUP_RESPONSE_TEMPLATE
 
         assert re.match(CWL_SIGNUP_RESPONSE_TEMPLATE, "cwl:signup:maybe:42:#ABC12") is None  # bad action
         assert re.match(CWL_SIGNUP_RESPONSE_TEMPLATE, "cwl:signup:confirm:abc:#ABC12") is None  # non-numeric event_id
@@ -2738,7 +2738,7 @@ class TestCwlSignupResponseButton:
     @pytest.mark.asyncio
     async def test_from_custom_id_reconstructs_state(self):
         import re
-        from qapbot.ui_cwl_roster import CWL_SIGNUP_RESPONSE_TEMPLATE, CwlSignupResponseButton
+        from clashcontrol.ui_cwl_roster import CWL_SIGNUP_RESPONSE_TEMPLATE, CwlSignupResponseButton
 
         match = re.match(CWL_SIGNUP_RESPONSE_TEMPLATE, "cwl:signup:optout:7:#ZZZ1")
         assert match is not None
@@ -2750,8 +2750,8 @@ class TestCwlSignupResponseButton:
     @pytest.mark.discord
     @pytest.mark.asyncio
     async def test_confirm_click_updates_signup_and_edits_message(self, db, mock_interaction):
-        from qapbot.cache_manager import CACHE
-        from qapbot.ui_cwl_roster import CwlSignupResponseButton
+        from clashcontrol.cache_manager import CACHE
+        from clashcontrol.ui_cwl_roster import CwlSignupResponseButton
 
         await _seed_guild_and_clans(db, "9101", {"#CLAN1": "Alpha"})
         CACHE.db_manager = db
@@ -2784,8 +2784,8 @@ class TestCwlSignupResponseButton:
         opt-in preference must still be fully overridable by the member's own real DM response —
         _apply_cwl_signup_response() doesn't special-case the row's prior status, so a click
         (in either direction) always writes the real answer over whatever seeded it."""
-        from qapbot.cache_manager import CACHE
-        from qapbot.ui_cwl_roster import CwlSignupResponseButton
+        from clashcontrol.cache_manager import CACHE
+        from clashcontrol.ui_cwl_roster import CwlSignupResponseButton
 
         await _seed_guild_and_clans(db, "9109", {"#CLAN1": "Alpha"})
         CACHE.db_manager = db
@@ -2814,9 +2814,9 @@ class TestCwlSignupResponseButton:
         piggyback the version bump onto (it only edits the DM itself) — it was the one write path
         the original Step 8 audit missed entirely, so an open Manage Enrollment board never
         learned about a player's DM response at all."""
-        from qapbot.cache_manager import CACHE
-        from qapbot.ui_cwl_roster import CwlSignupResponseButton
-        import qapbot.web_bridge as web_bridge_module
+        from clashcontrol.cache_manager import CACHE
+        from clashcontrol.ui_cwl_roster import CwlSignupResponseButton
+        import clashcontrol.web_bridge as web_bridge_module
 
         await _seed_guild_and_clans(db, "9104", {"#CLAN1": "Alpha"})
         CACHE.db_manager = db
@@ -2850,9 +2850,9 @@ class TestCwlSignupResponseButton:
         only ever names ONE event (guild 9106, the one that actually sent it) — a second guild
         (9107) already pooling the same real-world player for the same season must see the
         response too, with zero action from that guild's own admin."""
-        from qapbot.cache_manager import CACHE
-        from qapbot.ui_cwl_roster import CwlSignupResponseButton
-        import qapbot.web_bridge as web_bridge_module
+        from clashcontrol.cache_manager import CACHE
+        from clashcontrol.ui_cwl_roster import CwlSignupResponseButton
+        import clashcontrol.web_bridge as web_bridge_module
 
         await _seed_guild_and_clans(db, "9106", {"#CLAN1": "Alpha"})
         await db.conn.execute("INSERT OR IGNORE INTO guild_config (guild_id) VALUES ('9107')")
@@ -2889,8 +2889,8 @@ class TestCwlSignupResponseButton:
     @pytest.mark.discord
     @pytest.mark.asyncio
     async def test_optout_click_marks_declined(self, db, mock_interaction):
-        from qapbot.cache_manager import CACHE
-        from qapbot.ui_cwl_roster import CwlSignupResponseButton
+        from clashcontrol.cache_manager import CACHE
+        from clashcontrol.ui_cwl_roster import CwlSignupResponseButton
 
         await _seed_guild_and_clans(db, "9102", {"#CLAN1": "Alpha"})
         CACHE.db_manager = db
@@ -2915,8 +2915,8 @@ class TestCwlSignupResponseButton:
     @pytest.mark.discord
     @pytest.mark.asyncio
     async def test_click_on_deleted_signup_shows_no_longer_valid(self, db, mock_interaction):
-        from qapbot.cache_manager import CACHE
-        from qapbot.ui_cwl_roster import CwlSignupResponseButton
+        from clashcontrol.cache_manager import CACHE
+        from clashcontrol.ui_cwl_roster import CwlSignupResponseButton
 
         await _seed_guild_and_clans(db, "9103", {"#CLAN1": "Alpha"})
         CACHE.db_manager = db
@@ -2932,8 +2932,8 @@ class TestCwlSignupResponseButton:
     @pytest.mark.discord
     @pytest.mark.asyncio
     async def test_click_by_wrong_account_is_rejected(self, db, mock_interaction):
-        from qapbot.cache_manager import CACHE
-        from qapbot.ui_cwl_roster import CwlSignupResponseButton
+        from clashcontrol.cache_manager import CACHE
+        from clashcontrol.ui_cwl_roster import CwlSignupResponseButton
 
         await _seed_guild_and_clans(db, "9104", {"#CLAN1": "Alpha"})
         CACHE.db_manager = db
@@ -2959,8 +2959,8 @@ class TestCwlSignupResponseButton:
         """2026-08-22 (Pitfall 37): cwl_signups is an enrollment-time snapshot, so its discord_id
         can name a Discord user who no longer owns the account. Guarding on the snapshot alone
         told the account's REAL current owner "not your signup" and refused their response."""
-        from qapbot.cache_manager import CACHE
-        from qapbot.ui_cwl_roster import CwlSignupResponseButton
+        from clashcontrol.cache_manager import CACHE
+        from clashcontrol.ui_cwl_roster import CwlSignupResponseButton
 
         await _seed_guild_and_clans(db, "9110", {"#CLAN1": "Alpha"})
         CACHE.db_manager = db
@@ -2993,8 +2993,8 @@ class TestCwlSignupResponseButton:
         """The DM was genuinely delivered to the snapshot owner, so their button must keep
         working even once the account has been re-linked elsewhere — accepting BOTH owners is
         deliberate, not an oversight."""
-        from qapbot.cache_manager import CACHE
-        from qapbot.ui_cwl_roster import CwlSignupResponseButton
+        from clashcontrol.cache_manager import CACHE
+        from clashcontrol.ui_cwl_roster import CwlSignupResponseButton
 
         await _seed_guild_and_clans(db, "9111", {"#CLAN1": "Alpha"})
         CACHE.db_manager = db
@@ -3022,8 +3022,8 @@ class TestCwlSignupResponseButton:
     async def test_click_by_third_party_still_rejected_when_owners_disagree(self, db, mock_interaction):
         """Account protection (Cardinal Rule 2) must survive the widening above: someone who is
         neither the snapshot owner nor the live owner is still refused."""
-        from qapbot.cache_manager import CACHE
-        from qapbot.ui_cwl_roster import CwlSignupResponseButton
+        from clashcontrol.cache_manager import CACHE
+        from clashcontrol.ui_cwl_roster import CwlSignupResponseButton
 
         await _seed_guild_and_clans(db, "9112", {"#CLAN1": "Alpha"})
         CACHE.db_manager = db
@@ -3050,8 +3050,8 @@ class TestCwlSignupResponseButton:
     @pytest.mark.discord
     @pytest.mark.asyncio
     async def test_click_after_event_no_longer_signup_open_is_rejected(self, db, mock_interaction):
-        from qapbot.cache_manager import CACHE
-        from qapbot.ui_cwl_roster import CwlSignupResponseButton
+        from clashcontrol.cache_manager import CACHE
+        from clashcontrol.ui_cwl_roster import CwlSignupResponseButton
 
         await _seed_guild_and_clans(db, "9105", {"#CLAN1": "Alpha"})
         CACHE.db_manager = db
@@ -3076,8 +3076,8 @@ class TestCwlSignupResponseButton:
         """Phase 0b (plans/tracker-0114-cwl-bench-signup-status.md): the roster-update DM of a
         late-added player asks them to confirm while the event is already 'announced' — those
         buttons have to work, or the DM asks for something the bot refuses."""
-        from qapbot.cache_manager import CACHE
-        from qapbot.ui_cwl_roster import CwlSignupResponseButton
+        from clashcontrol.cache_manager import CACHE
+        from clashcontrol.ui_cwl_roster import CwlSignupResponseButton
 
         await _seed_guild_and_clans(db, "9106", {"#CLAN1": "Alpha"})
         CACHE.db_manager = db
@@ -3103,7 +3103,7 @@ class TestCwlSignupResponseButton:
 class TestCwlReminderResponseButton:
     def test_template_matches_valid_custom_id(self):
         import re
-        from qapbot.ui_cwl_roster import CWL_REMINDER_RESPONSE_TEMPLATE
+        from clashcontrol.ui_cwl_roster import CWL_REMINDER_RESPONSE_TEMPLATE
 
         m = re.match(CWL_REMINDER_RESPONSE_TEMPLATE, "cwl:remind:confirm:42:#ABC12")
         assert m is not None
@@ -3115,7 +3115,7 @@ class TestCwlReminderResponseButton:
         """Own custom_id namespace — the two button classes must never both match the same
         string, or add_dynamic_items() could route a click to the wrong handler."""
         import re
-        from qapbot.ui_cwl_roster import CWL_REMINDER_RESPONSE_TEMPLATE, CWL_SIGNUP_RESPONSE_TEMPLATE
+        from clashcontrol.ui_cwl_roster import CWL_REMINDER_RESPONSE_TEMPLATE, CWL_SIGNUP_RESPONSE_TEMPLATE
 
         assert re.match(CWL_REMINDER_RESPONSE_TEMPLATE, "cwl:signup:confirm:42:#ABC12") is None
         assert re.match(CWL_SIGNUP_RESPONSE_TEMPLATE, "cwl:remind:confirm:42:#ABC12") is None
@@ -3123,7 +3123,7 @@ class TestCwlReminderResponseButton:
     @pytest.mark.asyncio
     async def test_from_custom_id_reconstructs_state(self):
         import re
-        from qapbot.ui_cwl_roster import CWL_REMINDER_RESPONSE_TEMPLATE, CwlReminderResponseButton
+        from clashcontrol.ui_cwl_roster import CWL_REMINDER_RESPONSE_TEMPLATE, CwlReminderResponseButton
 
         match = re.match(CWL_REMINDER_RESPONSE_TEMPLATE, "cwl:remind:optout:7:#ZZZ1")
         assert match is not None
@@ -3133,7 +3133,7 @@ class TestCwlReminderResponseButton:
         assert item.player_tag == "#ZZZ1"
 
     def test_build_view_puts_one_row_per_account(self):
-        from qapbot.ui_cwl_roster import CwlReminderResponseButton, build_cwl_reminder_response_view
+        from clashcontrol.ui_cwl_roster import CwlReminderResponseButton, build_cwl_reminder_response_view
 
         accounts = [
             {"player_tag": "#A1", "player_name": "Alt One"},
@@ -3153,8 +3153,8 @@ class TestCwlReminderResponseButton:
     ):
         """Same end state as the original single-account button: nothing left pending for this
         user, so the message becomes a plain confirmation with no buttons."""
-        from qapbot.cache_manager import CACHE
-        from qapbot.ui_cwl_roster import CwlReminderResponseButton
+        from clashcontrol.cache_manager import CACHE
+        from clashcontrol.ui_cwl_roster import CwlReminderResponseButton
 
         await _seed_guild_and_clans(db, "9201", {"#CLAN1": "Alpha"})
         CACHE.db_manager = db
@@ -3189,8 +3189,8 @@ class TestCwlReminderResponseButton:
         """The whole reason this is a separate button class from CwlSignupResponseButton: one
         account's click must not wipe the other still-pending accounts' buttons out of the same
         combined message."""
-        from qapbot.cache_manager import CACHE
-        from qapbot.ui_cwl_roster import CwlReminderResponseButton
+        from clashcontrol.cache_manager import CACHE
+        from clashcontrol.ui_cwl_roster import CwlReminderResponseButton
 
         await _seed_guild_and_clans(db, "9202", {"#CLAN1": "Alpha"})
         CACHE.db_manager = db
@@ -3234,8 +3234,8 @@ class TestCwlReminderResponseButton:
     async def test_click_by_wrong_account_is_rejected_without_touching_the_message(
         self, db, mock_interaction
     ):
-        from qapbot.cache_manager import CACHE
-        from qapbot.ui_cwl_roster import CwlReminderResponseButton
+        from clashcontrol.cache_manager import CACHE
+        from clashcontrol.ui_cwl_roster import CwlReminderResponseButton
 
         await _seed_guild_and_clans(db, "9203", {"#CLAN1": "Alpha"})
         CACHE.db_manager = db
@@ -3264,8 +3264,8 @@ class TestCwlReminderResponseButton:
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_find_active_cwl_participation_flags_participating_clan(db):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import find_active_cwl_participation
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import find_active_cwl_participation
 
     await _seed_guild_and_clans(db, "9201", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -3279,8 +3279,8 @@ async def test_find_active_cwl_participation_flags_participating_clan(db):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_find_active_cwl_participation_ignores_deactivated_clan(db):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import find_active_cwl_participation
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import find_active_cwl_participation
 
     await _seed_guild_and_clans(db, "9202", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -3293,8 +3293,8 @@ async def test_find_active_cwl_participation_ignores_deactivated_clan(db):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_find_active_cwl_participation_ignores_cancelled_events(db):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import find_active_cwl_participation
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import find_active_cwl_participation
 
     await _seed_guild_and_clans(db, "9203", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -3308,8 +3308,8 @@ async def test_find_active_cwl_participation_ignores_cancelled_events(db):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_find_active_cwl_participation_no_conflict_for_unrelated_clan(db):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import find_active_cwl_participation
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import find_active_cwl_participation
 
     await _seed_guild_and_clans(db, "9204", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -3321,8 +3321,8 @@ async def test_find_active_cwl_participation_no_conflict_for_unrelated_clan(db):
 
 @pytest.mark.discord
 def test_find_active_cwl_participation_returns_empty_without_db_manager():
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import find_active_cwl_participation
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import find_active_cwl_participation
 
     CACHE.db_manager = None
     assert find_active_cwl_participation("1", {"#CLAN1"}) == {}
@@ -3338,8 +3338,8 @@ async def test_clan_management_view_refresh_cwl_view_also_refreshes_the_hub(monk
     """A CWL change made through /clan management (entry point a) must not leave the anchored
     CWL Management Hub message (entry point b) stale — this is the actual live-testing gap the
     project owner reported."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_clan_management import ClanManagementView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_clan_management import ClanManagementView
 
     CACHE.server_config["9210"] = {}
     CACHE.db_manager = None
@@ -3356,10 +3356,10 @@ async def test_clan_management_view_refresh_cwl_view_also_refreshes_the_hub(monk
     async def _fake_format(*args, **kwargs):
         return MagicMock(), None, [], []
 
-    monkeypatch.setattr("qapbot.QBdiscocmdshelper.format_clan_management_message", _fake_format)
+    monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.format_clan_management_message", _fake_format)
 
     hub_refresh = AsyncMock()
-    monkeypatch.setattr("qapbot.ui_cwl_roster.refresh_cwl_management_hub_message", hub_refresh)
+    monkeypatch.setattr("clashcontrol.ui_cwl_roster.refresh_cwl_management_hub_message", hub_refresh)
 
     interaction = MagicMock()
     interaction.guild = guild
@@ -3399,8 +3399,8 @@ async def _seed_cwl_war(
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_resolve_prior_cwl_assignments_single_clan(db):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import resolve_prior_cwl_assignments
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_prior_cwl_assignments
 
     await _seed_guild_and_clans(db, "9301", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -3412,8 +3412,8 @@ async def test_resolve_prior_cwl_assignments_single_clan(db):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_resolve_prior_cwl_assignments_player_with_no_history_contributes_nothing(db):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import resolve_prior_cwl_assignments
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_prior_cwl_assignments
 
     await _seed_guild_and_clans(db, "9302", {"#CLAN1": "Alpha", "#CLAN2": "Bravo"})
     CACHE.db_manager = db
@@ -3429,8 +3429,8 @@ async def test_resolve_prior_cwl_assignments_conflict_latest_attack_wins(db):
     """A player with real CWL attacks for both #CLAN1 and #CLAN2 must resolve to whichever one
     is more recent — a straight per-player "last real attack, any clan" resolution now, not a
     per-clan roster lookup."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import resolve_prior_cwl_assignments
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_prior_cwl_assignments
 
     await _seed_guild_and_clans(db, "9303", {"#CLAN1": "Alpha", "#CLAN2": "Bravo"})
     CACHE.db_manager = db
@@ -3451,8 +3451,8 @@ async def test_resolve_prior_cwl_assignments_conflict_latest_attack_wins(db):
 async def test_resolve_prior_cwl_assignments_excludes_zero_attack_sentinel_rows(db):
     """A player merely listed on a war's roster with no real attack (attack_order=0) must NOT
     resolve to that clan — "last attack" means an actual attack, per the project owner's spec."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import resolve_prior_cwl_assignments
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_prior_cwl_assignments
 
     await _seed_guild_and_clans(db, "9305", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -3467,8 +3467,8 @@ async def test_resolve_prior_cwl_assignments_ignores_non_participating_target_cl
     """A player's last real CWL attack was for #CLAN1, but only #CLAN2 is participating this
     season — there's no column to place them in, so they must be left unassigned rather than
     forced into a clan they didn't play for."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import resolve_prior_cwl_assignments
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_prior_cwl_assignments
 
     await _seed_guild_and_clans(db, "9306", {"#CLAN1": "Alpha", "#CLAN2": "Bravo"})
     CACHE.db_manager = db
@@ -3486,8 +3486,8 @@ async def test_resolve_prior_cwl_assignments_independent_of_current_clan(db):
     caller's player_tags pool (their current membership) is nothing to do with #CLAN1 here;
     resolve_prior_cwl_assignments() itself has no notion of "current clan" at all, only the
     caller decides who's even in the candidate pool."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import resolve_prior_cwl_assignments
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_prior_cwl_assignments
 
     await _seed_guild_and_clans(db, "9307", {"#CLAN1": "Alpha", "#CLAN2": "Bravo"})
     CACHE.db_manager = db
@@ -3500,8 +3500,8 @@ async def test_resolve_prior_cwl_assignments_independent_of_current_clan(db):
 
 @pytest.mark.discord
 def test_resolve_prior_cwl_assignments_returns_empty_without_db_manager():
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import resolve_prior_cwl_assignments
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_prior_cwl_assignments
 
     CACHE.db_manager = None
     assert resolve_prior_cwl_assignments(["#P1"], ["#CLAN1"]) == {}
@@ -3509,7 +3509,7 @@ def test_resolve_prior_cwl_assignments_returns_empty_without_db_manager():
 
 @pytest.mark.discord
 def test_resolve_prior_cwl_assignments_returns_empty_for_no_players():
-    from qapbot.QBdiscocmdshelper_cwl import resolve_prior_cwl_assignments
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_prior_cwl_assignments
 
     assert resolve_prior_cwl_assignments([], ["#CLAN1"]) == {}
 
@@ -3520,8 +3520,8 @@ def test_resolve_prior_cwl_assignments_returns_empty_for_no_players():
 
 @pytest.mark.discord
 def test_resolve_guild_member_clan_tags_individual_and_family(monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import resolve_guild_member_clan_tags
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_guild_member_clan_tags
 
     monkeypatch.setitem(
         CACHE.server_config, "9401",
@@ -3534,8 +3534,8 @@ def test_resolve_guild_member_clan_tags_individual_and_family(monkeypatch):
 
 @pytest.mark.discord
 def test_resolve_guild_member_clan_tags_dedupes_clan_in_both_direct_and_family(monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import resolve_guild_member_clan_tags
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_guild_member_clan_tags
 
     monkeypatch.setitem(
         CACHE.server_config, "9402",
@@ -3548,8 +3548,8 @@ def test_resolve_guild_member_clan_tags_dedupes_clan_in_both_direct_and_family(m
 
 @pytest.mark.discord
 def test_resolve_guild_member_clan_tags_unknown_guild_returns_empty(monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import resolve_guild_member_clan_tags
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_guild_member_clan_tags
 
     monkeypatch.delitem(CACHE.server_config, "9403", raising=False)
     assert resolve_guild_member_clan_tags(9403) == []
@@ -3563,21 +3563,21 @@ def test_resolve_guild_member_clan_tags_unknown_guild_returns_empty(monkeypatch)
 
 @pytest.mark.discord
 def test_league_weight_baseline_for_bronze_iii():
-    from qapbot.QBdiscocmdshelper_cwl import _league_weight
+    from clashcontrol.QBdiscocmdshelper_cwl import _league_weight
 
     assert _league_weight("Bronze League III") == pytest.approx(1.0)
 
 
 @pytest.mark.discord
 def test_league_weight_legend_is_about_ten_and_a_half_times_bronze():
-    from qapbot.QBdiscocmdshelper_cwl import _league_weight
+    from clashcontrol.QBdiscocmdshelper_cwl import _league_weight
 
     assert _league_weight("Legend League") == pytest.approx(1.4 ** 7, rel=1e-9)
 
 
 @pytest.mark.discord
 def test_league_weight_one_group_step_is_1_4x():
-    from qapbot.QBdiscocmdshelper_cwl import _league_weight
+    from clashcontrol.QBdiscocmdshelper_cwl import _league_weight
 
     champion_ii = _league_weight("Champion League II")
     master_ii = _league_weight("Master League II")
@@ -3586,7 +3586,7 @@ def test_league_weight_one_group_step_is_1_4x():
 
 @pytest.mark.discord
 def test_league_weight_subtier_bonus_orders_i_above_ii_above_iii():
-    from qapbot.QBdiscocmdshelper_cwl import _league_weight
+    from clashcontrol.QBdiscocmdshelper_cwl import _league_weight
 
     w3 = _league_weight("Gold League III")
     w2 = _league_weight("Gold League II")
@@ -3596,7 +3596,7 @@ def test_league_weight_subtier_bonus_orders_i_above_ii_above_iii():
 
 @pytest.mark.discord
 def test_league_weight_unknown_tier_returns_baseline():
-    from qapbot.QBdiscocmdshelper_cwl import _league_weight
+    from clashcontrol.QBdiscocmdshelper_cwl import _league_weight
 
     assert _league_weight(None) == 1.0
     assert _league_weight("Not A Real League") == 1.0
@@ -3635,8 +3635,8 @@ async def _seed_cwl_attack_with_league(
 async def test_compute_league_adjusted_skill_scores_weights_by_league(db):
     from datetime import datetime
 
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import compute_league_adjusted_skill_scores
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import compute_league_adjusted_skill_scores
 
     await _seed_guild_and_clans(db, "9310", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -3660,8 +3660,8 @@ async def test_compute_league_adjusted_skill_scores_excludes_attacks_outside_tra
     pop-up's own get_recent_cwl_player_stats uses."""
     from datetime import datetime
 
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import compute_league_adjusted_skill_scores
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import compute_league_adjusted_skill_scores
 
     await _seed_guild_and_clans(db, "9311", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -3683,8 +3683,8 @@ async def test_compute_league_adjusted_skill_scores_excludes_attacks_outside_tra
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_compute_league_adjusted_skill_scores_absent_for_player_with_no_cwl_history(db):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import compute_league_adjusted_skill_scores
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import compute_league_adjusted_skill_scores
 
     await _seed_guild_and_clans(db, "9312", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -3694,8 +3694,8 @@ async def test_compute_league_adjusted_skill_scores_absent_for_player_with_no_cw
 
 @pytest.mark.discord
 def test_compute_league_adjusted_skill_scores_returns_empty_without_db_manager():
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import compute_league_adjusted_skill_scores
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import compute_league_adjusted_skill_scores
 
     CACHE.db_manager = None
     assert compute_league_adjusted_skill_scores(["#P1"]) == {}
@@ -3713,8 +3713,8 @@ async def test_compute_avg_stars_per_attack_ignores_league_weighting(db):
     3-star, but this metric must score them identically since it isn't league-adjusted."""
     from datetime import datetime
 
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import compute_avg_stars_per_attack
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import compute_avg_stars_per_attack
 
     await _seed_guild_and_clans(db, "9313", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -3732,8 +3732,8 @@ async def test_compute_avg_stars_per_attack_excludes_attacks_outside_trailing_th
     """Same fix/reasoning as compute_league_adjusted_skill_scores' own trailing-3-month test."""
     from datetime import datetime
 
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import compute_avg_stars_per_attack
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import compute_avg_stars_per_attack
 
     await _seed_guild_and_clans(db, "9314", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -3753,8 +3753,8 @@ async def test_compute_avg_stars_per_attack_excludes_attacks_outside_trailing_th
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_compute_avg_stars_per_attack_absent_for_player_with_no_cwl_history(db):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import compute_avg_stars_per_attack
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import compute_avg_stars_per_attack
 
     await _seed_guild_and_clans(db, "9315", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -3764,8 +3764,8 @@ async def test_compute_avg_stars_per_attack_absent_for_player_with_no_cwl_histor
 
 @pytest.mark.discord
 def test_compute_avg_stars_per_attack_returns_empty_without_db_manager():
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import compute_avg_stars_per_attack
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import compute_avg_stars_per_attack
 
     CACHE.db_manager = None
     assert compute_avg_stars_per_attack(["#P1"]) == {}
@@ -3784,8 +3784,8 @@ async def test_repaired_signup_row_revives_a_dead_dm_button(db, mock_interaction
     DM sent without a cwl_signups row shows "this sign-up is no longer valid" forever -- and
     creating the row afterwards repairs the DM already sitting in the user's inbox, no re-send.
     Asserts the actual user-visible symptom flips, not just that a row appeared."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import CwlSignupResponseButton
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import CwlSignupResponseButton
 
     await _seed_guild_and_clans(db, "9120", {"#CLAN1": "Alpha"})
     CACHE.db_manager = db
@@ -3827,7 +3827,7 @@ async def test_repaired_signup_row_revives_a_dead_dm_button(db, mock_interaction
 
 @pytest.mark.discord
 def test_cwl_player_hub_view_constructs_with_exactly_one_button():
-    from qapbot.ui_cwl_roster import CwlPlayerHubView
+    from clashcontrol.ui_cwl_roster import CwlPlayerHubView
 
     view = CwlPlayerHubView()
 
@@ -3844,8 +3844,8 @@ async def test_cwl_player_hub_button_launches_activity_with_player_prefs_screen(
     """No permission gate (member-facing, unlike CwlManagementHubView's admin-only toggle
     buttons) and no defer/send_message before the LAUNCH_ACTIVITY call, per
     _launch_cwl_activity's own hard constraint."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import CwlPlayerHubView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import CwlPlayerHubView
 
     mock_interaction.id = 123456789
     mock_interaction.token = "test-token"
@@ -3868,7 +3868,7 @@ async def test_cwl_player_hub_button_launches_activity_with_player_prefs_screen(
 async def test_cwl_player_hub_button_does_nothing_outside_a_guild(mock_interaction):
     """Guarded the same way every other guild-scoped CWL callback is — a DM-context interaction
     (interaction.guild is None) must not attempt to resolve a guild_id at all."""
-    from qapbot.ui_cwl_roster import CwlPlayerHubView
+    from clashcontrol.ui_cwl_roster import CwlPlayerHubView
 
     mock_interaction.guild = None
     view = CwlPlayerHubView()
@@ -3882,7 +3882,7 @@ async def test_cwl_player_hub_button_does_nothing_outside_a_guild(mock_interacti
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_build_cwl_player_hub_content_and_view_returns_embed_and_view():
-    from qapbot.ui_cwl_roster import CwlPlayerHubView, build_cwl_player_hub_content_and_view
+    from clashcontrol.ui_cwl_roster import CwlPlayerHubView, build_cwl_player_hub_content_and_view
 
     channel = MagicMock()
     channel.guild = MagicMock()
@@ -3901,7 +3901,7 @@ async def test_launch_cwl_activity_fallback_uses_player_hub_key_for_player_prefs
     """The dict-based fallback lookup (Phase 5a widening) must pick the new, distinct
     cwl.player_hub.open_fallback text for this screen, not silently fall back to one of the
     other two screens' wording."""
-    from qapbot.ui_cwl_roster import _launch_cwl_activity
+    from clashcontrol.ui_cwl_roster import _launch_cwl_activity
 
     mock_interaction.response.send_message = AsyncMock()
     mock_interaction.response.is_done = MagicMock(return_value=False)
@@ -3929,8 +3929,8 @@ async def test_launch_cwl_activity_dm_refusal_explains_pending_verification(mock
     (only team/App Testers pass). Discord's refusal kills the interaction (live: 10062 / 10015
     after ~17 s), so the explanation goes straight out as a DM message — no response/followup
     attempt first. /cwl preferences stays plain text; the server name is a jump link."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import _launch_cwl_activity
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import _launch_cwl_activity
 
     monkeypatch.setattr(CACHE, "server_config", {})
     mock_interaction.guild = None
@@ -3952,8 +3952,8 @@ async def test_launch_cwl_activity_dm_refusal_explains_pending_verification(mock
 
 @pytest.mark.discord
 def test_server_jump_link_prefers_the_player_hub_message(monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import _server_jump_link
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import _server_jump_link
 
     client = MagicMock()
     guild = MagicMock()
@@ -3973,8 +3973,8 @@ def test_server_jump_link_prefers_the_player_hub_message(monkeypatch):
 async def test_launch_cwl_activity_50106_in_server_keeps_generic_fallback(mock_interaction):
     """Inside a server the verification explanation would be wrong (members can launch there),
     so the same error code keeps the generic fallback text."""
-    from qapbot.i18n import t
-    from qapbot.ui_cwl_roster import _launch_cwl_activity
+    from clashcontrol.i18n import t
+    from clashcontrol.ui_cwl_roster import _launch_cwl_activity
 
     mock_interaction.response.is_done = MagicMock(return_value=False)
     mock_interaction.client.http.request = AsyncMock(side_effect=_FakeHTTPError(50106))
@@ -3990,7 +3990,7 @@ async def test_launch_cwl_activity_50106_in_server_keeps_generic_fallback(mock_i
 async def test_launch_cwl_activity_fallback_uses_followup_when_response_slot_is_gone(mock_interaction):
     """Any other launch failure: if the response slot is gone, the text still arrives as a
     followup instead of silently disappearing."""
-    from qapbot.ui_cwl_roster import _launch_cwl_activity
+    from clashcontrol.ui_cwl_roster import _launch_cwl_activity
 
     mock_interaction.guild = None
     mock_interaction.response.is_done = MagicMock(return_value=False)
@@ -4010,7 +4010,7 @@ async def test_launch_cwl_activity_fallback_uses_followup_when_response_slot_is_
 async def test_launch_cwl_activity_dm_fallback_ends_with_plain_dm_when_interaction_is_dead(mock_interaction):
     """Any other launch failure in a DM with a dead interaction: the generic text still goes
     out as a normal DM message."""
-    from qapbot.ui_cwl_roster import _launch_cwl_activity
+    from clashcontrol.ui_cwl_roster import _launch_cwl_activity
 
     mock_interaction.guild = None
     mock_interaction.response.is_done = MagicMock(return_value=False)
@@ -4028,7 +4028,7 @@ async def test_launch_cwl_activity_dm_fallback_ends_with_plain_dm_when_interacti
 @pytest.mark.asyncio
 async def test_launch_cwl_activity_server_fallback_never_dms(mock_interaction):
     """Inside a server a dead interaction just logs — no unsolicited DM for a server click."""
-    from qapbot.ui_cwl_roster import _launch_cwl_activity
+    from clashcontrol.ui_cwl_roster import _launch_cwl_activity
 
     mock_interaction.response.is_done = MagicMock(return_value=False)
     mock_interaction.response.send_message = AsyncMock(side_effect=Exception("unknown interaction"))
@@ -4053,7 +4053,7 @@ async def test_cwl_preferences_command_launches_activity_with_player_prefs_scree
     """No permission gate and no defer/send_message before the LAUNCH_ACTIVITY call, exactly
     like the CwlPlayerHubView button — this command is just an alternate way to reach the same
     screen."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     import QBdiscordcmds
 
     mock_interaction.id = 987654321
@@ -4074,7 +4074,7 @@ async def test_cwl_preferences_command_launches_activity_with_player_prefs_scree
 async def test_cwl_preferences_command_in_dm_without_linked_guild_says_not_linked(mock_interaction, monkeypatch):
     """Tracker #0128: no linked account in any tracked clan -> nothing to launch against."""
     import QBdiscordcmds
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.QBdiscocmdshelper as helper
 
     monkeypatch.setattr(helper, "get_dm_caller_matched_guild_ids", lambda _uid: [])
     mock_interaction.guild = None
@@ -4090,9 +4090,9 @@ async def test_cwl_preferences_command_in_dm_without_linked_guild_says_not_linke
 @pytest.mark.asyncio
 async def test_cwl_preferences_command_in_dm_with_one_guild_launches_directly(mock_interaction, monkeypatch):
     """One matching server: record it for the Activity and launch as the first response."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     import QBdiscordcmds
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.QBdiscocmdshelper as helper
 
     monkeypatch.setattr(helper, "get_dm_caller_matched_guild_ids", lambda _uid: [333444])
     monkeypatch.setattr(CACHE, "pending_cwl_dm_guild", {})
@@ -4115,9 +4115,9 @@ async def test_cwl_preferences_command_in_dm_with_one_guild_launches_directly(mo
 async def test_cwl_preferences_command_in_dm_with_several_guilds_launches_from_picker(mock_interaction, monkeypatch):
     """Several matching servers: the picker's selection answers with LAUNCH_ACTIVITY (its first
     response), and the picker message is cleared through the original command interaction."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     import QBdiscordcmds
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.QBdiscocmdshelper as helper
 
     captured = {}
 
@@ -4155,8 +4155,8 @@ async def test_cwl_preferences_command_in_dm_with_several_guilds_launches_from_p
 async def test_dm_guild_picker_on_pick_replaces_default_edit(mock_interaction, monkeypatch):
     """_prompt_dm_guild_picker's on_pick hook owns the selection's response: the default
     "Got it" edit_message must not run, or it would consume the slot LAUNCH_ACTIVITY needs."""
-    import qapbot.QBdiscocmdshelper as helper
-    import qapbot.ui_common as ui_common
+    import clashcontrol.QBdiscocmdshelper as helper
+    import clashcontrol.ui_common as ui_common
 
     views = []
     real_view_cls = ui_common.GenericSelectView
@@ -4197,8 +4197,8 @@ async def test_dm_guild_picker_on_pick_replaces_default_edit(mock_interaction, m
 def test_add_cwl_management_components_always_includes_coordinators_button():
     """Unlike every other button add_cwl_management_components() adds, this one is never gated
     on an event existing — coordinators are standing config, independent of any one season."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import add_cwl_management_components
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import add_cwl_management_components
 
     CACHE.server_config["9501"] = {}
     CACHE.db_manager = None
@@ -4217,8 +4217,8 @@ def test_add_cwl_management_components_always_includes_coordinators_button():
 def test_coordinators_button_is_primary_style():
     """Tracker #0071: "since it is a setting it should be blue" — matches "Configure
     Participating Clans" right next to it, the other per-clan-config action in this row."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import add_cwl_management_components
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import add_cwl_management_components
 
     CACHE.server_config["9506"] = {}
     CACHE.db_manager = None
@@ -4235,8 +4235,8 @@ def test_coordinators_button_is_primary_style():
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_coordinators_callback_with_no_family_clans_sends_ephemeral_error(mock_interaction):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import _make_cwl_management_coordinators_callback
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import _make_cwl_management_coordinators_callback
 
     CACHE.server_config[str(mock_interaction.guild.id)] = {}
     view = discord.ui.View(timeout=300)
@@ -4253,8 +4253,8 @@ async def test_coordinators_callback_with_no_family_clans_sends_ephemeral_error(
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_coordinators_callback_opens_view_seeded_from_cache(mock_interaction):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import _make_cwl_management_coordinators_callback, CwlCoordinatorConfigurationView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import _make_cwl_management_coordinators_callback, CwlCoordinatorConfigurationView
 
     guild_id_str = str(mock_interaction.guild.id)
     CACHE.server_config[guild_id_str] = {
@@ -4276,7 +4276,7 @@ async def test_coordinators_callback_opens_view_seeded_from_cache(mock_interacti
 
 @pytest.mark.discord
 def test_coordinator_user_select_enforces_cap_of_two(mock_interaction):
-    from qapbot.ui_cwl_roster import CwlCoordinatorConfigurationView, CWL_COORDINATOR_LIMIT
+    from clashcontrol.ui_cwl_roster import CwlCoordinatorConfigurationView, CWL_COORDINATOR_LIMIT
 
     view = CwlCoordinatorConfigurationView(
         guild=mock_interaction.guild, clan_tags=["#CLAN1"], current_coordinator_ids_by_clan={},
@@ -4294,7 +4294,7 @@ async def test_coordinator_user_select_clamps_to_two_even_if_discord_sends_more(
     max_values=2 — Discord's own client-side enforcement isn't airtight for this component shape
     (rebuilt with a fresh custom_id + default_values on every change). Never trust the client for
     the real limit; clamp server-side regardless of what Discord's payload actually contains."""
-    from qapbot.ui_cwl_roster import CwlCoordinatorConfigurationView
+    from clashcontrol.ui_cwl_roster import CwlCoordinatorConfigurationView
 
     view = CwlCoordinatorConfigurationView(
         guild=mock_interaction.guild, clan_tags=["#CLAN1"], current_coordinator_ids_by_clan={},
@@ -4325,8 +4325,8 @@ async def test_coordinator_view_serializes_save_behind_an_in_flight_selection_ch
     whatever stale state the drop left behind. Fixed with an asyncio.Lock instead: every handler
     now WAITS for its turn rather than bailing out, so no selection-change event is ever lost —
     Save simply queues up behind it and reads the correct state once it actually lands."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import CwlCoordinatorConfigurationView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import CwlCoordinatorConfigurationView
 
     CACHE.db_manager = MagicMock()
     save_mock = AsyncMock()
@@ -4382,8 +4382,8 @@ async def test_coordinator_rapid_selection_changes_are_never_dropped(mock_intera
     the asyncio.Lock replacement queues a second selection-change event rather than dropping it,
     so the view's own state always ends up matching the LAST thing the user actually picked
     (clamped to the limit), never a stale snapshot from whichever event happened to win a race."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import CwlCoordinatorConfigurationView, CWL_COORDINATOR_LIMIT
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import CwlCoordinatorConfigurationView, CWL_COORDINATOR_LIMIT
 
     CACHE.server_config[str(mock_interaction.guild.id)] = {}
 
@@ -4428,7 +4428,7 @@ async def test_coordinator_rapid_selection_changes_are_never_dropped(mock_intera
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_coordinator_user_select_callback_updates_state_for_current_clan_only(mock_interaction):
-    from qapbot.ui_cwl_roster import CwlCoordinatorConfigurationView
+    from clashcontrol.ui_cwl_roster import CwlCoordinatorConfigurationView
 
     view = CwlCoordinatorConfigurationView(
         guild=mock_interaction.guild,
@@ -4453,7 +4453,7 @@ async def test_coordinator_user_select_callback_updates_state_for_current_clan_o
 async def test_coordinator_clan_select_switches_working_clan_and_reloads_its_selection(mock_interaction):
     """Switching clans via the picker must show THAT clan's own current selection, not carry
     over whatever was showing for the previously-selected clan."""
-    from qapbot.ui_cwl_roster import CwlCoordinatorConfigurationView
+    from clashcontrol.ui_cwl_roster import CwlCoordinatorConfigurationView
 
     view = CwlCoordinatorConfigurationView(
         guild=mock_interaction.guild,
@@ -4475,7 +4475,7 @@ async def test_coordinator_clan_select_switches_working_clan_and_reloads_its_sel
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_coordinator_clear_button_empties_selection_for_current_clan_only(mock_interaction):
-    from qapbot.ui_cwl_roster import CwlCoordinatorConfigurationView
+    from clashcontrol.ui_cwl_roster import CwlCoordinatorConfigurationView
 
     view = CwlCoordinatorConfigurationView(
         guild=mock_interaction.guild,
@@ -4495,8 +4495,8 @@ async def test_coordinator_clear_button_empties_selection_for_current_clan_only(
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_coordinator_save_persists_current_clan_and_updates_cache(mock_interaction):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import CwlCoordinatorConfigurationView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import CwlCoordinatorConfigurationView
 
     guild_id_str = str(mock_interaction.guild.id)
     CACHE.server_config[guild_id_str] = {}
@@ -4524,9 +4524,9 @@ async def test_coordinator_save_reports_role_changes_only_when_something_changed
 ):
     """Tracker #0092 follow-up: Save always reconciles the coordinator roles, and the confirmation
     says so whenever a role was actually assigned or removed — silent when nothing changed."""
-    from qapbot.cache_manager import CACHE
-    import qapbot.guild_role_manager as grm
-    from qapbot.ui_cwl_roster import CwlCoordinatorConfigurationView
+    from clashcontrol.cache_manager import CACHE
+    import clashcontrol.guild_role_manager as grm
+    from clashcontrol.ui_cwl_roster import CwlCoordinatorConfigurationView
 
     CACHE.server_config[str(mock_interaction.guild.id)] = {}
     CACHE.db_manager = MagicMock()
@@ -4548,8 +4548,8 @@ async def test_coordinator_save_reports_role_changes_only_when_something_changed
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_coordinator_save_with_empty_selection_clears_cache_entry(mock_interaction):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import CwlCoordinatorConfigurationView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import CwlCoordinatorConfigurationView
 
     guild_id_str = str(mock_interaction.guild.id)
     CACHE.server_config[guild_id_str] = {"cwl_clan_coordinators": {"#CLAN1": ["111"]}}
@@ -4577,8 +4577,8 @@ async def test_coordinator_save_clamps_and_warns_if_state_ever_exceeds_limit(moc
     path not yet understood, Save must clamp AND say so, rather than either persisting more than
     the limit or silently truncating without telling the admin (the exact "said success, but a
     selection got quietly dropped" complaint this whole fix exists to resolve)."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import CwlCoordinatorConfigurationView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import CwlCoordinatorConfigurationView
 
     guild_id_str = str(mock_interaction.guild.id)
     CACHE.server_config[guild_id_str] = {}
@@ -4611,8 +4611,8 @@ async def test_coordinator_save_clamps_and_warns_if_state_ever_exceeds_limit(moc
 
 @pytest.mark.discord
 def test_build_active_clans_table_shows_no_active_season_when_none_exists(db):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import CwlCoordinatorConfigurationView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import CwlCoordinatorConfigurationView
 
     CACHE.db_manager = db
     CACHE.server_config["9701"] = {"cwl_selected_season": "2026-09"}
@@ -4634,8 +4634,8 @@ async def test_build_active_clans_table_ignores_unsaved_selection_until_save(moc
     """Tracker #0074, live bug report: "The table that shows the current settings should only be
     changed after the save button is pressed. Currently it also shows unsaved changes." Picking a
     coordinator must not move this table at all — only pressing Save may."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import CwlCoordinatorConfigurationView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import CwlCoordinatorConfigurationView
 
     CACHE.db_manager = db
     CACHE.clan_name_cache = {"#CLAN1": {"name": "The QCrew"}}
@@ -4679,8 +4679,8 @@ async def test_build_active_clans_table_ignores_unsaved_selection_until_save(moc
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_build_active_clans_table_lists_active_clans_with_coordinators(db):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import CwlCoordinatorConfigurationView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import CwlCoordinatorConfigurationView
 
     CACHE.db_manager = db
     CACHE.clan_name_cache = {"#CLAN1": {"name": "The QCrew"}, "#CLAN2": {"name": "StayCalm"}}
@@ -4721,8 +4721,8 @@ async def test_build_active_clans_table_falls_back_to_raw_id_for_unresolvable_me
     <@id> mention syntax (2026-08-29 live bug report): an @mention in this admin-only ephemeral
     table still pushes a notification to that user even though only the admin can see the
     message, so the fallback must stay a plain, non-pinging id."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import CwlCoordinatorConfigurationView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import CwlCoordinatorConfigurationView
 
     CACHE.db_manager = db
     CACHE.clan_name_cache = {"#CLAN1": {"name": "The QCrew"}}
@@ -4752,8 +4752,8 @@ async def test_build_active_clans_table_shows_linked_role_in_per_clan_mode(db):
     """Tracker #0092 follow-up: in per-clan role mode the table gains a Role column holding the
     clan's linked role NAME (a mention would not render in the code block); unlinked clans and
     links to deleted roles show the none placeholder."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import CwlCoordinatorConfigurationView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import CwlCoordinatorConfigurationView
 
     CACHE.db_manager = db
     CACHE.clan_name_cache = {"#CLAN1": {"name": "StayCalm"}, "#CLAN2": {"name": "StayMad"}}
@@ -4794,8 +4794,8 @@ async def test_build_active_clans_table_shows_linked_role_in_per_clan_mode(db):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_build_active_clans_table_has_no_role_column_in_single_mode(db):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import CwlCoordinatorConfigurationView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import CwlCoordinatorConfigurationView
 
     CACHE.db_manager = db
     CACHE.clan_name_cache = {"#CLAN1": {"name": "StayCalm"}}
@@ -4822,8 +4822,8 @@ async def test_build_active_clans_table_has_no_role_column_in_single_mode(db):
 
 @pytest.mark.discord
 def test_build_content_places_table_before_info_text(db):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import CwlCoordinatorConfigurationView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import CwlCoordinatorConfigurationView
 
     CACHE.db_manager = db
     CACHE.server_config["9704"] = {"cwl_selected_season": "2026-09"}
@@ -4850,8 +4850,8 @@ def test_notify_button_starts_disabled_and_enables_after_a_change_is_recorded():
     """The button is the fix for "coordinators are never told they're coordinators", so it must
     only be clickable when there is actually something to tell them about — same
     disabled-when-nothing-to-do convention the Clear button already follows."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import CwlCoordinatorConfigurationView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import CwlCoordinatorConfigurationView
 
     guild = MagicMock()
     guild.id = 8501
@@ -4872,8 +4872,8 @@ def test_notify_button_starts_disabled_and_enables_after_a_change_is_recorded():
 
 @pytest.mark.discord
 def test_pending_notification_records_added_and_removed_separately():
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import CwlCoordinatorConfigurationView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import CwlCoordinatorConfigurationView
 
     guild = MagicMock()
     guild.id = 8502
@@ -4893,8 +4893,8 @@ def test_pending_notification_cancels_out_a_save_undo_round_trip():
     """Removing someone and putting them straight back must leave NOTHING queued — otherwise that
     person gets DMed a contradictory "you were removed" / "you are now a coordinator" pair for a
     change that never effectively happened."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import CwlCoordinatorConfigurationView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import CwlCoordinatorConfigurationView
 
     guild = MagicMock()
     guild.id = 8503
@@ -4912,9 +4912,9 @@ def test_pending_notification_cancels_out_a_save_undo_round_trip():
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_notify_dms_added_and_removed_then_clears_pending(mock_interaction, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import CwlCoordinatorConfigurationView
-    import qapbot.QBdiscocmdshelper_cwl as cwl_helper
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import CwlCoordinatorConfigurationView
+    import clashcontrol.QBdiscocmdshelper_cwl as cwl_helper
 
     CACHE.server_config[str(mock_interaction.guild.id)] = {}
     monkeypatch.setattr(cwl_helper, "_dm_guard_blocks", lambda _uid: False)
@@ -4946,8 +4946,8 @@ async def test_notify_dms_added_and_removed_then_clears_pending(mock_interaction
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_notify_with_nothing_pending_does_not_dm_anyone(mock_interaction, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_cwl_roster import CwlCoordinatorConfigurationView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import CwlCoordinatorConfigurationView
 
     CACHE.server_config[str(mock_interaction.guild.id)] = {}
     dm_mock = AsyncMock(return_value=(True, "sent"))
@@ -4971,7 +4971,7 @@ async def test_notify_with_nothing_pending_does_not_dm_anyone(mock_interaction, 
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_about_in_server_records_landing_and_launches(mock_interaction, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     import QBdiscordcmds
 
     monkeypatch.setattr(CACHE, "pending_cwl_activity_screen", {("4711", "555666"): "player_prefs"})
@@ -4989,7 +4989,7 @@ async def test_about_in_server_records_landing_and_launches(mock_interaction, mo
 @pytest.mark.asyncio
 async def test_about_in_dm_drops_the_recorded_dm_server(mock_interaction, monkeypatch):
     """A DM launch that finds a recorded server opens CWL preferences for it — /about must not."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     import QBdiscordcmds
 
     monkeypatch.setattr(CACHE, "pending_cwl_dm_guild", {"555666": 333444})
@@ -5009,7 +5009,7 @@ async def test_about_in_dm_drops_the_recorded_dm_server(mock_interaction, monkey
 async def test_about_dm_refusal_sends_the_landing_text(mock_interaction, monkeypatch):
     """Unverified app, DM launch refused with 50106: no server to point at, so the landing
     essentials (install link + first commands) go out as a DM instead."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     import QBdiscordcmds
 
     monkeypatch.setattr(CACHE, "pending_cwl_dm_guild", {})
@@ -5030,7 +5030,7 @@ async def test_about_dm_refusal_sends_the_landing_text(mock_interaction, monkeyp
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_about_server_launch_failure_answers_with_the_landing_text(mock_interaction):
-    from qapbot.ui_cwl_roster import _launch_cwl_activity
+    from clashcontrol.ui_cwl_roster import _launch_cwl_activity
 
     mock_interaction.client.application_id = 42
     mock_interaction.response.is_done = MagicMock(return_value=False)

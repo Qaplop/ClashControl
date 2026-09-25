@@ -31,7 +31,7 @@ import pytest
 
 os.environ.setdefault("DISCORD_TOKEN", "test-token")
 
-import qapbot.config as config_module  # noqa: E402
+import clashcontrol.config as config_module  # noqa: E402
 
 PAGE_SIZE = 16384
 GB = 2 ** 30
@@ -116,7 +116,7 @@ def test_production_expression_matches_this_files_copy():
     """
     import inspect
 
-    from qapbot.db_manager import WarHistoryDB
+    from clashcontrol.db_manager import WarHistoryDB
 
     src = inspect.getsource(WarHistoryDB.nightly_db_maintenance)
     assert "_VAC_CONFIG.vacuum_min_freelist_pages," in src

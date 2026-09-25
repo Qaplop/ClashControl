@@ -17,7 +17,7 @@ import pytest
 
 os.environ.setdefault("DISCORD_TOKEN", "test-token")
 
-from qapbot.db_manager import WarHistoryDB
+from clashcontrol.db_manager import WarHistoryDB
 
 SEASON = "2026-09"
 
@@ -35,7 +35,7 @@ async def db(tmp_path):
 
 @pytest.fixture(autouse=True)
 def _cache_db(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     monkeypatch.setattr(CACHE, "db_manager", db, raising=False)
     monkeypatch.setattr(CACHE, "server_config", {}, raising=False)
@@ -46,7 +46,7 @@ def _cache_db(db, monkeypatch):
 
 @pytest.fixture(autouse=True)
 def _dm_guard_off(monkeypatch):
-    import qapbot.config as config_module
+    import clashcontrol.config as config_module
 
     monkeypatch.setattr(
         config_module, "CONFIG",
@@ -55,7 +55,7 @@ def _dm_guard_off(monkeypatch):
 
 
 async def _seed(db, guild_id: str, clan_tags=("#CLAN1", "#CLAN2")) -> None:
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await db.conn.execute("INSERT OR IGNORE INTO guild_config (guild_id) VALUES (?)", (guild_id,))
     for tag in clan_tags:
@@ -102,7 +102,7 @@ async def _event(db, guild_id, clan_configs, status="announced") -> int:
     ],
 )
 def test_phase_derivation(status, locked, expected_phase, expected_key):
-    from qapbot.QBdiscocmdshelper_cwl import resolve_cwl_phase
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_cwl_phase
 
     clans = [{"participating": 1, "locked_at": "2026-09-01T08:00Z" if locked else None}]
     info = resolve_cwl_phase({"status": status}, clans)
@@ -111,13 +111,13 @@ def test_phase_derivation(status, locked, expected_phase, expected_key):
 
 
 def test_phase_none_event_has_no_indicator():
-    from qapbot.QBdiscocmdshelper_cwl import render_cwl_step_indicator, resolve_cwl_phase
+    from clashcontrol.QBdiscocmdshelper_cwl import render_cwl_step_indicator, resolve_cwl_phase
 
     assert render_cwl_step_indicator(resolve_cwl_phase(None), 1) is None
 
 
 def test_step_indicator_marks_done_current_and_upcoming():
-    from qapbot.QBdiscocmdshelper_cwl import render_cwl_step_indicator, resolve_cwl_phase
+    from clashcontrol.QBdiscocmdshelper_cwl import render_cwl_step_indicator, resolve_cwl_phase
 
     info = resolve_cwl_phase({"status": "announced"}, [{"participating": 1, "locked_at": None}])
     rendered = render_cwl_step_indicator(info, 1)
@@ -131,7 +131,7 @@ def test_step_indicator_marks_done_current_and_upcoming():
 
 def test_step_indicator_war_shows_how_many_clans_actually_started():
     """A guild reaches War when the FIRST clan starts — a bare "War" would imply all of them have."""
-    from qapbot.QBdiscocmdshelper_cwl import render_cwl_step_indicator, resolve_cwl_phase
+    from clashcontrol.QBdiscocmdshelper_cwl import render_cwl_step_indicator, resolve_cwl_phase
 
     clans = [
         {"participating": 1, "locked_at": "x"},
@@ -177,7 +177,7 @@ async def test_clan_config_save_preserves_locked_at(db):
 
 @pytest.mark.asyncio
 async def test_freeze_blocks_moving_a_player_out_of_a_started_clan(db):
-    from qapbot.QBdiscocmdshelper_cwl import assign_cwl_player_sync
+    from clashcontrol.QBdiscocmdshelper_cwl import assign_cwl_player_sync
 
     guild_id = "301"
     await _seed(db, guild_id)
@@ -197,7 +197,7 @@ async def test_freeze_blocks_moving_a_player_out_of_a_started_clan(db):
 
 @pytest.mark.asyncio
 async def test_freeze_blocks_adding_an_ineligible_player_to_a_started_clan(db):
-    from qapbot.QBdiscocmdshelper_cwl import assign_cwl_player_sync
+    from clashcontrol.QBdiscocmdshelper_cwl import assign_cwl_player_sync
 
     guild_id = "302"
     await _seed(db, guild_id)
@@ -218,7 +218,7 @@ async def test_freeze_blocks_adding_an_ineligible_player_to_a_started_clan(db):
 async def test_freeze_allows_a_player_who_was_in_the_clan_at_lock_time(db):
     """The one exception, project owner's spec: someone sitting in the unassigned pool who WAS in
     the clan when it started is still eligible and may be dragged in during War phase."""
-    from qapbot.QBdiscocmdshelper_cwl import assign_cwl_player_sync
+    from clashcontrol.QBdiscocmdshelper_cwl import assign_cwl_player_sync
 
     guild_id = "303"
     await _seed(db, guild_id)
@@ -238,7 +238,7 @@ async def test_freeze_allows_a_player_who_was_in_the_clan_at_lock_time(db):
 @pytest.mark.asyncio
 async def test_freeze_leaves_unlocked_clans_completely_alone(db):
     """The freeze is per-clan: a family's other clans keep working normally while one is at war."""
-    from qapbot.QBdiscocmdshelper_cwl import assign_cwl_player_sync
+    from clashcontrol.QBdiscocmdshelper_cwl import assign_cwl_player_sync
 
     guild_id = "304"
     await _seed(db, guild_id, ("#CLAN1", "#CLAN2", "#CLAN3"))
@@ -273,8 +273,8 @@ async def test_locked_member_snapshot_is_write_once(db):
 
 @pytest.mark.asyncio
 async def test_no_show_is_dropped_to_the_pool_and_dmed(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import reconcile_cwl_locked_clan_roster
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import reconcile_cwl_locked_clan_roster
 
     guild_id = "305"
     await _seed(db, guild_id)
@@ -301,8 +301,8 @@ async def test_no_show_is_dropped_to_the_pool_and_dmed(db, monkeypatch):
 async def test_reconciliation_does_nothing_without_a_snapshot(db, monkeypatch):
     """Safety valve: an empty eligible set means the snapshot failed, NOT that nobody is eligible.
     Dropping a whole roster on the strength of a failed API call would be catastrophic."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import reconcile_cwl_locked_clan_roster
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import reconcile_cwl_locked_clan_roster
 
     guild_id = "306"
     await _seed(db, guild_id)
@@ -323,8 +323,8 @@ async def test_reconciliation_does_nothing_without_a_snapshot(db, monkeypatch):
 @pytest.mark.asyncio
 async def test_never_announced_no_show_is_dropped_silently(db, monkeypatch):
     """Someone never told to be there has nothing to be corrected about — drop, but no DM."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import reconcile_cwl_locked_clan_roster
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import reconcile_cwl_locked_clan_roster
 
     guild_id = "307"
     await _seed(db, guild_id)
@@ -343,8 +343,8 @@ async def test_never_announced_no_show_is_dropped_silently(db, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_first_locked_clan_moves_the_event_into_war(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import check_cwl_roster_switches
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import check_cwl_roster_switches
 
     guild_id = "308"
     await _seed(db, guild_id)
@@ -385,7 +385,7 @@ async def test_locked_clan_tags_drive_the_delete_block(db):
 async def test_delete_button_disabled_once_a_clan_started(db):
     import discord
 
-    from qapbot.ui_cwl_roster import add_cwl_management_components
+    from clashcontrol.ui_cwl_roster import add_cwl_management_components
 
     guild_id = "310"
     await _seed(db, guild_id)
@@ -415,7 +415,7 @@ async def _announced_player(db, event_id, guild_id, tag, clan_tag, name, discord
 
 @pytest.mark.asyncio
 async def test_moving_an_announced_player_makes_an_update_pending(db):
-    from qapbot.QBdiscocmdshelper_cwl import (
+    from clashcontrol.QBdiscocmdshelper_cwl import (
         assign_cwl_player_sync, resolve_cwl_pending_roster_updates_sync,
     )
 
@@ -439,7 +439,7 @@ async def test_moving_an_announced_player_makes_an_update_pending(db):
 async def test_dragging_there_and_back_cancels_itself_out(db):
     """The avalanche protection, obtained structurally rather than by debouncing: "pending" is a
     comparison against what was last SENT, so A→B→A ends up owing nobody a DM."""
-    from qapbot.QBdiscocmdshelper_cwl import (
+    from clashcontrol.QBdiscocmdshelper_cwl import (
         assign_cwl_player_sync, resolve_cwl_pending_roster_updates_sync,
     )
 
@@ -459,7 +459,7 @@ async def test_dragging_there_and_back_cancels_itself_out(db):
 async def test_unassigning_an_announced_player_leaves_a_tombstone(db):
     """Unassigning DELETES the assignment row, so without a tombstone the fact that this player is
     owed a "you're off the roster" DM would vanish with it."""
-    from qapbot.QBdiscocmdshelper_cwl import (
+    from clashcontrol.QBdiscocmdshelper_cwl import (
         assign_cwl_player_sync, resolve_cwl_pending_roster_updates_sync,
     )
 
@@ -482,7 +482,7 @@ async def test_unassigning_an_announced_player_leaves_a_tombstone(db):
 
 @pytest.mark.asyncio
 async def test_a_never_announced_player_counts_as_new_not_moved(db):
-    from qapbot.QBdiscocmdshelper_cwl import resolve_cwl_pending_roster_updates_sync
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_cwl_pending_roster_updates_sync
 
     guild_id = "323"
     await _seed(db, guild_id)
@@ -505,8 +505,8 @@ async def test_enrollment_payload_hides_pending_updates_before_first_announcemen
     Announce Rosters, not Send Roster Updates, is meant to handle) leaked into the board's own
     pending count. Mirrors the Hub's own branch (add_cwl_management_components, ui_cwl_roster.py:
     `if event["status"] == "signup_open": ... else: count_cwl_pending_roster_updates(...)`)."""
-    from qapbot.QBdiscocmdshelper_cwl import assign_cwl_player_sync
-    from qapbot.web_bridge import _build_enrollment_payload_sync
+    from clashcontrol.QBdiscocmdshelper_cwl import assign_cwl_player_sync
+    from clashcontrol.web_bridge import _build_enrollment_payload_sync
 
     guild_id = "324"
     await _seed(db, guild_id)
@@ -536,7 +536,7 @@ async def test_pending_roster_updates_stay_zero_during_enrollment(db):
     button, which only calls it from an `else: status != signup_open` branch) — so the phase gate
     now lives inside count_cwl_pending_roster_updates() itself, the one function every caller
     shares, rather than being each caller's job to re-derive."""
-    from qapbot.QBdiscocmdshelper_cwl import count_cwl_pending_roster_updates
+    from clashcontrol.QBdiscocmdshelper_cwl import count_cwl_pending_roster_updates
 
     guild_id = "325"
     await _seed(db, guild_id)
@@ -553,8 +553,8 @@ async def test_pending_roster_updates_stay_zero_during_enrollment(db):
 
 @pytest.mark.asyncio
 async def test_send_roster_updates_dms_once_and_clears_pending(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import (
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import (
         assign_cwl_player_sync, count_cwl_pending_roster_updates, send_cwl_roster_updates,
     )
 
@@ -580,8 +580,8 @@ async def test_send_roster_updates_dms_once_and_clears_pending(db, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_one_user_with_two_changed_accounts_gets_one_dm(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import assign_cwl_player_sync, send_cwl_roster_updates
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import assign_cwl_player_sync, send_cwl_roster_updates
 
     guild_id = "325"
     await _seed(db, guild_id)
@@ -613,8 +613,8 @@ async def test_removing_a_clan_makes_its_announced_players_pending(db):
     """Removing a clan strands anyone already told they'd play for it. Their assignment row
     survives (it just stops being rendered), so the ordinary moved/dropped comparison would never
     notice — the tombstone is what routes them into the same update batch as every other change."""
-    from qapbot.QBdiscocmdshelper_cwl import resolve_cwl_pending_roster_updates_sync
-    from qapbot.web_bridge import _tombstone_announced_players_of_removed_clans_sync
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_cwl_pending_roster_updates_sync
+    from clashcontrol.web_bridge import _tombstone_announced_players_of_removed_clans_sync
 
     guild_id = "340"
     await _seed(db, guild_id)
@@ -634,7 +634,7 @@ async def test_removing_a_clan_makes_its_announced_players_pending(db):
 
 @pytest.mark.asyncio
 async def test_removing_an_unrelated_clan_touches_nobody(db):
-    from qapbot.web_bridge import _tombstone_announced_players_of_removed_clans_sync
+    from clashcontrol.web_bridge import _tombstone_announced_players_of_removed_clans_sync
 
     guild_id = "341"
     await _seed(db, guild_id)
@@ -650,8 +650,8 @@ async def test_late_added_never_contacted_player_gets_one_combined_dm(db, monkey
     """Spec item 5's edge case: a player whose clan joined the season after Start Enrollment ran
     has TWO unanswered questions — "do you want to play?" and "here's where you play". They arrive
     as one message with the confirm/opt-out buttons attached, not two separate DMs."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import send_cwl_roster_updates
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import send_cwl_roster_updates
 
     guild_id = "342"
     await _seed(db, guild_id)
@@ -681,8 +681,8 @@ async def test_late_added_never_contacted_player_gets_one_combined_dm(db, monkey
 async def test_already_enrolled_player_gets_no_confirm_buttons(db, monkeypatch):
     """Someone who already answered the enrollment question this season just needs the roster
     information — re-asking would be the redundant second DM this design exists to avoid."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import send_cwl_roster_updates
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import send_cwl_roster_updates
 
     guild_id = "343"
     await _seed(db, guild_id)
@@ -706,7 +706,7 @@ async def test_already_enrolled_player_gets_no_confirm_buttons(db, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_underfilled_clans_are_reported_and_full_ones_are_not(db):
-    from qapbot.QBdiscocmdshelper_cwl import resolve_cwl_underfilled_clans_sync
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_cwl_underfilled_clans_sync
 
     guild_id = "330"
     await _seed(db, guild_id)
@@ -734,8 +734,8 @@ async def test_underfilled_clans_are_reported_and_full_ones_are_not(db):
 
 @pytest.mark.asyncio
 async def test_clans_missing_coordinator_are_reported_and_covered_ones_are_not(db):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import resolve_cwl_clans_missing_coordinator_sync
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_cwl_clans_missing_coordinator_sync
 
     guild_id = "331"
     await _seed(db, guild_id)
@@ -752,8 +752,8 @@ async def test_clans_missing_coordinator_are_reported_and_covered_ones_are_not(d
 
 @pytest.mark.asyncio
 async def test_no_missing_coordinator_when_all_participating_clans_covered(db):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import resolve_cwl_clans_missing_coordinator_sync
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_cwl_clans_missing_coordinator_sync
 
     guild_id = "332"
     await _seed(db, guild_id)
@@ -771,8 +771,8 @@ async def test_no_missing_coordinator_when_all_participating_clans_covered(db):
 
 @pytest.mark.asyncio
 async def test_coordinator_of_a_participating_clan_gets_board_access(db):
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import is_cwl_coordinator_for_current_season
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import is_cwl_coordinator_for_current_season
 
     guild_id = "311"
     await _seed(db, guild_id)
@@ -787,8 +787,8 @@ async def test_coordinator_of_a_participating_clan_gets_board_access(db):
 async def test_coordinator_of_a_sitting_out_clan_gets_no_access(db):
     """Coordinator config is standing and carries forward every month, so it has to be scoped to
     clans actually participating this season ("for this season", project owner's spec)."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import is_cwl_coordinator_for_current_season
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import is_cwl_coordinator_for_current_season
 
     guild_id = "312"
     await _seed(db, guild_id)
@@ -805,7 +805,7 @@ async def test_coordinator_of_a_sitting_out_clan_gets_no_access(db):
 # ---------------------------------------------------------------------------
 
 def test_finished_season_marks_the_war_step_as_done():
-    from qapbot.QBdiscocmdshelper_cwl import render_cwl_step_indicator, resolve_cwl_phase
+    from clashcontrol.QBdiscocmdshelper_cwl import render_cwl_step_indicator, resolve_cwl_phase
 
     clans = [{"participating": 1, "locked_at": "2026-01-02T08:00Z", "cwl_start_at": "2026-01-02T08:00"}]
     info = resolve_cwl_phase({"status": "war", "cwl_season": "2026-01"}, clans)
@@ -820,7 +820,7 @@ def test_finished_season_marks_the_war_step_as_done():
 def test_running_season_still_shows_the_current_phase_in_blue():
     from datetime import datetime, timezone
 
-    from qapbot.QBdiscocmdshelper_cwl import render_cwl_step_indicator, resolve_cwl_phase
+    from clashcontrol.QBdiscocmdshelper_cwl import render_cwl_step_indicator, resolve_cwl_phase
 
     now = datetime.now(timezone.utc)
     season = f"{now.year:04d}-{now.month:02d}"
@@ -837,6 +837,6 @@ def test_running_season_still_shows_the_current_phase_in_blue():
 
 def test_phase_without_a_season_key_is_never_reported_finished():
     """Callers that build a minimal dict for the phase mapping alone must not be dated."""
-    from qapbot.QBdiscocmdshelper_cwl import resolve_cwl_phase
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_cwl_phase
 
     assert resolve_cwl_phase({"status": "war"}, [{"participating": 1, "locked_at": "x"}])["finished"] is False

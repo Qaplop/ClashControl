@@ -1,4 +1,4 @@
-"""Extended tests for qapbot/cache_manager.py — write-through methods & sync helpers.
+"""Extended tests for clashcontrol/cache_manager.py — write-through methods & sync helpers.
 
 Targets uncovered cache mutation methods: set_subscriptions_for_channel,
 delete_subscriptions_for_channel, delete_subscriptions_for_guild,
@@ -18,7 +18,7 @@ from typing import Any, Dict, List
 
 import pytest
 
-from qapbot.cache_manager import CacheManager
+from clashcontrol.cache_manager import CacheManager
 
 
 # ---------------------------------------------------------------------------

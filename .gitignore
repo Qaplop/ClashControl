@@ -221,15 +221,15 @@ subscriptions.json
 data/**/*.json
 
 # BUT allow translation files to be tracked
-!qapbot/translations/*.json
+!clashcontrol/translations/*.json
 
 # Runtime / test data
 data/
 testdata/
 archive/
 archive_old/
-qapbot/scripts/*.txt
-qapbot/scripts/*.jpg
+clashcontrol/scripts/*.txt
+clashcontrol/scripts/*.jpg
 cwl_reconstruct_*.tsv
 qapbot.db*
 qapbot_history.db*

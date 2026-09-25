@@ -37,7 +37,7 @@ class _FakeDbManager:
 def test_fake_db_manager_contract_matches_real_interface() -> None:
     """Guard against silent drift: every method _FakeDbManager stubs must still
     exist on the real WarHistoryDB. A rename/removal in production breaks here."""
-    from qapbot.db_manager import WarHistoryDB
+    from clashcontrol.db_manager import WarHistoryDB
 
     for _method in _FakeDbManager._STUBBED_METHODS:
         assert hasattr(WarHistoryDB, _method), (
@@ -151,7 +151,7 @@ async def test_list_accounts_legend_and_icons_match_clan_management(monkeypatch:
     clan_management's own meaning: VERIFIED (shield) for API-verified, GCHECK for linked-but-not.
     """
     import QBdiscordcmds
-    from qapbot.emojis import BotEmojis
+    from clashcontrol.emojis import BotEmojis
 
     fake_cache = _FakeCache()
     fake_cache.user_accounts = {
@@ -200,7 +200,7 @@ async def test_war_predict_modal_apm_matches_corrected_label(
     backwards). The parsing logic had the same inversion baked in -- fix both together so the
     corrected label text actually matches what submitting the form does."""
     import QBdiscordcmds
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.QBdiscocmdshelper as helper
 
     monkeypatch.setattr(helper, "check_bot_admin_only", lambda interaction, server_admin: True)
 
@@ -291,8 +291,8 @@ async def test_status_calls_send_and_track(monkeypatch: pytest.MonkeyPatch, mock
 @pytest.mark.asyncio
 async def test_admin_check_logs_calls_scanner_when_bot_admin(monkeypatch: pytest.MonkeyPatch, mock_interaction):
     import QBdiscordcmds
-    import qapbot.QBdiscocmdshelper_admin_command as admin_helpers
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.QBdiscocmdshelper_admin_command as admin_helpers
+    import clashcontrol.QBdiscocmdshelper as helper
 
     monkeypatch.setattr(QBdiscordcmds, "SERVER_ADMIN", "BotAdmin")
     monkeypatch.setattr(QBdiscordcmds, "CACHE", _FakeCache())
@@ -315,8 +315,8 @@ async def test_admin_check_logs_calls_scanner_when_bot_admin(monkeypatch: pytest
 @pytest.mark.asyncio
 async def test_admin_check_data_calls_checker_when_bot_admin(monkeypatch: pytest.MonkeyPatch, mock_interaction):
     import QBdiscordcmds
-    import qapbot.QBdiscocmdshelper_admin_command as admin_helpers
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.QBdiscocmdshelper_admin_command as admin_helpers
+    import clashcontrol.QBdiscocmdshelper as helper
 
     monkeypatch.setattr(QBdiscordcmds, "SERVER_ADMIN", "BotAdmin")
     monkeypatch.setattr(QBdiscordcmds, "CACHE", _FakeCache())
@@ -341,7 +341,7 @@ async def test_admin_check_data_calls_checker_when_bot_admin(monkeypatch: pytest
 @pytest.mark.asyncio
 async def test_list_managed_cwls_rejects_non_bot_admin(monkeypatch: pytest.MonkeyPatch, mock_interaction):
     import QBdiscordcmds
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.QBdiscocmdshelper as helper
 
     monkeypatch.setattr(QBdiscordcmds, "SERVER_ADMIN", "BotAdmin")
     monkeypatch.setattr(QBdiscordcmds, "CACHE", _FakeCache())
@@ -359,8 +359,8 @@ async def test_list_managed_cwls_rejects_non_bot_admin(monkeypatch: pytest.Monke
 @pytest.mark.asyncio
 async def test_list_managed_cwls_defaults_to_next_upcoming_season(monkeypatch: pytest.MonkeyPatch, mock_interaction):
     import QBdiscordcmds
-    import qapbot.QBdiscocmdshelper as helper
-    from qapbot.QBdiscocmdshelper_cwl import resolve_current_cwl_season
+    import clashcontrol.QBdiscocmdshelper as helper
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_current_cwl_season
 
     expected_season = resolve_current_cwl_season()
 
@@ -403,7 +403,7 @@ async def test_list_managed_cwls_defaults_to_next_upcoming_season(monkeypatch: p
 @pytest.mark.asyncio
 async def test_list_managed_cwls_rejects_invalid_season_format(monkeypatch: pytest.MonkeyPatch, mock_interaction):
     import QBdiscordcmds
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.QBdiscocmdshelper as helper
 
     monkeypatch.setattr(QBdiscordcmds, "SERVER_ADMIN", "BotAdmin")
     monkeypatch.setattr(QBdiscordcmds, "CACHE", _FakeCache())
@@ -421,7 +421,7 @@ async def test_list_managed_cwls_rejects_invalid_season_format(monkeypatch: pyte
 @pytest.mark.asyncio
 async def test_list_managed_cwls_no_data_message(monkeypatch: pytest.MonkeyPatch, mock_interaction):
     import QBdiscordcmds
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.QBdiscocmdshelper as helper
 
     class _FakeDb:
         def list_cwl_events_for_season_across_guilds_sync(self, season):

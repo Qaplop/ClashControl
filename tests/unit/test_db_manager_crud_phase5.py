@@ -34,7 +34,7 @@ import pytest
 @pytest.fixture
 async def db(tmp_path):
     """Create a real async WarHistoryDB backed by a temp file."""
-    from qapbot.db_manager import WarHistoryDB
+    from clashcontrol.db_manager import WarHistoryDB
     inst = WarHistoryDB()
     db_path = str(tmp_path / "crud_test.db")
     await inst.initialize(db_path)
@@ -90,7 +90,7 @@ class TestEnsureClanExists:
         mock_cache.clan_name_cache = {
             "#ABCDE1234": {"name": "TestClan", "has_active_subscriptions": True}
         }
-        with patch("qapbot.cache_manager.CACHE", mock_cache):
+        with patch("clashcontrol.cache_manager.CACHE", mock_cache):
             await db._ensure_clan_exists("#ABCDE1234")
 
         cursor = await db.conn.execute(
@@ -105,7 +105,7 @@ class TestEnsureClanExists:
         """If clan not in DB and not in CACHE, creates placeholder."""
         mock_cache = MagicMock()
         mock_cache.clan_name_cache = {}
-        with patch("qapbot.cache_manager.CACHE", mock_cache):
+        with patch("clashcontrol.cache_manager.CACHE", mock_cache):
             await db._ensure_clan_exists("#NEWCL1234")
 
         cursor = await db.conn.execute(
@@ -150,7 +150,7 @@ class TestEnsureFamilyExists:
         mock_cache.clan_families = {
             "FAM1": {"name": "My Family", "owned_by_guild": "guild1"}
         }
-        with patch("qapbot.cache_manager.CACHE", mock_cache):
+        with patch("clashcontrol.cache_manager.CACHE", mock_cache):
             await db._ensure_family_exists("FAM1")
 
         cursor = await db.conn.execute(
@@ -164,7 +164,7 @@ class TestEnsureFamilyExists:
     async def test_creates_placeholder_no_cache(self, db):
         mock_cache = MagicMock()
         mock_cache.clan_families = {}
-        with patch("qapbot.cache_manager.CACHE", mock_cache):
+        with patch("clashcontrol.cache_manager.CACHE", mock_cache):
             await db._ensure_family_exists("FAM_NOCACHE")
 
         cursor = await db.conn.execute(
@@ -296,7 +296,7 @@ class TestLeaderboardMessageRoundTrip:
         """If clan_tag provided, _ensure_clan_exists is called."""
         mock_cache = MagicMock()
         mock_cache.clan_name_cache = {"#LBCL1234": {"name": "LBClan"}}
-        with patch("qapbot.cache_manager.CACHE", mock_cache):
+        with patch("clashcontrol.cache_manager.CACHE", mock_cache):
             await db.save_leaderboard_message(
                 message_key="LB_KEY2",
                 clan_tag="#LBCL1234",
@@ -372,7 +372,7 @@ class TestUserRoundTrip:
         """Player with current_clan_tag should trigger _ensure_clan_exists."""
         mock_cache = MagicMock()
         mock_cache.clan_name_cache = {"#USRCL234": {"name": "UserClan"}}
-        with patch("qapbot.cache_manager.CACHE", mock_cache):
+        with patch("clashcontrol.cache_manager.CACHE", mock_cache):
             user_data = {
                 "display_name": "ClanUser",
                 "players": [

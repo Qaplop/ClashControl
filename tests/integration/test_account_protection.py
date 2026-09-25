@@ -50,11 +50,11 @@ class _FakeCache:
 
 @pytest.fixture
 def fake_cache(monkeypatch: pytest.MonkeyPatch) -> _FakeCache:
-    import qapbot.cache_manager
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.cache_manager
+    import clashcontrol.QBdiscocmdshelper as helper
 
     cache = _FakeCache()
-    monkeypatch.setattr(qapbot.cache_manager, "CACHE", cache)
+    monkeypatch.setattr(clashcontrol.cache_manager, "CACHE", cache)
     monkeypatch.setattr(helper, "CACHE", cache)
     return cache
 
@@ -62,7 +62,7 @@ def fake_cache(monkeypatch: pytest.MonkeyPatch) -> _FakeCache:
 class TestOwnerLookups:
     @pytest.mark.integration
     def test_get_verified_player_owner(self, fake_cache):
-        from qapbot.QBdiscocmdshelper import get_verified_player_owner
+        from clashcontrol.QBdiscocmdshelper import get_verified_player_owner
 
         fake_cache.user_accounts["111"] = {
             "display_name": "Owner",
@@ -74,7 +74,7 @@ class TestOwnerLookups:
 
     @pytest.mark.integration
     def test_get_any_player_owner(self, fake_cache):
-        from qapbot.QBdiscocmdshelper import get_any_player_owner
+        from clashcontrol.QBdiscocmdshelper import get_any_player_owner
 
         fake_cache.user_accounts["111"] = {
             "display_name": "Owner",
@@ -92,7 +92,7 @@ class TestLinkingSecurity:
     @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_link_rejected_when_verified_by_other(self, fake_cache):
-        from qapbot.QBdiscocmdshelper import _link_player_to_user
+        from clashcontrol.QBdiscocmdshelper import _link_player_to_user
 
         fake_cache.user_accounts["111"] = {
             "display_name": "Owner",
@@ -113,7 +113,7 @@ class TestLinkingSecurity:
     @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_link_allowed_with_api_token_override_moves_player(self, fake_cache):
-        from qapbot.QBdiscocmdshelper import _link_player_to_user
+        from clashcontrol.QBdiscocmdshelper import _link_player_to_user
 
         fake_cache.user_accounts["111"] = {
             "display_name": "Owner",
@@ -146,7 +146,7 @@ class TestLinkingSecurity:
         enrollment-DM reroute (fire_cwl_dm_reroute_after_ownership_change) rather than only
         relying on the next periodic sweep — fired, not awaited, so it must not block/fail this
         security-sensitive linking call."""
-        import qapbot.QBdiscocmdshelper as helper
+        import clashcontrol.QBdiscocmdshelper as helper
 
         fired = []
         monkeypatch.setattr(helper, "fire_cwl_dm_reroute_after_ownership_change", lambda: fired.append(True))
@@ -169,7 +169,7 @@ class TestLinkingSecurity:
     @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_admin_override_fires_cwl_dm_reroute(self, fake_cache, monkeypatch):
-        import qapbot.QBdiscocmdshelper as helper
+        import clashcontrol.QBdiscocmdshelper as helper
 
         fired = []
         monkeypatch.setattr(helper, "fire_cwl_dm_reroute_after_ownership_change", lambda: fired.append(True))
@@ -194,7 +194,7 @@ class TestLinkingSecurity:
         """The third ownership-displacing branch (stealing an unverified, unclaimed tag from
         whoever currently holds it) is also a real ownership change and must trigger the same
         reroute — not just the two explicit "override" branches."""
-        import qapbot.QBdiscocmdshelper as helper
+        import clashcontrol.QBdiscocmdshelper as helper
 
         fired = []
         monkeypatch.setattr(helper, "fire_cwl_dm_reroute_after_ownership_change", lambda: fired.append(True))
@@ -217,7 +217,7 @@ class TestLinkingSecurity:
     async def test_fresh_link_does_not_fire_cwl_dm_reroute(self, fake_cache, monkeypatch):
         """A first-time link of a never-before-linked tag displaces nobody, so it must not
         schedule a reroute sweep at all."""
-        import qapbot.QBdiscocmdshelper as helper
+        import clashcontrol.QBdiscocmdshelper as helper
 
         fired = []
         monkeypatch.setattr(helper, "fire_cwl_dm_reroute_after_ownership_change", lambda: fired.append(True))
@@ -238,7 +238,7 @@ class TestLinkingSecurity:
         state — and the role sync runs off that same data immediately afterwards — so it must
         always read live. A cached read here would let a link record a clan the player has
         already left, and hand them the wrong in-game role."""
-        from qapbot.QBdiscocmdshelper import _link_player_to_user
+        from clashcontrol.QBdiscocmdshelper import _link_player_to_user
 
         ok, _msg = await _link_player_to_user(
             target_user_id=222,

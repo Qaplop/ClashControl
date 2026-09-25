@@ -17,7 +17,7 @@ import threading
 
 import pytest
 
-from qapbot.db_manager import WarHistoryDB
+from clashcontrol.db_manager import WarHistoryDB
 
 
 # ---------------------------------------------------------------------------

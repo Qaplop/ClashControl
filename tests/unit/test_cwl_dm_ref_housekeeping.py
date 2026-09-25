@@ -16,7 +16,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from qapbot.db_manager import CWL_DM_REF_MAX_AGE_DAYS, WarHistoryDB
+from clashcontrol.db_manager import CWL_DM_REF_MAX_AGE_DAYS, WarHistoryDB
 
 
 @pytest.fixture
@@ -146,8 +146,8 @@ async def test_bench_upgrade_clears_a_deleted_dm_instead_of_retrying_it_forever(
 
     import discord
 
-    import qapbot.QBdiscocmdshelper_cwl as helper
-    from qapbot.cache_manager import CACHE
+    import clashcontrol.QBdiscocmdshelper_cwl as helper
+    from clashcontrol.cache_manager import CACHE
 
     CACHE.server_config.clear()
     CACHE.server_config["1"] = {"cwl_signup_mode": "extended"}

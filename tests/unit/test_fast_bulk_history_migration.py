@@ -3,7 +3,7 @@ Tests for WarHistoryDB.fast_bulk_history_migration(), added 2026-08-01 after the
 normal batched run_history_migration() path proved far slower than raw disk
 I/O should allow (~900-1000 rows/sec on SSD for what was only ~10 GB of data) —
 root-caused to per-row secondary-index maintenance (6 B-tree updates per row on
-each side of the move). See qapbot/docs/DATABASE_ARCHITECTURE.md's Migration
+each side of the move). See clashcontrol/docs/DATABASE_ARCHITECTURE.md's Migration
 History for the incident writeup.
 
 Covers the properties that matter most for a "temporarily drop indexes, bulk
@@ -20,8 +20,8 @@ move, rebuild indexes" operation:
 """
 import pytest
 
-from qapbot.db_manager import WarHistoryDB
-import qapbot.db_manager as db_manager_module
+from clashcontrol.db_manager import WarHistoryDB
+import clashcontrol.db_manager as db_manager_module
 
 _SECONDARY_INDEX_NAMES = {
     "idx_wa_player_tag",

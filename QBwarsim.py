@@ -39,8 +39,8 @@ from typing import Tuple, List, Dict, Any, Optional
 # CWL league star distribution data (source: clashspot.net, 2026-08)
 #
 # This dict's key set mirrors the current CoC league ladder — the actual single source of truth
-# for that ladder is qapbot/constants.py's CWL_LEAGUE_ORDER (used to derive
-# qapbot/ui_cwl_roster.py's CWL_LEAGUE_RANKS picker list, and duplicated as a TS constant in
+# for that ladder is clashcontrol/constants.py's CWL_LEAGUE_ORDER (used to derive
+# clashcontrol/ui_cwl_roster.py's CWL_LEAGUE_RANKS picker list, and duplicated as a TS constant in
 # activity/client/src/playerPrefs.ts). If a future CoC league-system change adds/renames a tier,
 # update CWL_LEAGUE_ORDER (and this dict) together — tracker #0047 was exactly this kind of drift,
 # caught only in the picker list, not here.

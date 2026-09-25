@@ -52,7 +52,7 @@ class TestStoreResultGateIsWiredToProtectedMembership:
         """store_result only suppresses the cache WRITE. If a future change also skipped the
         cache READ for unprotected clans, this optimisation would start costing real API
         calls instead of just saving memory."""
-        from qapbot.coc_cache import CoCClanCache
+        from clashcontrol.coc_cache import CoCClanCache
         sig = inspect.signature(CoCClanCache.get_clan)
         assert "store_result" in sig.parameters
         doc = inspect.getdoc(CoCClanCache.get_clan) or ""
@@ -68,8 +68,8 @@ class TestProtectedPopulationIsObservable:
     count has to be visible in a PROD log that runs at INFO."""
 
     def test_protected_count_is_logged_at_info_not_debug(self):
-        import QapBot
-        src = inspect.getsource(QapBot)
+        import ClashControl
+        src = inspect.getsource(ClashControl)
         idx = src.find("[COC-CACHE-PROTECT]")
         assert idx != -1, "the protected-count line is gone"
         # Walk back to the logging call that emits it.

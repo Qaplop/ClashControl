@@ -1,0 +1,1128 @@
+"""
+CoC Clan Cache with stale-while-revalidate strategy.
+
+Provides in-memory caching of CoC clan data to reduce API calls.
+The cache uses a two-tier TTL approach:
+- Fresh (< soft TTL): return cached data immediately
+- Stale (soft..hard TTL): return cached, trigger background refresh
+- Expired (> hard TTL): blocking API refresh
+
+Memory Usage:
+    OUTDATED (was: "~8-10 KB per clan (with full 50 members) / For 20 clans (typical): ~200 KB")
+    Measured 2026-08-29 (tracker #0009) against real coc.Clan objects: ~69 KB for a
+    36-member clan, ~90 KB for a 50-member clan — roughly 9x the figure above. A cached
+    coc.Clan is only ~2.4 KB by itself, but coc.py's `Clan._iter_members` is an
+    un-exhausted generator expression closing over the raw API response's `memberList`,
+    so each cached clan pins its whole raw payload whether or not `.members` is ever read.
+    That is why this cache is size-capped (MAX_ENTRIES below), not TTL-only.
+"""
+
+import asyncio
+import gc as _gc_mod
+import logging
+import sys
+import types as _types_mod
+from typing import Dict, Any, List, Optional, Set, TYPE_CHECKING
+from datetime import datetime, timezone
+
+import coc  # type: ignore[import-untyped]
+
+if TYPE_CHECKING:
+    from clashcontrol.cache_manager import CacheManager
+
+from clashcontrol.exceptions import CacheError
+from clashcontrol.coc_health import coc_retry
+from clashcontrol.constants import WAR_UPDATE_LEAGUES as _WAR_UPDATE_LEAGUES
+
+# Maximum number of coc.Clan objects held in the cache at any time (tracker #0009).
+# Before this cap the cache was TTL-only (hard_ttl_seconds), swept once per update cycle
+# by clear_expired().  During a 22h-recheck wave a single cycle polls thousands of clans,
+# so the cache grew unbounded until the cycle ended — PROD logged
+# "[COC-CACHE-CLEANUP] Removed 5007 expired entries", i.e. ~5000 entries x ~75 KB = ~375 MB
+# resident inside one cycle.  Steady-state occupancy is 300-800 entries (measured from two
+# live memory profiles), so this cap never evicts during normal operation; it only clips
+# the waves.  Eviction is FIFO on insertion order, which for a pure TTL cache means
+# "closest to expiry first" — the same policy (and rationale) as _MAX_TEMP_WAR_OBJECTS
+# in cache_manager.py.
+# 2026-09-04: raised 1500 -> 20000.
+#
+# WHY THE CAP MUST NOT BIND: smart backdating deliberately schedules a CWL clan to be polled
+# on consecutive cycles around its war boundary (a few minutes before the war ends, then
+# again just after), which is the access pattern this cache was introduced for in the first
+# place.  At 1500 the Phase-1 flood evicted entries within seconds of caching them, so that
+# pattern could never be served — and worse, any hit-rate reading taken at that cap would
+# have described the eviction policy rather than the access pattern.
+#
+# SIZING: occupancy is bounded by the TTL, not by the cap — an entry lives 600s, so at most
+# (600 / cycle_period) cycles' worth of clans are alive at once.  Measured peak is 3,053
+# clans/cycle; at the normal 300s period that is ~6.1K entries, and if cycles shorten to
+# ~180s (the sleep floor lets them) it is ~10.2K.  20000 keeps roughly 2x headroom over that
+# worst case so the cap never becomes the thing under measurement.  Anything from ~12K up is
+# equivalent in practice; below ~10K it can start binding during heavy CWL cycles.
+#
+# MEMORY: entries are 69-90 KB each (see the module docstring — a "lazy" coc.Clan pins its
+# whole raw payload).  Realistic peak occupancy is therefore ~0.44 GB at a 300s period and
+# ~0.73 GB at 180s — NOT 20000 x 90 KB, because the TTL sweeps long before the cap is
+# reached.  Against 10 GB of RAM on the server-machine that is comfortable.
+#
+# This is currently a MEASUREMENT setting.  hit_rate= is now reported per population
+# (protected vs other) on every [COC-CACHE-CLEANUP] line; once those numbers are in, size
+# this to what is demonstrably re-read rather than leaving it at a round number.
+MAX_COC_CLAN_CACHE_ENTRIES = 20000
+
+
+class CoCClanCache:
+    """
+    In-memory cache for CoC clan data to reduce API calls.
+    
+    Uses a stale-while-revalidate strategy:
+    - Fresh (< soft TTL): return cached data immediately
+    - Stale (soft TTL..hard TTL): return cached data, trigger background refresh
+    - Expired (> hard TTL): blocking API refresh
+    
+    Memory Usage:
+        OUTDATED (was: "~8-10 KB per clan (with full 50 members) / For 100 clans: ~1 MB /
+        For 20 clans (typical): ~200 KB")
+        Measured 2026-08-29 (tracker #0009): ~69 KB per 36-member clan, ~90 KB per
+        50-member clan — see this module's docstring for why a "lazy" coc.Clan is far from
+        free, and MAX_COC_CLAN_CACHE_ENTRIES for the size cap that follows from it.
+        At the 1500-entry cap: ~100-135 MB.
+
+    Example:
+        cache = CoCClanCache(soft_ttl_seconds=280, hard_ttl_seconds=600)
+        clan = await cache.get_clan("#2C9UR9GJY")
+    """
+    
+    def __init__(
+        self,
+        soft_ttl_seconds: int = 280,
+        hard_ttl_seconds: int = 600,
+        max_entries: int = MAX_COC_CLAN_CACHE_ENTRIES,
+    ):
+        """
+        Initialize the clan cache with stale-while-revalidate TTLs.
+
+        Args:
+            soft_ttl_seconds: Soft TTL — data younger than this is considered fresh (default: 280s)
+            hard_ttl_seconds: Hard TTL — data older than this requires a blocking refresh (default: 600s)
+            max_entries: Hard size cap; oldest-inserted entries are evicted past it
+                         (default: MAX_COC_CLAN_CACHE_ENTRIES — see that constant for why)
+        """
+        self.cache: Dict[str, Dict[str, Any]] = {}  # clan_tag -> {"data": clan_obj, "timestamp": datetime}
+        self.soft_ttl_seconds = soft_ttl_seconds
+        self.hard_ttl_seconds = hard_ttl_seconds
+        self.max_entries = max_entries
+        self.evicted_by_cap: int = 0  # lifetime counter, surfaced by get_stats()
+        # Hit/miss accounting.  There was none until 2026-09-04, so this cache's real
+        # effectiveness had never been measured — and measuring it then showed the polling
+        # path cannot hit it at all: fetch_clan_war_data()'s last_checked_via_api gate
+        # blocks a re-request for 12h (30min for role clans), which is strictly longer than
+        # this cache's 600s hard TTL, so a polled clan is ALWAYS expired before it could be
+        # asked for again.  Measured over 12.4h: 56,070 fetches across 55,609 distinct
+        # clans (1.01 each), zero refetch gaps inside the TTL.  Keep these counters so any
+        # future resizing is done on evidence, not on the assumption that a cache helps.
+        self.hits: int = 0          # served fresh, below soft TTL
+        self.stale_hits: int = 0    # served stale + scheduled a background refresh
+        self.misses: int = 0        # absent or past hard TTL -> blocking API fetch
+        # Same three, restricted to protected tags (subscribed / family / CWL group and
+        # their war opponents).  The whole question this cache poses is WHICH population is
+        # re-read: the handful of clans user commands ask about, or the tens of thousands the
+        # poll loop streams.  A single blended hit_rate cannot answer that — it would be
+        # dominated by whichever population is larger.  'other' is derived by subtraction.
+        self.hits_protected: int = 0
+        self.stale_hits_protected: int = 0
+        self.misses_protected: int = 0
+        # Clans exempt from size-cap eviction (TTL still expires them normally).
+        # Populated once per cycle by CacheManager.refresh_protected_clan_tags(); see
+        # _evict_over_cap() for why, and that method for what qualifies.
+        # Empty set = plain FIFO, i.e. the pre-2026-09-04 behaviour.
+        self.protected_tags: Set[str] = set()
+        self._refreshing: set[str] = set()  # Clan tags currently being refreshed in background
+        # Serializes update_player_info_in_user_accounts() per clan_tag (2026-08-21 incident fix)
+        # — this method can be entered concurrently for the SAME clan from two independent call
+        # sites (the periodic Phase-1 poll loop, and QBdiscocmdshelper_cwl.py's on-demand
+        # ensure_cwl_clan_membership_tracked()). Without this lock, both read the DB's current
+        # "who already owns this player_tag" snapshot before either has persisted its own
+        # newly-discovered UNASSIGNED-pool players, so both append the SAME player dict to the
+        # shared in-memory list — the second save_user("UNASSIGNED") then hits SQLite's
+        # UNIQUE(discord_id, player_tag) constraint. Confirmed live on PROD 2026-08-21: a CWL
+        # "Start Enrollment" run (120-player DM blast, Stay family) raced the periodic loop on a
+        # just-added clan with zero prior tracked members.
+        self._update_locks: Dict[str, asyncio.Lock] = {}
+        # clan_tag -> when update_player_info_in_user_accounts() last completed for it, i.e. how
+        # old the clan's member list in user_players is. Read by ensure_cwl_clan_membership_tracked()
+        # (QBdiscocmdshelper_cwl.py) for its 24h freshness rule. Memory-only by design: after a
+        # restart a missing entry just costs one extra clan fetch on the next guest-clan add.
+        # Bounded by the number of tracked clans (only those reach that method).
+        self.members_refreshed_at: Dict[str, datetime] = {}
+        self.cache_manager: Optional['CacheManager'] = None  # Set after CacheManager initialization
+        # Note: Logging may not be configured yet during module import, so use try/except
+        try:
+            logging.debug(
+                f"Initialized CoC Clan Cache with soft_TTL={soft_ttl_seconds}s "
+                f"({soft_ttl_seconds/60:.1f}min), hard_TTL={hard_ttl_seconds}s "
+                f"({hard_ttl_seconds/60:.1f}min)"
+            )
+        except Exception:
+            pass  # Logging not yet configured during import
+    
+    async def get_clan(self, clan_tag: str, *, store_result: bool = True) -> 'coc.Clan':
+        """
+        Get clan data from cache or API using stale-while-revalidate.
+        
+        - Fresh (< soft TTL): returns cached data immediately
+        - Stale (soft..hard TTL): returns cached data, triggers background refresh
+        - Expired (> hard TTL) or miss: blocking API fetch
+        
+        Args:
+            clan_tag: Normalized clan tag (e.g., "#2C9UR9GJY")
+            store_result: When ``False``, a freshly fetched clan is NOT written to the
+                cache. Reads are unaffected — a fresh entry is still served if one exists,
+                so this never costs an extra API call.
+
+                Use it for the Phase-1 polling path, whose own ``last_checked_via_api``
+                gate (12h, 30min for role clans) is far longer than this cache's 600s TTL:
+                it can never re-read what it stores, and it streams enough distinct clans
+                to fill the cache many times over (measured 2026-09-04: 55,609 distinct
+                clans in 12.4h, 1.01 fetches each, zero refetches inside the TTL). Storing
+                those results costs ~100-130 MB of resident memory and constant eviction
+                churn to serve nobody. Same rationale as ``get_league_war(cache_result=…)``
+                in cache_manager.py.
+
+                Leave it ``True`` for interactive callers (commands, UI, web bridge) —
+                those genuinely do re-ask within the TTL, and they are the reason this
+                cache exists.
+
+        Returns:
+            coc.Clan object
+
+        Raises:
+            CacheError: If CoC API client not initialized
+            Same exceptions as coc_client.get_clan() if blocking API call fails
+        """
+        if not self.cache_manager or not self.cache_manager.coc_client:
+            raise CacheError(
+                "CoC API client not initialized. Call startup_login() first.",
+                context={"operation": "get_clan", "clan_tag": clan_tag}
+            )
+        
+        now = datetime.now(timezone.utc)
+        
+        if clan_tag in self.cache:
+            cached = self.cache[clan_tag]
+            age_seconds = (now - cached["timestamp"]).total_seconds()
+            
+            if age_seconds < self.soft_ttl_seconds:
+                # Fresh — return immediately
+                self.hits += 1
+                if clan_tag in self.protected_tags:
+                    self.hits_protected += 1
+                logging.debug(f"[COC-CACHE-HIT] {clan_tag} (age: {age_seconds:.1f}s)")
+                return cached["data"]
+            
+            if age_seconds < self.hard_ttl_seconds:
+                # Stale — return cached data, schedule background refresh
+                logging.debug(
+                    f"[COC-CACHE-STALE] {clan_tag} (age: {age_seconds:.1f}s, "
+                    f"soft={self.soft_ttl_seconds}s, hard={self.hard_ttl_seconds}s)"
+                )
+                self.stale_hits += 1
+                if clan_tag in self.protected_tags:
+                    self.stale_hits_protected += 1
+                self._schedule_background_refresh(clan_tag)
+                return cached["data"]
+            
+            # Expired — fall through to blocking refresh
+            logging.debug(
+                f"[COC-CACHE-EXPIRED] {clan_tag} (age: {age_seconds:.1f}s, "
+                f"hard_TTL: {self.hard_ttl_seconds}s)"
+            )
+        else:
+            logging.debug(f"[COC-CACHE-MISS] {clan_tag}")
+        
+        # Blocking fetch from API
+        self.misses += 1
+        if clan_tag in self.protected_tags:
+            self.misses_protected += 1
+        return await self._fetch_and_cache(clan_tag, store_result=store_result)
+    
+    async def _fetch_and_cache(self, clan_tag: str, *, store_result: bool = True) -> 'coc.Clan':
+        """
+        Fetch clan from CoC API, update cache and clan metadata.
+        
+        Shared by both blocking get_clan() and background refresh.
+        
+        Args:
+            clan_tag: Normalized clan tag
+            
+        Returns:
+            coc.Clan object
+        """
+        logging.info(f"[COC-API-CALL] Fetching clan data for {clan_tag} from API")
+        now = datetime.now(timezone.utc)
+        
+        async def _fetch_clan() -> 'coc.Clan':
+            return await self.cache_manager.coc_client.get_clan(clan_tag)  # type: ignore[union-attr]
+        
+        clan_obj: 'coc.Clan' = await coc_retry(  # type: ignore[assignment]
+            _fetch_clan,
+            operation_name=f"get_clan({clan_tag})"
+        )
+        # Re-insert at the end so insertion order stays "oldest fetch first" even when an
+        # existing entry is refreshed — otherwise a refreshed-in-place entry would keep its
+        # original (now wrong) position and _evict_over_cap() would drop genuinely newer data.
+        if store_result:
+            self.cache.pop(clan_tag, None)
+            self.cache[clan_tag] = {
+                "data": clan_obj,  # type: ignore[dict-item]
+                "timestamp": now
+            }
+            self._evict_over_cap()
+        else:
+            # Caller has declared this result not worth keeping (see get_clan's docstring).
+            # Drop any existing entry rather than leaving a staler one behind than what we
+            # just fetched and discarded.
+            self.cache.pop(clan_tag, None)
+
+        # Update clan_name_cache and player info if cache_manager is available
+        if self.cache_manager:
+            await self._update_clan_metadata(clan_obj, now)
+        
+        return clan_obj
+    
+    async def _update_clan_metadata(self, clan_obj: 'coc.Clan', now: datetime) -> None:
+        """Update clan name cache, warlog status, and player info from a fresh API response.
+        
+        Uses dirty-tracking to avoid unnecessary DB writes: only persists when
+        meaningful data actually changed (name, warlog status, new clan).
+        The last_checked_via_api timestamp is updated in-memory every call but
+        only written to DB when piggy-backed on another real change, or when
+        the cached timestamp is more than 1 hour stale.
+        """
+        # Update clan name cache (single source of truth for clan names)
+        clan_data = self.cache_manager.clan_name_cache.get(clan_obj.tag)  # type: ignore[union-attr, attr-defined]
+        dirty = False  # Track if a DB write is needed
+        
+        # Check if clan is new (not in cache yet)
+        if clan_data is None:
+            _wl_obj = getattr(clan_obj, 'war_league', None)
+            _wl_name: Optional[str] = str(getattr(_wl_obj, 'name', '') or '') if _wl_obj else None
+            _wl_name = _wl_name if _wl_name else None  # normalise empty string → None
+            # All clans are added to the DB.  track_war_updates is league-gated:
+            # M3+ → True (22h polling), M4- or unknown → False (no war updates).
+            _track = _wl_name in _WAR_UPDATE_LEAGUES if _wl_name else False
+            # New clan - create entry
+            logging.info(f"[COC-CACHE] New clan added to database: {clan_obj.name} ({clan_obj.tag}) | league={_wl_name} | track={_track}")  # type: ignore[attr-defined]
+            clan_data = {  # type: ignore[var-annotated]
+                "name": clan_obj.name,  # type: ignore[attr-defined]
+                "has_active_subscriptions": False,
+                "last_war_update": None,
+                "warlog_is_public": True,
+                "last_checked_via_api": now.isoformat(),
+                "war_league": _wl_name,
+                "track_war_updates": _track,
+                "is_deleted": False,
+            }
+            self.cache_manager.clan_name_cache[clan_obj.tag] = clan_data  # type: ignore[union-attr, index, attr-defined]
+            dirty = True
+        elif not isinstance(clan_data, dict):  # type: ignore[misc]
+            # Unexpected non-dict format (data corruption safety guard)
+            logging.error(f"[COC-CACHE] Clan {clan_obj.tag} has unexpected non-dict format in cache!")  # type: ignore[attr-defined]
+            _wl_obj = getattr(clan_obj, 'war_league', None)
+            _wl_name = str(getattr(_wl_obj, 'name', '') or '') if _wl_obj else None
+            _wl_name = _wl_name if _wl_name else None
+            clan_data = {  # type: ignore[var-annotated]
+                "name": clan_obj.name,  # type: ignore[attr-defined]
+                "has_active_subscriptions": False,
+                "last_war_update": None,
+                "warlog_is_public": True,
+                "last_checked_via_api": now.isoformat(),
+                "war_league": _wl_name,
+                "track_war_updates": True,
+                "is_deleted": False,
+            }
+            self.cache_manager.clan_name_cache[clan_obj.tag] = clan_data  # type: ignore[union-attr, index, attr-defined]
+            dirty = True
+        
+        # Update clan name if changed
+        if clan_data and clan_data.get("name") != clan_obj.name:  # type: ignore[attr-defined]
+            clan_data["name"] = clan_obj.name  # type: ignore[attr-defined]
+            logging.debug(f"[CLAN-NAME-UPDATE] {clan_obj.tag}: {clan_obj.name}")  # type: ignore[attr-defined]
+            dirty = True
+
+        # Clear is_deleted flag: a successful get_clan response proves the clan is alive.
+        if clan_data and clan_data.get("is_deleted"):  # type: ignore[union-attr]
+            clan_data["is_deleted"] = False
+            logging.info(f"[CLAN-RESTORED] {clan_obj.tag} ({clan_obj.name}) — previously marked deleted, now confirmed alive.")  # type: ignore[attr-defined]
+            dirty = True
+
+        # Update war_league if changed (CWL league tier, e.g. "Crystal League I")
+        # war_league only changes between CWL seasons (promotion/demotion), so this is usually a no-op.
+        if clan_data is not None:  # type: ignore[misc]
+            _wl_obj = getattr(clan_obj, 'war_league', None)
+            _new_wl: Optional[str] = str(getattr(_wl_obj, 'name', '') or '') if _wl_obj else None
+            _new_wl = _new_wl if _new_wl else None  # normalise empty string → None
+            if _new_wl is not None and clan_data.get("war_league") != _new_wl:  # type: ignore[union-attr]
+                _old_wl = clan_data.get("war_league")  # type: ignore[union-attr]
+                clan_data["war_league"] = _new_wl
+                logging.info(f"[WAR-LEAGUE-UPDATE] {clan_obj.tag}: {_old_wl} → {_new_wl}")  # type: ignore[attr-defined]
+                dirty = True
+                # League changed → update tracking status for non-subscribed clans only.
+                # Subscribed / member clans (has_active_subscriptions) are always immune:
+                # their track_war_updates stays True regardless of league movement.
+                if not clan_data.get("has_active_subscriptions"):  # type: ignore[union-attr]
+                    if not clan_data.get("track_war_updates") and _new_wl in _WAR_UPDATE_LEAGUES:  # type: ignore[union-attr]
+                        # Promotion: passively tracked clan entered Master III+.
+                        clan_data["track_war_updates"] = True  # type: ignore[index]
+                        logging.info(
+                            f"[WAR-LEAGUE-UPDATE] {clan_obj.tag}: track_war_updates → True "  # type: ignore[attr-defined]
+                            f"(promoted to {_new_wl})"
+                        )
+                    elif clan_data.get("track_war_updates") and _new_wl not in _WAR_UPDATE_LEAGUES:  # type: ignore[union-attr]
+                        # Demotion candidate: previously tracked clan dropped below
+                        # Master III. Defer if the clan already has archived data
+                        # for its current in-progress season — demoting now would
+                        # silence polling for the remaining rounds and permanently
+                        # freeze an incomplete season on record (see
+                        # CLAN_WAR_TRACKING.md write-path 7's mid-season guard;
+                        # this mirrors the same reasoning for this older, separate
+                        # demotion path).
+                        _in_progress = False
+                        if self.cache_manager and self.cache_manager.db_manager:
+                            try:
+                                _in_progress = await self.cache_manager.db_manager.clan_has_in_progress_cwl_data(
+                                    str(clan_obj.tag)  # type: ignore[attr-defined]
+                                )
+                            except Exception as _ip_ex:
+                                logging.warning(
+                                    "[WAR-LEAGUE-UPDATE] %s: clan_has_in_progress_cwl_data "
+                                    "check failed (%s) — proceeding with demotion",
+                                    clan_obj.tag, _ip_ex,  # type: ignore[attr-defined]
+                                )
+                        if _in_progress:
+                            logging.info(
+                                "[WAR-LEAGUE-UPDATE] %s: demotion deferred (demoted to %s) — "
+                                "already has in-progress-season CWL data; will re-evaluate "
+                                "once that season ends",
+                                clan_obj.tag, _new_wl,  # type: ignore[attr-defined]
+                            )
+                        else:
+                            # Remove any ongoing temp war file first to prevent orphans,
+                            # then pull the clan out of the 22h polling pool.
+                            _removed = self._cleanup_temp_war_files(str(clan_obj.tag))  # type: ignore[attr-defined]
+                            clan_data["track_war_updates"] = False  # type: ignore[index]
+                            logging.info(
+                                "[WAR-LEAGUE-UPDATE] %s: track_war_updates → False "
+                                "(demoted to %s, no subscriptions%s)",
+                                clan_obj.tag,  # type: ignore[attr-defined]
+                                _new_wl,
+                                f", removed {_removed} temp war file(s)" if _removed else "",
+                            )
+        
+        # Always update the in-memory timestamp (cheap), but only force a DB write
+        # if it's been more than 1 hour since the last persisted value
+        if clan_data:
+            old_timestamp = clan_data.get("last_checked_via_api")  # type: ignore[union-attr]
+            clan_data["last_checked_via_api"] = now.isoformat()
+            if not dirty and old_timestamp and isinstance(old_timestamp, str):
+                try:
+                    last_check = datetime.fromisoformat(old_timestamp)
+                    # Make timezone-aware if needed for comparison
+                    if last_check.tzinfo is None:
+                        from datetime import timezone as tz
+                        last_check = last_check.replace(tzinfo=tz.utc)
+                    hours_since = (now - last_check).total_seconds() / 3600
+                    if hours_since >= 1.0:
+                        dirty = True
+                except (ValueError, TypeError):
+                    dirty = True  # Can't parse old timestamp, write to fix it
+            elif not old_timestamp:
+                dirty = True  # No previous timestamp, must write
+        
+        # Single persist if any data changed
+        if dirty:
+            await self.cache_manager.persist_clan(clan_obj.tag)  # type: ignore[union-attr, attr-defined]
+        
+        # Update war log public status (has its own dirty check inside)
+        await self._update_warlog_status(clan_obj)
+
+        # Update player info in user_accounts — restricted to clans actually relevant to some
+        # guild (member_clans/member_families or a channel subscription; see
+        # update_all_clan_subscription_statuses()'s tracked_tags computation, which is exactly
+        # what has_active_subscriptions reflects here).
+        #
+        # 2026-08-14 incident: this call used to run unconditionally for EVERY clan_obj this
+        # process's shared get_clan() cache ever touches — which includes every CWL opponent
+        # and family-harvested clan it happens to see (~380K entries in PROD's
+        # clan_name_cache), not just a guild's actual member clans. Two consequences, live on
+        # PROD within the first cycle after this scope bug shipped: (1) update_player_info_in_
+        # user_accounts() does a full O(len(user_accounts)) scan of every registered player
+        # TWICE per call, plus a persist_user() DB write for any clan with never-before-seen
+        # members — multiplying that cost across thousands of one-off opponent clans instead of
+        # a small member-clan set turned every single clan fetch (not just member clans) into a
+        # slow operation, observed as "fetching clan data is super slow" and, because
+        # periodic_main()'s Phase 1 only checks the shutdown event BETWEEN full cycles (not
+        # mid-cycle), made a SIGTERM/kill look unresponsive since a cycle now took far longer to
+        # finish; (2) real clan members of clans the guild never configured (e.g. CWL
+        # opponents) got auto-added to the UNASSIGNED pool, polluting user_players with accounts
+        # nobody asked to track. Gating on has_active_subscriptions fixes both at once.
+        if clan_data.get("has_active_subscriptions"):  # type: ignore[union-attr]
+            await self.update_player_info_in_user_accounts(clan_obj, self.cache_manager)  # type: ignore[arg-type]
+
+        # Schedule background CoC/clan role sync for all guilds that have this clan
+        self._schedule_role_sync_for_clan(clan_obj)
+
+    def _cleanup_temp_war_files(self, clan_tag: str) -> int:
+        """
+        Remove all temp war files for *clan_tag* and clear in-memory war state.
+
+        Called when a non-subscribed clan is demoted below the Master III
+        tracking threshold so any in-progress war file does not become an orphan.
+
+        Returns the number of temp files removed.
+        """
+        import os
+        import glob as _glob
+        from clashcontrol.config import CONFIG
+
+        safe_tag = clan_tag.lstrip("#").upper()
+        temp_base = os.path.join(CONFIG.data_dir, "temp")
+        try:
+            import QBcsvhandling as _qbc
+            shard_dir = _qbc.get_war_shard_dir(safe_tag, temp_base)
+        except Exception:
+            shard_dir = temp_base  # fallback: flat layout
+
+        war_files = _glob.glob(os.path.join(shard_dir, f"{safe_tag}_*_war_data.json"))
+        removed = 0
+        for fp in war_files:
+            try:
+                os.remove(fp)
+                logging.info("[DEMOTION] %s: removed temp war file %s", clan_tag, os.path.basename(fp))
+                removed += 1
+            except OSError as ex:
+                logging.warning("[DEMOTION] %s: could not remove temp war file %s: %s",
+                                clan_tag, os.path.basename(fp), ex)
+
+        if removed and self.cache_manager:
+            self.cache_manager.set_temp_war_stats(clan_tag, {})
+            logging.info("[DEMOTION] %s: cleared in-memory war state", clan_tag)
+
+        return removed
+
+    def _schedule_role_sync_for_clan(self, clan_obj: 'coc.Clan') -> None:
+        """
+        Fire-and-forget background role sync for every guild that lists this clan
+        as a member clan and has CoC or clan role features enabled.
+
+        Called automatically after every real API fetch so role assignments stay
+        current within 12 hours (the new get_clan throttle).
+        """
+        if not self.cache_manager:
+            return
+
+        clan_tag: str = clan_obj.tag  # type: ignore[attr-defined]
+        members = list(getattr(clan_obj, 'members', []))
+
+        async def _do_role_sync() -> None:
+            try:
+                import QBcore as _qbcore
+                from clashcontrol.config import CONFIG
+                from clashcontrol.guild_role_manager import sync_roles_for_clan_members
+                for guild_id_str, config in self.cache_manager.server_config.items():  # type: ignore[union-attr]
+                    # DEV mode: only sync the dev guild, skip all others
+                    if CONFIG.is_dev_mode and int(guild_id_str) != CONFIG.discord_guild_id:
+                        logging.debug(f"[COC-CACHE] DEV mode: skipping role sync for guild {guild_id_str}")
+                        continue
+                    if not config.get("coc_role_enabled") and not config.get("clan_role_enabled"):
+                        continue
+                    # Clan is covered by this guild if it's an individually configured member
+                    # clan OR a member of one of the guild's member families. Family-only guilds
+                    # (no individual member_clans) must still trigger role sync for their clans.
+                    _covered = clan_tag in config.get("member_clans", [])
+                    if not _covered:
+                        for _family_id in config.get("member_families", []):
+                            family_data = self.cache_manager.clan_families.get(_family_id, {})  # type: ignore[union-attr]
+                            if clan_tag in family_data.get("clans", []):
+                                _covered = True
+                                break
+                    if not _covered:
+                        continue
+                    guild = _qbcore.bot.get_guild(int(guild_id_str))
+                    if not guild:
+                        continue
+                    try:
+                        await sync_roles_for_clan_members(guild, guild_id_str, clan_tag, members)  # type: ignore[arg-type]
+                    except Exception as _inner_e:
+                        logging.warning(
+                            f"[COC-CACHE] Role sync failed for guild {guild_id_str}, "
+                            f"clan {clan_tag}: {_inner_e}"
+                        )
+            except Exception as _e:
+                logging.warning(f"[COC-CACHE] Role sync trigger failed for {clan_tag}: {_e}")
+
+        import QBcore as _qbcore_spawn
+        _qbcore_spawn.spawn_tracked(f"coc-cache-role-sync-{clan_tag}", _do_role_sync())
+
+    def _schedule_background_refresh(self, clan_tag: str) -> None:
+        """
+        Schedule a fire-and-forget background refresh for a stale cache entry.
+        
+        Only one refresh per clan_tag is scheduled at a time (dedup via _refreshing set).
+        Errors in the background task are logged but do NOT propagate to callers.
+        """
+        if clan_tag in self._refreshing:
+            logging.debug(f"[COC-CACHE-REFRESH] Already refreshing {clan_tag}, skipping")
+            return
+        
+        self._refreshing.add(clan_tag)
+        
+        async def _do_refresh() -> None:
+            try:
+                # Bail out silently if maintenance is active — the CoC client
+                # and DB were intentionally closed and should not be touched.
+                _in_maintenance = False
+                try:
+                    import QBcore as _qbcore
+                    _in_maintenance = _qbcore.maintenance_mode
+                except ImportError:
+                    pass
+                if _in_maintenance:
+                    logging.debug(
+                        f"[COC-CACHE-REFRESH] Skipping {clan_tag} — maintenance active"
+                    )
+                    return
+                await self._fetch_and_cache(clan_tag)
+                logging.debug(f"[COC-CACHE-REFRESH] Background refresh complete for {clan_tag}")
+            except Exception as e:
+                logging.warning(f"[COC-CACHE-REFRESH] Background refresh failed for {clan_tag}: {e}")
+            finally:
+                self._refreshing.discard(clan_tag)
+
+        import QBcore as _qbcore_spawn
+        _qbcore_spawn.spawn_tracked(f"coc-cache-refresh-{clan_tag}", _do_refresh())
+    
+    async def _update_warlog_status(self, clan_obj: 'coc.Clan') -> None:
+        """
+        Guard against private war log being incorrectly marked public via clan endpoint.
+
+        Only updates warlog_is_public to False (private) when the clan endpoint says
+        is_war_log_public=False. The True (public) direction is intentionally skipped here
+        because clan.is_war_log_public=True is unreliable for some clans — those clans
+        return True in the clan endpoint but PrivateWarLog on the war endpoint, causing a
+        flip-flop if we update here. The war fetch success handler in QBhelperfunctions is
+        the authoritative source for marking a clan public.
+
+        Args:
+            clan_obj: coc.Clan object from API
+        """
+        if not self.cache_manager:
+            return
+        
+        clan_tag: str = clan_obj.tag  # type: ignore[assignment, attr-defined]
+        is_public: bool = getattr(clan_obj, 'is_war_log_public', True)  # Default to True if attribute missing
+        
+        clan_data = self.cache_manager.clan_name_cache.get(clan_tag)  # type: ignore[arg-type]
+        if not clan_data:
+            return
+        
+        # Skip if clan data is not in dict format (shouldn't happen)
+        if not isinstance(clan_data, dict):  # type: ignore[misc]
+            logging.warning(f"[WARLOG-STATUS] Clan {clan_tag} not in dict format - skipping")
+            return
+        
+        # Only update to False here. The True direction is handled exclusively by the
+        # war fetch success path (QBhelperfunctions get_current_war_data success block),
+        # because clan.is_war_log_public=True from the clan endpoint is unreliable —
+        # some clans return True there but PrivateWarLog on the actual war endpoint.
+        # Trusting True here causes a flip-flop: WARLOG-STATUS logs "changed to public"
+        # then PRIVATE-WARLOG immediately resets it back to False in the same cycle.
+        if is_public:
+            return
+
+        current_status: bool = clan_data.get('warlog_is_public', True)  # type: ignore[assignment]
+        if current_status != is_public:
+            clan_data['warlog_is_public'] = is_public
+            await self.cache_manager.persist_clan(clan_tag)  # type: ignore[arg-type]
+            logging.info(f"[WARLOG-STATUS] {clan_tag} war log changed to private (detected via clan endpoint)")
+    
+    def _apply_member_field_updates(
+        self, player: Dict[str, Any], member: Any, clan_obj: 'coc.Clan'
+    ) -> tuple[bool, Optional[str]]:
+        """Apply the TH/clan-tag/name/role updates for one already-tracked player against a
+        fresh clan-member API record. Shared by both branches of
+        update_player_info_in_user_accounts() (DB-indexed lookup and the full-scan fallback) so
+        the field semantics can't drift between them. Returns (changed, new_name) — new_name is
+        set only when the name actually changed, for the caller's player_name_index propagation.
+        """
+        changed = False
+        player_tag = player.get("player_tag")  # type: ignore[union-attr]
+
+        # Update TH level
+        old_th: Optional[int] = player.get("th_level")  # type: ignore[assignment]
+        new_th: int = member.town_hall  # type: ignore[attr-defined]
+        if old_th != new_th:
+            player["th_level"] = new_th
+            changed = True
+            logging.debug(f"[USER-ACCOUNTS-UPDATE] {player_tag}: TH {old_th} -> {new_th}")
+
+        # Update current clan tag (name looked up from clan_name_cache)
+        old_clan_tag: Optional[str] = player.get("current_clan_tag")  # type: ignore[assignment]
+        new_clan_tag: str = clan_obj.tag  # type: ignore[assignment, attr-defined]
+        if old_clan_tag != new_clan_tag:
+            player["current_clan_tag"] = new_clan_tag
+            changed = True
+            logging.debug(f"[USER-ACCOUNTS-UPDATE] {player_tag}: Clan updated to {new_clan_tag}")
+
+        # Update player name (CoC API is authoritative for current name)
+        new_name_out: Optional[str] = None
+        old_name: Optional[str] = player.get("player_name")  # type: ignore[assignment]
+        new_name: str = member.name  # type: ignore[attr-defined]
+        if old_name != new_name:
+            player["player_name"] = new_name
+            changed = True
+            new_name_out = new_name
+            logging.info(f"[PLAYER-NAME-UPDATE] {player_tag}: '{old_name}' -> '{new_name}'")
+
+        # Update CoC in-game role (member/elder/coLeader/leader)
+        old_coc_role: Optional[str] = player.get("coc_role")  # type: ignore[assignment]
+        raw_member_role = getattr(member, "role", None)  # type: ignore[attr-defined]
+        # Use role.name instead of str() or .value:
+        # str(Role.leader) == "Leader" (title-case) — won't match our keys
+        # Role.elder.value == "admin" — won't match "elder"
+        # Role.name gives "member", "elder", "co_leader", "leader"
+        # Map co_leader → coLeader to match COC_ROLE_PRIORITY
+        _raw_name: Optional[str] = getattr(raw_member_role, "name", None) if raw_member_role else None
+        new_coc_role: Optional[str] = ("coLeader" if _raw_name == "co_leader" else _raw_name) if _raw_name else None
+        if old_coc_role != new_coc_role:
+            player["coc_role"] = new_coc_role
+            changed = True
+            logging.debug(f"[USER-ACCOUNTS-UPDATE] {player_tag}: CoC role {old_coc_role} -> {new_coc_role}")
+
+        return changed, new_name_out
+
+    async def update_player_info_in_user_accounts(self, clan_obj: 'coc.Clan', cache_manager: 'CacheManager') -> None:
+        """Per-clan-tag-serialized wrapper — see _update_locks' comment in __init__ for why. The
+        actual logic is unchanged, in _update_player_info_in_user_accounts_locked() below."""
+        clan_tag_str: str = str(clan_obj.tag)  # type: ignore[attr-defined]
+        lock = self._update_locks.setdefault(clan_tag_str, asyncio.Lock())
+        async with lock:
+            await self._update_player_info_in_user_accounts_locked(clan_obj, cache_manager)
+            self.members_refreshed_at[clan_tag_str] = datetime.now(timezone.utc)
+
+    async def _update_player_info_in_user_accounts_locked(self, clan_obj: 'coc.Clan', cache_manager: 'CacheManager') -> None:
+        """
+        Update TH level and clan info for every player this clan-info API response mentions —
+        registered accounts and the UNASSIGNED pool alike (2026-08-14: UNASSIGNED used to be
+        skipped here entirely, so an unlinked player's th_level/current_clan_tag/name/coc_role
+        froze at whatever it was when last linked/unlinked and was never refreshed again by the
+        regular clan-poll cycle — only a one-off get_player() call at re-link time kept it
+        current at all, per the comment this fixes in QBdiscocmdshelper.py's UNASSIGNED-restore
+        path). Also creates a fresh UNASSIGNED-pool entry for any clan member this bot has never
+        tracked in ANY account before, so a player who's never been linked by anyone still gets
+        a user_players row with real TH/name data instead of remaining invisible until someone
+        links them — "never waste info the CoC API already gave us."
+
+        This keeps user_players current with player TH levels and clan membership without
+        requiring individual API calls per player.
+
+        2026-08-18: was two full O(len(user_accounts)) synchronous scans (no `await` inside
+        either loop, so it blocked the whole event loop — every other concurrently in-flight
+        clan fetch stalled with it, not just this one). Now uses
+        db_manager.get_player_owners_for_tags_sync()/get_player_owners_for_clan_sync() —
+        idx_user_players_player_tag / idx_user_players_clan_tag indexed lookups bounded by this
+        clan's roster size, not by total registered accounts — the same "stop scanning
+        in-memory, query the indexed SQL table instead" move as the recent
+        PLAYER_NAME_INDEX_RETIREMENT_PLAN.md work. Falls back to the full scan when db_manager
+        isn't available (should not happen in a running bot; kept for safety/tests).
+
+        Args:
+            clan_obj: CoC Clan object with member data
+            cache_manager: CacheManager instance with user_accounts data
+        """
+        # Build lookup: player_tag -> member data
+        clan_members = {member.tag: member for member in clan_obj.members}  # type: ignore[misc, attr-defined]
+        clan_tag_str: str = str(clan_obj.tag)  # type: ignore[attr-defined]
+
+        # Track changes
+        changes_made = False
+        affected_user_ids: List[str] = []
+        name_changes: List[tuple[str, str]] = []  # (player_tag, new_name) for index update
+
+        # (user_id, player_dict, member) for already-tracked players in this clan's live roster,
+        # and (user_id, player_dict) for tracked players who have departed it.
+        member_updates: List[tuple[str, Dict[str, Any], Any]] = []
+        departure_candidates: List[tuple[str, Dict[str, Any]]] = []
+        new_tags: List[str]
+
+        if cache_manager.db_manager is not None:
+            member_tags = list(clan_members.keys())
+            owners_for_members, owners_for_clan = await asyncio.gather(
+                asyncio.to_thread(cache_manager.db_manager.get_player_owners_for_tags_sync, member_tags),
+                asyncio.to_thread(cache_manager.db_manager.get_player_owners_for_clan_sync, clan_tag_str),
+            )
+
+            for tag, discord_id in owners_for_members.items():
+                user_data = cache_manager.user_accounts.get(discord_id)
+                if not isinstance(user_data, dict):  # type: ignore[misc]
+                    continue  # DB row present but in-memory cache lacks it — cache/DB drift, skip
+                player = next(
+                    (p for p in user_data.get("players", []) if isinstance(p, dict) and p.get("player_tag") == tag),
+                    None,
+                )
+                if player is None:
+                    continue
+                member_updates.append((discord_id, player, clan_members[tag]))
+
+            for tag, discord_id in owners_for_clan.items():
+                if tag in clan_members:
+                    continue  # still a current member — not a departure
+                user_data = cache_manager.user_accounts.get(discord_id)
+                if not isinstance(user_data, dict):  # type: ignore[misc]
+                    continue
+                player = next(
+                    (p for p in user_data.get("players", []) if isinstance(p, dict) and p.get("player_tag") == tag),
+                    None,
+                )
+                if player is None or player.get("current_clan_tag") != clan_tag_str:
+                    continue  # already changed since the DB snapshot — leave it alone
+                departure_candidates.append((discord_id, player))
+
+            new_tags = [tag for tag in clan_members if tag not in owners_for_members]
+        else:
+            # Fallback: no DB to query (should not happen in a running bot). Correct but
+            # O(len(user_accounts)) — full scan over every registered player, including UNASSIGNED.
+            tracked_tags: Set[str] = set()
+            for user_id, user_data in cache_manager.user_accounts.items():
+                if not isinstance(user_data, dict):  # type: ignore[misc]
+                    continue
+                for player in user_data.get("players", []):
+                    if not isinstance(player, dict):
+                        continue
+                    tag = player.get("player_tag")  # type: ignore[union-attr]
+                    if tag:
+                        tracked_tags.add(tag)
+                    if tag in clan_members:
+                        member_updates.append((user_id, player, clan_members[tag]))
+                    elif player.get("current_clan_tag") == clan_tag_str:  # type: ignore[union-attr]
+                        departure_candidates.append((user_id, player))
+            new_tags = [tag for tag in clan_members if tag not in tracked_tags]
+
+        # Apply field updates for already-tracked members in this clan's live roster.
+        for user_id, player, member in member_updates:
+            changed, new_name = self._apply_member_field_updates(player, member, clan_obj)
+            if changed:
+                changes_made = True
+                if user_id not in affected_user_ids:
+                    affected_user_ids.append(user_id)
+            if new_name is not None:
+                name_changes.append((str(player.get("player_tag")), new_name))  # type: ignore[union-attr]
+
+        # Clear current_clan_tag for tracked players no longer in the live member list, so role
+        # sync stops assigning the old clan role and a fresh get_player() can set the correct
+        # new clan on next cycle.
+        for user_id, player in departure_candidates:
+            p_tag = player.get("player_tag")  # type: ignore[union-attr]
+            player["current_clan_tag"] = None
+            logging.info(
+                f"[USER-ACCOUNTS-UPDATE] {p_tag}: departed from {clan_tag_str} "
+                f"(not in current member list) — clearing current_clan_tag"
+            )
+            changes_made = True
+            if user_id not in affected_user_ids:
+                affected_user_ids.append(user_id)
+
+        # Any clan member this bot has never tracked in any account (registered or UNASSIGNED)
+        # gets a brand-new UNASSIGNED-pool entry — the only way a never-linked player ends up
+        # with a user_players row at all, so features like get_current_clan_members_sync() (the
+        # "Manage Enrollment" board's player pool) can find them from day one.
+        if new_tags:
+            unassigned_entry = cache_manager.user_accounts.setdefault(
+                "UNASSIGNED", {"display_name": "UNASSIGNED", "players": []}
+            )
+            unassigned_players = unassigned_entry.setdefault("players", [])  # type: ignore[union-attr]
+            for tag in new_tags:
+                member = clan_members[tag]
+                raw_role = getattr(member, "role", None)
+                raw_role_name = getattr(raw_role, "name", None) if raw_role else None
+                new_coc_role = ("coLeader" if raw_role_name == "co_leader" else raw_role_name) if raw_role_name else None
+                unassigned_players.append({
+                    "player_tag": tag,
+                    "player_name": member.name,  # type: ignore[attr-defined]
+                    "verified": False,
+                    "th_level": member.town_hall,  # type: ignore[attr-defined]
+                    "current_clan_tag": clan_obj.tag,  # type: ignore[attr-defined]
+                    "coc_role": new_coc_role,
+                })
+                logging.info(f"[USER-ACCOUNTS-UPDATE] {tag}: newly tracked from clan {clan_tag_str} (never seen before)")
+            changes_made = True
+            if "UNASSIGNED" not in affected_user_ids:
+                affected_user_ids.append("UNASSIGNED")
+
+        # Save affected users (write-through: persist only changed users)
+        if changes_made:
+            for uid in affected_user_ids:
+                await cache_manager.persist_user(uid)
+            logging.debug(f"[USER-ACCOUNTS-SAVE] Saved player info updates from {clan_obj.tag}")  # type: ignore[attr-defined]
+
+        # Propagate name changes to player_name_index (DB)
+        if name_changes and cache_manager.db_manager:
+            now_iso = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+            updates = [(tag, name, now_iso) for tag, name in name_changes]
+            await asyncio.to_thread(
+                cache_manager.db_manager.update_player_name_index_sync, updates
+            )
+            logging.info(
+                f"[PLAYER-NAME-INDEX] Updated {len(name_changes)} player name(s) "
+                f"from API (clan {clan_tag_str})"
+            )
+    
+    def invalidate(self, clan_tag: str) -> None:
+        """
+        Evict a clan's cache entry so the next get_clan() call performs a blocking API fetch.
+
+        Use this before a user-triggered refresh to guarantee fresh data is returned
+        regardless of the soft/hard TTL (stale-while-revalidate is bypassed).
+
+        Args:
+            clan_tag: Normalized clan tag (e.g., "#2C9UR9GJY")
+        """
+        if clan_tag in self.cache:
+            del self.cache[clan_tag]
+            logging.debug(f"[COC-CACHE-INVALIDATE] {clan_tag} evicted — next get_clan() will hit API")
+    
+    def _evict_over_cap(self) -> int:
+        """Drop oldest-inserted entries until the cache is back within ``max_entries``.
+
+        FIFO on insertion order.  For a TTL-only cache that ordering is also "closest to
+        expiry first", so no recency-tracking (OrderedDict.move_to_end on every hit) is
+        needed to make it the right victim choice — the same reasoning as
+        ``_MAX_TEMP_WAR_OBJECTS`` in ``cache_manager.save_war_object()``.
+
+        A cap eviction is not a correctness event: the next ``get_clan()`` for an evicted
+        tag simply re-fetches from the API, exactly as a TTL expiry would have.
+
+        Returns:
+            Number of entries evicted (0 in normal operation — see MAX_COC_CLAN_CACHE_ENTRIES).
+        """
+        if self.max_entries <= 0 or len(self.cache) <= self.max_entries:
+            return 0
+        evicted = 0
+        # Pass 1: evict UNPROTECTED entries only, still oldest-inserted first.
+        # The polling loop streams tens of thousands of distinct clans through this cache
+        # per day (measured: 55,609 in 12.4h) and never re-reads any of them, so under a
+        # plain FIFO the handful of clans that user commands DO ask about were flushed out
+        # within seconds of being cached — the cache was busy holding the one population
+        # that never reads it while evicting the one that does.  Protecting them costs
+        # nothing: ~100-150 tags against a 1500 cap.  TTL still expires them normally, so
+        # this changes WHICH entries survive pressure, never how stale an entry may get.
+        if self.protected_tags:
+            for _tag in list(self.cache):
+                if len(self.cache) <= self.max_entries:
+                    break
+                if _tag in self.protected_tags:
+                    continue
+                del self.cache[_tag]
+                evicted += 1
+        # Pass 2: if the cache is somehow still over cap with nothing but protected tags
+        # left, evict those too — the cap exists to bound memory, and a protected entry is
+        # still only a cache entry whose loss costs one API call.
+        while len(self.cache) > self.max_entries:
+            try:
+                self.cache.pop(next(iter(self.cache)))
+            except StopIteration:  # pragma: no cover — cache emptied concurrently
+                break
+            evicted += 1
+        self.evicted_by_cap += evicted
+        logging.info(
+            f"[COC-CACHE-CAP] Evicted {evicted} oldest entr{'y' if evicted == 1 else 'ies'} "
+            f"— cache at size cap {self.max_entries}"
+        )
+        return evicted
+
+    def clear_expired(self) -> int:
+        """
+        Remove all expired entries from cache.
+
+        Returns:
+            Number of entries removed
+        """
+        now = datetime.now(timezone.utc)
+        expired_tags: List[str] = []
+        
+        for clan_tag, cached in self.cache.items():
+            age_seconds = (now - cached["timestamp"]).total_seconds()
+            if age_seconds >= self.hard_ttl_seconds:
+                expired_tags.append(clan_tag)
+        
+        for clan_tag in expired_tags:
+            del self.cache[clan_tag]
+        
+        if expired_tags:
+            # Reported split by population, because a blended rate answers nothing: the
+            # protected clans (subscribed/family/CWL + opponents) and the tens of thousands
+            # the poll loop streams have completely different access patterns, and the
+            # larger population would swamp the smaller in a single number.
+            _p_served = self.hits_protected + self.stale_hits_protected
+            _p_total = _p_served + self.misses_protected
+            _o_served = (self.hits + self.stale_hits) - _p_served
+            _o_total = (self.hits + self.stale_hits + self.misses) - _p_total
+            logging.info(
+                "[COC-CACHE-CLEANUP] Removed %d expired | size=%d/%d evicted_by_cap=%d | "
+                "protected: %d/%d hit_rate=%.1f%% | other: %d/%d hit_rate=%.1f%%",
+                len(expired_tags), len(self.cache), self.max_entries, self.evicted_by_cap,
+                _p_served, _p_total, 100.0 * _p_served / max(_p_total, 1),
+                _o_served, _o_total, 100.0 * _o_served / max(_o_total, 1),
+            )
+        
+        return len(expired_tags)
+    
+    def get_stats(self) -> Dict[str, Any]:
+        """
+        Get cache statistics.
+        
+        Returns:
+            Dict with cache size and age information
+        """
+        if not self.cache:
+            return {
+                "size": 0,
+                "oldest_age_seconds": 0,
+                "newest_age_seconds": 0,
+                "max_entries": self.max_entries,
+                "evicted_by_cap": self.evicted_by_cap,
+                "hits": self.hits,
+                "stale_hits": self.stale_hits,
+                "misses": self.misses,
+                "hits_protected": self.hits_protected,
+                "stale_hits_protected": self.stale_hits_protected,
+                "misses_protected": self.misses_protected,
+                "hit_rate": round((self.hits + self.stale_hits) / max(self.hits + self.stale_hits + self.misses, 1), 4),
+            }
+        
+        now = datetime.now(timezone.utc)
+        ages = [(now - cached["timestamp"]).total_seconds() for cached in self.cache.values()]
+        
+        return {
+            "size": len(self.cache),
+            "oldest_age_seconds": max(ages),
+            "newest_age_seconds": min(ages),
+            "ttl_seconds": self.hard_ttl_seconds,
+            "max_entries": self.max_entries,
+            "evicted_by_cap": self.evicted_by_cap,
+            "hits": self.hits,
+            "stale_hits": self.stale_hits,
+            "misses": self.misses,
+            "hits_protected": self.hits_protected,
+            "stale_hits_protected": self.stale_hits_protected,
+            "misses_protected": self.misses_protected,
+            "hit_rate": round((self.hits + self.stale_hits) / max(self.hits + self.stale_hits + self.misses, 1), 4),
+        }
+    
+    def get_memory_usage_mb(self) -> float:
+        """
+        Calculate approximate memory usage of the clan cache in MB.
+
+        Recurses into each cached coc.Clan object's own attributes (2026-08-21, tracker #0009).
+        The previous version only added sys.getsizeof(member) per member — shallow, and
+        invisible to everything a ClanMember actually points to (its League, that League's
+        Icon, badge URLs, role, etc.). A live PROD memory profile taken while validating this
+        fix showed ~40,000 live ClanMember/League/Icon/BaseLeague objects for barely 1,195
+        cached clans, almost entirely uncounted by the shallow version — which is also why this
+        method was reporting 0.0 MB in _build_cache_summary()'s report: that caller was never
+        even wired up to THIS method (it read a nonexistent 'estimated_size_mb' key off
+        get_stats() instead, which never set it — a second, separate bug fixed alongside this).
+
+        Deliberately generic — walks attributes for arbitrary objects rather than a
+        hand-maintained field list — so it doesn't silently go stale if coc.py's model
+        classes gain attributes.
+
+        2026-08-29 fix (tracker #0009): the 2026-08-22 version above never actually ran.
+        It recursed via ``hasattr(value, "__dict__")``, but EVERY coc.py model class
+        (Clan, ClanMember, League, Icon, Badge, ...) declares ``__slots__`` and therefore
+        has no ``__dict__`` at all — verified: ``hasattr(coc.Clan(...), "__dict__")`` is
+        False.  So the walk stopped dead at the top-level object and returned a bare
+        ``sys.getsizeof(clan)`` = 360 bytes for an entire 50-member clan, which is why the
+        memory report kept printing ~0.1 MB for this cache.
+
+        Attribute-walking (__dict__ + __slots__) was tried first and still under-reported by
+        3x, because the dominant cost here is NOT reachable by attribute access at all: most
+        of a cached clan is the raw API ``memberList`` pinned by coc.py's un-exhausted
+        ``Clan._iter_members`` generator expression, which lives in that generator's frame.
+        So the walk now recurses through ``gc.get_referents()``, which sees generators,
+        frames, iterators and closures as well as both attribute layouts. Validated against
+        tracemalloc on 300 realistic 36-member clans: 73.4 KB/entry reported vs 67.2 KB/entry
+        actually allocated (~9% over), where attribute-walking reported 22.2 KB and the
+        original ``__dict__``-only version reported ~0.36 KB.
+
+        ``seen`` is pre-seeded with the shared client / cache_manager roots so the walk
+        cannot wander out of the cache and into the live aiohttp session, throttler and the
+        whole CacheManager (which every coc.Clan references via ``_client``) — and cannot
+        charge that shared graph once per cached clan.
+        """
+        if not self.cache:
+            return 0.0
+
+        # Scalars can't hold references — never worth a get_referents() call.
+        _LEAF_TYPES = (str, bytes, bytearray, int, float, bool, complex, type(None), datetime)
+        # Never recurse INTO these: they are shared program structure, not cache payload, and
+        # gc.get_referents() on a class or module reaches its whole __dict__ (and from there,
+        # effectively the entire process). Their own getsizeof is still counted at the point
+        # of reference; only the recursion stops.
+        # coc.Client is listed by type rather than only seeded by id below, because every
+        # coc.py model holds a `_client` back-reference: if the walk ever reaches it (e.g.
+        # this cache is measured before cache_manager/coc_client are wired up, as in unit
+        # tests) it would charge the client's whole graph — session, throttler, CacheManager —
+        # once per cached clan. Measured impact of missing this: 96.8 KB/entry reported
+        # against 67.1 KB/entry actual.
+        _NO_RECURSE_TYPES = (
+            type, _types_mod.ModuleType, _types_mod.FunctionType,
+            _types_mod.BuiltinFunctionType, _types_mod.MethodType, _types_mod.CodeType,
+            coc.Client,
+        )
+
+        def _deep(value: Any, seen: set, depth: int = 0) -> int:
+            # Converges by depth ~8 for coc.py's object graph (Clan -> _iter_members generator
+            # -> frame -> list_iterator -> memberList -> member dict -> league -> iconUrls);
+            # 12 leaves headroom without being a real limit. Verified: depths 8/10/12/14 all
+            # produce an identical total.
+            if depth > 12:
+                return 0
+            obj_id = id(value)
+            if obj_id in seen:
+                return 0  # already counted — cycle guard / shared-reference dedup
+            seen.add(obj_id)
+            size = sys.getsizeof(value)
+            if isinstance(value, _LEAF_TYPES):
+                return size
+            if isinstance(value, dict):
+                for k, v in value.items():
+                    size += _deep(k, seen, depth + 1) + _deep(v, seen, depth + 1)
+            elif isinstance(value, (list, tuple, set, frozenset)):
+                for item in value:
+                    size += _deep(item, seen, depth + 1)
+            elif not isinstance(value, _NO_RECURSE_TYPES):
+                # gc.get_referents() covers __dict__, __slots__, closures, generator frames
+                # and iterators uniformly — see this method's docstring for why the last two
+                # matter more than the attributes here.
+                try:
+                    referents = _gc_mod.get_referents(value)
+                except Exception:
+                    referents = []
+                for ref in referents:
+                    size += _deep(ref, seen, depth + 1)
+            return size
+
+        # Roots that every cached clan references but that are emphatically NOT part of this
+        # cache's own footprint. Seeding them as "already seen" stops the walk at the boundary.
+        _roots: set = {id(self), id(self.cache), id(self.cache_manager)}
+        _client = getattr(self.cache_manager, "coc_client", None)
+        if _client is not None:
+            _roots.add(id(_client))
+
+        total_bytes = 0
+        for cached in self.cache.values():
+            seen: set = set(_roots)
+            total_bytes += _deep(cached["data"], seen) + sys.getsizeof(cached["timestamp"])
+
+        return total_bytes / (1024 * 1024)

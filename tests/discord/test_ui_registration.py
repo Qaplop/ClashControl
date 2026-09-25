@@ -10,7 +10,7 @@ import pytest
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_registration_view_labels_are_translated():
-    from qapbot.ui_registration import RegistrationView
+    from clashcontrol.ui_registration import RegistrationView
 
     view = RegistrationView(guild_id=123)
     labels = [cast(discord.ui.Button, c).label for c in view.children]
@@ -21,7 +21,7 @@ async def test_registration_view_labels_are_translated():
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_registration_war_notifications_no_accounts_sends_message(monkeypatch: pytest.MonkeyPatch, mock_interaction):
-    import qapbot.ui_registration as ui
+    import clashcontrol.ui_registration as ui
 
     # Avoid any metadata update I/O
     monkeypatch.setattr(ui, "update_user_metadata_from_interaction", AsyncMock())
@@ -51,7 +51,7 @@ async def test_registration_view_blocks_before_fully_initialized(monkeypatch: py
     from types import SimpleNamespace
     from unittest.mock import AsyncMock
     import QBcore
-    from qapbot.ui_registration import RegistrationView
+    from clashcontrol.ui_registration import RegistrationView
 
     monkeypatch.setattr(QBcore.bot, "fully_initialized", False, raising=False)
 
@@ -78,7 +78,7 @@ async def test_registration_view_allows_once_fully_initialized(monkeypatch: pyte
     from types import SimpleNamespace
     from unittest.mock import AsyncMock
     import QBcore
-    from qapbot.ui_registration import RegistrationView
+    from clashcontrol.ui_registration import RegistrationView
 
     monkeypatch.setattr(QBcore.bot, "fully_initialized", True, raising=False)
     monkeypatch.setattr(QBcore, "maintenance_mode", False, raising=False)

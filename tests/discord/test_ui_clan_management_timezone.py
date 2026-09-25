@@ -16,8 +16,8 @@ os.environ.setdefault("DISCORD_TOKEN", "test-token")
 
 @pytest.mark.discord
 def test_config_mode_includes_timezone_button_without_row_conflict():
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_clan_management import ClanManagementView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_clan_management import ClanManagementView
 
     CACHE.server_config["7001"] = {}
     CACHE.db_manager = None
@@ -41,7 +41,7 @@ def test_common_timezones_list_is_valid_and_within_select_cap():
     """Every entry must be a real IANA zone zoneinfo can load, and the list must fit Discord's
     25-option Select cap."""
     from zoneinfo import ZoneInfo
-    from qapbot.ui_clan_management import COMMON_TIMEZONES
+    from clashcontrol.ui_clan_management import COMMON_TIMEZONES
 
     assert 0 < len(COMMON_TIMEZONES) <= 25
     for tz_id, label in COMMON_TIMEZONES:
@@ -52,8 +52,8 @@ def test_common_timezones_list_is_valid_and_within_select_cap():
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_select_timezone_callback_opens_view_prefilled_with_current_timezone():
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_clan_management import ClanManagementView, TimezoneConfigurationView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_clan_management import ClanManagementView, TimezoneConfigurationView
 
     CACHE.server_config["7002"] = {"timezone_name": "Europe/Berlin"}
     CACHE.db_manager = None
@@ -88,8 +88,8 @@ async def test_select_timezone_callback_opens_view_prefilled_with_current_timezo
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_timezone_select_persists_choice_and_refreshes(mock_interaction):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_clan_management import TimezoneConfigurationView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_clan_management import TimezoneConfigurationView
 
     guild_id_str = str(mock_interaction.guild.id)
     CACHE.server_config[guild_id_str] = {}
@@ -111,8 +111,8 @@ async def test_timezone_select_persists_choice_and_refreshes(mock_interaction):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_timezone_select_deletes_config_message_after_applying(mock_interaction):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_clan_management import TimezoneConfigurationView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_clan_management import TimezoneConfigurationView
 
     guild_id_str = str(mock_interaction.guild.id)
     CACHE.server_config[guild_id_str] = {}
@@ -134,8 +134,8 @@ async def test_timezone_select_deletes_config_message_after_applying(mock_intera
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_basic_config_embed_shows_configured_timezone_between_language_and_registration():
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper import format_clan_management_message
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper import format_clan_management_message
 
     CACHE.server_config["7003"] = {"timezone_name": "Europe/Berlin"}
     guild = MagicMock()

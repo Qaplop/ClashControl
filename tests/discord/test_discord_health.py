@@ -1,4 +1,4 @@
-"""Tests for qapbot.discord_health.bulk_sync_global_commands: the raw bulk-upsert helper
+"""Tests for clashcontrol.discord_health.bulk_sync_global_commands: the raw bulk-upsert helper
 that preserves an existing Activities Entry Point command, which discord.py's own
 CommandTree.sync()/clear_commands() know nothing about (see CWL_CLAN_CONFIG_ACTIVITY_PLAN.md
 Phase D — omitting it from a global bulk overwrite makes Discord reject the whole request
@@ -13,7 +13,7 @@ import pytest
 
 os.environ.setdefault("DISCORD_TOKEN", "test-token")
 
-from qapbot.discord_health import bulk_sync_global_commands
+from clashcontrol.discord_health import bulk_sync_global_commands
 
 
 def _make_bot(existing_commands):

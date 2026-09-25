@@ -20,7 +20,7 @@ import pytest
 
 class TestFormatDatabaseCheckResultsFull:
     def _fn(self):
-        from qapbot.QBdiscocmdshelper_admin_command import format_database_check_results
+        from clashcontrol.QBdiscocmdshelper_admin_command import format_database_check_results
         return format_database_check_results
 
     def _base_results(self, **overrides):
@@ -160,7 +160,7 @@ class TestFormatDatabaseCheckResultsFull:
 
 class TestListAllSubscriptions:
     def _fn(self):
-        from qapbot.QBdiscocmdshelper_admin_command import list_all_subscriptions
+        from clashcontrol.QBdiscocmdshelper_admin_command import list_all_subscriptions
         return list_all_subscriptions
 
     def _make_bot(self, guilds=None, channels=None):

@@ -26,7 +26,7 @@ import pytest
 
 os.environ.setdefault("DISCORD_TOKEN", "test-token")
 
-from qapbot.db_manager import WarHistoryDB
+from clashcontrol.db_manager import WarHistoryDB
 
 
 @pytest.fixture
@@ -43,7 +43,7 @@ async def db(tmp_path):
 @pytest.fixture(autouse=True)
 def _no_dm_guard(monkeypatch):
     """CONFIG.cwl_dm_restrict_to_admin would otherwise swallow every re-send in the DM batch."""
-    from qapbot import config as config_module
+    from clashcontrol import config as config_module
 
     monkeypatch.setattr(
         config_module, "CONFIG",
@@ -89,7 +89,7 @@ async def _seed(
 ) -> int:
     """One signup_open event, one pooled player DMed to `old_owner`, now owned by `new_owner`
     (None = unlinked, "UNASSIGNED" = in the unassigned pool). Returns the event_id."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await db._conn.execute("INSERT OR IGNORE INTO guild_config (guild_id) VALUES (?)", (guild_id,))
     await db._conn.execute("INSERT OR IGNORE INTO clans (clan_tag, name) VALUES ('#CLAN1', 'Alpha')")
@@ -131,7 +131,7 @@ async def _seed(
 
 
 def _capture_dms(monkeypatch) -> List[str]:
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     contacted: List[str] = []
 
@@ -150,7 +150,7 @@ def _capture_dms(monkeypatch) -> List[str]:
 
 async def _run(monkeypatch, deleted: List[int]) -> Dict[str, int]:
     import QBcore
-    from qapbot.QBdiscocmdshelper_cwl import reroute_cwl_enrollment_dms_after_ownership_change
+    from clashcontrol.QBdiscocmdshelper_cwl import reroute_cwl_enrollment_dms_after_ownership_change
 
     monkeypatch.setattr(QBcore, "bot", _make_bot(deleted))
     return await reroute_cwl_enrollment_dms_after_ownership_change()
@@ -183,7 +183,7 @@ async def test_fire_and_forget_trigger_runs_the_same_sweep(db, monkeypatch):
     trigger, 2026-08-23 follow-up) must schedule this exact sweep rather than some parallel
     hand-rolled version — verified end to end by letting the scheduled background task actually
     run and checking it produced the same effect as the awaited per-cycle call above."""
-    from qapbot.QBdiscocmdshelper_cwl import fire_cwl_dm_reroute_after_ownership_change
+    from clashcontrol.QBdiscocmdshelper_cwl import fire_cwl_dm_reroute_after_ownership_change
 
     event_id = await _seed(db)
     contacted = _capture_dms(monkeypatch)
@@ -323,7 +323,7 @@ async def test_sweep_is_idempotent(db, monkeypatch):
 async def test_a_failed_resend_leaves_the_player_recoverable(db, monkeypatch):
     """The old DM is deleted first on purpose, so a failed re-send must not strand the player: the
     row stays pending with dm_sent=0, which is exactly what "Notify New Pool Members" picks up."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed(db)
     monkeypatch.setattr(
@@ -345,8 +345,8 @@ async def test_a_failed_resend_leaves_the_player_recoverable(db, monkeypatch):
 @pytest.mark.asyncio
 async def test_per_cycle_cap_bounds_the_dm_burst(db, monkeypatch):
     """A mass re-link must never turn into an unbounded DM burst in one cycle."""
-    import qapbot.QBdiscocmdshelper_cwl as cwl_mod
-    from qapbot.cache_manager import CACHE
+    import clashcontrol.QBdiscocmdshelper_cwl as cwl_mod
+    from clashcontrol.cache_manager import CACHE
 
     guild_id, season = "901", "2026-09"
     await db._conn.execute("INSERT OR IGNORE INTO guild_config (guild_id) VALUES (?)", (guild_id,))

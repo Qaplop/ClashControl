@@ -46,7 +46,7 @@ def _guild(guild_id: int, roles: Dict[int, MagicMock], members: Dict[int, MagicM
 # ---------------------------------------------------------------------------
 
 def test_single_mode_targets_union_of_every_clan():
-    from qapbot.guild_role_manager import cwl_coordinator_role_targets
+    from clashcontrol.guild_role_manager import cwl_coordinator_role_targets
 
     config = {
         "cwl_coordinator_role_id": "500",
@@ -58,7 +58,7 @@ def test_single_mode_targets_union_of_every_clan():
 
 
 def test_per_clan_mode_targets_each_clans_own_coordinators():
-    from qapbot.guild_role_manager import cwl_coordinator_role_targets
+    from clashcontrol.guild_role_manager import cwl_coordinator_role_targets
 
     config = {
         "cwl_coordinator_role_mode": "per_clan",
@@ -71,7 +71,7 @@ def test_per_clan_mode_targets_each_clans_own_coordinators():
 
 def test_per_clan_mode_two_clans_sharing_a_role_union_their_coordinators():
     """A shared role must never be stripped from someone still coordinating the other clan."""
-    from qapbot.guild_role_manager import cwl_coordinator_role_targets
+    from clashcontrol.guild_role_manager import cwl_coordinator_role_targets
 
     config = {
         "cwl_coordinator_role_mode": "per_clan",
@@ -84,7 +84,7 @@ def test_per_clan_mode_two_clans_sharing_a_role_union_their_coordinators():
 def test_linked_clan_without_coordinators_targets_nobody():
     """A linked role for a clan with no coordinators is still reconciled — to empty — so the last
     coordinator removed from that clan loses its role."""
-    from qapbot.guild_role_manager import cwl_coordinator_role_targets
+    from clashcontrol.guild_role_manager import cwl_coordinator_role_targets
 
     config = {
         "cwl_coordinator_role_mode": "per_clan",
@@ -95,7 +95,7 @@ def test_linked_clan_without_coordinators_targets_nobody():
 
 
 def test_nothing_linked_targets_nothing():
-    from qapbot.guild_role_manager import cwl_coordinator_role_targets
+    from clashcontrol.guild_role_manager import cwl_coordinator_role_targets
 
     assert cwl_coordinator_role_targets({"cwl_clan_coordinators": {"#A": ["1"]}}) == {}
     assert cwl_coordinator_role_targets(
@@ -109,8 +109,8 @@ def test_nothing_linked_targets_nothing():
 
 @pytest.mark.asyncio
 async def test_per_clan_sync_gives_a_multi_clan_coordinator_every_clan_role(monkeypatch):
-    from qapbot.cache_manager import CACHE
-    import qapbot.guild_role_manager as grm
+    from clashcontrol.cache_manager import CACHE
+    import clashcontrol.guild_role_manager as grm
 
     role_a, role_b = _role(601, "CWL Koordinator StayCalm"), _role(602, "CWL Koordinator StayMad")
     lucas = _member(111)
@@ -131,8 +131,8 @@ async def test_per_clan_sync_gives_a_multi_clan_coordinator_every_clan_role(monk
 @pytest.mark.asyncio
 async def test_per_clan_sync_removing_one_clan_keeps_the_other_clans_role(monkeypatch):
     """111 was coordinator of #A and #B and is removed from #A only: loses #A's role, keeps #B's."""
-    from qapbot.cache_manager import CACHE
-    import qapbot.guild_role_manager as grm
+    from clashcontrol.cache_manager import CACHE
+    import clashcontrol.guild_role_manager as grm
 
     role_a, role_b = _role(601, "A"), _role(602, "B")
     coordinator = _member(111, roles=[role_a, role_b])
@@ -156,8 +156,8 @@ async def test_per_clan_sync_removing_one_clan_keeps_the_other_clans_role(monkey
 
 @pytest.mark.asyncio
 async def test_per_clan_sync_skips_a_deleted_role_but_syncs_the_rest(monkeypatch):
-    from qapbot.cache_manager import CACHE
-    import qapbot.guild_role_manager as grm
+    from clashcontrol.cache_manager import CACHE
+    import clashcontrol.guild_role_manager as grm
 
     role_b = _role(602, "B")
     guild = _guild(9923, {602: role_b}, {111: _member(111)})  # 601 was deleted in Discord
@@ -177,8 +177,8 @@ async def test_per_clan_sync_skips_a_deleted_role_but_syncs_the_rest(monkeypatch
 @pytest.mark.asyncio
 async def test_per_clan_sync_never_touches_the_inactive_single_role(monkeypatch):
     """Switching mode unlinks the other mode's role: it stops being synced, nobody is stripped."""
-    from qapbot.cache_manager import CACHE
-    import qapbot.guild_role_manager as grm
+    from clashcontrol.cache_manager import CACHE
+    import clashcontrol.guild_role_manager as grm
 
     single = _role(500, "CWL Coordinator")
     holder = _member(999, roles=[single])
@@ -203,8 +203,8 @@ async def test_per_clan_sync_never_touches_the_inactive_single_role(monkeypatch)
 
 @pytest.mark.asyncio
 async def test_cwl_settings_embed_shows_per_clan_link_count():
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import format_clan_management_cwl_settings
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import format_clan_management_cwl_settings
 
     guild = _guild(9931, {601: _role(601, "A")}, {})  # 602 no longer resolves
     CACHE.server_config["9931"] = {
@@ -224,7 +224,7 @@ async def test_cwl_settings_embed_shows_per_clan_link_count():
 
 @pytest.fixture
 async def db(tmp_path):
-    from qapbot.db_manager import WarHistoryDB
+    from clashcontrol.db_manager import WarHistoryDB
 
     manager = WarHistoryDB()
     await manager.initialize(str(tmp_path / "qapbot_test.db"))
@@ -277,7 +277,7 @@ def _interaction(guild: MagicMock, values: List[str] | None = None) -> MagicMock
 
 
 def _view(guild: MagicMock, **kwargs: Any):
-    from qapbot.ui_cwl_roster import CwlCoordinatorRoleConfigurationView
+    from clashcontrol.ui_cwl_roster import CwlCoordinatorRoleConfigurationView
 
     return CwlCoordinatorRoleConfigurationView(guild=guild, parent_view=MagicMock(), **kwargs)
 
@@ -313,8 +313,8 @@ async def test_view_role_pick_and_clear_only_affect_the_selected_clan():
 
 @pytest.mark.asyncio
 async def test_view_save_persists_everything_and_syncs(monkeypatch):
-    from qapbot.cache_manager import CACHE
-    import qapbot.guild_role_manager as grm
+    from clashcontrol.cache_manager import CACHE
+    import clashcontrol.guild_role_manager as grm
 
     guild = _guild(9953, {601: _role(601, "A")}, {})
     CACHE.server_config["9953"] = {"cwl_coordinator_role_id": "500"}

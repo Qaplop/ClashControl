@@ -13,7 +13,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from qapbot.cache_manager import CacheManager
+from clashcontrol.cache_manager import CacheManager
 
 
 def _make_cm(**overrides):
@@ -206,7 +206,7 @@ class TestGetPlayer:
         cm = _make_cm()
         cm.coc_client = None
         # normalize_clan_tag returns a valid tag, but no client
-        with patch("qapbot.cache_manager.coc_retry", new_callable=AsyncMock) as mock_retry:
+        with patch("clashcontrol.cache_manager.coc_retry", new_callable=AsyncMock) as mock_retry:
             mock_retry.side_effect = RuntimeError("CoC API client not initialized")
             result = await cm.get_player("#VALIDTAG1")
             # Returns None on exception
@@ -220,7 +220,7 @@ class TestGetPlayer:
         mock_player.tag = "#ABC12345"
         mock_player.name = "TestPlayer"
 
-        with patch("qapbot.cache_manager.coc_retry", new_callable=AsyncMock) as mock_retry:
+        with patch("clashcontrol.cache_manager.coc_retry", new_callable=AsyncMock) as mock_retry:
             mock_retry.return_value = mock_player
             result = await cm.get_player("#ABC12345")
             assert result == mock_player
@@ -229,7 +229,7 @@ class TestGetPlayer:
     async def test_api_error_returns_none(self):
         cm = _make_cm()
         cm.coc_client = MagicMock()
-        with patch("qapbot.cache_manager.coc_retry", new_callable=AsyncMock) as mock_retry:
+        with patch("clashcontrol.cache_manager.coc_retry", new_callable=AsyncMock) as mock_retry:
             mock_retry.side_effect = Exception("API error")
             result = await cm.get_player("#ABC12345")
             assert result is None

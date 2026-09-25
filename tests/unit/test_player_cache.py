@@ -16,7 +16,7 @@ import pytest
 @pytest.fixture
 def cache(monkeypatch):
     """A CacheManager with a stubbed CoC client, and the call count it has served."""
-    from qapbot.cache_manager import CacheManager
+    from clashcontrol.cache_manager import CacheManager
 
     cm = CacheManager()
     calls = {"n": 0}
@@ -98,7 +98,7 @@ class TestFailuresAreNotCached:
         would break a registration attempt retried immediately afterwards. Patches coc_retry
         itself rather than the client, so the test exercises the give-up path directly instead
         of waiting out the real retry backoff."""
-        import qapbot.cache_manager as cache_manager_module
+        import clashcontrol.cache_manager as cache_manager_module
 
         async def _always_fails(operation, operation_name=""):
             raise RuntimeError("exhausted")
@@ -111,7 +111,7 @@ class TestFailuresAreNotCached:
     @pytest.mark.asyncio
     async def test_recovery_after_a_failure_is_not_blocked_by_the_cache(self, cache, monkeypatch):
         """The point of not caching failures: the very next call must be able to succeed."""
-        import qapbot.cache_manager as cache_manager_module
+        import clashcontrol.cache_manager as cache_manager_module
 
         real_coc_retry = cache_manager_module.coc_retry
 

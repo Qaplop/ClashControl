@@ -14,7 +14,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from qapbot.QBdiscocmdshelper_admin_command import (
+from clashcontrol.QBdiscocmdshelper_admin_command import (
     _build_cache_summary,
     _build_gc_type_counts,
     _estimate_dict_size_mb,
@@ -154,7 +154,7 @@ class TestCocClanCacheMemoryUsage:
 
     def test_nonzero_for_a_populated_cache(self):
         from datetime import datetime, timezone
-        from qapbot.coc_cache import CoCClanCache
+        from clashcontrol.coc_cache import CoCClanCache
 
         class _Icon:
             def __init__(self):
@@ -182,7 +182,7 @@ class TestCocClanCacheMemoryUsage:
         assert cache.get_memory_usage_mb() > 0.0
 
     def test_empty_cache_is_zero(self):
-        from qapbot.coc_cache import CoCClanCache
+        from clashcontrol.coc_cache import CoCClanCache
         assert CoCClanCache().get_memory_usage_mb() == 0.0
 
     def test_build_cache_summary_uses_the_real_estimator(self):
@@ -515,7 +515,7 @@ class TestSlotsAndGeneratorWalking:
     @staticmethod
     def _populated_cache(data: Any) -> Any:
         from datetime import datetime, timezone
-        from qapbot.coc_cache import CoCClanCache
+        from clashcontrol.coc_cache import CoCClanCache
 
         cache = CoCClanCache()
         cache.cache["#C1"] = {"data": data, "timestamp": datetime.now(timezone.utc)}

@@ -58,7 +58,7 @@ A powerful, modular Discord bot designed for Clash of Clans clan management, fea
   via a **Personal CWL Hub**; leadership assigns rosters by drag-and-drop on a Discord Activity
   board
 - Per-guild retention purges whole past seasons on a configurable schedule
-- Full design record in `qapbot/docs/CWL_ROSTER_PLANNING_PLAN.md`
+- Full design record in `clashcontrol/docs/CWL_ROSTER_PLANNING_PLAN.md`
 
 ### CWL Clan-Config Discord Activity
 - Season-based CWL clan configuration (participating clans, roster size, start time) via a
@@ -69,8 +69,8 @@ A powerful, modular Discord bot designed for Clash of Clans clan management, fea
 - Timezone-aware locally, stored as UTC; season carry-over prompt when a new season has no
   saved configuration yet
 - Architecture: Cloudflare Pages/Workers (`activity/`) + an in-process `aiohttp.web` bridge
-  (`qapbot/web_bridge.py`) that reuses the bot's own `CACHE`/`db_manager` — no second data
-  store. Full design and phase history in `qapbot/docs/CWL_CLAN_CONFIG_ACTIVITY_PLAN.md`.
+  (`clashcontrol/web_bridge.py`) that reuses the bot's own `CACHE`/`db_manager` — no second data
+  store. Full design and phase history in `clashcontrol/docs/CWL_CLAN_CONFIG_ACTIVITY_PLAN.md`.
 
 ### Notification System
 - **DM Reminders**: Automated direct messages for players with remaining attacks towards the end of a war
@@ -163,7 +163,7 @@ A powerful, modular Discord bot designed for Clash of Clans clan management, fea
 
 6. **Run the bot**
    ```bash
-   python QapBot.py
+   python ClashControl.py
    ```
 
 ## 📋 Commands
@@ -173,7 +173,7 @@ single command with an `action` choice parameter (`/list`, `/admin`) rather than
 action. There is no separate `/clans`, `/list_families`, `/list_players`, `/list_accounts`,
 `/link_account`, `/import_data`, or `/removeclan` command — those are now `/list` actions or
 `/admin` actions, listed below. Account linking itself happens via the registration message UI
-(buttons/modals), not a slash command — see `qapbot/docs/REGISTRATION_MESSAGE_WORKFLOWS.md`.
+(buttons/modals), not a slash command — see `clashcontrol/docs/REGISTRATION_MESSAGE_WORKFLOWS.md`.
 
 ### User Commands
 - `/subscribe` - Subscribe a channel to clan or clan family leaderboard updates
@@ -232,14 +232,14 @@ action. There is no separate `/clans`, `/list_families`, `/list_players`, `/list
 ### Project Structure
 ```
 QapBot/
-├── QapBot.py              # Main bot orchestration and periodic loops
+├── ClashControl.py              # Main bot orchestration and periodic loops
 ├── QBcore.py              # Core bot and CoC client initialization
 ├── QBdiscordcmds.py       # Discord command handlers and registration
 ├── QBhelperfunctions.py   # Leaderboard generation and Discord posting
 ├── QBcsvhandling.py       # JSON war data loading and file management
 ├── QBwarsim.py            # War simulation and probability calculations
 ├── requirements.txt       # Python dependencies
-├── qapbot/
+├── clashcontrol/
 │   ├── cache_manager.py   # In-memory cache manager (CACHE) with write-through DB persistence
 │   ├── db_manager.py      # SQLite database operations (WarHistoryDB, 22 tables)
 │   ├── config.py          # Configuration values and validation logic
@@ -259,7 +259,7 @@ QapBot/
 │   ├── QBdiscocmdshelper_admin_command.py  # Admin command helpers
 │   └── translations/      # Language files (en.json, de.json)
 ├── activity/              # CWL Clan-Config Discord Activity — Cloudflare Pages/Workers
-│                          # frontend+backend; see qapbot/docs/CWL_CLAN_CONFIG_ACTIVITY_PLAN.md
+│                          # frontend+backend; see clashcontrol/docs/CWL_CLAN_CONFIG_ACTIVITY_PLAN.md
 └── data/
     ├── qapbot.db          # SQLite database (hot: current + previous calendar month, WAL mode)
     ├── qapbot_history.db  # SQLite database (history: everything older, ATTACHed as schema 'history')
@@ -296,8 +296,8 @@ async connection and every pooled sync connection), so almost all existing queri
 unchanged; only "all-time"/historical queries explicitly `UNION` `main.<table>` with
 `history.<table>`. Once a month (the 1st, during the nightly maintenance window), a batched
 migration job moves data older than the retention window from hot to history — see
-`WarHistoryDB.run_history_migration()` in `qapbot/db_manager.py` and
-`qapbot/docs/CLAN_AND_WAR_CYCLE_ARCHITECTURE.md` for the full design.
+`WarHistoryDB.run_history_migration()` in `clashcontrol/db_manager.py` and
+`clashcontrol/docs/CLAN_AND_WAR_CYCLE_ARCHITECTURE.md` for the full design.
 
 ## 🔧 Configuration
 
@@ -319,7 +319,7 @@ migration job moves data older than the retention window from hot to history —
 - Prevents command conflicts when switching between DEV and PROD modes
 - Ensures users only see relevant commands (guild commands in test server, global commands in prod servers)
 - Critical for maintaining proper Discord command precedence
-- Command clearing logic implemented in `QapBot.py`
+- Command clearing logic implemented in `ClashControl.py`
 
 ### Environment Variables
 | Variable | Description | Required | Default |
@@ -344,10 +344,10 @@ migration job moves data older than the retention window from hot to history —
 | `HISTORY_DB_PATH` | Path to the history SQLite database file (ATTACHed as schema `history`; everything older than `DB_PATH`'s retention window) | No | `data/qapbot_history.db` |
 | `VACUUM_FREELIST_FRACTION` | Fraction of the hot DB that must be free-list before nightly maintenance runs VACUUM (`VACUUM_MIN_FREELIST_PAGES` is the absolute floor for small DBs). Was a flat 500 pages / 8 MB, which was right while the migration deleted a month of rows once a month — but the rolling nightly migration frees ~1.1 GB **every** night, so a flat trigger turned an occasional VACUUM into a nightly ~7.5 min EXCLUSIVE lock and hard Discord block, plus a full rewrite of a 24-40 GB file. It would reclaim nothing: deletes and inserts balance in steady state and SQLite reuses free pages, so the free list is churn, not waste. `0` restores the old always-VACUUM behaviour. | No | `0.15` |
 | `VACUUM_MIN_FREELIST_PAGES` | Absolute floor for the trigger above, so a small/fresh DB (where 15% is a handful of pages) does not VACUUM on every run. | No | `500` |
-| `HISTORY_RETENTION_DAYS` | Rolling hot-DB retention. The nightly migration walks the cutoff toward `today - N`, moving roughly one day of aged-out rows per night instead of a whole month landing on the 1st. The effective cutoff is `min(today - N, first day of the previous calendar month)` — the floor guarantees the documented "current + previous calendar month" contract on every date (its oldest retained row can be 61 days old), which is what makes any value here safe. **75 is load-bearing, not arbitrary**: CWL runs days 1-10 and produces ~2x the normal war volume, so this value decides which days of the month carry the heavy migration. 71-78 is the only band that both advances smoothly (below 61 the floor binds and the cutoff jumps up to 12 days at once, on the 1st) and never migrates CWL-dated rows during a CWL season. See `qapbot/docs/DATABASE_ARCHITECTURE.md` 2026-09-01 (c) before changing it. | No | `75` |
+| `HISTORY_RETENTION_DAYS` | Rolling hot-DB retention. The nightly migration walks the cutoff toward `today - N`, moving roughly one day of aged-out rows per night instead of a whole month landing on the 1st. The effective cutoff is `min(today - N, first day of the previous calendar month)` — the floor guarantees the documented "current + previous calendar month" contract on every date (its oldest retained row can be 61 days old), which is what makes any value here safe. **75 is load-bearing, not arbitrary**: CWL runs days 1-10 and produces ~2x the normal war volume, so this value decides which days of the month carry the heavy migration. 71-78 is the only band that both advances smoothly (below 61 the floor binds and the cutoff jumps up to 12 days at once, on the 1st) and never migrates CWL-dated rows during a CWL season. See `clashcontrol/docs/DATABASE_ARCHITECTURE.md` 2026-09-01 (c) before changing it. | No | `75` |
 | `HISTORY_MIGRATION_NIGHTLY_ROW_BUDGET` | Primary bound on one migration run: stop once this many rows have moved, persisting the cutoff reached so the next night resumes there. Sized so a full CWL day (~2.2M rows; CWL weeks run ~2x the ~1.2M/day baseline) finishes in one night. Bounded by rows rather than days because daily volume is wildly non-uniform. | No | `3000000` |
 | `HISTORY_MIGRATION_TIME_BUDGET_MINUTES` | Secondary hard stop for one migration run (the row budget above is the primary bound). Exists so a pathologically slow disk cannot leave the walk running indefinitely. Since the migration no longer blocks Discord commands, this bounds write-lock contention rather than availability. | No | `30` |
-| `WEB_BRIDGE_PORT` / `WEB_BRIDGE_SECRET` | CWL Clan-Config Discord Activity bridge (PROD) — `127.0.0.1`-only port and shared secret for `qapbot/web_bridge.py`. Both must be set to start the bridge; a `cloudflared` tunnel makes it reachable from the Cloudflare Worker. See `qapbot/docs/CWL_CLAN_CONFIG_ACTIVITY_PLAN.md` and `activity/README.md`. | No | `0` / *(empty, disabled)* |
+| `WEB_BRIDGE_PORT` / `WEB_BRIDGE_SECRET` | CWL Clan-Config Discord Activity bridge (PROD) — `127.0.0.1`-only port and shared secret for `clashcontrol/web_bridge.py`. Both must be set to start the bridge; a `cloudflared` tunnel makes it reachable from the Cloudflare Worker. See `clashcontrol/docs/CWL_CLAN_CONFIG_ACTIVITY_PLAN.md` and `activity/README.md`. | No | `0` / *(empty, disabled)* |
 | `WEB_BRIDGE_PORT_DEV` / `WEB_BRIDGE_SECRET_DEV` | Same, for DEV mode (`DISCORD_GUILD_ID` > 0) | No | `0` / *(empty, disabled)* |
 | *(none — the bug/feature tracker)* | `/bug`/`/feature` registration is not env-var-controlled: `CONFIG.tracker_enabled` is always `not is_dev_mode` (PROD-only), not independently configurable. DEV must never register these commands — a copy of PROD's DB onto DEV (routine for realistic-data testing) carries PROD's real tracker channel IDs along with it, and an env-var toggle would let DEV post real-looking items into those live channels. See `BUG_FEATURE_TRACKER_PLAN.md` §3.1. | - | - |
 | `TRACKER_DATA_DIR` | Directory for on-disk copies of tracker item attachments (agent-readable local files). | No | `data/tracker` |
@@ -397,13 +397,13 @@ migration job moves data older than the retention window from hot to history —
 Run tests via `.\run_tests.ps1` (repo root, PowerShell) — never construct a raw `pytest`
 command directly; the wrapper applies the canonical deselect list and skips live/Discord tests
 by default (pass `-Full` to include them). 1403 tests pass as of 2026-07-26. See
-`qapbot/docs/TEST_CONCEPT.md` for the full test tier design (smoke / integration / discord /
+`clashcontrol/docs/TEST_CONCEPT.md` for the full test tier design (smoke / integration / discord /
 live / e2e), fixture strategy, and CI pipeline details.
 
 ## 🌐 Internationalization
 
 ClashControl supports multiple languages through JSON translation files:
-- Translation files located in `qapbot/translations/`
+- Translation files located in `clashcontrol/translations/`
 - Language preferences stored per Discord server
 - Use `t()` function for all user-facing text
 - Currently supported: English (more languages can be added)
@@ -443,7 +443,7 @@ Contributions are welcome! Please:
 5. Update documentation
 6. Submit a pull request
 
-See [copilot-instructions.md](.github/copilot-instructions.md) and [CODE_STRUCTURE.md](qapbot/docs/CODE_STRUCTURE.md) for detailed development guidelines.
+See [copilot-instructions.md](.github/copilot-instructions.md) and [CODE_STRUCTURE.md](clashcontrol/docs/CODE_STRUCTURE.md) for detailed development guidelines.
 
 ### Development Workflow
 
@@ -475,7 +475,7 @@ See [copilot-instructions.md](.github/copilot-instructions.md) and [CODE_STRUCTU
 - **Single-Source-of-Truth**: All runtime data managed via CACHE object
 - **Unified Message Tracking**: Prevents spam with message reuse
 - **CoC API Calls**: Always use `CACHE.coc_clan_cache.get_clan()` for caching
-- **Formatting**: Use `qapbot/formatting.py` MODE_REGISTRY for all leaderboards
+- **Formatting**: Use `clashcontrol/formatting.py` MODE_REGISTRY for all leaderboards
 - **Modularization**: Place features in the most relevant module
 - **Debugging**: Use logging (DEBUG level) instead of print statements
 
@@ -516,8 +516,8 @@ See [changelog.txt](changelog.txt) for detailed changelog and version history.
   means Discord Activities was enabled for that application (Developer Portal → Activities),
   which auto-creates a global Entry Point command `discord.py` doesn't know about — a plain
   `tree.sync(guild=None)` omits it and Discord now rejects the whole sync instead of deleting
-  it. Already fixed via `bulk_sync_global_commands()` (`qapbot/discord_health.py`) if you're on
-  a version of this bot that includes it; see `qapbot/docs/CWL_CLAN_CONFIG_ACTIVITY_PLAN.md` Phase D.
+  it. Already fixed via `bulk_sync_global_commands()` (`clashcontrol/discord_health.py`) if you're on
+  a version of this bot that includes it; see `clashcontrol/docs/CWL_CLAN_CONFIG_ACTIVITY_PLAN.md` Phase D.
 
 **Leaderboard not updating:**
 - Check clan is subscribed: `/subscriptions`

@@ -20,7 +20,7 @@ import pytest
 
 coc = pytest.importorskip("coc")
 
-from qapbot.cache_manager import CacheManager
+from clashcontrol.cache_manager import CacheManager
 
 
 def _war_payload(size: int = 15) -> dict:

@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 import QBhelperfunctions as hf
-from qapbot.exceptions import WarProcessingError
+from clashcontrol.exceptions import WarProcessingError
 
 
 class _FakeDbManager:

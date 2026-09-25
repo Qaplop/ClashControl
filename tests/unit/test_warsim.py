@@ -36,7 +36,7 @@ class TestCwlLeagueStarDistribution:
     @pytest.mark.smoke
     def test_covers_every_league_in_the_ladder(self):
         from QBwarsim import CWL_LEAGUE_STAR_DISTRIBUTION
-        from qapbot.constants import CWL_LEAGUE_ORDER
+        from clashcontrol.constants import CWL_LEAGUE_ORDER
 
         assert set(CWL_LEAGUE_STAR_DISTRIBUTION.keys()) == set(CWL_LEAGUE_ORDER)
 

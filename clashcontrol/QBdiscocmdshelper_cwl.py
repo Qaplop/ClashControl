@@ -1,0 +1,5622 @@
+"""
+Command-logic helpers and shared embed-builder functions for the CWL roster planning feature.
+
+Split out of QBdiscocmdshelper.py the same way QBdiscocmdshelper_admin_command.py was — keeps
+an already-large file from growing further with an unrelated concern. See
+CWL_ROSTER_PLANNING_PLAN.md for the full feature design.
+
+The two embed builders here (format_clan_management_cwl_settings /
+format_clan_management_cwl_management) are the "shared content layer": they're called both
+from format_clan_management_message()'s dispatch (the /clan management path) and directly from
+the CWL Management Hub view's own render step (the anchored-message path) — written once,
+shown in two places, per the plan's Phase 1 design.
+"""
+from __future__ import annotations
+
+import asyncio
+import logging
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
+from zoneinfo import ZoneInfo
+
+import discord
+
+from clashcontrol.cache_manager import CACHE
+from clashcontrol.constants import CWL_LEAGUE_ORDER
+from clashcontrol.db_manager import CWL_RETENTION_MONTHS_NEW_GUILD
+from clashcontrol.emojis import bench_emoji, signup_dm_icons
+
+# Serializes start_cwl_enrollment() per (guild_id, season) — 2026-08-21 hardening, same bug class
+# and same fix shape as CoCClanCache._update_locks (COPILOT_PITFALLS_COOKBOOK.md Pitfall 35).
+# The only server-side guard was `event["status"] != "draft"`, and that status isn't written until
+# AFTER the whole DM batch finishes — for a ~120-recipient blast under load that window is minutes
+# long, during which a second trigger (another admin, another device, a freshly reopened confirm
+# dialog) sails straight past the check and starts a duplicate run. The UI's button-disable only
+# protects the one already-rendered message, not a new one.
+_enrollment_locks: Dict[Tuple[str, str], asyncio.Lock] = {}
+
+
+def cwl_league_rank(tier: Optional[str]) -> int:
+    """Numeric rank for sorting clans by CWL tier, highest league first (CWL_CLAN_CONFIG_ACTIVITY_PLAN.md
+    Phase E: both the CWL Management embed and the web Activity's clan-config table sort this
+    way now). Unknown/never-synced tiers rank below Bronze League III (-1), so they sort last."""
+    if not tier:
+        return -1
+    try:
+        return CWL_LEAGUE_ORDER.index(tier)
+    except ValueError:
+        return -1
+
+
+def _league_weight(tier: Optional[str], growth_rate: float = 1.4) -> float:
+    """Weight for one CWL attack's league tier, feeding the "Manage Enrollment" board's
+    league-adjusted player-skill score (live-testing feedback, 2026-08-14; formula/growth_rate
+    confirmed with the project owner). Exponential across the 8 league *groups* (Bronze..Legend)
+    rather than linear across all 22 fine-grained tiers, since skill differentiation compounds
+    going up leagues — Champion beating Master should count for meaningfully more than Silver
+    beating Bronze does, not the same flat bonus either way. A small +3%/step bonus for I > II >
+    III within a group keeps sub-tier ordering meaningful without letting it dominate the
+    group-to-group jump. `growth_rate=1.4` means Legend-league stars count ~10.5x Bronze-league
+    stars, and each single group step (e.g. Master -> Champion) is worth 1.4x on its own.
+
+    CWL_LEAGUE_ORDER is laid out in perfect groups of 3 (Bronze III, Bronze II, Bronze I, Silver
+    III, ...) with "Legend League" as a lone 22nd entry — so `index // 3` is the group (0=Bronze
+    .. 6=Titan, 7=Legend) and `index % 3` is the sub-tier bonus (0=III, 1=II, 2=I; always 0 for
+    Legend, which has no sub-tier) with no string parsing needed.
+
+    Unknown/unresolvable tier -> baseline weight 1.0 (never zero/negative — a player whose
+    league can't be resolved still gets counted, just unweighted, rather than zeroed out)."""
+    index = cwl_league_rank(tier)
+    if index < 0:
+        return 1.0
+    group_index = index // 3
+    subtier_bonus = index % 3
+    return (growth_rate ** group_index) * (1 + 0.03 * subtier_bonus)
+
+
+def _cwl_stats_window_since_date(num_months: int = 3, now: Optional[datetime] = None) -> str:
+    """First day of the earliest of the trailing `num_months` calendar months (inclusive of the
+    current month), as a "YYYY-MM-DD" SQL lower bound — the exact same window boundary
+    get_recent_cwl_player_stats (QBhelperfunctions.py) computes via parse_month_argument for the
+    hover pop-up's own stats, duplicated here in single-date-string form since a bulk per-roster
+    query needs one SQL `>=` boundary rather than a per-month breakdown (2026-08-16, project
+    owner's spec: "use the 'last three months' logic for both" the pop-up and the player tiles).
+    `now` overridable for deterministic tests, same reason parse_month_argument() itself takes
+    `now` explicitly rather than calling datetime.now() internally."""
+    from QBhelperfunctions import parse_month_argument
+
+    month, year = parse_month_argument(f"-{num_months}", now or datetime.now(timezone.utc))[0]
+    return f"{year:04d}-{month:02d}-01"
+
+
+def compute_league_adjusted_skill_scores(player_tags: List[str], *, now: Optional[datetime] = None) -> Dict[str, float]:
+    """Player-skill score for the "Manage Enrollment" board's TH/Skill/Alphabetical sort option:
+    league-adjusted average stars/attack over each player's CWL attacks in the trailing 3
+    calendar months (2026-08-16, project owner's spec — previously the player's last 10 CWL
+    attacks; changed for consistency with the hover pop-up's own "last 3 months" stats, see
+    _cwl_stats_window_since_date's docstring). Each attack's raw stars is weighted by
+    _league_weight() above (the league its attacking clan was in for that CWL round) before
+    averaging — a 3-star earned in Champion League counts for meaningfully more than a 3-star in
+    Master League. Rounded to 2dp.
+
+    A player_tag with no resolvable CWL-attack-with-league data in the window (never played CWL,
+    played outside the window, or league data isn't populated for those seasons —
+    get_recent_cwl_attacks_with_league_sync's own docstring covers why that can happen) is simply
+    absent from the returned dict — never a fabricated 0, matching the same "None means no data,
+    not zero" convention compute_roster_stats_sync (QBhelperfunctions.py) already uses."""
+    db = CACHE.db_manager
+    if db is None or not player_tags:
+        return {}
+    since_date = _cwl_stats_window_since_date(now=now)
+    attacks_by_tag = db.get_recent_cwl_attacks_with_league_sync(player_tags, since_date=since_date)
+    scores: Dict[str, float] = {}
+    for tag, attacks in attacks_by_tag.items():
+        if not attacks:
+            continue
+        weighted_total = sum(a["stars"] * _league_weight(a["league_rank"]) for a in attacks)
+        scores[tag] = round(weighted_total / len(attacks), 2)
+    return scores
+
+
+def compute_avg_stars_per_attack(player_tags: List[str], *, now: Optional[datetime] = None) -> Dict[str, float]:
+    """The "Manage Enrollment" board's other number-display option (2026-08-14, project owner's
+    spec: a second radio group lets the admin pick which number shows next to each player's
+    name — this, or the league-adjusted skill score above; defaults to this one). Plain,
+    unweighted average stars/attack over each player's CWL attacks in the trailing 3 calendar
+    months — the exact same window compute_league_adjusted_skill_scores() uses, just without the
+    league weighting. Same "no data -> absent from the dict, never a fabricated 0" convention."""
+    db = CACHE.db_manager
+    if db is None or not player_tags:
+        return {}
+    since_date = _cwl_stats_window_since_date(now=now)
+    attacks_by_tag = db.get_recent_cwl_attacks_with_league_sync(player_tags, since_date=since_date)
+    averages: Dict[str, float] = {}
+    for tag, attacks in attacks_by_tag.items():
+        if not attacks:
+            continue
+        averages[tag] = round(sum(a["stars"] for a in attacks) / len(attacks), 2)
+    return averages
+
+
+def cwl_start_at_compact(cwl_start_at: Optional[str], timezone_name: str = "UTC") -> Optional[str]:
+    """Compact fixed "YY-MM-DD HH:MM" rendering of a stored UTC cwl_start_at, converted into
+    timezone_name (the guild's configured timezone_name, an IANA zone id like "Europe/Berlin")
+    via the stdlib zoneinfo module — correctly DST-aware, unlike a fixed offset. Falls back to
+    plain UTC if timezone_name is unset/unrecognized rather than raising. Used by the CWL
+    Management embed's monospaced clan table (format_clan_management_cwl_management()), where a
+    code-block table needs one consistent column width/format for every row — incompatible with
+    Discord's native per-viewer <t:unix:style> markup (cwl_start_at_discord_timestamp() below),
+    which Discord doesn't even parse inside a code block in the first place, and whose rendered
+    format Discord controls (no style matches "YY-MM-DD HH:MM"). Since a single shared table
+    can't show each viewer their own local time, it shows the guild's one configured zone
+    instead — a per-guild setting (see the "Select Timezone" button next to "Select Language" in
+    Basic Config) is a deliberate exception to the CWL_CLAN_CONFIG_ACTIVITY_PLAN.md item 9
+    "never a guild-wide timezone setting" decision, made necessary specifically by the
+    code-block incompatibility above — everywhere else in the codebase still prefers native
+    per-viewer markup."""
+    if not cwl_start_at:
+        return None
+    try:
+        naive = datetime.strptime(cwl_start_at.rstrip("Z"), "%Y-%m-%dT%H:%M")
+    except ValueError:
+        return None
+    aware_utc = naive.replace(tzinfo=timezone.utc)
+    try:
+        local = aware_utc.astimezone(ZoneInfo(timezone_name))
+    except Exception:
+        local = aware_utc
+    return local.strftime("%y-%m-%d %H:%M")
+
+
+def timezone_abbreviation(timezone_name: str, cwl_season: str) -> str:
+    """Short abbreviation ("CEST", "UTC", "IST") for timezone_name, used in the CWL Management
+    table's "CWL Start (CEST)" header — the full IANA zone name ("Europe/Berlin") reliably wraps
+    the header onto a second line inside Discord's code-block width, breaking the table's column
+    alignment. Resolved against cwl_season's own official start (1st of that month, 08:00 UTC)
+    rather than "now", since the abbreviation should reflect the season being displayed, not
+    whatever DST state happens to be current when the embed is rendered. A season's actual
+    per-clan start times are all within a 48h window of that reference point (the Activity's own
+    picker enforces this), so in practice every row shares this same abbreviation; on the rare
+    case a table straddles a DST transition, only the header label is approximate — each row's
+    own HH:MM (cwl_start_at_compact() above) is always individually correct regardless."""
+    try:
+        reference = datetime.strptime(f"{cwl_season}-01T08:00", "%Y-%m-%dT%H:%M").replace(tzinfo=timezone.utc)
+        return reference.astimezone(ZoneInfo(timezone_name)).tzname() or timezone_name
+    except Exception:
+        return timezone_name
+
+
+def cwl_start_at_discord_timestamp(cwl_start_at: Optional[str], style: str = "f") -> Optional[str]:
+    """Convert a stored UTC "YYYY-MM-DDTHH:MMZ" cwl_start_at into Discord's `<t:unix:style>`
+    timestamp markup, or None if unset/unparseable.
+
+    Discord's client renders this markup in *each viewer's own* locale/timezone automatically —
+    no per-guild timezone setting is needed to satisfy "show it in the calling client's
+    timezone" (CWL_CLAN_CONFIG_ACTIVITY_PLAN.md Phase E.4); this is the native mechanism built
+    for exactly that, and it's more correct than a single guild-wide setting could ever be
+    (each admin sees their own local time, not the guild's).
+    """
+    if not cwl_start_at:
+        return None
+    try:
+        naive = datetime.strptime(cwl_start_at.rstrip("Z"), "%Y-%m-%dT%H:%M")
+    except ValueError:
+        return None
+    epoch = int(naive.replace(tzinfo=timezone.utc).timestamp())
+    return f"<t:{epoch}:{style}>"
+
+
+def resolve_selected_cwl_season(guild_id: int) -> str:
+    """The season currently selected for CWL Management display/editing — the persisted
+    guild_config.cwl_selected_season if set (driven by the season dropdown on the CWL
+    Management screen, CWL_CLAN_CONFIG_ACTIVITY_PLAN.md Phase E.3), else falls back to
+    get_current_cwl_event_sync()'s season, else the calendar default. Single resolution path
+    shared by the Discord-side embed/season-select and the web bridge, so both always agree on
+    "which season is this" without either needing its own heuristic.
+    """
+    guild_id_str = str(guild_id)
+    selected = CACHE.server_config.get(guild_id_str, {}).get("cwl_selected_season")
+    if selected:
+        return selected
+    event = get_current_cwl_event_sync(guild_id)
+    return event["cwl_season"] if event else resolve_current_cwl_season()
+
+
+def resolve_current_cwl_season() -> str:
+    """Default cwl_season key for a newly-created event: the *upcoming* calendar month (UTC).
+
+    CWL itself runs in roughly the first ten days of each month, so a given month's war league
+    is already locked in (or actively running) before roster planning for it could happen —
+    whenever leadership is setting up a roster, they are always preparing for next month's
+    season, never the current one. There is no CoC-API-derived season key
+    (normalize_cwl_season() in clashcontrol/constants.py) available yet to normalize against at setup
+    time — this is a simple calendar default, not an API-observed value.
+    """
+    now = datetime.now(timezone.utc)
+    if now.month == 12:
+        return f"{now.year + 1}-01"
+    return f"{now.year}-{now.month + 1:02d}"
+
+
+def get_current_cwl_event_sync(guild_id: int) -> Optional[Dict[str, Any]]:
+    """Return the guild's "current" CWL event for the cwl_management screen to show.
+
+    "Current" means: the most recent non-terminal event (draft/signup_open/finalized) if one
+    exists, else the single most recent event overall (announced/cancelled — still worth
+    showing so leadership can see what was last sent out), else None if the guild has never
+    created a CWL event at all.
+    """
+    db = CACHE.db_manager
+    if db is None:
+        return None
+    events = db.list_cwl_events_sync(str(guild_id))
+    if not events:
+        return None
+    for status in ("draft", "signup_open", "finalized"):
+        for event in events:
+            if event["status"] == status:
+                return event
+    return events[0]  # list_cwl_events_sync already orders by cwl_season DESC
+
+
+def find_active_cwl_participation(
+    guild_id: str, clan_tags: Iterable[str]
+) -> Dict[str, List[Tuple[int, str]]]:
+    """For each clan_tag in clan_tags, return the (event_id, cwl_season) pairs — of this guild's
+    non-cancelled cwl_events — where it's currently marked participating. The safety check behind
+    MemberClansConfigurationView's "you're about to remove a clan that's still in an active CWL
+    lineup" confirmation (ui_clan_management.py): the event_id lets the confirm view deactivate
+    the clan there too (deactivate_cwl_event_clan_sync) without a second lookup, and the season
+    string is what gets shown to the admin. A clan absent from the returned dict has no
+    active-CWL entanglement and can be removed from the guild without touching cwl_event_clans at
+    all. "Non-cancelled" deliberately includes announced/finalized events too, not just
+    draft/signup_open — an admin removing a clan after assignments were made or DMs were sent
+    still needs to know, even though nothing downstream currently acts on 'finalized'/'announced'
+    (those phases aren't built yet)."""
+    db = CACHE.db_manager
+    if db is None or not clan_tags:
+        return {}
+    clan_tag_set = set(clan_tags)
+    conflicts: Dict[str, List[Tuple[int, str]]] = {}
+    for event in db.list_cwl_events_sync(str(guild_id)):
+        if event["status"] == "cancelled":
+            continue
+        for clan in db.get_cwl_event_clans_sync(event["id"]):
+            if clan["clan_tag"] in clan_tag_set and clan.get("participating", 1):
+                conflicts.setdefault(clan["clan_tag"], []).append((event["id"], event["cwl_season"]))
+    return conflicts
+
+
+async def format_clan_management_cwl_settings(
+    guild: discord.Guild,
+) -> Tuple[discord.Embed, Optional[discord.Embed], List[Dict[str, Any]], List[Dict[str, Any]]]:
+    """CWL guild-preferences screen ("cwl_settings" mode) — shared by /clan management and the
+    CWL Management Hub. Modeled on _format_clan_management_config()'s block-per-setting style
+    (QBdiscocmdshelper.py). Secondary embed and player lists are always empty here, matching
+    every other non-registrations mode.
+    """
+    from clashcontrol.i18n import t
+
+    guild_id_int = guild.id
+    guild_id_str = str(guild_id_int)
+    guild_config = CACHE.server_config.get(guild_id_str, {})
+
+    management_channel_id = guild_config.get("cwl_management_channel_id")
+    management_enabled = guild_config.get("cwl_management_message_enabled", False)
+    retention_months = guild_config.get("cwl_retention_months", CWL_RETENTION_MONTHS_NEW_GUILD)
+
+    if management_channel_id:
+        try:
+            channel = guild.get_channel(int(management_channel_id))
+            channel_display = f"<#{management_channel_id}>" if channel else f"❌ {t('cwl.settings.channel_not_set', guild_id=guild_id_int)}"
+        except Exception:
+            channel_display = f"❌ {t('cwl.settings.channel_not_set', guild_id=guild_id_int)}"
+    else:
+        channel_display = f"❌ {t('cwl.settings.channel_not_set', guild_id=guild_id_int)}"
+
+    status_emoji = "🟢" if management_enabled else "🔴"
+    status_text = (
+        t('cwl.settings.status_enabled', guild_id=guild_id_int)
+        if management_enabled
+        else t('cwl.settings.status_disabled', guild_id=guild_id_int)
+    )
+    hub_block = (
+        f"⠀\n**{t('cwl.settings.hub_block_title', guild_id=guild_id_int)}**\n"
+        f"{t('cwl.settings.hub_status', guild_id=guild_id_int, status=f'{status_emoji} {status_text}')}\n"
+        f"{t('cwl.settings.hub_channel', guild_id=guild_id_int, channel=channel_display)}"
+    )
+
+    # Player CWL Settings Hub (plans/cwl-personal-hub.md Phase 2c) — same "Status/Channel" shape
+    # as hub_block above, reading the cwl_player_hub_* config keys instead.
+    player_hub_channel_id = guild_config.get("cwl_player_hub_channel_id")
+    player_hub_enabled = guild_config.get("cwl_player_hub_message_enabled", False)
+
+    if player_hub_channel_id:
+        try:
+            player_hub_channel = guild.get_channel(int(player_hub_channel_id))
+            player_hub_channel_display = (
+                f"<#{player_hub_channel_id}>" if player_hub_channel
+                else f"❌ {t('cwl.settings.channel_not_set', guild_id=guild_id_int)}"
+            )
+        except Exception:
+            player_hub_channel_display = f"❌ {t('cwl.settings.channel_not_set', guild_id=guild_id_int)}"
+    else:
+        player_hub_channel_display = f"❌ {t('cwl.settings.channel_not_set', guild_id=guild_id_int)}"
+
+    player_hub_status_emoji = "🟢" if player_hub_enabled else "🔴"
+    player_hub_status_text = (
+        t('cwl.settings.status_enabled', guild_id=guild_id_int)
+        if player_hub_enabled
+        else t('cwl.settings.status_disabled', guild_id=guild_id_int)
+    )
+    player_hub_block = (
+        f"⠀\n**{t('cwl.settings.player_hub_block_title', guild_id=guild_id_int)}**\n"
+        f"{t('cwl.settings.player_hub_status', guild_id=guild_id_int, status=f'{player_hub_status_emoji} {player_hub_status_text}')}\n"
+        f"{t('cwl.settings.player_hub_channel', guild_id=guild_id_int, channel=player_hub_channel_display)}"
+    )
+
+    retention_display = (
+        t('cwl.settings.retention_never', guild_id=guild_id_int)
+        if not retention_months
+        else t('cwl.settings.retention_months', guild_id=guild_id_int, months=retention_months)
+    )
+    retention_block = (
+        f"⠀\n**{t('cwl.settings.retention_block_title', guild_id=guild_id_int)}**\n"
+        f"{t('cwl.settings.retention_value', guild_id=guild_id_int, value=retention_display)}"
+    )
+
+    # 2026-08-15, project owner's spec: account-wide enrollment-pool expansion toggle — see
+    # start_cwl_enrollment()'s docstring (QBdiscocmdshelper_cwl.py) for the actual mechanic.
+    # Same "Status: {emoji} {text}" line shape as every other enable/disable setting on this
+    # screen (hub_block above) — live-testing feedback, 2026-08-15: it read as an outlier
+    # squeezed onto one line with the description instead.
+    include_all_accounts = guild_config.get("cwl_enrollment_include_all_linked_accounts", False)
+    include_all_accounts_status_emoji = "🟢" if include_all_accounts else "🔴"
+    include_all_accounts_status_text = (
+        t('cwl.settings.status_enabled', guild_id=guild_id_int)
+        if include_all_accounts
+        else t('cwl.settings.status_disabled', guild_id=guild_id_int)
+    )
+    enrollment_pool_block = (
+        f"⠀\n**{t('cwl.settings.enrollment_pool_block_title', guild_id=guild_id_int)}**\n"
+        f"{t('cwl.settings.enrollment_pool_status', guild_id=guild_id_int, status=f'{include_all_accounts_status_emoji} {include_all_accounts_status_text}')}\n"
+        f"{t('cwl.settings.enrollment_pool_description', guild_id=guild_id_int)}"
+    )
+
+    # Linked CWL Coordinator role (tracker #0086). Every other setting on this screen already
+    # states its current value here — this one only had its "Configure Coordinator Role" button and
+    # no readout at all, so the screen couldn't answer "is a role linked, and which one?" without
+    # opening the sub-screen (live report, 2026-08-30).
+    #
+    # A role_id that no longer resolves is reported as not-set rather than as a dangling id: the
+    # role having been deleted in Discord is exactly the case an admin needs to notice here, and it
+    # is also what sync_cwl_coordinator_role() effectively does with it (logs and no-ops).
+    coordinator_role_id = guild_config.get("cwl_coordinator_role_id")
+    coordinator_role = None
+    if coordinator_role_id:
+        try:
+            coordinator_role = guild.get_role(int(coordinator_role_id))
+        except (TypeError, ValueError):
+            coordinator_role = None
+    coordinator_role_display = (
+        coordinator_role.mention if coordinator_role
+        else f"❌ {t('cwl.settings.coordinator_role_not_set', guild_id=guild_id_int)}"
+    )
+    coordinator_role_block = (
+        f"⠀\n**{t('cwl.settings.coordinator_role_block_title', guild_id=guild_id_int)}**\n"
+        f"{t('cwl.settings.coordinator_role_value', guild_id=guild_id_int, role=coordinator_role_display)}\n"
+        f"{t('cwl.settings.coordinator_role_description', guild_id=guild_id_int)}"
+    )
+    # Tracker #0092: per-clan mode replaces the single-role readout with "N of M clans linked".
+    # Counted on links whose role still resolves, for the same reason as above — a deleted role is
+    # what the admin needs to notice, not a link that silently does nothing.
+    if (guild_config.get("cwl_coordinator_role_mode") or "single") == "per_clan":
+        per_clan_links: Dict[str, Any] = guild_config.get("cwl_clan_coordinator_roles") or {}
+        linked_count = 0
+        for linked_role_id in per_clan_links.values():
+            try:
+                if guild.get_role(int(linked_role_id)) is not None:
+                    linked_count += 1
+            except (TypeError, ValueError):
+                continue
+        total_clans = len(set(resolve_guild_member_clan_tags(guild_id_int)) | set(per_clan_links))
+        coordinator_role_block = (
+            f"⠀\n**{t('cwl.settings.coordinator_role_block_title', guild_id=guild_id_int)}**\n"
+            f"{t('cwl.settings.coordinator_role_per_clan_value', guild_id=guild_id_int, linked=linked_count, total=total_clans)}\n"
+            f"{t('cwl.settings.coordinator_role_per_clan_description', guild_id=guild_id_int)}"
+        )
+
+    # Tracker #0114: sign-up mode readout — standard (confirm/decline) vs extended, which adds the
+    # Ersatzbank/Bench status. Same "state + one-line description" shape as the blocks above.
+    extended_signup = (guild_config.get("cwl_signup_mode") or "standard") == "extended"
+    signup_mode_block = (
+        f"⠀\n**{t('cwl.settings.signup_mode_block_title', guild_id=guild_id_int)}**\n"
+        # Both modes are legitimate, active states — unlike the enabled/disabled blocks above, so
+        # no 🔴 here (project owner, 2026-09-22: "red would be misleading since both are active
+        # statuses"). Green for standard (the default), blue for extended, matching the bench
+        # icon's own blue.
+        f"{t('cwl.settings.signup_mode_status', guild_id=guild_id_int, status=('🔵 ' + t('cwl.settings.signup_mode_extended', guild_id=guild_id_int)) if extended_signup else ('🟢 ' + t('cwl.settings.signup_mode_standard', guild_id=guild_id_int)))}\n"
+        f"{t('cwl.settings.signup_mode_description', guild_id=guild_id_int)}"
+    )
+
+    embed = discord.Embed(
+        title=t('cwl.settings.title', guild_id=guild_id_int),
+        description=t('cwl.settings.description', guild_id=guild_id_int, guild_name=guild.name),
+        color=discord.Color.gold(),
+    )
+    embed.add_field(name="", value=hub_block, inline=False)
+    embed.add_field(name="", value=player_hub_block, inline=False)
+    embed.add_field(name="", value=retention_block, inline=False)
+    embed.add_field(name="", value=enrollment_pool_block, inline=False)
+    embed.add_field(name="", value=coordinator_role_block, inline=False)
+    embed.add_field(name="", value=signup_mode_block, inline=False)
+
+    return embed, None, [], []
+
+
+async def format_clan_management_cwl_management(
+    guild: discord.Guild,
+) -> Tuple[discord.Embed, Optional[discord.Embed], List[Dict[str, Any]], List[Dict[str, Any]]]:
+    """CWL season-operations screen ("cwl_management" mode) — shared by /clan management and
+    the CWL Management Hub. A snapshot rendered on open/refresh, not auto-live-updating — same
+    convention as the existing registrations embed (QBdiscocmdshelper.py).
+    """
+    from clashcontrol.i18n import t
+
+    guild_id_int = guild.id
+    season = resolve_selected_cwl_season(guild_id_int)
+    db = CACHE.db_manager
+    event = db.get_cwl_event_sync(str(guild_id_int), season) if db is not None else None
+
+    embed = discord.Embed(
+        title=t('cwl.management.title', guild_id=guild_id_int),
+        color=discord.Color.gold(),
+    )
+
+    if event is None:
+        embed.description = t('cwl.management.no_event', guild_id=guild_id_int, season=season)
+        return embed, None, [], []
+
+    # get_cwl_event_clans_sync() returns every clan ever configured for this event, including
+    # deactivated ones whose settings are kept (not deleted) so reactivating restores them — the
+    # "Participating Clans" display must only show the ones actually currently participating.
+    all_clans = db.get_cwl_event_clans_sync(event["id"]) if db is not None else []
+    clans = [c for c in all_clans if c.get("participating", 1)]
+
+    def _tier_for(clan: Dict[str, Any]) -> Optional[str]:
+        # The CWL tier is CoC-defined (war_league), never admin-set — prefer the live value
+        # over the stored snapshot in case the clan was promoted/demoted since.
+        return CACHE.get_clan_war_league(clan["clan_tag"]) or clan.get("target_league_rank")
+
+    # Highest tier first (CWL_CLAN_CONFIG_ACTIVITY_PLAN.md Phase E), name as the tiebreaker.
+    clans = sorted(
+        clans,
+        key=lambda c: (-cwl_league_rank(_tier_for(c)), (CACHE.get_clan_name(c["clan_tag"], c["clan_tag"]) or "").lower()),
+    )
+
+    # Step indicator FIRST, above the season header (2026-08-30, project owner's spec: "at the top
+    # of the message"). Built from `all_clans`, not the tier-sorted `clans` — phase derivation only
+    # cares about participating/locked_at, and doing it here keeps it independent of display order.
+    phase_info = resolve_cwl_phase(event, all_clans)
+    indicator = render_cwl_step_indicator(phase_info, guild_id_int)
+    # No status suffix here (tracker #0081 follow-up, 2026-08-30, project owner's spec: "with the
+    # step indicator the status after 'Season 2026-09' got redundant and we also have naming
+    # drift. Simply remove it") — the step indicator above already shows exactly this, in the
+    # step-name vocabulary (Setup/Enrollment/Preparation/War) rather than the raw event_status_*
+    # wording ("Sign-Up Open", "War running"), so the two were saying the same thing in two
+    # different vocabularies. event["status"] itself is unaffected — the phase indicator's own
+    # resolve_cwl_phase() call above still reads it directly.
+    season_header = t('cwl.management.season_header', guild_id=guild_id_int, season=event["cwl_season"])
+    # A blank line before, TWO blank lines after (tracker #0081, project owner's ticket text: "an
+    # empty line infront and directly after the step indicator", clarified 2026-08-30 to mean a
+    # second blank line on the after side specifically) — the title touches the description
+    # directly with no gap of its own, so without a leading blank line the indicator reads as
+    # glued to "CWL Management"; the extra line after gives it more room to stand out from the
+    # season header below than a single line does. A plain leading "\n" doesn't survive Discord's
+    # embed rendering, which trims leading/trailing whitespace (including newlines) from the
+    # description — confirmed live, 2026-08-30: the gap was simply gone. A zero-width space
+    # (U+200B) makes that first line non-whitespace so Discord keeps it, while rendering as nothing
+    # visible itself. The two blank lines AFTER the indicator don't need the same treatment — they
+    # sit between two lines of real content (the indicator, then the season header), not at the
+    # very start/end of the description, so Discord's trim never touches them.
+    embed.description = f"​\n{indicator}\n\n\n{season_header}" if indicator else season_header
+
+    if not clans:
+        clans_block = t('cwl.management.no_clans_configured', guild_id=guild_id_int)
+    else:
+        # Monospaced code-block table, not bullet lines (project owner's explicit "clean table
+        # like design" ask) — clan tag/"League"/"roster slots" text all dropped here to keep rows
+        # short enough for large families to fit on one screen. cwl_start_at_compact() (not the
+        # native <t:...> markup used elsewhere) renders a fixed, DST-aware "YY-MM-DD HH:MM" in
+        # the guild's configured timezone_name (Basic Config's "Select Timezone", next to "Select
+        # Language") — Discord doesn't parse <t:...> markup inside code blocks at all, so a
+        # code-block table can't use native per-viewer timestamps regardless of format. The
+        # header shows a short abbreviation ("CEST") rather than the full IANA zone name
+        # ("Europe/Berlin") — the latter reliably wraps the header row inside Discord's
+        # code-block width, breaking the table's column alignment. See timezone_abbreviation()'s
+        # docstring for why it's resolved against the season's own start, not "now".
+        timezone_name = CACHE.server_config.get(str(guild_id_int), {}).get("timezone_name", "UTC")
+        tz_abbr = timezone_abbreviation(timezone_name, event["cwl_season"])
+        header_clan = t('cwl.management.table_header_clan', guild_id=guild_id_int)
+        header_tier = t('cwl.management.table_header_tier', guild_id=guild_id_int)
+        header_roster = t('cwl.management.table_header_roster', guild_id=guild_id_int)
+        header_start = f"{t('cwl.management.table_header_start', guild_id=guild_id_int)} ({tz_abbr})"
+
+        rows = []
+        for clan in clans:
+            clan_name = CACHE.get_clan_name(clan["clan_tag"], clan["clan_tag"])
+            tier = _tier_for(clan) or t('cwl.management.tier_unset', guild_id=guild_id_int)
+            tier_short = tier.replace(" League", "")
+            start_display = (
+                cwl_start_at_compact(clan.get("cwl_start_at"), timezone_name)
+                or t('cwl.management.start_time_unset', guild_id=guild_id_int)
+            )
+            rows.append((clan_name, tier_short, str(clan["roster_size"]), start_display))
+
+        name_w = max(len(header_clan), *(len(r[0]) for r in rows))
+        tier_w = max(len(header_tier), *(len(r[1]) for r in rows))
+        roster_w = max(len(header_roster), *(len(r[2]) for r in rows))
+        start_w = max(len(header_start), *(len(r[3]) for r in rows))
+
+        table_lines = [
+            f"{header_clan.ljust(name_w)}  {header_tier.ljust(tier_w)}  {header_roster.ljust(roster_w)}  {header_start}",
+            f"{'-' * name_w}  {'-' * tier_w}  {'-' * roster_w}  {'-' * start_w}",
+        ]
+        for name, tier_short, roster, start_display in rows:
+            table_lines.append(f"{name.ljust(name_w)}  {tier_short.ljust(tier_w)}  {roster.ljust(roster_w)}  {start_display}")
+        clans_block = "```\n" + "\n".join(table_lines) + "\n```"
+    embed.add_field(
+        name=t('cwl.management.clans_block_title', guild_id=guild_id_int),
+        value=clans_block,
+        inline=False,
+    )
+
+    # 'withdrawn' is legacy-only (its one writer, the board's old 1-click admin confirm/withdraw
+    # control, was removed 2026-08-19 — see ADMIN_SETTABLE_ENROLLMENT_STATUSES's comment,
+    # web_bridge.py) — omitted here rather than shown as a permanent "0" line.
+    signup_counts = db.get_cwl_signup_status_counts_sync(event["id"]) if db is not None else {}
+    pending_linked, pending_unlinked = await asyncio.to_thread(
+        split_cwl_pending_signups_by_link_sync, event["id"]
+    )
+    # Tracker #0042 (live bug report, "ungleiche zahlen" — this line's number didn't match
+    # "Notify New Pool Members"' own "Skipped (no linked account)" result count): the two are
+    # NOT the same population and were never meant to match. This line (i18n key
+    # signup_status_unlinked, label "Unlinked players" — tracker #0073, reverted from an
+    # interim "Unlinked sign-ups" wording) is scoped to players who already have a pending
+    # cwl_signups row (split_cwl_pending_signups_by_link_sync's docstring). The notify/start/
+    # remind action summaries' "Skipped (no linked account)" is scoped to the FULL current pool —
+    # every guild-member-clan member, resolved fresh via resolve_cwl_pool_dm_targets_sync — which
+    # is a superset that also includes members who've never been seeded into cwl_signups at all.
+    # The label itself no longer spells this scope out (project owner's preference, #0073) — this
+    # comment is the only remaining record of the distinction; no data/logic change either time.
+    # Tracker #0114: the two Bench counts sit between the confirmed and declined lines. On an
+    # extended-sign-up guild they always show (0 included, like every other line); on a standard
+    # one only when a Bench player is actually there — a player can carry that status in from
+    # another guild, and hiding a count of real players would be worse than an unexpected line,
+    # while a permanent "Ersatzbank: 0" on a guild that doesn't use the feature is just noise.
+    extended_signup = is_cwl_extended_signup(guild_id_int)
+    count_statuses = ["auto_confirmed", "confirmed"]
+    for bench_status in CWL_BENCH_STATUSES:
+        if extended_signup or signup_counts.get(bench_status, 0):
+            count_statuses.append(bench_status)
+    count_statuses.append("declined")
+
+    signup_lines = [
+        f"{t('cwl.management.signup_status_unlinked', guild_id=guild_id_int)}: {pending_unlinked}",
+        f"{t('cwl.management.signup_status_pending', guild_id=guild_id_int)}: {pending_linked}",
+    ] + [
+        f"{t(f'cwl.management.signup_status_{status}', guild_id=guild_id_int)}: {signup_counts.get(status, 0)}"
+        # auto_confirmed before confirmed (plans/cwl-personal-hub.md Phase 4a) — a standing
+        # opt-in preference seeded this row and the invitation DM was still sent, so it reads as
+        # "not yet a real confirmation" and belongs ahead of the genuine confirmed count.
+        for status in count_statuses
+    ]
+    # Same resolution + gating count_cwl_pool_members_missing_dm() drives for the "Notify New
+    # Pool Members" button below — shown here only when that button would actually do something
+    # (>0), same "don't show what's currently pointless" convention the button itself follows.
+    missing_dm_count = await asyncio.to_thread(
+        count_cwl_pool_members_missing_dm, guild_id_int, event["cwl_season"]
+    )
+    if missing_dm_count:
+        signup_lines.append(
+            f"{t('cwl.management.signup_status_missing_dm', guild_id=guild_id_int)}: {missing_dm_count}"
+        )
+    embed.add_field(
+        name=t('cwl.management.signups_block_title', guild_id=guild_id_int),
+        value="\n".join(signup_lines),
+        inline=False,
+    )
+
+    # "Still Missing" (Phase 6, CWL_ROSTER_PLANNING_PLAN.md) — live-queried, never stored, and only
+    # once the season has actually been announced, since before that nobody has been told where to
+    # go and "hasn't moved yet" is meaningless. Because this function is the shared content layer,
+    # the section renders identically in /clan management and in the CWL Management Hub, with one
+    # implementation — the invariant this whole feature has held throughout.
+    #
+    # 'war' MUST be included alongside 'announced' (2026-08-30): a guild flips to war status as soon
+    # as its FIRST clan starts in-game, so scoping this to 'announced' alone made the section vanish
+    # at precisely the point leadership most needs it — the remaining clans are still waiting on
+    # transfers. Same trap as get_active_cwl_events_sync()'s own status widening.
+    if event["status"] in ("announced", "war"):
+        monitoring = await asyncio.to_thread(
+            resolve_cwl_switch_monitoring_sync, guild_id_int, event["id"], event["cwl_season"]
+        )
+        missing_lines: List[str] = []
+        for clan in clans:
+            clan_name = CACHE.get_clan_name(clan["clan_tag"], clan["clan_tag"])
+            if clan["clan_tag"] in monitoring["locked_clan_tags"]:
+                # A locked clan shows its real state rather than a stale missing-count — there is
+                # nothing anyone can do about that roster any more.
+                missing_lines.append(
+                    f"{clan_name}: {t('cwl.management.still_missing_locked', guild_id=guild_id_int)}"
+                )
+                continue
+            pending = [p for p in monitoring["pending"] if p["clan_tag"] == clan["clan_tag"]]
+            if not pending:
+                continue
+            start_rel = cwl_start_at_discord_timestamp(clan.get("cwl_start_at"), "R") or "?"
+            missing_lines.append(
+                f"**{clan_name}** ({start_rel}): " + ", ".join(p["player_name"] for p in pending)
+            )
+        if missing_lines:
+            embed.add_field(
+                name=t('cwl.management.still_missing_block_title', guild_id=guild_id_int),
+                # Discord caps a field value at 1024 chars; a family-wide "nobody moved yet" right
+                # after Start CWL can genuinely exceed that.
+                value="\n".join(missing_lines)[:1024],
+                inline=False,
+            )
+
+    return embed, None, [], []
+
+
+def resolve_guild_member_clan_tags(guild_id: int) -> List[str]:
+    """All of a guild's member clan tags — individually configured member_clans plus every clan
+    covered by a member_family — the same "is this clan actually relevant to this guild"
+    resolution QBdiscocmdshelper.py's is_player_in_member_clans() and cache_manager.py's
+    update_all_clan_subscription_statuses() already use, applied here to build the FULL set
+    instead of testing one candidate clan. Used as the CWL enrollment candidate pool (2026-08-14
+    redesign, project owner's spec): every current member of every guild member clan belongs in
+    the pool, regardless of whether that specific clan opted into this season's CWL — only the
+    auto-assignment TARGET (and the columns shown on the board) are restricted to clans actually
+    participating this season."""
+    config = CACHE.server_config.get(str(guild_id), {})
+    tags: List[str] = list(config.get("member_clans", []))
+    for family_id in config.get("member_families", []):
+        family_data = CACHE.clan_families.get(family_id, {})
+        for clan_tag in family_data.get("clans", []):
+            if clan_tag not in tags:
+                tags.append(clan_tag)
+    return tags
+
+
+def all_member_clan_tags() -> List[str]:
+    """Every guild's member clans (member_clans + member_family clans), deduplicated and sorted —
+    resolve_guild_member_clan_tags() unioned over all guilds. The Clan Capital raid tracking set
+    (tracker #0115): raids are tracked for member clans only, not for subscribed/guest clans."""
+    tags: Set[str] = set()
+    for guild_id in list(CACHE.server_config.keys()):
+        try:
+            tags.update(resolve_guild_member_clan_tags(int(guild_id)))
+        except (TypeError, ValueError):
+            continue
+    return sorted(tags)
+
+
+def guild_ids_for_member_clan(clan_tag: str) -> List[str]:
+    """Guild ids (as str) whose member clans — directly or via a member family — include
+    *clan_tag*. Used to route Clan Capital raid channel reminders (tracker #0115)."""
+    result: List[str] = []
+    for guild_id in list(CACHE.server_config.keys()):
+        try:
+            if clan_tag in resolve_guild_member_clan_tags(int(guild_id)):
+                result.append(str(guild_id))
+        except (TypeError, ValueError):
+            continue
+    return result
+
+
+def resolve_cwl_pool_clan_tags_sync(guild_id: int, event_id: Optional[int]) -> List[str]:
+    """The guild's whole clan family unioned with every clan configured for event_id —
+    participating or not (rule b/f, CWL_ENROLLMENT_PLAYER_POOL_REDESIGN_PLAN.md: pool membership
+    ignores the participating toggle, and unchecking a guest clan leaves its members pooled) —
+    the definition of "this guild's own lineup for the season," which a guest, by definition, is
+    never part of. event_id=None (no CWL event exists yet for the guild's selected season) still
+    returns the family half — that's not conditional on a season existing.
+
+    Single source for this union, shared by start_cwl_enrollment, resolve_cwl_pool_dm_targets_sync
+    and the Guests search's own already-in-the-lineup exclusion (web_bridge.py) — three near-
+    identical inline unions were already drifting apart once (2026-08-20, see
+    resolve_cwl_pool_dm_targets_sync's own docstring), so a fourth inline copy for the search
+    wasn't an option."""
+    family_tags = set(resolve_guild_member_clan_tags(guild_id))
+    db = CACHE.db_manager
+    if db is None or event_id is None:
+        return list(family_tags)
+    all_clans = db.get_cwl_event_clans_sync(event_id)
+    return list(family_tags | {c["clan_tag"] for c in all_clans})
+
+
+def get_cwl_guest_clan_tags_sync(db: Any, event_id: int, guild_id: int) -> Set[str]:
+    """Every clan currently on this event's roster (checked or unchecked — rule f means an
+    unchecked guest clan's members stay pooled too) that is NOT part of the guild's own family —
+    i.e. every guest clan. (2026-08-19, guest-player provenance feature, project owner's spec.)
+
+    Used to classify a guest player's provenance WITHOUT persisting a new "how were you added"
+    column: a guest player whose LIVE current clan (user_players.current_clan_tag) is one of
+    these tags is "clan-derived" — their presence in the pool traces back to that guest clan
+    being on the roster, so only removing the whole clan can remove them (rule f) — never
+    individually. A guest player whose current clan is anything else (no clan at all, an
+    unrelated clan, or a clan that was never invited as a guest) was necessarily added some other
+    way — in practice, individually (rule c).
+
+    Deliberately DERIVED from live state on every call, not a frozen flag set once at seed time:
+    this is exactly what makes "clan invitation beats individual invitation" (project owner's
+    spec, verbatim: "if a guest player is invited individually and then his clan is invited as a
+    guest clan then the status of that player should be switched from individual invitation to
+    guest clan invitation") fall out for free — the moment that clan is added to the roster, this
+    function starts classifying the player as clan-derived on every subsequent check, with no
+    write-time flip logic needed anywhere. The reverse can't silently happen: a guest CLAN never
+    gets removed without going through remove_cwl_guest_clan (rule f), which purges its members
+    from the pool entirely — there's no path where a clan simply drops off this set while its
+    members remain pooled."""
+    family_tags = set(resolve_guild_member_clan_tags(guild_id))
+    return {c["clan_tag"] for c in db.get_cwl_event_clans_sync(event_id) if c["clan_tag"] not in family_tags}
+
+
+# How long a season still counts as running after its (latest) CWL start: nominally 8 days —
+# 1 preparation day + 7 war days (COC_GAME_MECHANICS.md § CWL) — plus 1 day for maintenance delays.
+CWL_SEASON_RUNNING_WINDOW = timedelta(days=9)
+
+
+def is_cwl_event_active_or_upcoming(event: Dict[str, Any], now: Optional[datetime] = None) -> bool:
+    """Whether a cwl_events row is a season that hasn't finished yet — the guard for removing a
+    persisted guest clan (2026-09-22, project owner's spec: "guest clans should only be removable
+    for past cwl seasons").
+
+    There is no 'completed' event status (a finished season stays in 'war' forever, see
+    purge_expired_cwl_events), so this goes by the season key and the clock instead:
+      - cancelled → never active;
+      - a later month than now → upcoming;
+      - an earlier month → past;
+      - the current month → running until the latest configured cwl_start_at (or the season's
+        default start, the 1st at 08:00 UTC) plus CWL_SEASON_RUNNING_WINDOW.
+
+    Args:
+        event: A cwl_events row; `clan_cwl_start_ats` (as added by
+            get_cwl_events_containing_clan_sync) is used when present.
+        now: Reference time (tests); defaults to the current UTC time.
+    """
+    if event.get("status") == "cancelled":
+        return False
+    now = now or datetime.now(timezone.utc)
+    season = str(event["cwl_season"])[:7]
+    current_month = f"{now.year:04d}-{now.month:02d}"
+    if season != current_month:
+        return season > current_month
+    starts: List[datetime] = []
+    for raw in event.get("clan_cwl_start_ats") or []:
+        try:
+            starts.append(datetime.strptime(str(raw).rstrip("Z"), "%Y-%m-%dT%H:%M").replace(tzinfo=timezone.utc))
+        except ValueError:
+            continue
+    season_start = max(starts) if starts else datetime.strptime(
+        f"{season}-01T08:00", "%Y-%m-%dT%H:%M"
+    ).replace(tzinfo=timezone.utc)
+    return now < season_start + CWL_SEASON_RUNNING_WINDOW
+
+
+async def register_cwl_guest_clans_for_event(guild_id: int, event_id: int, season: str) -> List[str]:
+    """Persist every guest clan currently on event_id's roster into guild_guest_clans, so it keeps
+    member-role rights and member-list tracking after the season ends (2026-09-22, project owner's
+    spec). Idempotent — safe to call on every clan-config save. Returns the clan tags that were new
+    to this guild's guest list."""
+    db = CACHE.db_manager
+    if db is None:
+        return []
+    guest_tags = await asyncio.to_thread(get_cwl_guest_clan_tags_sync, db, event_id, guild_id)
+    return await CACHE.register_guild_guest_clans(guild_id, {tag: season for tag in guest_tags})
+
+
+def _blocking_cwl_seasons_for_guest_clan_sync(guild_id: int, clan_tag: str) -> List[str]:
+    """Seasons of this guild that still hold clan_tag and haven't finished (sorted, may be empty)."""
+    db = CACHE.db_manager
+    if db is None:
+        return []
+    events = db.get_cwl_events_containing_clan_sync(str(guild_id), clan_tag)
+    return sorted({e["cwl_season"] for e in events if is_cwl_event_active_or_upcoming(e)})
+
+
+def get_guild_guest_clans_overview_sync(guild_id: int) -> List[Dict[str, Any]]:
+    """The guild's persisted guest clans for the /clan management Families screen, sorted by name.
+
+    Each entry: {clan_tag, clan_name, first_invited_season, last_invited_season, blocking_seasons}
+    — blocking_seasons non-empty means the clan can't be removed yet. Plain sync (DB lookups per
+    guest clan); async callers wrap it in one asyncio.to_thread() hop."""
+    rows: List[Dict[str, Any]] = []
+    for clan_tag, entry in CACHE.guild_guest_clans.get(str(guild_id), {}).items():
+        rows.append({
+            "clan_tag": clan_tag,
+            "clan_name": CACHE.get_clan_name(clan_tag, clan_tag) or clan_tag,
+            "first_invited_season": entry.get("first_invited_season"),
+            "last_invited_season": entry.get("last_invited_season"),
+            "blocking_seasons": _blocking_cwl_seasons_for_guest_clan_sync(guild_id, clan_tag),
+        })
+    return sorted(rows, key=lambda r: str(r["clan_name"]).lower())
+
+
+async def remove_guild_guest_clan_checked(guild_id: int, clan_tag: str) -> Dict[str, Any]:
+    """Remove a persisted guest clan from a guild, refusing while any of the guild's seasons that
+    include the clan is upcoming or still running (is_cwl_event_active_or_upcoming).
+
+    Removal only ends the guest status (member-list tracking + member-role eligibility for new
+    grants); it never touches a season's roster, and — like every member-role path — it doesn't
+    revoke a member role already granted.
+
+    Returns:
+        {"ok": True} or {"ok": False, "error": "not_a_guest" | "season_active", "seasons": [...]}.
+    """
+    if clan_tag not in CACHE.get_guild_guest_clan_tags(guild_id):
+        return {"ok": False, "error": "not_a_guest", "seasons": []}
+    blocking = await asyncio.to_thread(_blocking_cwl_seasons_for_guest_clan_sync, guild_id, clan_tag)
+    if blocking:
+        return {"ok": False, "error": "season_active", "seasons": blocking}
+    await CACHE.remove_guild_guest_clan(guild_id, clan_tag)
+    return {"ok": True, "seasons": []}
+
+
+def split_cwl_pending_signups_by_link_sync(event_id: int) -> Tuple[int, int]:
+    """Splits the raw `status='pending'` count from `get_cwl_signup_status_counts_sync()` into
+    (pending_linked, pending_unlinked) — 2026-08-23, tracker #0038 investigation. The season
+    overview's old single "Ausstehend" line counted every pending `cwl_signups` row regardless of
+    whether the account has a live Discord link, while the Teams-verwalten board only shows a ❓
+    icon for a pending player who ALSO has one (an unlinked pending player shows "Not Linked"
+    instead — the two icons are drawn as mutually exclusive by design, see enrollmentBoard.ts).
+    That made the two numbers on screen at the same time (66 vs. a much smaller ❓ tally)
+    genuinely irreconcilable to an admin. Splitting here lets the overview show both, matching
+    what Teams-verwalten actually renders, and matching exactly who a reminder DM can reach — an
+    unlinked pending account has nobody to DM.
+
+    Plain sync function (Pitfall 26, COPILOT_PITFALLS_COOKBOOK.md) — caller wraps in one
+    asyncio.to_thread() hop.
+
+    Deliberately UNCHANGED by 'auto_confirmed' (plans/cwl-personal-hub.md Phase 4a): the
+    `status == "pending"` filter below correctly excludes it — an auto-confirmed row was seeded
+    by a standing opt-in preference, not left unanswered, and must not inflate this count.
+
+    `dm_sent` is required for the LINKED half (2026-08-30, tracker #0079, live bug report:
+    "Ausstehend says 2 but the only yellow ❓ in Teams verwalten is Minebot"). The board draws its
+    three icon states in a strict precedence — unlinked wins first, then a real status, then
+    "Not Invited Yet" — and `hasVisibleRealStatus()` (enrollmentBoard.ts) only treats a 'pending'
+    row as a real status once its DM has actually gone out. So a pending, linked, never-DMed
+    player renders as "Not Invited Yet", NOT as ❓, while this count used to include them. Adding
+    the same condition makes this line exactly the number of ❓ icons on the board, which is what
+    an admin reading both at once is entitled to assume. Those players are not lost from the
+    overview: they are precisely the population the "New players without DM invitation" line
+    reports (resolve_cwl_pool_tags_missing_dm_sync)."""
+    db = CACHE.db_manager
+    if db is None:
+        return (0, 0)
+    pending_tags = [s["player_tag"] for s in db.get_cwl_signups_for_event_sync(event_id) if s["status"] == "pending"]
+    if not pending_tags:
+        return (0, 0)
+    event = db.get_cwl_event_by_id_sync(event_id)
+    dm_sent_by_tag = (
+        db.get_cwl_player_season_dm_status_bulk_sync(pending_tags, event["cwl_season"])
+        if event is not None else {}
+    )
+    links = db.get_player_links_sync(pending_tags)
+    linked_and_invited = sum(
+        1 for tag in pending_tags
+        if (links.get(tag) or {}).get("discord_id") and dm_sent_by_tag.get(tag, False)
+    )
+    unlinked = sum(1 for tag in pending_tags if not (links.get(tag) or {}).get("discord_id"))
+    return (linked_and_invited, unlinked)
+
+
+def count_cwl_pool_members_missing_dm(guild_id: int, season: str) -> int:
+    """The number of this guild's currently-pooled, DM-able players who have never been sent the
+    enrollment DM by ANY guild this season (2026-08-23) — drives both the season overview's "New
+    players without DM invitation" line (format_clan_management_cwl_management, this file) and,
+    via has_cwl_pool_members_missing_dm() below, the "Notify New Pool Members" button's own
+    gating (add_cwl_management_components, ui_cwl_roster.py). One shared resolution so the
+    overview's count, the button's visibility, and what pressing the button actually does can
+    never drift apart.
+
+    Excludes a tag whose LOCAL cwl_signups row (this event only — never another guild's) already
+    carries a real settled status ('confirmed'/'declined'/'auto_confirmed'), even when dm_sent is
+    False for it (tracker #0075, live bug report: "Stay shows 3 uninvited, but in the team
+    management view only 1 is shown"). A standing opt-in seeds 'auto_confirmed' immediately and
+    is always attempted (resolve_seeded_cwl_signup_status's branch 3) but the send can still fail
+    silently (DM guard, blocked, left every mutual guild, a transient failure) same as any other
+    recipient — that account has already answered via its standing preference, so it reads as
+    "not invited" to nobody except a DM-delivery audit, which is a different question than the
+    team management board's own "Not Invited Yet" card (enrollmentBoard.ts's
+    hasVisibleRealStatus(), activity/client/src) asks. That function only defers to dm_sent for
+    'pending' rows (seeded before a send is even attempted, so a never-sent 'pending' row is
+    genuinely indistinguishable from "nobody tried yet") and always treats confirmed/declined/
+    auto_confirmed as real regardless of dm_sent — this mirrors that exact rule so the two
+    surfaces can't disagree about the same players again.
+
+    Resolves the pool through the same resolve_cwl_pool_dm_targets_sync() the button/Start
+    Enrollment use. Plain sync function (Pitfall 26, COPILOT_PITFALLS_COOKBOOK.md) — safe to call
+    directly from add_cwl_management_components()'s synchronous render path (the resolver is a
+    handful of indexed lookups, not the skill-score/avg-stars board payload builder); the async
+    embed-render path wraps it in one asyncio.to_thread() hop instead."""
+    db = CACHE.db_manager
+    if db is None:
+        return 0
+    event = db.get_cwl_event_sync(str(guild_id), season)
+    if event is None or event["status"] in ("draft", "cancelled"):
+        return 0
+
+    return len(resolve_cwl_pool_tags_missing_dm_sync(guild_id, event["id"], season))
+
+
+def resolve_cwl_pool_tags_missing_dm_sync(guild_id: int, event_id: int, season: str) -> Set[str]:
+    """WHICH pooled, DM-able player_tags have never been sent the enrollment DM by any guild this
+    season — the set behind the "New players without DM invitation" count, the "Notify New Pool
+    Members" button's gating, AND that button's own send list.
+
+    Extracted 2026-08-30 (tracker #0079, live bug report: "Neue Spieler ohne DM-Einladung: 1, but
+    clicking the button lists 2 that couldn't be contacted"). The count and the send had genuinely
+    drifted: this function's settled-status exclusion below was added for tracker #0075 and applied
+    ONLY to the count, while notify_new_cwl_pool_members kept handing the raw pool to
+    _send_cwl_enrollment_dm_batch, whose own dedup checks nothing but global dm_sent. So a pooled
+    player with a settled local status and dm_sent=False was invisible to the number and still
+    DMed by the action — and, being settled, was someone who had already answered and should not
+    have been re-invited at all. Returning the SET rather than a count is what makes the two
+    provably identical instead of merely intended to be (notify_new_cwl_pool_members' docstring
+    already claimed they couldn't drift; it was true when written and quietly stopped being true).
+
+    Excludes a tag whose LOCAL cwl_signups row (this event only — never another guild's) already
+    carries a real settled status ('confirmed'/'declined'/'auto_confirmed'), even when dm_sent is
+    False for it (tracker #0075, live bug report: "Stay shows 3 uninvited, but in the team
+    management view only 1 is shown"). A standing opt-in seeds 'auto_confirmed' immediately and is
+    always attempted (resolve_seeded_cwl_signup_status's branch 3) but the send can still fail
+    silently (DM guard, blocked, left every mutual guild, a transient failure) — that account has
+    already answered via its standing preference, so it reads as "not invited" to nobody except a
+    DM-delivery audit, which is a different question than the board's own "Not Invited Yet" card
+    (enrollmentBoard.ts's hasVisibleRealStatus()) asks. That function only defers to dm_sent for
+    'pending' rows and always treats confirmed/declined/auto_confirmed as real regardless — this
+    mirrors that exact rule so the two surfaces can't disagree about the same players again.
+
+    Plain sync function (Pitfall 26) — safe on the synchronous render path (a handful of indexed
+    lookups, not the board payload builder); async callers wrap it in one to_thread hop."""
+    db = CACHE.db_manager
+    if db is None:
+        return set()
+
+    tags_with_discord = [
+        target["player_tag"]
+        for target in resolve_cwl_pool_dm_targets_sync(guild_id, event_id, season)["targets"]
+    ]
+    if not tags_with_discord:
+        return set()
+
+    dm_status = db.get_cwl_player_season_dm_status_bulk_sync(tags_with_discord, season)
+    # Tracker #0114: CWL_SETTLED_STATUSES also covers the two Bench statuses — a player who
+    # answered "bench" has answered, and must not be re-invited as if they never replied.
+    settled_statuses = CWL_SETTLED_STATUSES
+    status_by_tag = {
+        signup["player_tag"]: signup["status"]
+        for signup in db.get_cwl_signups_for_event_sync(event_id)
+    }
+    return {
+        tag for tag in tags_with_discord
+        if not dm_status.get(tag, False) and status_by_tag.get(tag) not in settled_statuses
+    }
+
+
+def has_cwl_pool_members_missing_dm(guild_id: int, season: str) -> bool:
+    """Rule h's button-gating check (2026-08-18, CWL_ENROLLMENT_PLAYER_POOL_REDESIGN_PLAN.md) —
+    true when at least one of this guild's currently-pooled, DM-able players has never been sent
+    the enrollment DM by ANY guild this season. Drives the "Notify New Pool Members" button
+    (add_cwl_management_components, ui_cwl_roster.py). See count_cwl_pool_members_missing_dm()
+    for the shared resolution both this and the season overview's count line are built on."""
+    return count_cwl_pool_members_missing_dm(guild_id, season) > 0
+
+
+def resolve_prior_cwl_assignments(player_tags: List[str], participating_clan_tags: List[str]) -> Dict[str, str]:
+    """player_tag -> clan_tag, the "Manage Enrollment" auto-assignment seed. Redesigned
+    2026-08-14 (project owner's spec, replacing the 2026-08-10 per-clan-roster original): for
+    each of ``player_tags`` (the full candidate pool — every current member of every guild
+    member clan, not just clans participating in CWL this season), finds their own single most
+    recent REAL CWL attack across ANY clan they've ever attacked for
+    (get_last_real_cwl_attack_clan_sync — "last attack" literally, not merely being listed on a
+    war's roster; a 0-attack sentinel row doesn't count), and assigns them to that clan — but
+    ONLY if that clan is actually participating this season (``participating_clan_tags``), since
+    that's the only set of clans with a column on the board to assign them into. A player whose
+    last real CWL attack was for a clan that isn't participating this season is therefore left
+    unassigned, same as a player with no CWL history at all — there's nowhere to put them.
+
+    Assignment is independent of the player's CURRENT clan — a player who attacked for clan A
+    last CWL and has since transferred to clan B is still assigned to clan A if clan A is
+    participating, matching "assign to wherever they last actually played," not "wherever
+    they're currently rostered."
+
+    A player with no real CWL attack on record anywhere simply isn't in the returned dict — the
+    caller decides what "no prior assignment" means (in start_cwl_enrollment(), it just means
+    they start out in the Unassigned pool)."""
+    db = CACHE.db_manager
+    if db is None or not player_tags:
+        return {}
+
+    participating = set(participating_clan_tags)
+    last_attack_clan = db.get_last_real_cwl_attack_clan_sync(player_tags)
+    return {
+        player_tag: clan_tag
+        for player_tag, (clan_tag, _date) in last_attack_clan.items()
+        if clan_tag in participating
+    }
+
+
+async def resolve_cwl_clan_owner(
+    clan_tag: str, season: str, affected_guild_ids: List[int]
+) -> Tuple[str, str, Optional[int]]:
+    """Cross-guild shared-clan ownership resolver (2026-08-15, project owner's spec): among
+    affected_guild_ids (guilds already claiming clan_tag as participating for `season` — by
+    construction every one of them already has a cwl_events row for it, see
+    ensure_cwl_clan_sharing's caller), decide which guild is the "owner" — the one with a
+    Discord-linked, guild-present account holding the clan's real in-game Leader or Co-Leader
+    rank. Leader strictly outranks Co-Leader; within the same rank, a verified link (proven CoC
+    API token ownership) outranks an unverified one.
+
+    Tie-break bugfix (2026-08-15, live-testing feedback): a real leader's Discord account is very
+    often a member of MORE than one of the affected guilds' servers — an alliance server, a
+    personal/test server, etc. — which has nothing to do with which guild actually manages the
+    clan. Originally, a tie beyond role+verified fell to whichever guild happened to be checked
+    first, and affected_guild_ids always lists the ACTING (newly-joining) guild first — so a
+    brand-new guest-clan guild would silently beat the clan's real, pre-existing home guild
+    whenever the same leader account happened to be present in both. Fixed by ranking "is this
+    clan tracked in THIS guild's own member_clans/member_families" (resolve_guild_member_clan_tags)
+    ahead of iteration order — a guild that natively tracks the clan as its own is much stronger
+    evidence of being its real administrative home than mere incidental Discord co-membership.
+
+    Returns (owner_guild_id, resolution_method, owner_event_id). If no affected guild has a
+    resolvable leader/co-leader (clan not found, no linked account, none of the linked accounts
+    are actually members of any affected guild's Discord server — including when the bot process
+    running this resolution simply isn't a member of one of the affected guilds at all, e.g. a
+    DEV bot testing against a real PROD-only guild, logged as a warning below so that's instantly
+    diagnosable), resolution_method='unresolved_first_claimer' and owner = affected_guild_ids[0]
+    — sharing still proceeds (never blocks), just with no eviction rights granted to anyone until
+    a later resolution succeeds.
+
+    Deliberately resolved once and frozen by the caller (not re-run on every periodic role
+    poll) — see CWL_ROSTER_PLANNING_PLAN.md for why continuous re-resolution would be more
+    confusing than helpful mid-season.
+    """
+    import QBcore
+    from clashcontrol.guild_role_manager import COC_ROLE_PRIORITY
+
+    db = CACHE.db_manager
+
+    # Live roster — same role-name mapping already used by the one other place in the codebase
+    # that parses coc.Role (coc_cache.py's clan-member sync loop), so this stays consistent with
+    # it rather than re-deriving a second, possibly-drifting version of the same mapping.
+    role_by_tag: Dict[str, str] = {}
+    try:
+        clan = await CACHE.coc_clan_cache.get_clan(clan_tag)
+        for member in clan.members:
+            raw_role = getattr(member, "role", None)
+            raw_name = getattr(raw_role, "name", None) if raw_role else None
+            role = ("coLeader" if raw_name == "co_leader" else raw_name) if raw_name else None
+            if role:
+                role_by_tag[member.tag] = role
+    except Exception as e:
+        logging.warning(f"[CWL-SHARED-CLAN] Could not fetch live roster for {clan_tag} to resolve ownership: {e}")
+
+    candidate_tags = [tag for tag, role in role_by_tag.items() if role in ("leader", "coLeader")]
+    links = db.get_player_links_sync(candidate_tags) if (db is not None and candidate_tags) else {}
+
+    # Diagnostic visibility (2026-08-15, live-testing feedback: a DEV bot instance that isn't
+    # actually a member of a real production guild's Discord server can never verify *that*
+    # guild's membership at all — get_guild() returns None and the guild is silently excluded
+    # from the whole candidate search below, with no other signal that anything went wrong. Not
+    # a bug in the ranking logic itself, but worth a loud warning so a wrong resolution like that
+    # is instantly diagnosable instead of requiring a DB deep-dive to explain).
+    for guild_id in affected_guild_ids:
+        if QBcore.bot.get_guild(guild_id) is None:
+            logging.warning(
+                f"[CWL-SHARED-CLAN] Bot is not a member of guild {guild_id} — it can never be "
+                f"credited as the owner of {clan_tag} from this bot process, even if its real "
+                f"Leader/Co-Leader account is linked and verified."
+            )
+
+    # "Native family" tiebreak (2026-08-15, live-testing feedback / bugfix): a guild that tracks
+    # clan_tag as one of its OWN member_clans/member_families is far stronger evidence of being
+    # that clan's real administrative home than "some linked leader's Discord account happens to
+    # also be a member of this guild's server" — the latter is unreliable on its own (the same
+    # real leader is very often ALSO a member of other Discord servers with zero bearing on which
+    # one manages the clan: alliance servers, personal/test servers, etc.). Ranked ahead of guild
+    # iteration order so a guest-clan guild doesn't win a same-role/same-verified tie against the
+    # clan's actual home guild just by being checked first (affected_guild_ids always lists the
+    # ACTING guild first, which is exactly backwards as a tiebreak default).
+    best: Optional[Tuple[int, bool, bool, str, str]] = None  # (role_priority, verified, is_native_family, guild_id, resolution_method)
+    for tag in candidate_tags:
+        link = links.get(tag)
+        if not link or not link.get("discord_id"):
+            continue
+        discord_id = link["discord_id"]
+        role = role_by_tag[tag]
+        role_priority = COC_ROLE_PRIORITY.get(role, 0)
+        verified = bool(link.get("verified"))
+        resolution_method = ("leader" if role == "leader" else "coleader") + ("_verified" if verified else "_unverified")
+
+        for guild_id in affected_guild_ids:
+            guild = QBcore.bot.get_guild(guild_id)
+            if guild is None:
+                continue
+            member = guild.get_member(int(discord_id))
+            if member is None:
+                try:
+                    member = await guild.fetch_member(int(discord_id))
+                except (discord.NotFound, discord.HTTPException):
+                    continue
+            is_native_family = clan_tag in resolve_guild_member_clan_tags(guild_id)
+            candidate = (role_priority, verified, is_native_family, str(guild_id), resolution_method)
+            if best is None or candidate[:3] > best[:3]:
+                best = candidate
+
+    if best is not None:
+        owner_guild_id, resolution_method = best[3], best[4]
+    else:
+        owner_guild_id, resolution_method = str(affected_guild_ids[0]), "unresolved_first_claimer"
+
+    owner_event_id: Optional[int] = None
+    if db is not None:
+        owner_event = db.get_cwl_event_sync(owner_guild_id, season)
+        owner_event_id = owner_event["id"] if owner_event else None
+
+    return owner_guild_id, resolution_method, owner_event_id
+
+
+async def ensure_cwl_clan_sharing(guild_id: int, event_id: int, season: str, clan_tag: str) -> Optional[Dict[str, Any]]:
+    """Cross-guild shared-clan orchestrator (2026-08-15, project owner's spec) — called from
+    both trigger points (handle_post_clan_config in web_bridge.py, when a clan becomes newly
+    participating; start_cwl_enrollment below, for each of its participating clans) so the logic
+    lives in exactly one place. No-ops (returns None) if clan_tag isn't shared with any other
+    guild for this season — the overwhelming majority of calls, and cheap (one indexed lookup).
+
+    When sharing IS involved, returns {"shared_clan_id", "owner_guild_id",
+    "owner_resolution_method", "is_new", "other_guild_ids"} for the caller to build a
+    confirmation prompt / notification from — this function itself does not send any DM or post
+    any message, callers own that (different trigger points want different wording).
+    owner_resolution_method is one of resolve_cwl_clan_owner's own values ("leader_verified",
+    "leader_unverified", "coleader_verified", "coleader_unverified", or "unresolved_first_claimer"
+    when no resolvable Leader/Co-Leader was found in any affected guild — added 2026-08-18,
+    live-tested bug: notify_cwl_clan_shared used to always claim "real in-game Leader/Co-Leader"
+    ownership even for the unresolved case, which is simply false)."""
+    # Every sync DB call below is asyncio.to_thread()-wrapped (2026-08-16, Pitfall 26,
+    # COPILOT_PITFALLS_COOKBOOK.md — root-caused from a PROD incident in ui_cwl_roster.py's Add
+    # New Season button, but the same "sync write called directly on the event loop thread"
+    # anti-pattern was present throughout this whole shared-clan subsystem). Each branch's own
+    # sequence of DB calls is bundled into ONE to_thread() hop (a private _*_sync helper) rather
+    # than one hop per line — this branch currently has zero `await`s in it, so it's atomic with
+    # respect to other coroutines today (nothing else can run between its reads and writes); a
+    # per-line wrap would introduce new interleaving windows a second concurrent
+    # ensure_cwl_clan_sharing() call for the same clan_tag/season could race through. One hop for
+    # the whole branch preserves that.
+    db = CACHE.db_manager
+    if db is None:
+        return None
+    guild_id_str = str(guild_id)
+
+    existing = await asyncio.to_thread(db.get_cwl_shared_clan_sync, clan_tag, season)
+    if existing is not None:
+        # Already an established shared clan — just attach this guild, no re-resolution (owner
+        # stays frozen once resolved; see resolve_cwl_clan_owner's docstring).
+        return await asyncio.to_thread(
+            _attach_guild_to_existing_shared_clan_sync, db, existing, event_id, clan_tag, guild_id_str,
+        )
+
+    others = await asyncio.to_thread(
+        db.find_cwl_clan_participation_across_guilds_sync, clan_tag, season, exclude_guild_id=guild_id_str,
+    )
+    if not others:
+        return None  # not shared with anyone — nothing to do, the common case
+
+    affected_guild_ids = [guild_id] + [int(o["guild_id"]) for o in others]
+    owner_guild_id, resolution_method, owner_event_id = await resolve_cwl_clan_owner(clan_tag, season, affected_guild_ids)
+    if owner_event_id is None:
+        # Defensive only — every affected guild already has an event for this season by
+        # construction (find_cwl_clan_participation_across_guilds_sync only returns guilds with
+        # a real participating row), so this shouldn't happen; never let a resolution bug crash
+        # the calling flow (guest-clan add / Start Enrollment) over it.
+        owner_guild_id, owner_event_id, resolution_method = guild_id_str, event_id, "unresolved_first_claimer"
+
+    return await asyncio.to_thread(
+        _create_new_shared_clan_sync, db, clan_tag, season, owner_guild_id, owner_event_id,
+        resolution_method, event_id, guild_id_str, others,
+    )
+
+
+def _attach_guild_to_existing_shared_clan_sync(
+    db: Any, existing: Dict[str, Any], event_id: int, clan_tag: str, guild_id_str: str,
+) -> Dict[str, Any]:
+    """Synchronous unit of work for ensure_cwl_clan_sharing()'s "already-shared" branch — run as
+    one atomic asyncio.to_thread() hop by that function; see its own comment for why."""
+    db.add_guild_to_shared_clan_sync(existing["id"], guild_id_str, event_id)
+    _migrate_local_clan_roster_to_shared(db, event_id, existing["id"], clan_tag, guild_id_str)
+    sync_cwl_shared_clan_roster_to_local_pools(existing["id"])
+    other_guild_ids = [
+        g["guild_id"] for g in db.list_cwl_shared_clan_guilds_sync(existing["id"]) if g["guild_id"] != guild_id_str
+    ]
+    return {
+        "shared_clan_id": existing["id"],
+        "owner_guild_id": existing["owner_guild_id"],
+        "owner_resolution_method": existing["owner_resolution_method"],
+        "is_new": False,
+        "other_guild_ids": other_guild_ids,
+    }
+
+
+def _create_new_shared_clan_sync(
+    db: Any, clan_tag: str, season: str, owner_guild_id: str, owner_event_id: int, resolution_method: str,
+    event_id: int, guild_id_str: str, others: List[Dict[str, Any]],
+) -> Optional[Dict[str, Any]]:
+    """Synchronous unit of work for ensure_cwl_clan_sharing()'s "brand-new shared clan" branch —
+    run as one atomic asyncio.to_thread() hop by that function; see its own comment for why."""
+    shared_clan_id = db.create_cwl_shared_clan_sync(clan_tag, season, owner_guild_id, owner_event_id, resolution_method)
+    if shared_clan_id is None:
+        return None
+    db.add_guild_to_shared_clan_sync(shared_clan_id, guild_id_str, event_id)
+    _migrate_local_clan_roster_to_shared(db, event_id, shared_clan_id, clan_tag, guild_id_str)
+    for other in others:
+        db.add_guild_to_shared_clan_sync(shared_clan_id, other["guild_id"], other["event_id"])
+        _migrate_local_clan_roster_to_shared(db, other["event_id"], shared_clan_id, clan_tag, other["guild_id"])
+    sync_cwl_shared_clan_roster_to_local_pools(shared_clan_id)
+
+    return {
+        "shared_clan_id": shared_clan_id,
+        "owner_guild_id": owner_guild_id,
+        "owner_resolution_method": resolution_method,
+        "is_new": True,
+        "other_guild_ids": [o["guild_id"] for o in others],
+    }
+
+
+def _seed_status_from_global_sync(db: Any, player_tag: str, cwl_season: str) -> str:
+    """The status a NEW local cwl_signups row must start in, for this player and season.
+
+    cwl_player_season_status is the global source of truth for whether a player has already
+    answered (rule h, CWL_ENROLLMENT_PLAYER_POOL_REDESIGN_PLAN.md — project owner's spec: "that
+    status is shown automatically in guild a's and guild B's clan rosters. no need to manage
+    anything manually"). A response is a fact about the *player and season*, not about whichever
+    guild happened to DM them, so a local row created afterwards by a DIFFERENT guild must adopt
+    it rather than starting fresh at 'pending' and contradicting what the player already said.
+
+    start_cwl_enrollment() already does this via the bulk reader; this is the single-player
+    equivalent for the four other paths that create signup rows (2026-08-22 audit: the
+    cross-guild orphan mirror, drag-and-drop placement, the auto_seeded pool seed and the guest
+    invite all hardcoded 'pending'). Verified latent rather than active at the time of the fix —
+    0 live rows had drifted — but 31 of 116 global rows already held a real response, so the
+    precondition was fully in place.
+
+    2026-08-23 (plans/cwl-personal-hub.md Phase 4b-bis, follow-up audit): all four of those same
+    paths ALSO ignored a player's standing CWL opt-out/opt-in preference — a manual drag-and-drop
+    placement or a guest invite for a permanently-opted-out player produced a stray 'pending' row
+    that never became 'declined', silently contradicting the very preference this feature exists
+    to honour. Delegates to resolve_seeded_cwl_signup_status() (the single shared precedence:
+    existing_global > opt-out > opt-in > pending), fetching the preference flags itself via
+    get_player_links_sync() so none of the four call sites need to change — a player_tag absent
+    from that lookup (no user_players row at all) has no preference to honour, same as before.
+
+    Callers must still only use this when CREATING a row: an existing local row is never
+    overwritten from here (all four call sites sit inside `if get_cwl_signup_sync(...) is None`).
+    """
+    existing_global = db.get_cwl_player_season_status_sync(player_tag, cwl_season)
+    link = db.get_player_links_sync([player_tag]).get(player_tag) or {}
+    status, _source = resolve_seeded_cwl_signup_status(
+        existing_global, bool(link.get("cwl_permanent_optout")), bool(link.get("cwl_permanent_optin")),
+        bool(link.get("cwl_permanent_bench")),
+    )
+    return status
+
+
+def _live_owners_or_sync(db: Any, player_tags: List[str]) -> Dict[str, Optional[str]]:
+    """player_tag -> the account's CURRENT owner from user_players, for carry-forward writes.
+
+    cwl_signups and cwl_shared_clan_players are enrollment-time SNAPSHOTS (Pitfall 37). Every
+    READ path now re-resolves ownership live, so a stale value in either column can no longer
+    mis-route a DM or grey out a board tile — but the write paths that COPY one snapshot into
+    the other (a clan becoming shared, a drag-and-drop placement) were still laundering an
+    outdated owner into a second table, where the next feature to read that column would
+    naturally trust it. Resolving at the write boundary keeps the stale value from spreading in
+    the first place, the same way CwlSignupResponseButton self-heals the row it touches.
+
+    A tag with no user_players row at all (a guest tag added by search that was never linked)
+    is absent from the result — callers keep their own fallback for that. A tag whose only row
+    is the UNASSIGNED sentinel maps to None; callers deliberately fall back rather than blanking,
+    so this can only ever CORRECT an owner, never erase a record of who was originally DMed.
+
+    Batched (one query for the whole set) — the migrate-to-shared path below runs over a whole
+    clan roster, and a per-player query there would be one round-trip per assigned member.
+    """
+    if not player_tags:
+        return {}
+    return {tag: link["discord_id"] for tag, link in db.get_player_links_sync(player_tags).items()}
+
+
+def _migrate_local_clan_roster_to_shared(db: Any, event_id: int, shared_clan_id: int, clan_tag: str, guild_id_str: str) -> None:
+    """Folds a guild's pre-existing LOCAL cwl_assignments+cwl_signups rows for clan_tag into the
+    shared roster (cwl_shared_clan_players) the moment that guild attaches to a shared clan —
+    without this, a clan that already had confirmed players/assignments in this guild's own
+    event before becoming shared would silently lose that data once the live board switches
+    over to reading cwl_shared_clan_players instead (see _build_enrollment_payload's merge).
+    Only migrates players actually ASSIGNED to clan_tag (via cwl_assignments) — a player merely
+    signed up but not yet assigned to any clan isn't specific to this clan, so stays exactly
+    where it already was (the general Unassigned pool, unaffected by clan-level sharing).
+
+    Sets BOTH placement and status explicitly, in two separate calls (2026-08-16, live-testing
+    feedback — see cwl_shared_clan_players' own CREATE TABLE comment for the full status/assigned
+    split rationale) — this is the one legitimate place that needs to set both at once, since it's
+    carrying forward two genuinely real, independent prior facts (they WERE locally assigned here,
+    AND they had this exact real response), not deriving one from the other."""
+    migrating = [
+        signup
+        for assignment in db.get_cwl_assignments_sync(event_id)
+        if assignment["assigned_clan_tag"] == clan_tag
+        for signup in [db.get_cwl_signup_sync(event_id, assignment["player_tag"])]
+        if signup is not None
+    ]
+    # Resolve current ownership once for the whole roster rather than carrying each signup's
+    # snapshot value straight across into cwl_shared_clan_players (2026-08-22, Pitfall 37).
+    live_owners = _live_owners_or_sync(db, [s["player_tag"] for s in migrating])
+    for signup in migrating:
+        owner = live_owners.get(signup["player_tag"]) or signup["dmed_discord_id"]
+        db.set_cwl_shared_clan_player_assignment_sync(
+            shared_clan_id, signup["player_tag"], signup["player_name"], owner,
+            True, signup["source"], guild_id_str,
+        )
+        db.set_cwl_shared_clan_player_status_sync(
+            shared_clan_id, signup["player_tag"], signup["player_name"], owner,
+            signup["status"], signup["source"], guild_id_str, signup.get("responded_at"),
+        )
+
+
+def sync_cwl_shared_clan_roster_to_local_pools(shared_clan_id: int) -> None:
+    """De-sync guard (2026-08-15, project owner's spec): cwl_shared_clan_players is authoritative
+    for board display (_build_enrollment_payload's merge always re-reads it live), but a player
+    added there by ONE attached guild is otherwise invisible to any OTHER attached guild's own
+    LOCAL cwl_signups-based logic — Start Enrollment's DM blast already ran, so nothing will
+    re-seed them, and any current or future feature that reads a guild's own cwl_signups table
+    directly (not through the merge) would silently never learn this player exists for that guild.
+    Mirrors every current shared-roster player into every attached guild's own cwl_signups as a
+    'guest_invite' row, so each guild's local pool always has at least a placeholder entry.
+
+    Never overwrites an existing local row (checked via get_cwl_signup_sync first) — a guild may
+    already have its own real signup for that player_tag (its own family member, or their actual
+    DM-response history), which a mirrored placeholder must never clobber; this is purely a
+    fill-the-gap operation, exactly what avoids creating duplicate/conflicting local records for
+    the same player. Called after every write to cwl_shared_clan_players (both here and from
+    web_bridge.py's signup/assign handlers) — idempotent and cheap (one clan's roster, rarely
+    shared), so simplest to just always resync the whole roster rather than track deltas."""
+    db = CACHE.db_manager
+    if db is None:
+        return
+    guild_rows = db.list_cwl_shared_clan_guilds_sync(shared_clan_id)
+    if not guild_rows:
+        return
+    shared_players = db.get_cwl_shared_clan_players_sync(shared_clan_id)
+    if not shared_players:
+        return
+    for guild_row in guild_rows:
+        event_id = guild_row["event_id"]
+        for player in shared_players:
+            if db.get_cwl_signup_sync(event_id, player["player_tag"]) is not None:
+                continue
+            db.upsert_cwl_signup_sync(
+                event_id, player["player_tag"], player["player_name"], player["dmed_discord_id"], None,
+                source="guest_invite", status=player["status"],
+            )
+
+
+async def propagate_cwl_player_response(
+    player_tag: str, cwl_season: str, status: str, responded_at: Optional[str],
+    player_name: Optional[str], discord_id: Optional[str],
+    originating_event_id: int, originating_guild_id: int,
+) -> List[int]:
+    """Writes the global source of truth (cwl_player_season_status) then fans the new status out
+    to every OTHER guild's already-existing local mirror for this exact player_tag+season — the
+    season-wide generalization of sync_cwl_shared_clan_roster_to_local_pools's one-shared-clan
+    fan-out, above (2026-08-18, CWL_ENROLLMENT_PLAYER_POOL_REDESIGN_PLAN.md rule h, project
+    owner's spec, verbatim: "The player has a global 'Got dm message already' attribute...
+    Then the player accepts or declines or is pending and that status is shown automatically in
+    guild a's and guild B's clan rosters. no need to manage anything manually").
+
+    Never CREATES a new row anywhere (mirrors update_cwl_signup_status_sync's own "only fills a
+    gap in an already-pooled guild" contract) — only a guild that already has this player pooled
+    gets their local mirror updated; a guild that hasn't pooled them at all is untouched, exactly
+    like sync_cwl_shared_clan_roster_to_local_pools never invents shared-roster membership.
+
+    The one real caller, CwlSignupResponseButton.callback, must still do its OWN own-guild write
+    first (this function's job starts one step later — propagating a response that's already been
+    recorded for the originating event/guild) — that's what lets a brand-new signup row get
+    created there via the normal upsert, something this function deliberately never does.
+
+    Returns every OTHER guild_id (deduped, excluding the originating one) whose board just
+    changed, for the caller's bump_enrollment_version() fan-out (Step 8 pattern)."""
+    db = CACHE.db_manager
+    if db is None:
+        return []
+    return await asyncio.to_thread(
+        _propagate_cwl_player_response_sync, db, player_tag, cwl_season, status, responded_at,
+        player_name, discord_id, originating_event_id, originating_guild_id,
+    )
+
+
+def _propagate_cwl_player_response_sync(
+    db: Any, player_tag: str, cwl_season: str, status: str, responded_at: Optional[str],
+    player_name: Optional[str], discord_id: Optional[str],
+    originating_event_id: int, originating_guild_id: int,
+) -> List[int]:
+    db.set_cwl_player_response_status_sync(
+        player_tag, cwl_season, player_name, discord_id, status, responded_at,
+        originating_event_id, originating_guild_id,
+    )
+
+    affected_guild_ids: List[int] = []
+    for event_id in db.find_cwl_signup_events_for_player_and_season_sync(player_tag, cwl_season):
+        if event_id == originating_event_id:
+            continue
+        db.update_cwl_signup_status_sync(event_id, player_tag, status, responded_at)
+        event = db.get_cwl_event_by_id_sync(event_id)
+        if event is not None:
+            affected_guild_ids.append(int(event["guild_id"]))
+
+    for shared_clan_id in db.find_cwl_shared_clan_ids_for_player_and_season_sync(player_tag, cwl_season):
+        db.set_cwl_shared_clan_player_status_sync(
+            shared_clan_id, player_tag, player_name, discord_id, status, "admin_added",
+            str(originating_guild_id), responded_at,
+        )
+        for guild_row in db.list_cwl_shared_clan_guilds_sync(shared_clan_id):
+            guild_id = int(guild_row["guild_id"])
+            if guild_id != originating_guild_id:
+                affected_guild_ids.append(guild_id)
+
+    return list(dict.fromkeys(affected_guild_ids))  # dedup, preserve first-seen order
+
+
+def assign_cwl_player_sync(
+    guild_id: int,
+    event_id: int,
+    season: str,
+    player_tag: str,
+    target_clan_tag: Optional[str],
+    *,
+    source: str,
+    assignment_source: Optional[str] = None,
+    signup_source: str = "admin_added",
+    locked: bool = False,
+    deliberate: bool = True,
+) -> Optional[str]:
+    """The one general "place a player into a CWL pool" write path (2026-08-16, live-testing
+    feedback, project owner's spec, verbatim: "we should have one general method that assigns
+    players to any pool and the race condition checks should all be implemented there so that we
+    don't have multiple code paths for player assignment/dragging"). Every caller that decides a
+    player belongs in a specific clan column (or back in Unassigned) should route through this
+    function instead of writing cwl_assignments/cwl_shared_clan_players directly, so the
+    conflict-purge below can never be silently skipped by a new or overlooked call site.
+
+    Confirmed live-testing bug this fixes: deleting and recreating a season's event re-ran Start
+    Enrollment's own inline bulk auto-assign, which — unlike handle_post_cwl_enrollment_assign's
+    drag-and-drop write path this function is extracted from — never checked whether a candidate
+    was already a CONFIRMED member of a totally different shared clan's roster elsewhere in this
+    guild. A player already a confirmed guest in one clan's shared roster got silently
+    double-booked into another clan's column by the very next season's auto-assign seed, purely
+    because that OTHER clan happened to be their last real CWL attack destination.
+
+    Before writing the new placement, purges the player from every OTHER shared clan they're
+    currently PLACED (assigned) in — same two-source union `handle_post_cwl_enrollment_assign`
+    used (this guild's own currently-participating shared clans, PLUS, via
+    find_cwl_shared_clan_memberships_for_player_sync, any shared clan anywhere this player is
+    assigned in — covering the "sitting in the orphaned/Assigned-to-other-Guild pseudo-column"
+    case too) — then writes the new placement:
+      - target_clan_tag is shared with another guild this season: cwl_shared_clan_players,
+        assigned=1 via set_cwl_shared_clan_player_assignment_sync — NEVER touches `status` (see
+        that table's own CREATE TABLE comment: confirmation and assignment are deliberately
+        separate columns) — clears any stale local cwl_assignments row.
+      - target_clan_tag is None: clears any local cwl_assignments row (Unassigned).
+      - otherwise (this guild's own private clan): cwl_assignments, first ensuring a local
+        cwl_signups row exists (the purge above may have just removed the player's ONLY local
+        record — e.g. they only ever existed via a shared roster row that just got purged —
+        leaving them with an assignment but no resolvable name/discord_id otherwise).
+
+    `source` labels cwl_shared_clan_players.source (why they're on that shared roster — e.g.
+    'admin_override', 'auto_assigned'). `assignment_source` labels the separate, differently-
+    scoped cwl_assignments.assignment_source column (defaults to `source` when omitted, matching
+    the pre-extraction drag-and-drop behavior of using one label for both — pass it explicitly
+    when a caller needs the two columns to disagree, e.g. the auto-assign seed uses
+    source='auto_assigned' for the shared table but assignment_source='suggested' locally, to
+    keep each column's own pre-existing vocabulary intact). `signup_source` labels a NEW local
+    cwl_signups row created as a byproduct of the private-clan branch above (default 'admin_added',
+    matching drag-and-drop's own pre-extraction behavior — pass 'auto_assigned' for an auto-seed
+    caller so a freshly-created signup reads as machine-seeded, not admin-added).
+
+    `deliberate` (default True, matching drag-and-drop's own pre-extraction behavior — a human
+    dragging a card always wins, evicting whatever it takes) — set False for an automatic/
+    best-guess placement (auto-assign seeds): if the player already holds ANY existing claim
+    (already PLACED/assigned in a different shared clan, or a locked local assignment in a
+    different clan) the target is never written, and it never evicts the existing claim either.
+    When the conflict is a
+    different SHARED clan specifically, it instead mirrors the player into a local assignment
+    pointing at that real clan (2026-08-16 follow-up, live-testing feedback, project owner's spec:
+    "instead of putting QManiac to the unassigned pool he should have been assigned to the
+    'Assigned to other clan' pool") — so the frontend's orphaned pseudo-column surfaces where they
+    actually are instead of them silently vanishing into plain Unassigned; a conflicting LOCKED
+    LOCAL assignment elsewhere is left untouched since it's already visible wherever it points.
+    This is the actual fix for the confirmed live-testing bug (2026-08-16, project owner's spec,
+    verbatim): deleting and recreating a season's event re-ran Start Enrollment's own auto-assign
+    seed, which silently moved a player who was already a deliberately admin_override-confirmed
+    guest in one shared clan's roster into a completely different clan's column, purely because
+    that other clan happened to be their last real CWL attack destination — an automatic guess
+    must never override a real, existing placement, deliberate or not.
+
+    EXCEPTION (2026-08-19 fix, live bug report, project owner: "the qcrew members were falsely
+    auto-assigned to staycalm... theqcrew members get auto assigned to staycalm and not to the
+    qcrew as they should"): the "different SHARED clan" conflict above is only honored as an
+    UNTOUCHABLE existing claim when it's either (a) itself deliberate
+    (cwl_shared_clan_players.source == 'admin_override' — a real human drag, never silently
+    overridden, matching the locked-local-assignment rule right below it) or (b) the player's LIVE
+    current clan tag (user_players.current_clan_tag) genuinely differs from target_clan_tag. If
+    neither holds — a non-deliberate (e.g. 'auto_assigned') shared-clan row that the player's own
+    live current clan actually contradicts — that live fact wins instead: it may well be stale
+    (e.g. leftover from an earlier season cycle), and the normal write/eviction proceeds rather
+    than deferring to it. This is what makes start_cwl_enrollment's own "current clan beats stale
+    history" override (see resolve_prior_cwl_assignments' call site) actually take effect
+    end-to-end — without this, that override's corrected target got silently discarded right back
+    to the stale shared-clan entry the instant it reached this function.
+
+    Returns None on a normal write (or a no-op defer, matching this function's pre-2026-08-20
+    behavior of returning nothing either way) — or an error string when a DELIBERATE placement
+    was refused because the player already has a private (non-cross-guild-shared) placement in a
+    DIFFERENT guild's own CWL roster this season (2026-08-20, live bug report: guest-inviting a
+    player individually — a completely separate code path from a guest CLAN, so it never went
+    through any of the cross-guild conflict machinery above — let them get dragged into a SECOND,
+    fully independent placement in a second guild's roster for the same season, something real
+    CWL rules never allow. Unlike a same-guild shared-clan conflict, a private cross-guild
+    conflict is refused rather than silently evicting the player from the other guild's board —
+    this guild has no authority or visibility to safely do that on another guild's behalf; a
+    human admin needs to resolve it directly, in that other guild, first). A non-deliberate
+    (auto-assign) placement instead just quietly skips, the same as every other conflict this
+    function already defers on above — see the check itself for why it doesn't also attempt the
+    shared-clan branch's "mirror into an orphaned local assignment" treatment."""
+    db = CACHE.db_manager
+    if db is None:
+        return None
+
+    # ── Roster freeze (2026-08-30, project owner's spec) ──────────────────────────────────
+    # Once a clan has actually started CWL in-game its roster is fixed by the game itself, so the
+    # board must stop pretending otherwise: nobody can be moved INTO or OUT OF a locked clan.
+    #
+    # The one exception, verbatim from the spec: "As long as the player was member of the clan when
+    # it started its season he can still participate. So there are possibly players in the
+    # unassigned pool that still could participate. Allow the drag and drop for those player/clan
+    # combinations even in the war phase." That set is cwl_locked_clan_members — snapshotted at lock
+    # time precisely because it cannot be reconstructed from live membership afterwards.
+    #
+    # Enforced HERE rather than only in the board's UI because this is the one write path every
+    # placement goes through; the frontend's disabled drop targets are the convenience layer, this
+    # is the actual guard (and it also covers auto-assign, which has no UI at all).
+    existing_assignment = next(
+        (a for a in db.get_cwl_assignments_sync(event_id) if a["player_tag"] == player_tag), None
+    )
+
+    locked_clan_tags = db.get_locked_cwl_clan_tags_sync(event_id)
+    if locked_clan_tags:
+        current_assignment = existing_assignment
+        current_clan_tag = current_assignment["assigned_clan_tag"] if current_assignment else None
+
+        if current_clan_tag in locked_clan_tags and target_clan_tag != current_clan_tag:
+            if not deliberate:
+                return None
+            name = CACHE.get_clan_name(current_clan_tag, current_clan_tag) or current_clan_tag
+            return (
+                f"{name} has already started CWL — its roster is locked in-game and this player "
+                f"can no longer be moved out of it."
+            )
+        if target_clan_tag in locked_clan_tags and target_clan_tag != current_clan_tag:
+            eligible = db.get_cwl_locked_clan_member_tags_sync(season, target_clan_tag)
+            if player_tag not in eligible:
+                if not deliberate:
+                    return None
+                name = CACHE.get_clan_name(target_clan_tag, target_clan_tag) or target_clan_tag
+                return (
+                    f"{name} has already started CWL and this player was not in the clan when its "
+                    f"roster locked, so they cannot play for it this season."
+                )
+            # Falls through: they WERE in the clan at lock time, so placing them is recording
+            # reality, not changing it.
+
+    # Pending-update bookkeeping (2026-08-30, spec item 4). Taking an ALREADY-ANNOUNCED player off
+    # the roster deletes their assignment row, which would also delete the only evidence that they
+    # are owed a "you're no longer in the line-up" DM — so leave a tombstone. Putting anyone back
+    # on a roster clears theirs: whatever they were told is about to be superseded by the ordinary
+    # moved/new comparison, and a stale tombstone would send them a contradictory removal notice.
+    if existing_assignment is not None and existing_assignment["notified_clan_tag"] and target_clan_tag is None:
+        signup = db.get_cwl_signup_sync(event_id, player_tag)
+        db.record_cwl_dropped_notified_player_sync(
+            event_id, player_tag,
+            (signup or {}).get("player_name"),
+            existing_assignment["notified_clan_tag"],
+        )
+    elif target_clan_tag is not None:
+        db.clear_cwl_dropped_notified_player_sync(event_id, player_tag)
+
+    shared_clans_by_tag = get_event_shared_clans_by_tag_sync(event_id, season)
+
+    if target_clan_tag is not None:
+        other_private_placement = next(
+            iter(db.find_cwl_player_private_placement_in_other_guilds_sync(player_tag, season, str(guild_id))),
+            None,
+        )
+        if other_private_placement is not None:
+            if not deliberate:
+                # An automatic guess never creates a real conflict — just skip. Unlike the
+                # shared-clan defer logic below, there's no local record here to mirror an
+                # "Assigned to other Guild" placeholder into without also teaching
+                # _build_enrollment_payload's purge step (web_bridge.py) to preserve a private
+                # (non-shared) orphaned assignment — out of scope for this fix; the player simply
+                # stays plain Unassigned here rather than being silently double-booked.
+                return None
+            other_clan_name = CACHE.get_clan_name(
+                other_private_placement["clan_tag"], other_private_placement["clan_tag"]
+            ) or other_private_placement["clan_tag"]
+            import QBcore
+
+            other_guild = QBcore.bot.get_guild(int(other_private_placement["guild_id"]))
+            other_guild_name = other_guild.name if other_guild else f"guild {other_private_placement['guild_id']}"
+            return (
+                f"Already placed in {other_clan_name}'s CWL roster in {other_guild_name} this "
+                f"season — remove that placement first (in that guild's own board) before "
+                f"assigning them here."
+            )
+
+    shared_clan_ids_to_clear: Dict[int, str] = {
+        shared["id"]: tag for tag, shared in shared_clans_by_tag.items() if tag != target_clan_tag
+    }
+    for membership in db.find_cwl_shared_clan_memberships_for_player_sync(season, player_tag):
+        if membership["clan_tag"] != target_clan_tag:
+            shared_clan_ids_to_clear[membership["shared_clan_id"]] = membership["clan_tag"]
+
+    if not deliberate:
+        # The player's REAL competing placements only — shared clans they are actually PLACED in
+        # (cwl_shared_clan_players.assigned=1), never merely "some shared clan that happens to be
+        # participating." shared_clan_ids_to_clear above deliberately casts a much wider net (it
+        # drives the eviction sweep further down, where hitting a clan the player isn't in is a
+        # harmless no-op delete) — reusing THAT set for this defer decision was a real bug
+        # (2026-08-19 review): with any participating shared clan on the roster, EVERY
+        # auto-assigned player hit this branch and got an "orphaned_elsewhere" assignment written
+        # pointing at that clan, whether or not they had ever had anything to do with it. That is
+        # what actually piled a guild's own members into a guest clan's column en masse (project
+        # owner's live report: "the qcrew members were falsely auto-assigned to staycalm").
+        actual_placements = [
+            (m["shared_clan_id"], m["clan_tag"])
+            for m in db.find_cwl_shared_clan_memberships_for_player_sync(season, player_tag)
+            if m["clan_tag"] != target_clan_tag
+        ]
+        if actual_placements:
+            def _placement_row(shared_clan_id: int) -> Optional[Dict[str, Any]]:
+                return next(
+                    (p for p in db.get_cwl_shared_clan_players_sync(shared_clan_id) if p["player_tag"] == player_tag),
+                    None,
+                )
+
+            # A DELIBERATE placement elsewhere (source='admin_override' — a real human drag, not
+            # an earlier auto-assign guess) is never overridden, no matter what — same rule as the
+            # locked-local-assignment check below, unconditional. Scanned across ALL of the
+            # player's placements rather than just the first one found, so a deliberate placement
+            # can't be missed (and silently evicted) merely because some other, automatic one
+            # happened to be enumerated ahead of it.
+            chosen: Optional[Tuple[int, str, Dict[str, Any]]] = None
+            for shared_clan_id, other_tag in actual_placements:
+                row = _placement_row(shared_clan_id)
+                if row is None:
+                    continue
+                if row["source"] == "admin_override":
+                    chosen = (shared_clan_id, other_tag, row)
+                    break
+                if chosen is None:
+                    chosen = (shared_clan_id, other_tag, row)
+
+            # Anything NOT deliberate (an automatic/passive placement, e.g. 'auto_assigned') only
+            # still wins if it isn't contradicted by the player's own LIVE current clan: if they
+            # are genuinely a current member of the target right now, that live fact beats a
+            # possibly-stale automatic placement, so fall through to the normal write/eviction
+            # (which purges the stale row) instead of deferring to it.
+            if chosen is not None:
+                other_shared_row = chosen[2]
+                is_deliberate_elsewhere = other_shared_row["source"] == "admin_override"
+                current_clan_tag = db.get_current_clan_tags_for_players_sync([player_tag]).get(player_tag)
+                if is_deliberate_elsewhere or current_clan_tag != target_clan_tag:
+                    # Not evicted (an automatic guess never evicts a real placement) — but leaving
+                    # the player with no local record at all would show them as bare Unassigned,
+                    # which is misleading: they DO have a real home, just not one with a column in
+                    # THIS event. Mirror them into a local assignment pointing at their real
+                    # placement instead, the same "orphaned assignment preservation" pattern
+                    # detach_guild_from_shared_clan_on_deactivation already uses, so the frontend's
+                    # "Assigned to other Guild" pseudo-column (enrollmentBoard.ts) picks them up
+                    # correctly instead of them silently vanishing into Unassigned (2026-08-16
+                    # follow-up, live-testing feedback, project owner's spec, verbatim: "QManiac
+                    # still assigned to StayCalm. So during auto-assignment this should have been
+                    # recognized and instead of putting QManiac to the unassigned pool he should
+                    # have been assigned to the 'Assigned to other clan' pool").
+                    if db.get_cwl_signup_sync(event_id, player_tag) is None:
+                        # Live owner, not the other guild's shared-roster snapshot (Pitfall 37).
+                        mirrored_owner = (
+                            _live_owners_or_sync(db, [player_tag]).get(player_tag)
+                            or other_shared_row["dmed_discord_id"]
+                        )
+                        db.upsert_cwl_signup_sync(
+                            event_id, player_tag, other_shared_row["player_name"],
+                            mirrored_owner, None, signup_source,
+                            _seed_status_from_global_sync(db, player_tag, season),
+                        )
+                    db.upsert_cwl_assignment_sync(
+                        event_id, player_tag, chosen[1], assignment_source="orphaned_elsewhere", locked=False,
+                    )
+                    return
+        existing_assignment = next(
+            (a for a in db.get_cwl_assignments_sync(event_id) if a["player_tag"] == player_tag), None
+        )
+        if (
+            existing_assignment is not None
+            and existing_assignment["assigned_clan_tag"] != target_clan_tag
+            and existing_assignment["locked"]
+        ):
+            return  # already deliberately placed elsewhere locally — same rule, same reason
+
+    removed_player_name: Optional[str] = None
+    removed_discord_id: Optional[str] = None
+    for shared_clan_id in shared_clan_ids_to_clear:
+        shared_row = next(
+            (p for p in db.get_cwl_shared_clan_players_sync(shared_clan_id) if p["player_tag"] == player_tag),
+            None,
+        )
+        if shared_row is not None:
+            removed_player_name = shared_row["player_name"]
+            removed_discord_id = shared_row["dmed_discord_id"]
+        db.delete_cwl_shared_clan_player_sync(shared_clan_id, player_tag)
+        purge_orphaned_shared_clan_guests_sync(shared_clan_id, player_tag)
+
+    def _resolve_identity(candidate_tags: List[str]) -> Tuple[str, Optional[str]]:
+        # The NAME keeps its existing snapshot-first precedence (the recorded name is the one
+        # any DM text already used); only the OWNER is re-resolved live, since that value gets
+        # persisted into cwl_shared_clan_players / a fresh cwl_signups row below and would
+        # otherwise carry an outdated owner into a second table (2026-08-22, Pitfall 37).
+        live_owner = _live_owners_or_sync(db, [player_tag]).get(player_tag)
+        existing_signup = db.get_cwl_signup_sync(event_id, player_tag)
+        if existing_signup is not None:
+            return existing_signup["player_name"], live_owner or existing_signup["dmed_discord_id"]
+        if removed_player_name is not None:
+            return removed_player_name, live_owner or removed_discord_id
+        member = next(
+            (m for m in db.get_current_clan_members_sync(candidate_tags) if m["player_tag"] == player_tag),
+            None,
+        )
+        if member is not None:
+            return member["player_name"], live_owner or member["discord_id"]
+        return player_tag, live_owner
+
+    if target_clan_tag is not None and target_clan_tag in shared_clans_by_tag:
+        player_name, discord_id = _resolve_identity(list(set(resolve_guild_member_clan_tags(guild_id)) | {target_clan_tag}))
+        # Assignment-only (2026-08-16, live-testing feedback, project owner's spec: "Confirmation
+        # status and assignment status should be treated completely separate"). Placing a player
+        # here — whether by drag-and-drop or the auto-assign seed — is never itself a
+        # confirmation; any genuine response they've already recorded (or haven't) is left
+        # completely untouched by this call.
+        db.set_cwl_shared_clan_player_assignment_sync(
+            shared_clans_by_tag[target_clan_tag]["id"], player_tag, player_name, discord_id,
+            True, source, str(guild_id),
+        )
+        sync_cwl_shared_clan_roster_to_local_pools(shared_clans_by_tag[target_clan_tag]["id"])
+        db.delete_cwl_assignment_sync(event_id, player_tag)
+    elif target_clan_tag is None:
+        db.delete_cwl_assignment_sync(event_id, player_tag)
+    else:
+        player_name, discord_id = _resolve_identity(list(set(resolve_guild_member_clan_tags(guild_id)) | {str(target_clan_tag)}))
+        if db.get_cwl_signup_sync(event_id, player_tag) is None:
+            db.upsert_cwl_signup_sync(
+                event_id, player_tag, player_name, discord_id, None, signup_source,
+                _seed_status_from_global_sync(db, player_tag, season),
+            )
+        db.upsert_cwl_assignment_sync(
+            event_id, player_tag, str(target_clan_tag),
+            assignment_source=assignment_source or source, suggested_clan_tag=str(target_clan_tag), locked=locked,
+        )
+    return None
+
+
+CWL_MEMBER_LIST_MAX_AGE = timedelta(hours=24)
+
+
+def _cwl_clan_member_list_is_fresh(clan_tag: str, now: Optional[datetime] = None) -> bool:
+    """True if clan_tag's member list in user_players was refreshed within CWL_MEMBER_LIST_MAX_AGE.
+
+    Two signals, either suffices:
+      1. coc_clan_cache.members_refreshed_at — set every time update_player_info_in_user_accounts()
+         completes for the clan (memory-only, empty after a restart);
+      2. the clan is tracked (has_active_subscriptions) and its last_checked_via_api is recent — a
+         CoC fetch of a tracked clan always runs that same member update (coc_cache.py's
+         _update_clan_metadata), so this survives a restart for family and guest clans alike.
+
+    Args:
+        clan_tag: The clan to check.
+        now: Reference time (tests); defaults to the current UTC time.
+    """
+    now = now or datetime.now(timezone.utc)
+    coc_clan_cache = getattr(CACHE, "coc_clan_cache", None)
+    refreshed = getattr(coc_clan_cache, "members_refreshed_at", {}).get(clan_tag) if coc_clan_cache else None
+    if isinstance(refreshed, datetime) and now - refreshed < CWL_MEMBER_LIST_MAX_AGE:
+        return True
+    clan_data = CACHE.clan_name_cache.get(clan_tag)
+    if not isinstance(clan_data, dict) or not clan_data.get("has_active_subscriptions"):
+        return False
+    last_checked = clan_data.get("last_checked_via_api")
+    if not isinstance(last_checked, str):
+        return False
+    try:
+        checked_at = datetime.fromisoformat(last_checked)
+    except ValueError:
+        return False
+    if checked_at.tzinfo is None:
+        checked_at = checked_at.replace(tzinfo=timezone.utc)
+    return now - checked_at < CWL_MEMBER_LIST_MAX_AGE
+
+
+async def ensure_cwl_clan_membership_tracked(clan_tags: Iterable[str]) -> None:
+    """Make sure every clan in clan_tags actually has live membership data in user_players before
+    anything tries to seed a CWL player pool from it (2026-08-19 fix, live bug report, project
+    owner: "I added Hoehenloher Land as a guest clan but its members don't show up in the player
+    pool").
+
+    Root cause this closes: EVERY pool seed in this feature ultimately reads
+    get_current_clan_members_sync() — i.e. user_players.current_clan_tag — and that table is only
+    ever populated by coc_cache.py's update_player_info_in_user_accounts(), which is deliberately
+    gated on clans.has_active_subscriptions (the 2026-08-14 scope-bug incident: running it for
+    every clan the shared get_clan() cache ever touches polluted user_players with thousands of
+    CWL-opponent members and made every clan fetch slow — see the comment at that call site).
+    has_active_subscriptions is computed in update_all_clan_subscription_statuses() from channel
+    subscriptions + guild member_clans + member_families ONLY — a CWL **guest** clan is in none of
+    those sets. So an invited guest clan that no guild on this bot happens to track independently
+    has ZERO user_players rows, every seed reads an empty member list, and the clan gets a board
+    column with no players in it, forever. The bug was masked in all earlier live testing because
+    the guest clans used until now (e.g. StayCalm) happened to be another guild's own member clan
+    and so were already tracked for unrelated reasons.
+
+    Fix: for each clan with no tracked members, fetch it once from the CoC API and run the exact
+    same population path the regular poll cycle uses (update_player_info_in_user_accounts), which
+    creates the UNASSIGNED-pool user_players rows — with real name/TH/clan — that the seeds then
+    find. Deliberately scoped to clans an admin has explicitly put on a CWL roster and only when
+    they have no data at all, so it never reintroduces the 2026-08-14 blanket-tracking behavior.
+
+    OUTDATED (2026-09-22): Not a substitute for a subscription: the snapshot is refreshed only on
+    the next call here (guest-clan add / Start Enrollment), not by the poll cycle, since
+    deliberately NOT flipping has_active_subscriptions avoids permanently ratcheting
+    track_war_updates on for a clan that's only along for one season. A guest clan's roster barely
+    moves inside a single CWL season, and re-adding the clan re-syncs it.
+    Now (2026-09-22, project owner's spec): a guest clan is persisted in guild_guest_clans and DOES
+    count as tracked (update_all_clan_subscription_statuses step 1e), so the poll cycle keeps its
+    roster current like a family clan's. And "has members at all" is no longer enough to skip the
+    fetch: a clan is only considered current if its member list was refreshed within
+    CWL_MEMBER_LIST_MAX_AGE — the STAY report that prompted this re-added a guest clan whose
+    roster had last been read days earlier, and "re-adding re-syncs it" above was never true for
+    a clan that already had rows. See _cwl_clan_member_list_is_fresh().
+
+    Best-effort throughout — a CoC API failure logs and leaves the clan seeded from whatever is
+    already known rather than failing the admin's save/Start Enrollment."""
+    db = CACHE.db_manager
+    if db is None:
+        return
+    tags = [t for t in dict.fromkeys(clan_tags) if t]
+    if not tags:
+        return
+
+    tracked = await asyncio.to_thread(db.get_current_clan_members_sync, tags)
+    known_tags = {m["clan_tag"] for m in tracked}
+    missing = [t for t in tags if t not in known_tags or not _cwl_clan_member_list_is_fresh(t)]
+    if not missing:
+        return
+
+    coc_clan_cache = getattr(CACHE, "coc_clan_cache", None)
+    if coc_clan_cache is None or getattr(CACHE, "coc_client", None) is None:
+        logging.warning(
+            f"[CWL-POOL-SEED] {len(missing)} clan(s) have no tracked members and the CoC API "
+            f"client isn't available — their members can't be pooled: {', '.join(missing)}"
+        )
+        return
+
+    for clan_tag in missing:
+        try:
+            clan_obj = await coc_clan_cache.get_clan(clan_tag)
+            await coc_clan_cache.update_player_info_in_user_accounts(clan_obj, CACHE)
+            logging.info(
+                f"[CWL-POOL-SEED] {clan_tag} had no current member list (none tracked, or older "
+                f"than {CWL_MEMBER_LIST_MAX_AGE}) — refreshed user_players from a live CoC fetch"
+            )
+        except Exception as e:
+            logging.warning(f"[CWL-POOL-SEED] Could not fetch members for untracked CWL clan {clan_tag}: {e}")
+
+
+async def auto_assign_prior_cwl_members(guild_id: int, event_id: int, season: str, clan_tag: str) -> None:
+    """Fills a gap Start Enrollment's own bulk seed can't reach (2026-08-15, live-testing
+    feedback, project owner's spec): that seed only ever runs ONCE, over whichever clans were
+    participating at that exact moment — a clan added to the roster *afterwards* (a guest clan,
+    or any clan reactivated post-Start-Enrollment) gets a board column but no players, and stays
+    that way forever since nothing else ever seeds it. Called from handle_post_clan_config
+    (web_bridge.py) for every clan newly ADDED to the roster this save (2026-08-18 broadened,
+    rule b/d, CWL_ENROLLMENT_PLAYER_POOL_REDESIGN_PLAN.md, live-tested bug: a guest clan added
+    while its checkbox stayed unchecked never got seeded at all under the old "only clans newly
+    turning participating" trigger — pool membership must not depend on the checkbox) — once
+    ensure_cwl_clan_sharing() has already settled whether it's shared, for whichever of those
+    clans are actually participating. Only actually acts once enrollment has started (event
+    status past 'draft'); a still-draft event doesn't need this at all, since Start Enrollment is
+    about to comprehensively seed everything itself. See _auto_assign_prior_cwl_members_sync's
+    own comment for how a non-participating clan still gets pool membership (Step 2 below) without
+    ever being treated as a valid assignment target (Step 1).
+
+    Two things happen here, both scoped to clan_tag's CURRENT members only:
+
+    1. Auto-assignment (project owner's spec, verbatim): "check if that clan's player roster is
+       still empty. If so auto-assign the players that are members of exactly that added clan and
+       were participating in an earlier CWL in that exact clan." Two conditions, both required:
+       CURRENT membership in clan_tag, AND that same clan_tag was the destination of their own
+       last real CWL attack, anywhere (get_last_real_cwl_attack_clan_sync — same signal
+       resolve_prior_cwl_assignments uses for Start Enrollment's own seed, just pre-filtered to
+       this one clan). Gated PER PLAYER, not on the whole roster being empty (2026-08-16,
+       live-testing feedback, project owner's spec, verbatim: "after removing staycalm as guest
+       clan and then re-adding it only the two players that were assigned manually are in
+       staycalm's roster. The re-add should also have done a re-auto-assign in case the guest
+       clan is not controlled by its own guild.") — a clan re-added after deactivation can already
+       carry over a couple of deliberately locked/admin_override placements (the ones
+       _cleanup_local_pool_for_plain_clan_deactivation_sync intentionally preserves), and the OLD
+       "roster non-empty -> skip everyone" gate wrongly treated those survivors as proof the whole
+       clan was "already handled," silently skipping every other genuinely-qualifying player too.
+       Only a player who is THEMSELVES already placed in clan_tag (assigned locally, or assigned=1
+       in the shared table) is skipped — assign_cwl_player_sync's own deliberate=False conflict
+       handling already protects anyone locked elsewhere from being evicted, so there was never a
+       need for this function to also gate on the aggregate roster state.
+    2. Visibility seed (2026-08-15 follow-up, live-testing feedback: members without prior CWL
+       history in this exact clan were showing with no status icon at all — no ?/✓/✗, not even
+       "Not Linked" — since they never got ANY cwl_signups/cwl_shared_clan_players row, unlike a
+       clan that was already participating when Start Enrollment ran, where EVERY current member
+       gets seeded 'pending' regardless of history). Every OTHER current member without a status
+       row yet gets a plain 'pending' placeholder too — same as Start Enrollment's own bulk seed
+       gives every clan present at that time, just applied retroactively for a clan added later.
+       Unlike step 1, this isn't gated on placement state at all — it's pure visibility,
+       independent of whether anyone's actually been assigned yet."""
+    # This whole function is already pure sync DB work despite the `async def` (no `await` in the
+    # body below) — bundled into one asyncio.to_thread() hop rather than wrapping each call
+    # individually, both to avoid the overhead of many small hops and to keep the same
+    # atomicity-with-respect-to-other-coroutines this body already had before this fix (2026-08-16,
+    # Pitfall 26, COPILOT_PITFALLS_COOKBOOK.md).
+    #
+    # ...but first make sure there ARE members to seed from: a guest clan no guild on this bot
+    # subscribes to has no user_players rows at all, so both steps below would silently no-op
+    # (2026-08-19, live bug report — see ensure_cwl_clan_membership_tracked's own docstring). This
+    # is an await, hence outside the to_thread hop; it's a cheap indexed lookup that returns
+    # immediately for the normal case where the clan is already tracked.
+    await ensure_cwl_clan_membership_tracked([clan_tag])
+    await asyncio.to_thread(_auto_assign_prior_cwl_members_sync, guild_id, event_id, season, clan_tag)
+
+
+def _auto_assign_prior_cwl_members_sync(guild_id: int, event_id: int, season: str, clan_tag: str) -> None:
+    db = CACHE.db_manager
+    if db is None:
+        return
+
+    # rule b/d (2026-08-18, CWL_ENROLLMENT_PLAYER_POOL_REDESIGN_PLAN.md, live-tested bug: a guest
+    # clan added to the roster while its checkbox stayed UNCHECKED never got its members into the
+    # pool at all — this function is called for every newly-added-to-roster clan now (see
+    # handle_post_clan_config, web_bridge.py), not just ones that are actually participating, so
+    # that "in the pool" genuinely doesn't depend on the checkbox per rule b/f/d. A non-
+    # participating clan is not a valid assignment TARGET though (participating_clan_tags still
+    # restricts that everywhere else — resolve_prior_cwl_assignments, the auto-assign seed in
+    # start_cwl_enrollment) — Step 1 below (actually placing a qualifying player INTO clan_tag's
+    # column) is skipped for one, while Step 2 (pure pool-visibility seed, no assignment) still
+    # runs unconditionally, matching rule d's "members of a guest clan enter the pool" literally
+    # without ever assigning anyone to a column that doesn't currently exist on the board.
+    clan_row = next((c for c in db.get_cwl_event_clans_sync(event_id) if c["clan_tag"] == clan_tag), None)
+    is_participating = bool(clan_row["participating"]) if clan_row else True
+
+    shared = db.get_cwl_shared_clan_sync(clan_tag, season)
+    if shared is not None:
+        shared_rows = db.get_cwl_shared_clan_players_sync(shared["id"])
+        already_shared = {p["player_tag"] for p in shared_rows}
+        already_placed = {p["player_tag"] for p in shared_rows if p.get("assigned")}
+    else:
+        already_shared = set()
+        already_placed = {a["player_tag"] for a in db.get_cwl_assignments_sync(event_id) if a["assigned_clan_tag"] == clan_tag}
+
+    current_members = db.get_current_clan_members_sync([clan_tag])
+    if not current_members:
+        return
+    members_by_tag = {m["player_tag"]: m for m in current_members}
+
+    qualifying_tags: set = set()
+    if is_participating:
+        current_tags = [m["player_tag"] for m in current_members]
+        last_attack_clan = db.get_last_real_cwl_attack_clan_sync(current_tags)
+        qualifying_tags = {
+            tag for tag, (attack_clan_tag, _date) in last_attack_clan.items()
+            if attack_clan_tag == clan_tag and tag not in already_placed
+        }
+        for tag in qualifying_tags:
+            # Routed through the general assignment method (2026-08-16, live-testing feedback,
+            # project owner's spec — see assign_cwl_player_sync's own docstring) so this seed can
+            # never place a player here without first checking (and, if needed, evicting) any
+            # OTHER shared clan they're already PLACED in — a target that's shared lands them
+            # there via the separate `assigned` column (never touching `status`, see
+            # cwl_shared_clan_players' own CREATE TABLE comment); otherwise they land in this
+            # guild's own local cwl_assignments.
+            assign_cwl_player_sync(
+                guild_id, event_id, season, tag, clan_tag,
+                source="auto_assigned", assignment_source="suggested", signup_source="auto_assigned",
+                locked=False, deliberate=False,
+            )
+    # else: not currently a valid assignment TARGET (participating_clan_tags still restricts
+    # that everywhere — see this function's own docstring) — every current member instead falls
+    # straight through to Step 2's plain visibility seed below, landing in Unassigned with a
+    # pending icon rather than any column.
+
+    # Step 2: visibility seed for everyone else — see docstring. A 'pending' shared_clan_players
+    # row still populates players_by_tag via _build_enrollment_payload's merge without counting
+    # as an assignment (assigned=0 by default — unset by this status-only write, see
+    # cwl_shared_clan_players' own CREATE TABLE comment), so this correctly lands them in
+    # Unassigned with a pending icon, not in the clan's own column.
+    for tag, member in members_by_tag.items():
+        if tag in qualifying_tags:
+            continue  # already handled above
+        if shared is not None:
+            if tag in already_shared:
+                continue
+            db.set_cwl_shared_clan_player_status_sync(
+                shared["id"], tag, member["player_name"], member["discord_id"],
+                "pending", "auto_seeded", str(guild_id),
+            )
+        else:
+            if db.get_cwl_signup_sync(event_id, tag) is not None:
+                continue
+            db.upsert_cwl_signup_sync(
+                event_id, tag, member["player_name"], member["discord_id"], member.get("preferred_league_rank"),
+                "auto_seeded", _seed_status_from_global_sync(db, tag, season),
+            )
+
+    if shared is not None:
+        sync_cwl_shared_clan_roster_to_local_pools(shared["id"])
+
+
+def get_event_shared_clans_by_tag_sync(event_id: int, season: str) -> Dict[str, Dict[str, Any]]:
+    """clan_tag -> cwl_shared_clans row, for every PARTICIPATING clan in this event that's
+    shared (2026-08-15, slice 4: live shared roster) — used by assign_cwl_player_sync to know
+    which clans need a cwl_shared_clan_players write instead of the normal per-guild
+    cwl_signups/cwl_assignments one. Empty for the overwhelming majority of events (no shared
+    clans at all)."""
+    db = CACHE.db_manager
+    if db is None:
+        return {}
+    result: Dict[str, Dict[str, Any]] = {}
+    for c in db.get_cwl_event_clans_sync(event_id):
+        if not c.get("participating", 1):
+            continue
+        shared = db.get_cwl_shared_clan_sync(c["clan_tag"], season)
+        if shared is not None:
+            result[c["clan_tag"]] = shared
+    return result
+
+
+def get_cwl_event_shared_clan_info_sync(event_id: int, guild_id: int, season: str) -> List[Dict[str, Any]]:
+    """Read-only: for an event, which of its clans are part of a shared-clan record, and which
+    OTHER guild(s) are also attached — used both to preview the delete-season confirmation
+    dialog's warning text (before anything is mutated) and, at actual confirm time, by
+    prune_or_detach_shared_clans_before_deletion() to know what needs repointing/pruning.
+    Doesn't mutate anything itself."""
+    db = CACHE.db_manager
+    if db is None:
+        return []
+    guild_id_str = str(guild_id)
+    info: List[Dict[str, Any]] = []
+    for clan in db.get_cwl_event_clans_sync(event_id):
+        shared = db.get_cwl_shared_clan_sync(clan["clan_tag"], season)
+        if shared is None:
+            continue
+        guilds = db.list_cwl_shared_clan_guilds_sync(shared["id"])
+        other_guild_ids = [g["guild_id"] for g in guilds if g["guild_id"] != guild_id_str]
+        info.append({
+            "clan_tag": clan["clan_tag"],
+            "shared_clan_id": shared["id"],
+            "owner_guild_id": shared["owner_guild_id"],
+            "other_guild_ids": other_guild_ids,
+        })
+    return info
+
+
+async def _detach_or_prune_one_shared_clan(
+    guild_id_str: str, shared_clan_id: int, clan_tag: str, season: str,
+    owner_guild_id: str, other_guild_ids: List[str],
+) -> None:
+    """Shared detach/repoint/prune mechanics for ONE shared clan (2026-08-19 DRY refactor — this
+    was byte-for-byte duplicated between prune_or_detach_shared_clans_before_deletion, below, and
+    detach_guild_from_shared_clan_on_deactivation, further down, which only ever differed in how
+    many shared clans they process and what triggers them; both callers already had docstrings
+    calling the other a "narrower sibling," acknowledging the duplication).
+
+    If other guilds remain attached, detach only THIS guild from cwl_shared_clan_guilds
+    (repointing ownership to one of the remaining guilds first, if this guild was the owner) —
+    the shared roster survives untouched. If this guild was the last one attached, the shared
+    record itself (and its roster, via cascade) is pruned — nothing left for anyone to dangle
+    from."""
+    db = CACHE.db_manager
+    if db is None:
+        return
+    if other_guild_ids:
+        await asyncio.to_thread(db.remove_guild_from_shared_clan_sync, shared_clan_id, guild_id_str)
+        if owner_guild_id == guild_id_str:
+            new_owner_guild_id, resolution_method, new_owner_event_id = await resolve_cwl_clan_owner(
+                clan_tag, season, [int(g) for g in other_guild_ids]
+            )
+            if new_owner_event_id is not None:
+                await asyncio.to_thread(
+                    db.repoint_cwl_shared_clan_owner_sync,
+                    shared_clan_id, new_owner_guild_id, new_owner_event_id, resolution_method,
+                )
+    else:
+        await asyncio.to_thread(db.delete_cwl_shared_clan_sync, shared_clan_id)
+
+
+async def prune_or_detach_shared_clans_before_deletion(guild_id: int, event_id: int, season: str) -> None:
+    """Delete-season guard (2026-08-15, data-loss fix confirmed with the project owner) — MUST
+    run before delete_cwl_event_sync() for this event. cwl_shared_clans.owner_event_id
+    deliberately has no ON DELETE CASCADE (see CWL_ROSTER_PLANNING_PLAN.md): without this
+    pre-step, a guild deleting its own season would either dangle a shared clan's owner_event_id
+    (if it was the owner and just left the cascade to do nothing) or, if the FK ever were
+    CASCADE, silently wipe the shared roster out from under the OTHER guild with no warning.
+
+    For each shared clan this event participates in: if other guilds remain attached, detach
+    only THIS guild (repointing ownership to one of the remaining guilds first, if this guild
+    was the owner) — the shared roster survives untouched. If this guild is the last one
+    attached, the shared record itself (and its roster, via cascade) is pruned — nothing left
+    for anyone to dangle from."""
+    db = CACHE.db_manager
+    if db is None:
+        return
+    guild_id_str = str(guild_id)
+
+    shared_clan_info = await asyncio.to_thread(get_cwl_event_shared_clan_info_sync, event_id, guild_id, season)
+    for info in shared_clan_info:
+        await _detach_or_prune_one_shared_clan(
+            guild_id_str, info["shared_clan_id"], info["clan_tag"], season,
+            info["owner_guild_id"], info["other_guild_ids"],
+        )
+
+
+def _cleanup_local_pool_for_plain_clan_deactivation_sync(
+    db: Any, guild_id: int, event_id: int, clan_tag: str, shared_clan_id: Optional[int] = None,
+) -> List[str]:
+    """The LOCAL-table counterpart of the SHARED-clan orphaned-preservation/stale-mirror cleanup
+    in detach_guild_from_shared_clan_on_deactivation (see that function's own `shared is None`
+    branch for why this exists — 2026-08-16 follow-up, live-testing feedback). A plain guest clan
+    (never cross-guild shared) has no cwl_shared_clan_players table to read its roster from — the
+    roster IS the local cwl_signups/cwl_assignments rows directly — so this reads those instead,
+    but applies the exact same rule: a genuinely DELIBERATE placement (assignment_source==
+    'admin_override' AND locked) is preserved untouched — it's already a real local
+    cwl_assignments row, so simply not deleting it is enough — unlike the shared branch, nothing
+    needs to be freshly materialized here, since there was never a separate shared table to
+    mirror FROM in the first place.
+
+    That placement does NOT have to point AT clan_tag itself (2026-08-19 fix, live bug report,
+    project owner: "I dragged a StayCalm member to TheQCrew's roster and then I removed
+    StayCalm... that member should have stayed but is gone now" — exactly the "Foreign-guest
+    conversion" scenario detach_guild_from_shared_clan_on_deactivation's own top section already
+    describes, verbatim spec: "a player of the guest clan in the guild clan's player roster
+    becomes a guest player automatically"). A player who's a real CURRENT member of clan_tag but
+    was manually drag-assigned into a DIFFERENT clan (one of the guild's own family clans, most
+    commonly) still enters `candidate_tags` via their live clan_tag membership — the deliberate-
+    placement check below must look at THEIR assignment wherever it actually points, not only at
+    one scoped to clan_tag, or exactly this cross-assignment gets wrongly purged the moment
+    clan_tag is removed.
+
+    "Preserved untouched," precisely (2026-08-19 second fix, live bug report, project owner —
+    correcting the framing above, verbatim: "assigning one of its own members to itself and then
+    removing that clan again should not leave that manually assigned player in the guild's
+    pool... the assigned to other guild case serves a different purpose, namely a player that is
+    rightfully member of the current player pool (e.g. because he is a member of this guild) but
+    is assigned to another guild's roster"): a deliberate placement pointing AT clan_tag itself is
+    only preserved when clan_tag is genuinely shared (shared_clan_id is not None) AND the player's
+    own LIVE current clan is NOT clan_tag — i.e. they're rightfully part of THIS guild's pool by
+    some OTHER measure (a family member, an individually-invited guest, a linked account) who
+    chose to be placed on another guild's roster. A player whose own current clan actually IS
+    clan_tag is never "ours, assigned to theirs" — they're simply a real member of the (now
+    foreign-again) clan itself, whose only connection to this guild's pool was clan_tag's now-
+    ended guest invitation, so they fall through to the normal purge below like every other direct
+    member, exactly as a never-shared plain clan's own self-assigned member already does. See
+    CWL_ENROLLMENT_PLAYER_POOL_REDESIGN_PLAN.md's "Assigned to other Guild" semantics section for
+    the canonical statement of this rule.
+
+    Discord-linked-account sweep (2026-08-16 follow-up, live-testing feedback, project owner's
+    spec, verbatim): "not only the staycalm members were added to The QCrew's player pool but
+    also [players from other, unrelated clans linked to the same Discord accounts]... I would say
+    to keep things easy only direct members of a guest clan are added and removed and not their
+    [linked-account] members... when removing a guest clan... we always remove all the players
+    that are linked to the removed clan's discord users. There is one exception... When a discord
+    user has linked players either in one of the guild's member clans or in another guest clan of
+    the guild then these players should remain." Root cause this closes: Start Enrollment's own
+    account-wide-linked-accounts expansion (guild_config.cwl_enrollment_include_all_linked_
+    accounts) doesn't distinguish a Discord account that qualified via a FAMILY clan member from
+    one that qualified via a GUEST clan member — either way, ALL of that account's other linked
+    players get swept into the pool, even ones in completely unrelated clans. The prior version of
+    this cleanup only ever considered clan_tag's own DIRECT current members, so those swept-in alt
+    accounts (never direct clan_tag members themselves) were silently left behind forever.
+
+    Two DIFFERENT protection rules, deliberately NOT symmetric (2026-08-16 second follow-up,
+    project owner's spec, verbatim, confirmed "guest clans only"): a Discord account with a
+    linked player in one of the guild's own FAMILY clans is ALWAYS protected in full,
+    unconditionally — family membership was never gated by the linked-accounts toggle on the
+    add side either, so it isn't here. A Discord account with a linked player in ANOTHER
+    currently-active GUEST clan is protected ONLY while guild_config.cwl_enrollment_include_all_
+    linked_accounts is currently True — mirrors exactly what a fresh Start Enrollment run would
+    produce for that other clan right now, given the CURRENT setting, not whatever was true when
+    these players were originally added (the toggle may well have changed since). Either way, a
+    player who is THEMSELVES a genuine DIRECT current member of a protective clan is always kept,
+    toggle or not — that's their own independent membership, nothing to do with account linkage.
+
+    "Kept" means their SIGNUP survives — a stale non-deliberate ASSIGNMENT specifically pointing
+    at clan_tag is still cleared even for a protected player (2026-08-19 fix, live bug report,
+    project owner: real family-clan members were stuck rendering as "Assigned to other Guild"
+    forever after the guest clan their stale prior-CWL-history auto-assignment pointed at got
+    removed — this cleanup already correctly refused to delete their pool membership, it just
+    never cleared the resulting dangling pointer). See _clear_stale_assignment_if_any below.
+
+    Candidate set: every CURRENT live member of clan_tag (catches auto_seeded visibility-only
+    signups with no assignment at all) UNIONED with every player who already has a local
+    cwl_assignments row pointing at clan_tag (catches someone who's since left clan_tag in-game
+    but still has a stale local assignment from when they were a member) UNIONED with every
+    player still on clan_tag's SHARED roster, if any, per shared_clan_id (2026-08-19 fix, live
+    bug report, project owner: players he "never added... through the player guest invite
+    feature" kept lingering as individually-removable guest players after removing a shared
+    clan — traced to sync_cwl_shared_clan_roster_to_local_pools(), which mirrors every
+    shared-roster player into this guild's own local cwl_signups as a source='guest_invite'
+    placeholder the moment the shared clan is added, but writes no local cwl_assignments row and
+    no origin_shared_clan_id; a player who's since left clan_tag in real life falls out of BOTH
+    the live-membership and the local-assignment candidate sources above and becomes permanently
+    invisible to this cleanup without this third source) UNIONED with every OTHER player sharing
+    a Discord account with one of clan_tag's own direct members (the sweep)."""
+    current_members = db.get_current_clan_members_sync([clan_tag])
+    candidate_tags = {m["player_tag"] for m in current_members}
+    # Every local assignment in this event, keyed by player_tag regardless of destination — used
+    # below both to extend the candidate set (only the clan_tag-pointing subset, same as before)
+    # and to check whether a candidate has a deliberate placement ANYWHERE (not necessarily at
+    # clan_tag — see this function's own docstring for why that distinction matters).
+    all_assignments_by_tag = {a["player_tag"]: a for a in db.get_cwl_assignments_sync(event_id)}
+    candidate_tags.update(tag for tag, a in all_assignments_by_tag.items() if a["assigned_clan_tag"] == clan_tag)
+    if shared_clan_id is not None:
+        candidate_tags.update(p["player_tag"] for p in db.get_cwl_shared_clan_players_sync(shared_clan_id))
+    if not candidate_tags:
+        return []
+
+    family_clan_tags = set(resolve_guild_member_clan_tags(guild_id))
+    other_active_guest_clan_tags = {
+        c["clan_tag"] for c in db.get_cwl_event_clans_sync(event_id)
+        if c.get("participating", 1) and c["clan_tag"] != clan_tag and c["clan_tag"] not in family_clan_tags
+    }
+    protective_clan_tags = family_clan_tags | other_active_guest_clan_tags
+    include_linked_accounts = bool(
+        CACHE.server_config.get(str(guild_id), {}).get("cwl_enrollment_include_all_linked_accounts", False)
+    )
+
+    discord_id_by_tag: Dict[str, Optional[str]] = {m["player_tag"]: m["discord_id"] for m in current_members}
+    discord_ids = {did for did in discord_id_by_tag.values() if did}
+    if discord_ids:
+        for p in db.get_all_players_for_discord_ids_sync(list(discord_ids)):
+            candidate_tags.add(p["player_tag"])
+            discord_id_by_tag.setdefault(p["player_tag"], p["discord_id"])
+
+    current_clan_by_tag = db.get_current_clan_tags_for_players_sync(list(candidate_tags))
+
+    # A discord_id is "family-protected" if ANY of its linked players directly sits in one of
+    # the guild's own family clans right now; "guest-protected" if any sits directly in another
+    # currently-active guest clan. Computed once, up front, so every candidate sharing that
+    # account gets the same answer regardless of iteration order.
+    family_protected_discord_ids = set()
+    guest_protected_discord_ids = set()
+    for tag in candidate_tags:
+        did = discord_id_by_tag.get(tag)
+        if not did:
+            continue
+        current_clan = current_clan_by_tag.get(tag)
+        if current_clan in family_clan_tags:
+            family_protected_discord_ids.add(did)
+        elif current_clan in other_active_guest_clan_tags:
+            guest_protected_discord_ids.add(did)
+
+    def _clear_stale_assignment_if_any(tag: str, assignment: Optional[Dict[str, Any]]) -> None:
+        # A protected player's POOL MEMBERSHIP (signup) always survives — but if their assignment
+        # is a non-deliberate one that happens to point AT clan_tag (the one being removed), that
+        # pointer is now stale: that column no longer exists. Left uncleared, they render as
+        # "Assigned to other Guild" forever instead of correctly falling back to Unassigned
+        # (2026-08-19 fix, live bug report, project owner: "the qcrew members were falsely
+        # auto-assigned to staycalm... after removing staycalm the error becomes obvious" — the
+        # actual root cause was resolve_prior_cwl_assignments/auto-assign placing a REAL family-
+        # clan member into a guest/shared clan's column based on stale prior-CWL-attack history;
+        # this cleanup already correctly refused to delete their pool membership for it, it just
+        # never cleared the resulting dangling pointer once that clan left the roster).
+        if assignment is not None and assignment["assigned_clan_tag"] == clan_tag:
+            db.delete_cwl_assignment_sync(event_id, tag)
+
+    purged_tags: List[str] = []
+    for tag in candidate_tags:
+        assignment = all_assignments_by_tag.get(tag)
+        if (
+            assignment is not None
+            and assignment["assignment_source"] == "admin_override"
+            and assignment["locked"]
+            and (
+                assignment["assigned_clan_tag"] != clan_tag
+                or (shared_clan_id is not None and current_clan_by_tag.get(tag) != clan_tag)
+            )
+        ):
+            continue  # a genuine, deliberate drag-and-drop placement — preserved as-is UNLESS it
+                      # points AT clan_tag itself AND (clan_tag was never actually shared with
+                      # anyone, OR this player is themselves a genuine CURRENT/direct member of
+                      # clan_tag). "Assigned to other Guild" exists for exactly one purpose
+                      # (2026-08-19, project owner's spec, verbatim: "the assigned to other guild
+                      # case serves a different purpose namely that a player that is rightfully
+                      # member of the current player pool (e.g. because he is a member of this
+                      # guild) but is assigned to another guilds roster, those are the player that
+                      # should appear in the assigned to other guild category") — a player who
+                      # genuinely belongs in THIS guild's pool (current_clan_by_tag.get(tag) !=
+                      # clan_tag, e.g. one of this guild's own family-clan members) but was
+                      # deliberately drag-assigned INTO a clan another guild manages. A player
+                      # whose own LIVE current clan actually IS clan_tag is the opposite: a real
+                      # member of the (now-removed) foreign clan itself, who was only ever in this
+                      # guild's pool because that clan was temporarily guest-invited — dragging
+                      # them into their OWN clan's column doesn't make them "ours assigned to
+                      # theirs," so nothing here is worth preserving once that guest invitation
+                      # ends, shared or not (live bug report, project owner: he drag-assigned a
+                      # real member of a guest clan — first the never-shared Hohenloher Land/Akaza
+                      # case, then the SAME symptom again for a genuinely shared clan/StayCalm's
+                      # own member "STY - Basement" — into that clan's own column, then removed
+                      # the clan; the player stayed behind either as an unexplained "Assigned to
+                      # other Guild" entry or lingering in Remove Guest Players instead of being
+                      # purged like every other real member of the removed clan). Unconditionally
+                      # true for a placement pointing at any OTHER clan regardless of clan_tag's
+                      # own shared status or the player's own current clan (the classic
+                      # cross-assignment/"foreign-guest conversion" case — see
+                      # test_remove_guest_clan_preserves_a_member_drag_assigned_into_a_family_clan,
+                      # tests/unit/test_cwl_clan_ownership.py).
+        if current_clan_by_tag.get(tag) in protective_clan_tags:
+            _clear_stale_assignment_if_any(tag, assignment)
+            continue  # a genuine DIRECT current member of a family/other-active-guest clan — always kept
+        did = discord_id_by_tag.get(tag)
+        if did and did in family_protected_discord_ids:
+            _clear_stale_assignment_if_any(tag, assignment)
+            continue  # linked to a genuine family-clan member — unconditional, toggle-independent
+        if did and include_linked_accounts and did in guest_protected_discord_ids:
+            _clear_stale_assignment_if_any(tag, assignment)
+            continue  # linked to another active guest clan's direct member, AND the expansion
+                      # setting is currently on — matches what a fresh add would produce right now
+        db.delete_cwl_assignment_sync(event_id, tag)
+        db.delete_cwl_signup_sync(event_id, tag)
+        purged_tags.append(tag)
+
+    # Returned so the ASYNC caller can retract these players' now-dangling enrollment DMs
+    # (2026-08-21, tracker #0011). It can't be done here: this is a plain sync function run via
+    # asyncio.to_thread, while cleanup_stale_cwl_enrollment_dms() is async and needs a live bot.
+    logging.info(
+        f"[CWL-POOL-CLEANUP] guild={guild_id} event={event_id} clan={clan_tag} deactivated: "
+        f"purged={len(purged_tags)} kept={len(candidate_tags) - len(purged_tags)} "
+        f"(of {len(candidate_tags)} candidate tag(s))"
+    )
+    return purged_tags
+
+
+async def detach_guild_from_shared_clan_on_deactivation(guild_id: int, event_id: int, season: str, clan_tag: str) -> None:
+    """Narrower sibling of prune_or_detach_shared_clans_before_deletion, same detach/repoint/prune
+    logic, but for a different trigger (2026-08-15, live-testing feedback): a guild turning a
+    previously-participating SHARED clan back OFF via a normal Configure Participating Clans save
+    (unchecking it, not deleting the whole season). Without this, a guild that deactivated a
+    shared clan stayed listed in cwl_shared_clan_guilds forever — a confusing, wrong "still
+    sharing" entry for eviction-target lists and notifications even though this guild opted out —
+    and if it happened to be the OWNER, an inactive/opted-out guild kept blocking legitimate
+    eviction rights indefinitely, with nobody actually managing the clan's canonical settings.
+
+    Called from handle_post_clan_config (web_bridge.py) for every clan newly turning
+    participating=False this save. Re-adding the same clan later (ensure_cwl_clan_sharing) finds
+    no existing attachment (this function already detached it) and correctly treats it as a fresh
+    join — repoint-on-detach here means a stale/inactive owner can never block that re-join.
+
+    Foreign-guest conversion (2026-08-15, project owner's spec, verbatim: "in the moment the
+    guest clan is removed that assigned players remain in their rosters even in that of the
+    guild clan... a player of the guest clan in the guild clan's player roster becomes a guest
+    player automatically"): before detaching, find this clan's REAL current members who are
+    currently cross-assigned into one of THIS guild's own (private, non-shared) clans — they
+    were removed from the shared roster back when that cross-assignment happened (see
+    handle_post_cwl_enrollment_assign's "remove from other shared clan" step), so there's nothing
+    left in cwl_shared_clan_players to find them by; the only remaining signal is "real current
+    member of clan_tag" cross-referenced against this guild's own cwl_assignments. Each one gets
+    flipped to a guest signup (mark_cwl_signup_as_shared_clan_guest_sync), stamped with this
+    shared clan's id so a later reassignment by the clan's real owning guild
+    (handle_post_cwl_enrollment_assign's purge hook) can find and remove them.
+
+    Everything through computing `other_guild_ids` runs as one asyncio.to_thread() hop
+    (_detach_guild_from_shared_clan_on_deactivation_sync, 2026-08-16, Pitfall 26,
+    COPILOT_PITFALLS_COOKBOOK.md) — this function has no `await` before that point today, so
+    bundling preserves that same atomicity instead of introducing new interleaving windows a
+    per-line wrap would; the tail (repoint-or-prune, delegated to _detach_or_prune_one_shared_clan
+    — 2026-08-19 DRY refactor, shared with prune_or_detach_shared_clans_before_deletion) was
+    never atomic with the rest regardless, since it has a real `await resolve_cwl_clan_owner()`
+    of its own."""
+    db = CACHE.db_manager
+    if db is None:
+        return
+    pre = await asyncio.to_thread(
+        _detach_guild_from_shared_clan_on_deactivation_sync, db, guild_id, event_id, season, clan_tag,
+    )
+    if pre is None:
+        return
+    shared, other_guild_ids, guild_id_str = pre
+    await _detach_or_prune_one_shared_clan(
+        guild_id_str, shared["id"], clan_tag, season, shared["owner_guild_id"], other_guild_ids,
+    )
+
+
+def _detach_guild_from_shared_clan_on_deactivation_sync(
+    db: Any, guild_id: int, event_id: int, season: str, clan_tag: str,
+) -> Optional[Tuple[Dict[str, Any], List[str], str]]:
+    """Synchronous unit of work for detach_guild_from_shared_clan_on_deactivation() — see that
+    function's own comment for why this is one atomic asyncio.to_thread() hop. Returns None for
+    both of the function's early-return cases (never shared, or not actually attached); otherwise
+    (shared, other_guild_ids, guild_id_str) for the caller's post-await tail."""
+    shared = db.get_cwl_shared_clan_sync(clan_tag, season)
+    if shared is None:
+        # Plain (never cross-guild-shared) guest clan — SUPERSEDED 2026-08-18 (rule f,
+        # CWL_ENROLLMENT_PLAYER_POOL_REDESIGN_PLAN.md, project owner's spec): unchecking a guest
+        # clan is now purely cosmetic — it only removes the clan from the guild's active roster,
+        # its players stay in the player pool untouched. This used to call
+        # _cleanup_local_pool_for_plain_clan_deactivation_sync() here automatically on every
+        # deactivation (2026-08-16 follow-up, live-testing feedback, verbatim: "I removed
+        # staycalm but their players were not removed from the qcrew's player pool as it should
+        # have... we fixed this earlier this day and now it's back") — that destructive cleanup
+        # logic (preserve a deliberate placement, remove everything machine-seeded) is exactly
+        # right, it's just no longer triggered by a plain checkbox uncheck+Save. It now runs only
+        # from the explicit "Remove" button (remove_cwl_guest_clan, this file — which calls
+        # _cleanup_local_pool_for_plain_clan_deactivation_sync() unconditionally itself, not just
+        # for this never-shared case; see that function's own docstring for the 2026-08-18 bug
+        # this fixed for a SHARED guest clan specifically).
+        return
+    guild_id_str = str(guild_id)
+    guilds = db.list_cwl_shared_clan_guilds_sync(shared["id"])
+    if not any(g["guild_id"] == guild_id_str for g in guilds):
+        return  # not actually attached — nothing to do (defensive)
+
+    current_members = db.get_current_clan_members_sync([clan_tag])
+    # Computed unconditionally (not just inside the `if current_members:` block below) — reused
+    # further down by the orphaned-assignment-preservation loop's own membership check, which
+    # must still run correctly even when clan_tag currently has zero live members.
+    members_by_tag = {m["player_tag"]: m for m in current_members}
+    if current_members:
+        my_assignments = {a["player_tag"]: a["assigned_clan_tag"] for a in db.get_cwl_assignments_sync(event_id)}
+        for tag, member in members_by_tag.items():
+            assigned_clan = my_assignments.get(tag)
+            if assigned_clan is None or assigned_clan == clan_tag:
+                continue  # not cross-assigned into one of my OWN other clans
+            db.mark_cwl_signup_as_shared_clan_guest_sync(
+                event_id, tag, member["player_name"], member["discord_id"], shared["id"]
+            )
+
+    # Orphaned-assignment preservation (2026-08-16, live-testing feedback, project owner's spec):
+    # the OTHER direction — one of THIS guild's own players (family member or otherwise) who was
+    # drag-assigned INTO the shared clan itself lives only in cwl_shared_clan_players, never in
+    # this guild's own cwl_assignments (see handle_post_cwl_enrollment_assign's shared-destination
+    # branch, which deliberately clears any local assignment row). Once this clan stops being a
+    # participating column here, that player would otherwise vanish from the board entirely — not
+    # even falling back to Unassigned — since nothing in the payload builder would ever resolve
+    # their assignment again. Mirroring every currently-confirmed shared-roster player into a
+    # local cwl_assignments row (still pointing at clan_tag, now a "column that doesn't exist"
+    # tag) reuses exactly the same mechanism a plain, never-shared guest clan already gets for
+    # free when deactivated — its stale local assignment simply survives untouched — and the
+    # frontend's new "Assigned to other Guild" column (enrollmentBoard.ts) is what actually
+    # surfaces it instead of leaving it silently invisible. Reuses
+    # mark_cwl_signup_as_shared_clan_guest_sync for the signup half too (not just the "cross-
+    # assigned into MY other clan" case above) — deliberately uniform treatment regardless of
+    # whether this particular player is really this guild's own family member or a stranger:
+    # stamping origin_shared_clan_id means purge_orphaned_shared_clan_guests_sync will correctly
+    # clean up this guild's own now-stale local copy too, the moment the clan's real owning guild
+    # ever reassigns this same player away from clan_tag on ITS OWN board — the shared roster
+    # itself is untouched by any of this (still exactly what get_cwl_shared_clan_players_sync
+    # returns), only local mirrors are ever written here.
+    #
+    # Scoped to source == 'admin_override' ONLY (2026-08-16 follow-up, live-testing feedback,
+    # project owner's spec, verbatim: "all players from that guest clan that are not already
+    # assigned to a member clan player roster should be removed from the player pool
+    # completely... only [the one deliberately drag-assigned player] should have stayed"). This
+    # ONLY controls which players get a NEW local mirror row written here — it does NOT delete
+    # anything for anyone else; see the SUPERSEDED note below for why.
+    #
+    # SUPERSEDED 2026-08-19 (rule f, CWL_ENROLLMENT_PLAYER_POOL_REDESIGN_PLAN.md, live bug
+    # report: "Members vanished from player pool after uncheck for StayCalm" — a genuinely
+    # cross-guild-shared clan). This loop used to ALSO delete every non-admin_override shared-
+    # roster player's existing local cwl_signups/cwl_assignments row here (a "stale local-mirror
+    # cleanup" — see git history for the full 2026-08-16 rationale, itself a fix for a real bug
+    # at the time) — correct BEFORE rule f existed, but rule f (2026-08-18) requires a mere
+    # uncheck+Save to be purely cosmetic for the player pool here too, exactly like the plain-clan
+    # branch above (`shared is None`). That deletion is gone: a non-admin_override player's local
+    # mirror (if they already have one, from while this clan was still an active, participating
+    # column) is now left completely untouched by this function. Deletion of the local pool only
+    # ever happens via the explicit "Remove" button (remove_cwl_guest_clan, below) — which itself
+    # still preserves a genuine deliberate placement (see the assignment_source write below).
+    #
+    # Mirror written as assignment_source="admin_override"/locked=True — matching the SAME live
+    # values a real drag-and-drop placement carries, not a softer "orphaned_on_detach"/locked=False
+    # marker (2026-08-19 fix, project owner's spec, verbatim, confirmed explicitly: "'assigned
+    # players remain in their rosters... becomes a guest player automatically' even when the clan
+    # is removed" — NOT just on a mere uncheck). _cleanup_local_pool_for_plain_clan_deactivation_
+    # sync (called unconditionally by remove_cwl_guest_clan right after this) only ever preserves
+    # a row with exactly these values, so writing anything softer here meant Remove silently threw
+    # the "preserved" placement away again the instant after this loop wrote it — this now
+    # actually survives both an Uncheck AND a subsequent (or immediate) Remove, matching the spec.
+    # Excludes a shared_player who is themselves a genuine CURRENT/direct member of clan_tag
+    # (2026-08-19 fix, live bug report, project owner: "STY - Basement" — a real StayCalm member,
+    # deliberately drag-assigned into StayCalm's OWN column — still got mirrored here and rendered
+    # as "Assigned to other Guild" even on a mere UNCHECK, before Remove's own cleanup ever had a
+    # chance to run; project owner's correction of the framing, verbatim: "the assigned to other
+    # guild case serves a different purpose, namely a player that is rightfully member of the
+    # current player pool... but is assigned to another guild's roster" — a real direct member of
+    # clan_tag itself was never "rightfully in THIS guild's pool" to begin with, just a foreign
+    # player along for clan_tag's guest invitation; reuses members_by_tag, already computed above
+    # for the OTHER direction's own membership check). This is the single write-time source of
+    # this mirror — fixing it here (not just in _cleanup_local_pool_for_plain_clan_deactivation_
+    # sync's later purge) matters because that cleanup step never even runs on a plain Uncheck
+    # (rule f, SUPERSEDED note above) — without this, a mere Uncheck (not a full Remove) would
+    # already show clan_tag's own real members as "Assigned to other Guild," which is wrong
+    # regardless of which action triggered it.
+    for shared_player in db.get_cwl_shared_clan_players_sync(shared["id"]):
+        tag = shared_player["player_tag"]
+        if shared_player["assigned"] and shared_player["source"] == "admin_override" and tag not in members_by_tag:
+            db.mark_cwl_signup_as_shared_clan_guest_sync(
+                event_id, tag, shared_player["player_name"], shared_player["dmed_discord_id"], shared["id"]
+            )
+            db.upsert_cwl_assignment_sync(event_id, tag, clan_tag, assignment_source="admin_override", locked=True)
+
+    other_guild_ids = [g["guild_id"] for g in guilds if g["guild_id"] != guild_id_str]
+    return shared, other_guild_ids, guild_id_str
+
+
+async def remove_cwl_guest_clan(guild_id: int, event_id: int, season: str, clan_tag: str) -> None:
+    """Full removal of a guest clan from the season — rule f's "Remove" button (2026-08-18,
+    CWL_ENROLLMENT_PLAYER_POOL_REDESIGN_PLAN.md), called from web_bridge.py's
+    handle_post_cwl_guest_clan_remove. Unchecking a guest clan (a normal Configure Participating
+    Clans save) is now purely cosmetic — see detach_guild_from_shared_clan_on_deactivation's own
+    docstring — this function is the only thing that still does the full destructive purge that
+    used to run automatically on every uncheck.
+
+    Bug fixed 2026-08-18 (live-tested in DEV, project owner's report: "Remove guest clan didn't
+    remove the players from the player pool"): this used to run the local-pool cleanup only for a
+    plain (never cross-guild-shared) clan, in an if/else against the shared-detach call — for a
+    SHARED guest clan it ran ONLY detach_guild_from_shared_clan_on_deactivation, and the guild's
+    own local cwl_signups/cwl_assignments rows for this clan's real current members were never
+    touched at all in that branch. Fixed by always running the local cleanup afterward.
+
+    A genuine admin_override placement into a DIFFERENT clan than the one being removed always
+    survives, Uncheck OR Remove alike (2026-08-19 fix, project owner's spec, verbatim, confirmed
+    explicitly: "'assigned players remain in their rosters... becomes a guest player
+    automatically' even when the clan is removed") — detach_guild_from_shared_clan_on_
+    deactivation's shared-roster mirror-write now stamps the same assignment_source=
+    "admin_override"/locked=True values a real drag-and-drop placement carries (not a softer
+    marker), which is exactly what _cleanup_local_pool_for_plain_clan_deactivation_sync (called
+    unconditionally right after) preserves — so it's never purged out from under itself, on
+    Uncheck or Remove, shared clan or plain. A placement pointing AT clan_tag itself is a
+    different case (2026-08-19, second fix, live bug report — "STY - Basement"/Akaza): see
+    _cleanup_local_pool_for_plain_clan_deactivation_sync's own docstring and
+    CWL_ENROLLMENT_PLAYER_POOL_REDESIGN_PLAN.md's "Assigned to other Guild" semantics section —
+    that survives only when the player is themselves NOT a genuine current member of clan_tag,
+    since a real member of the clan being removed was never "rightfully in this guild's pool" to
+    begin with.
+
+    Order: the shared-detach step (if applicable) runs FIRST — it owns the cross-guild
+    bookkeeping (detach from cwl_shared_clan_guilds, repoint ownership, foreign-guest
+    conversion) and may itself write new local rows; the local-pool cleanup then runs
+    unconditionally afterward, so it sees and correctly purges/preserves whatever that step just
+    left behind, on top of every genuine current member of clan_tag. Finally the cwl_event_clans
+    row itself is deleted entirely (guest clans have no roster_size/tier_order/cwl_start_at worth
+    preserving across a remove/re-add cycle, unlike a family clan's plain participating toggle).
+
+    Callers must reject a family-clan tag before calling this (defense in depth — the caller,
+    not this function, owns that check, matching this codebase's usual "fail closed at the
+    endpoint" convention for destructive actions).
+
+    shared_clan_id is looked up ONCE here and threaded into the local cleanup too (2026-08-19
+    fix, live bug report, project owner: players who were never manually invited kept lingering
+    as individually-removable guest players after a shared clan's removal — traced to
+    sync_cwl_shared_clan_roster_to_local_pools(), which mirrors every shared-roster player into
+    this guild's own local cwl_signups as a source='guest_invite' placeholder the moment the
+    shared clan is added (so the local pool has something to show), but writes no
+    cwl_assignments row and no origin_shared_clan_id — the ONLY two things
+    _cleanup_local_pool_for_plain_clan_deactivation_sync's candidate set otherwise notices. A
+    player who's since left the shared clan in real life (their live current_clan_tag no longer
+    matches clan_tag either) becomes fully invisible to that candidate set and the mirror row
+    sits there forever. See _cleanup_local_pool_for_plain_clan_deactivation_sync's own docstring
+    for the actual fix."""
+    db = CACHE.db_manager
+    if db is None:
+        return
+    shared = await asyncio.to_thread(db.get_cwl_shared_clan_sync, clan_tag, season)
+    if shared is not None:
+        await detach_guild_from_shared_clan_on_deactivation(guild_id, event_id, season, clan_tag)
+    purged_tags = await asyncio.to_thread(
+        _cleanup_local_pool_for_plain_clan_deactivation_sync, db, guild_id, event_id, clan_tag,
+        shared["id"] if shared is not None else None,
+    )
+    await asyncio.to_thread(db.delete_cwl_event_clan_sync, event_id, clan_tag)
+
+    # Retract the purged players' now-dangling enrollment DMs (2026-08-21, tracker #0011). Their
+    # cwl_signups row is gone, so clicking Confirm/Opt Out would report "this sign-up is no longer
+    # valid (the season may have been deleted)" — misleading, since the season is very much alive;
+    # only their clan left the roster. Delete-Season already does exactly this
+    # (CwlDeleteSeasonConfirmView._on_confirm, ui_cwl_roster.py); this path never did.
+    # Deliberately scoped to purged_tags: players the cleanup PRESERVED keep their pool
+    # membership, so their DM is still live and must not be retracted.
+    if purged_tags:
+        await _retract_enrollment_dms_for_tags(event_id, purged_tags, context=f"clan {clan_tag} removed")
+
+
+def purge_orphaned_shared_clan_guests_sync(shared_clan_id: int, player_tag: str) -> None:
+    """The other half of the foreign-guest conversion (2026-08-15, project owner's spec,
+    verbatim: "only when that exact guest player is re-assigned by his owning guild... this
+    player should be removed from the guild clan's player roster and player pool"). Called from
+    handle_post_cwl_enrollment_assign (web_bridge.py) every time a player is removed from a
+    shared clan's roster — regardless of which guild did it or where the player went instead;
+    the point is simply that they're no longer part of that shared clan's roster, so any OTHER
+    guild's foreign-guest placement that was only legitimized by them having been on it needs to
+    go too. Finds every cwl_signups row anywhere that traces back to this exact shared clan for
+    this exact player (mark_cwl_signup_as_shared_clan_guest_sync stamped them) and deletes both
+    that signup and its assignment outright — "removed from the roster AND the pool," not merely
+    unassigned. A no-op for the overwhelming majority of removals (nobody ever cross-assigned
+    this player into a foreign clan in the first place)."""
+    db = CACHE.db_manager
+    if db is None:
+        return
+    for row in db.find_cwl_signups_by_origin_shared_clan_sync(shared_clan_id, player_tag):
+        db.delete_cwl_assignment_sync(row["event_id"], player_tag)
+        db.delete_cwl_signup_sync(row["event_id"], player_tag)
+
+
+async def evict_guild_from_shared_clan(
+    acting_guild_id: int, target_guild_id: int, clan_tag: str, season: str
+) -> Dict[str, Any]:
+    """Owner-only eviction (2026-08-15, project owner's spec: "the admins of the owner guild
+    should be able to remove the clan from the other guild's clan roster") — removes
+    target_guild_id's participation in a shared clan. Gated to the CURRENT owner guild only;
+    callers must already have verified acting_guild_id's admin permission separately (this
+    function only checks the *ownership* half, not general admin-ness — see
+    handle_post_cwl_shared_clan_evict, web_bridge.py, for the full gate).
+
+    Returns {"ok": bool, "error": Optional[str]} — error is one of 'not_shared', 'not_owner',
+    'cannot_evict_owner' (the owner can't evict themselves — see prune_or_detach_shared_clans_
+    before_deletion / delete-season instead, which is the real "I want out" path for an owner).
+
+    This whole function is pure sync DB work despite the `async def` (no `await` in the body) —
+    bundled into one asyncio.to_thread() hop (2026-08-16, Pitfall 26, COPILOT_PITFALLS_COOKBOOK.md)."""
+    db = CACHE.db_manager
+    if db is None:
+        return {"ok": False, "error": "no_database"}
+    return await asyncio.to_thread(_evict_guild_from_shared_clan_sync, db, acting_guild_id, target_guild_id, clan_tag, season)
+
+
+def _evict_guild_from_shared_clan_sync(
+    db: Any, acting_guild_id: int, target_guild_id: int, clan_tag: str, season: str,
+) -> Dict[str, Any]:
+    shared = db.get_cwl_shared_clan_sync(clan_tag, season)
+    if shared is None:
+        return {"ok": False, "error": "not_shared"}
+    if shared["owner_guild_id"] != str(acting_guild_id):
+        return {"ok": False, "error": "not_owner"}
+    if str(target_guild_id) == shared["owner_guild_id"]:
+        return {"ok": False, "error": "cannot_evict_owner"}
+
+    target_event = db.get_cwl_event_sync(str(target_guild_id), season)
+    db.remove_guild_from_shared_clan_sync(shared["id"], str(target_guild_id))
+    if target_event is not None:
+        db.deactivate_cwl_event_clan_sync(target_event["id"], clan_tag)
+    return {"ok": True, "error": None}
+
+
+def _seed_prior_cwl_assignments_sync(
+    guild_id: int, event_id: int, season: str, prior_assignments: Dict[str, str],
+) -> None:
+    """Synchronous unit of work for start_cwl_enrollment()'s auto-assignment seed loop — see that
+    function's own comment for why this is one atomic asyncio.to_thread() hop."""
+    for player_tag, target_clan_tag in prior_assignments.items():
+        assign_cwl_player_sync(
+            guild_id, event_id, season, player_tag, target_clan_tag,
+            source="auto_assigned", assignment_source="suggested", signup_source="auto_assigned",
+            locked=False, deliberate=False,
+        )
+
+
+# ---------------------------------------------------------------------------
+# Tracker #0114 — "Ersatzbank"/Bench sign-up status
+# ---------------------------------------------------------------------------
+
+# The two Bench statuses: a real answer, and the one a standing "always bench" preference seeds
+# (the same pairing 'confirmed'/'auto_confirmed' already has).
+CWL_BENCH_STATUSES: Tuple[str, ...] = ("passive", "auto_passive")
+
+# Every status that means "this player has answered" — nothing here counts as pending, so none of
+# these get re-invited or reminded.
+CWL_SETTLED_STATUSES: Set[str] = {"confirmed", "declined", "auto_confirmed", *CWL_BENCH_STATUSES}
+
+
+def is_cwl_extended_signup(guild_id: int) -> bool:
+    """True when this guild runs extended sign-up (guild_config.cwl_signup_mode == 'extended'),
+    i.e. its own screens and DMs offer the Bench status. Standard is the default."""
+    config = CACHE.server_config.get(str(guild_id), {})
+    return (config.get("cwl_signup_mode") or "standard") == "extended"
+
+
+def cwl_bench_enabled_for(discord_id: Optional[Any], guild_id: Optional[int]) -> bool:
+    """May THIS person be offered the Bench status right now?
+
+    True when `guild_id` runs extended sign-up, OR the Discord user is a member of any guild that
+    does (tracker #0114, project owner's decision: "it's more player related than server related.
+    so overriding a server setting is ok in this case"). A player on an extended server therefore
+    gets the Bench button in every sign-up DM, whichever guild happens to send it — a player only
+    ever receives ONE enrollment DM per season, sent by whichever guild's event got there first,
+    so a server-only rule would silently deny the option depending on who sent it.
+
+    Purely in-memory: CACHE.server_config for the modes, the gateway member cache for membership
+    (the same source guild_role_manager's coordinator sync uses). No API call, no DB read.
+
+    Args:
+        discord_id: the player's Discord user id, or None for an account with no linked user.
+        guild_id: the guild acting (sending the DM, rendering the screen), or None.
+
+    Returns:
+        True if the Bench option may be shown to/accepted from this person.
+    """
+    if guild_id is not None and is_cwl_extended_signup(guild_id):
+        return True
+    if discord_id is None:
+        return False
+    try:
+        user_id = int(discord_id)
+    except (TypeError, ValueError):
+        return False
+
+    import QBcore
+
+    bot = getattr(QBcore, "bot", None)
+    if bot is None:
+        return False
+    for other_guild_id, config in CACHE.server_config.items():
+        if (config.get("cwl_signup_mode") or "standard") != "extended":
+            continue
+        if guild_id is not None and str(guild_id) == str(other_guild_id):
+            continue  # already answered above
+        try:
+            guild = bot.get_guild(int(other_guild_id))
+        except (TypeError, ValueError):
+            continue
+        if guild is not None and guild.get_member(user_id) is not None:
+            return True
+    return False
+
+
+async def upgrade_pending_cwl_dms_for_bench(guild_id: int) -> int:
+    """Add the Bench button to every still-unanswered sign-up DM this guild's switch to extended
+    sign-up just made eligible (tracker #0114, project owner's request: "the DMs that are not
+    answered yet should be updated automatically").
+
+    Scope — a DM qualifies when its recipient is now Bench-enabled (cwl_bench_enabled_for), which
+    covers both the DMs this guild sent and those another guild sent to one of this guild's
+    members, since the Bench rule is player-based. Already-answered DMs are left alone: their
+    buttons are gone and their owner has decided.
+
+    Per message (one reminder/roster-update DM can cover up to 5 accounts) the still-pending
+    accounts are re-derived from the DB, exactly as rerender_cwl_dm_after_response() does, and the
+    view is rebuilt from that. The explanation is APPENDED to the existing text rather than
+    replacing it: a roster-update DM also carries "where and when you play", which a wholesale
+    re-render would throw away. Re-running is harmless — the appended block is recognised and the
+    view is rebuilt from live state either way.
+
+    Only for an event still taking answers (Phase 0b: signup_open, or announced/war for someone
+    who never answered). Never raises: a DM that was deleted, blocked or is otherwise unreachable
+    is logged and skipped (Pitfall 13), since this runs as a background task behind a settings
+    toggle that has already been applied.
+
+    Args:
+        guild_id: the guild that just switched to extended sign-up.
+
+    Returns:
+        How many DM messages were actually updated.
+    """
+    import discord
+
+    from clashcontrol.i18n import t
+    from clashcontrol.ui_cwl_roster import build_cwl_reminder_response_view
+
+    db = CACHE.db_manager
+    if db is None:
+        return 0
+
+    event = await asyncio.to_thread(get_current_cwl_event_sync, guild_id)
+    if event is None or event["status"] not in ("signup_open", "announced", "war"):
+        return 0
+    season = event["cwl_season"]
+
+    rows = await asyncio.to_thread(db.get_cwl_pending_dm_rows_for_season_sync, season)
+    by_message: Dict[str, List[Dict[str, Any]]] = {}
+    for row in rows:
+        # Evaluated from the DM's OWN sending guild, never from the guild that just switched:
+        # passing the switching guild would make the first clause of cwl_bench_enabled_for ("this
+        # guild is extended") true for every recipient on earth, including someone who was DMed by
+        # an unrelated guild and isn't even a member here. Via the sending guild the answer is the
+        # real one: that guild already offered Bench, or the recipient is a member of some
+        # extended guild — which is exactly what the switch may have just changed.
+        try:
+            sending_guild_id = int(row["dm_sent_via_guild_id"]) if row["dm_sent_via_guild_id"] else None
+        except (TypeError, ValueError):
+            sending_guild_id = None
+        if not cwl_bench_enabled_for(row["dmed_discord_id"], sending_guild_id):
+            continue
+        by_message.setdefault(row["dm_sent_via_message_id"], []).append(row)
+    if not by_message:
+        return 0
+
+    import QBcore
+
+    bot = getattr(QBcore, "bot", None)
+    if bot is None:
+        return 0
+
+    def _custom_ids(message: Any) -> List[str]:
+        ids: List[str] = []
+        for row in getattr(message, "components", None) or []:
+            for child in getattr(row, "children", None) or []:
+                custom_id = getattr(child, "custom_id", None)
+                if custom_id:
+                    ids.append(custom_id)
+        return ids
+
+    # Per player, oldest DM first, so the legend lands on the TOPMOST still-pending sign-up DM —
+    # the same place a fresh extended-mode send puts it (build_cwl_signup_dm, with_legend).
+    ordered = sorted(
+        by_message.items(),
+        key=lambda item: (str(item[1][0]["dmed_discord_id"]), int(item[0])),
+    )
+    legend_placed: Set[str] = set()
+
+    upgraded = 0
+    for message_id, message_rows in ordered:
+        first = message_rows[0]
+        discord_id = str(first["dmed_discord_id"])
+        channel_id = first["dm_sent_via_channel_id"]
+        event_id = int(first["dm_sent_via_event_id"])
+        try:
+            sending_guild_id = int(first["dm_sent_via_guild_id"])
+        except (TypeError, ValueError):
+            sending_guild_id = guild_id
+        try:
+            channel = bot.get_channel(int(channel_id)) if channel_id else None
+            if channel is None:
+                user = await bot.fetch_user(int(discord_id))
+                channel = user.dm_channel or await user.create_dm()
+            message = await channel.fetch_message(int(message_id))
+
+            custom_ids = _custom_ids(message)
+            legend = t(
+                'cwl.template.bench_explanation', user_id=discord_id, guild_id=sending_guild_id,
+                **signup_dm_icons(),
+            )
+            if any(":passive:" in cid for cid in custom_ids):
+                # Already offers Bench (an earlier run, or sent in extended mode from the start):
+                # nothing to do, and not counted in what the admin is told. Remember whether it
+                # carries the legend, so this player's later DMs don't get a second one.
+                if legend in (message.content or ""):
+                    legend_placed.add(discord_id)
+                continue
+
+            if any(cid.startswith("cwl:signup:") for cid in custom_ids):
+                # A single-account sign-up DM: rebuild it exactly as a fresh extended-mode send
+                # would render it (2026-09-23 — the upgraded DM used to look different from one
+                # sent in extended mode from the start).
+                with_legend = discord_id not in legend_placed
+                content, view = build_cwl_signup_dm(
+                    event_id, sending_guild_id, season, discord_id,
+                    first["player_tag"], first["player_name"], with_legend=with_legend, bench=True,
+                )
+                if with_legend:
+                    legend_placed.add(discord_id)
+            else:
+                # A reminder / roster-update DM: its own text (which account, where they play)
+                # stays; it gains the legend once and the Bench button per account.
+                accounts = [
+                    {"player_tag": r["player_tag"], "player_name": r["player_name"]}
+                    for r in message_rows
+                ]
+                content = message.content or ""
+                if legend not in content:
+                    content = f"{content}\n\n{legend}".strip()
+                view = build_cwl_reminder_response_view(event_id, accounts, sending_guild_id, bench=True)
+
+            await message.edit(content=content, view=view)
+            upgraded += 1
+        except discord.NotFound as e:
+            # The DM is gone (the player deleted it, or — on DEV, running on a copy of PROD's
+            # data — it was sent by a different bot). Forget the reference so no later run fetches
+            # it again; dm_sent and the player's answer stay (clear_cwl_dm_message_ref_sync).
+            cleared = await asyncio.to_thread(db.clear_cwl_dm_message_ref_sync, str(message_id))
+            logging.info(
+                f"[CWL-BENCH-UPGRADE] DM {message_id} for user {discord_id} no longer exists "
+                f"({e.code}); cleared its reference on {cleared} row(s)"
+            )
+        except discord.Forbidden as e:
+            # The message may well still exist (DMs closed, bot blocked) — keep the reference.
+            logging.info(
+                f"[CWL-BENCH-UPGRADE] Skipping DM {message_id} for user {discord_id}: {e}"
+            )
+        except Exception as e:  # pragma: no cover - defensive, never fail the toggle
+            logging.warning(
+                f"[CWL-BENCH-UPGRADE] Could not upgrade DM {message_id} for user {discord_id}: {e}"
+            )
+        # Paced: this edits one Discord message per iteration and runs behind a settings toggle,
+        # so there is no reason to race the rate limiter.
+        await asyncio.sleep(0.5)
+
+    if upgraded:
+        logging.info(
+            f"[CWL-BENCH-UPGRADE] Guild {guild_id}: added the bench option to {upgraded} unanswered DM(s)"
+        )
+    return upgraded
+
+
+def resolve_seeded_cwl_signup_status(
+    existing_global: Optional[Dict[str, Any]], permanent_optout: bool, permanent_optin: bool,
+    permanent_bench: bool = False,
+) -> Tuple[str, str]:
+    """(status, source) for a freshly-seeded cwl_signups row — the single definition of
+    plans/cwl-personal-hub.md Phase 4b's precedence, so it can never be written twice and drift
+    apart between the two real seed sites (start_cwl_enrollment's own loop, and
+    _send_cwl_enrollment_dm_batch's "seed before DMing" block for players pooled after enrollment
+    already started — see Phase 4b-bis).
+
+    Precedence, highest first:
+      1. existing_global (a real cwl_player_season_status response the member already gave ANY
+         guild this season) always wins over a standing preference — a real answer must never be
+         contradicted by an automatic derivation.
+      2. permanent_optout -> ('declined', 'auto_optout'). The account is automatically marked
+         declined the moment enrollment starts; whether it ALSO gets DMed (so the member can
+         override their own auto-decline) is a separate decision made by the DM-targeting layer
+         (resolve_cwl_pool_dm_targets_sync's cwl_optout_send_dm_anyway check) — this function only
+         ever decides the seeded row's status, never whether to DM.
+      3. permanent_bench -> ('auto_passive', 'auto_bench') (tracker #0114). Between opt-out and
+         opt-in deliberately: all three are mutually exclusive by construction
+         (set_cwl_preferences_sync writes them in one statement), so this ordering only decides
+         what happens to a row where an older write left two flags set — and there the more
+         reserved intent should win. Like opt-out, this preference SUPPRESSES the invitation DM
+         (it already answers for the player); cwl_optout_send_dm_anyway brings it back.
+      4. permanent_optin -> ('auto_confirmed', 'auto_optin'). Always DMed regardless (no
+         send-DM-anyway gate on this branch), so the member can still switch to confirmed/declined.
+      5. otherwise -> ('pending', 'template_confirm') — unchanged from before this feature.
+
+    'source' is audit-only (Cardinal Rule 24) — nothing may branch on it; both callers write it
+    straight through to cwl_signups.source for a later "why is this row declined?" answer.
+    """
+    if existing_global:
+        return existing_global["status"], "template_confirm"
+    if permanent_optout:
+        return "declined", "auto_optout"
+    if permanent_bench:
+        return "auto_passive", "auto_bench"
+    if permanent_optin:
+        return "auto_confirmed", "auto_optin"
+    return "pending", "template_confirm"
+
+
+async def start_cwl_enrollment(guild_id: int, season: str) -> Dict[str, Any]:
+    """Per-(guild_id, season)-serialized wrapper around the real implementation below — see
+    _enrollment_locks' comment at the top of this module for why. Concurrent calls for the SAME
+    guild+season queue up rather than overlapping; the second one then re-reads the event and
+    correctly bails with error='not_draft', because the first run has by then written the
+    draft -> signup_open transition. Different guilds/seasons are unaffected."""
+    lock = _enrollment_locks.setdefault((str(guild_id), season), asyncio.Lock())
+    async with lock:
+        return await _start_cwl_enrollment_locked(guild_id, season)
+
+
+async def _start_cwl_enrollment_locked(guild_id: int, season: str) -> Dict[str, Any]:
+    """The single "Start Enrollment" admin action (CWL_ROSTER_PLANNING_PLAN.md Phase 2): seeds
+    cwl_signups from the participating clans' *current* membership, sends the confirm/opt-out DM
+    blast to every resolved account, and transitions the event draft -> signup_open. Re-fetches
+    the event fresh by guild_id+season rather than trusting a caller-held event dict/id, matching
+    the re-read discipline used everywhere else in this feature for actions gated behind a
+    confirmation step.
+
+    Corrected 2026-08-10 (live-tested in DEV): the original design seeded from last season's CWL
+    war-attacker history (get_previous_cwl_participants_sync, since removed) — a clan with no
+    tracked CWL wars yet (new to the bot, or simply hasn't played CWL before) seeded zero signups
+    even though it has real, known members today. Now seeds from get_current_clan_members_sync()
+    (user_players.current_clan_tag) instead — "who's actually in this clan right now."
+
+    Account-wide expansion (guild_config.cwl_enrollment_include_all_linked_accounts, 2026-08-15,
+    project owner's spec, off by default): once the clan-scoped participant list above is
+    resolved, if the guild has opted in, every Discord account represented in it also has its
+    OTHER linked players pulled in — regardless of which clan those play for, including one this
+    guild has never added to its own family (tracked only via a different guild, or a bare
+    channel subscription). Example: an account with Player A in a participating clan and Player
+    B in some unrelated clan gets both seeded once this is on, where only Player A would be
+    without it. This only expands the *signup pool* for THIS event — the auto-assignment seed
+    (resolve_prior_cwl_assignments, below) is intentionally left untouched and still only draws
+    from resolve_guild_member_clan_tags()'s family-wide pool, so an expanded-in account always
+    starts Unassigned on the board rather than being silently auto-assigned somewhere.
+
+    Returns a summary dict the caller renders back to the admin: ok, error (reason string if not
+    ok), seeded (signup rows created), contacted (DMs actually sent), skipped_optout,
+    skipped_unlinked, skipped_dm_guard.
+
+    DM safety toggle (operational directive, CWL_ROSTER_PLANNING_PLAN.md, 2026-08-10, extended
+    2026-08-14, extended again 2026-08-15): while CONFIG.cwl_dm_restrict_to_admin is True, only
+    two kinds of recipient are actually DMed — every other resolved recipient is counted in
+    skipped_dm_guard instead of contacted:
+      1. CONFIG.server_admin's own Discord account, always (DEV and PROD alike).
+      2. Anyone enrolled in CACHE.testers (the /admin MANAGE_TESTERS allowlist) — but only when
+         CONFIG.is_dev_mode is False. Testers exist to validate the real message on a real PROD
+         send without blasting the whole guild; in DEV, CACHE.testers is ignored and only
+         server_admin gets DMed, same as before testers existed — otherwise a DEV host (which
+         every dev machine runs by default) would DM real testers' accounts for routine local
+         testing that was never meant to reach them.
+    This lets the whole flow be exercised live — in DEV or PROD — without risking a DM blast to
+    real clan members while the feature is still being built. The toggle is independent of
+    CONFIG.is_dev_mode (set separately per host from the shared .env file) precisely so it can
+    also be enabled on PROD while live-testing there.
+    """
+    summary: Dict[str, Any] = {
+        "ok": False, "error": None, "seeded": 0, "contacted": 0, "assigned": 0,
+        "skipped_optout": 0, "skipped_unlinked": 0, "skipped_dm_guard": 0, "dm_guard_skipped": [],
+        # rule h (2026-08-18) — a candidate already DMed for this season by ANY guild is counted
+        # here instead of "contacted"; their signup row is still seeded with their real global
+        # status (see the bulk lookup above signups_to_create), just never re-DMed.
+        "skipped_already_dm_globally": 0,
+        # Cross-guild shared-clan results (2026-08-15), one entry per participating clan that
+        # turned out to already be claimed by another guild for this season — the caller
+        # (ui_cwl_roster.py's Start Enrollment callback) uses this to notify the admin and fire
+        # notify_cwl_clan_shared(). Empty for the overwhelming majority of runs.
+        "shared_clans": [],
+        # Per-recipient DM outcomes (2026-08-18, item 3 of the enrollment redesign) — populated
+        # by _send_cwl_enrollment_dm_batch(). "blocked": recipient has DMs closed / blocked the
+        # bot / couldn't be fetched — retrying won't help. "no_mutual_guild" (2026-08-23, tracker
+        # #0031): recipient has left every guild the bot is in (discord code 50278) — also not
+        # worth retrying, but a different admin follow-up than "blocked" (pool/roster cleanup,
+        # not "ask them to enable DMs"). "failed": a transient Discord error that didn't recover
+        # after DM_SEND_MAX_RETRIES attempts (cache_manager.py). All three are player_name (or
+        # player_tag) strings, rendered back to the admin in the Start Enrollment summary so they
+        # know who to follow up with.
+        "blocked": [],
+        "no_mutual_guild": [],
+        "failed": [],
+    }
+
+    db = CACHE.db_manager
+    if db is None:
+        summary["error"] = "no_database"
+        return summary
+
+    guild_id_str = str(guild_id)
+    event = db.get_cwl_event_sync(guild_id_str, season)
+    if event is None:
+        summary["error"] = "no_event"
+        return summary
+    if event["status"] != "draft":
+        summary["error"] = "not_draft"
+        return summary
+
+    all_clans = db.get_cwl_event_clans_sync(event["id"])
+    participating_clan_tags = [c["clan_tag"] for c in all_clans if c.get("participating", 1)]
+    if not participating_clan_tags:
+        summary["error"] = "no_clans"
+        return summary
+
+    # Cross-guild shared-clan check (2026-08-15, project owner's spec) — Start Enrollment is the
+    # second of the two trigger points (the first is handle_post_clan_config's guest-clan add,
+    # web_bridge.py): a clan this guild has configured as participating might already be claimed
+    # by another guild for this exact season, e.g. this guild is the clan's real home but some
+    # other guild found and guest-invited it first. ensure_cwl_clan_sharing() is a no-op (and
+    # cheap — one indexed lookup) for the overwhelming majority of clans that aren't shared with
+    # anyone; only genuinely-shared clans get the ownership-resolution/notification path.
+    for clan_tag in participating_clan_tags:
+        sharing_result = await ensure_cwl_clan_sharing(guild_id, event["id"], season, clan_tag)
+        if sharing_result is not None:
+            summary["shared_clans"].append({"clan_tag": clan_tag, **sharing_result})
+
+    # rule b (2026-08-18, CWL_ENROLLMENT_PLAYER_POOL_REDESIGN_PLAN.md, project owner's spec:
+    # "when a guild starts a new season ALL memebrs of all clans should be put to the player
+    # pool regardless of participation status of each clan") — the seed/DM candidate set is the
+    # guild's WHOLE clan family (resolve_guild_member_clan_tags, regardless of each clan's
+    # participating toggle this season) unioned with every clan ever configured for this event —
+    # guest or family, participating or not (all_clans, already fetched above). The union with
+    # all_clans matters for a guest clan invited then unchecked before Start Enrollment ever ran
+    # (rule f: unchecking no longer purges the pool) — its members must still be pooled and DMed
+    # here, same as rule d requires for a still-checked guest clan. participating_clan_tags
+    # itself is UNCHANGED below — it still restricts the auto-assignment TARGET (only a clan
+    # actually fielding a CWL roster this season is a valid assignment destination) and the
+    # cross-guild sharing check above.
+    pool_candidate_tags = resolve_cwl_pool_clan_tags_sync(guild_id, event["id"])
+    # A guest clan added to the roster BEFORE Start Enrollment hits the same untracked-clan gap as
+    # one added after it (2026-08-19, live bug report — see ensure_cwl_clan_membership_tracked's
+    # own docstring): with no user_players rows, it contributes nothing to `participants` here and
+    # its column comes up empty. No-op for every clan that's already tracked, which is all of them
+    # in the common all-family-clans case.
+    await ensure_cwl_clan_membership_tracked(pool_candidate_tags)
+    participants = db.get_current_clan_members_sync(pool_candidate_tags)
+
+    # Account-wide expansion (guild_config.cwl_enrollment_include_all_linked_accounts,
+    # 2026-08-15, project owner's spec): a Discord account that already qualifies via one
+    # participating-clan player also brings in its OTHER linked players, wherever they
+    # currently play — even a clan this guild's own family has never included. Off by default
+    # (existing guilds see no behavior change unless they opt in via /clan management's
+    # cwl_settings screen).
+    guild_config = CACHE.server_config.get(guild_id_str, {})
+    if guild_config.get("cwl_enrollment_include_all_linked_accounts", False):
+        qualifying_discord_ids = {
+            p["discord_id"] for p in participants if p["discord_id"]
+        }
+        if qualifying_discord_ids:
+            expanded = db.get_all_players_for_discord_ids_sync(list(qualifying_discord_ids))
+            existing_tags = {p["player_tag"] for p in participants}
+            for player in expanded:
+                if player["player_tag"] not in existing_tags:
+                    participants.append(player)
+                    existing_tags.add(player["player_tag"])
+
+    # rule h (2026-08-18, CWL_ENROLLMENT_PLAYER_POOL_REDESIGN_PLAN.md, project owner's spec: "the
+    # player has a global 'Got dm message already' attribute... Then the player accepts or
+    # declines or is pending and that status is shown automatically in guild A's and guild B's
+    # clan rosters") — before seeding, look up each candidate's existing GLOBAL status for this
+    # season. A player already confirmed/declined via another guild's DM must show that real
+    # status here from the moment this guild's own signup row is created, not a fresh 'pending'
+    # that would contradict what the player already told a different guild.
+    global_status_by_tag = await asyncio.to_thread(
+        db.get_cwl_player_season_status_bulk_sync, [p["player_tag"] for p in participants], season,
+    )
+
+    # Status precedence (plans/cwl-personal-hub.md Phase 4b) — a real cross-guild response beats
+    # a standing preference, opt-out seeds 'declined', opt-in seeds 'auto_confirmed', otherwise
+    # unchanged 'pending'. Opted-out participants used to be skipped entirely (no row at all);
+    # they now always get seeded, since the row itself is what makes them show as Declined on the
+    # board and in the season overview instead of silently vanishing.
+    #
+    # 2026-08-29, project owner's spec (live bug report: DEV's DM guard makes almost the whole
+    # board show "Pending" instead of the newer "Not Invited Yet" status, tracker #0043's own
+    # icon): a bare 'pending' default means "sent the enrollment DM, awaiting response" — don't
+    # seed that for a LINKED participant this guild's own DM-testing guard
+    # (CONFIG.cwl_dm_restrict_to_admin) will prevent from ever actually being sent one. Leave them
+    # with NO row at all instead (shows "Not Invited Yet" on the board) so "Notify New Pool
+    # Members" naturally re-evaluates and catches them the moment DM guard is later disabled (or
+    # this runs on PROD) — mirrors the discipline _send_cwl_enrollment_dm_batch's own "seed only
+    # who we're about to DM" step (below) already applies to a guest player invited after
+    # enrollment started; this just extends it to Start Enrollment's own initial pass.
+    #
+    # Deliberately does NOT extend this to an UNLINKED participant (discord_id is None): a current
+    # pool member must always "enter the pool" (get a row, so they're visible/assignable on the
+    # board and counted) regardless of whether they can be DMed — a guarantee
+    # test_untracked_guest_clan_members_still_enter_the_pool
+    # (tests/integration/test_cwl_guest_clan_live_scenario.py) locks in for a guest clan's
+    # freshly-CoC-API-synced members, who commonly have no Discord link at all yet. The board
+    # already shows an unlinked participant as "Not Linked" regardless of their seeded status (see
+    # enrollmentBoard.ts's own icon precedence), so gating their seed here would change no visible
+    # outcome anyway — only the DM-guard case actually changes what the admin sees.
+    #
+    # Only ever applies to the bare 'template_confirm'/'pending' default — a real existing_global
+    # response or a permanent-preference-derived status (declined/auto_confirmed) is a genuine
+    # known fact regardless of whether THIS guild's DM can be sent, so those always seed
+    # immediately, unaffected by this check.
+    signups_to_create: List[Dict[str, Any]] = []
+    for participant in participants:
+        existing_global = global_status_by_tag.get(participant["player_tag"])
+        status, source = resolve_seeded_cwl_signup_status(
+            existing_global, participant["cwl_permanent_optout"], participant["cwl_permanent_optin"],
+            bool(participant.get("cwl_permanent_bench")),
+        )
+        if (
+            status == "pending" and source == "template_confirm"
+            and participant["discord_id"] is not None
+            and _dm_guard_blocks(str(participant["discord_id"]))
+        ):
+            continue
+        signups_to_create.append({
+            "player_tag": participant["player_tag"],
+            "player_name": participant["player_name"],
+            "dmed_discord_id": participant["discord_id"],
+            "preferred_league_rank": participant["preferred_league_rank"],
+            "source": source,
+            "status": status,
+        })
+
+    if signups_to_create:
+        # asyncio.to_thread()-wrapped (2026-08-16, Pitfall 26, COPILOT_PITFALLS_COOKBOOK.md) — a
+        # real bulk write, potentially every member across every participating clan.
+        await asyncio.to_thread(db.bulk_create_cwl_signups_sync, event["id"], signups_to_create)
+        summary["seeded"] = len(signups_to_create)
+
+    # Recipients come from the SAME pool resolver the "Notify New Pool Members" button uses, run
+    # after the seed above so it sees the complete pool (2026-08-20 fix — see
+    # resolve_cwl_pool_dm_targets_sync's docstring for the bug that made sharing it necessary).
+    # `participants` is handed over so its clan-member scan and account-wide expansion aren't
+    # redone; the resolver adds the sources that scan structurally can't see (guest players,
+    # shared-clan rosters) and owns both skip counts, so they're defined in exactly one place.
+    pool = await asyncio.to_thread(
+        resolve_cwl_pool_dm_targets_sync, guild_id, event["id"], season, participants,
+    )
+    dm_targets = pool["targets"]
+    summary["skipped_optout"] = pool["skipped_optout"]
+    summary["skipped_unlinked"] = pool["skipped_unlinked"]
+
+    # 4b-bis (plans/cwl-personal-hub.md): the primary seed loop above only ever sees
+    # `participants` (pool source 1 — clan/family members), so an opted-out GUEST or
+    # SHARED-CLAN entry (sources 2/3) is invisible to it entirely. Without this second pass such
+    # an entry would never get a cwl_signups row at all once it's ALSO skipped from the DM
+    # (declined, no DM) — resolve_cwl_pool_dm_targets_sync above is the only place that ever sees
+    # it. Filtered against the primary loop's own tags (not just left to bulk_create's ON
+    # CONFLICT DO NOTHING) so summary["seeded"] below counts each real row exactly once — a
+    # source-1 participant already seeded above must not be double-counted here even though the
+    # resolver correctly reports it in standing_no_dm too (it makes no source distinction).
+    already_seeded_tags = {s["player_tag"] for s in signups_to_create}
+    standing_no_dm = [e for e in pool["standing_no_dm"] if e["player_tag"] not in already_seeded_tags]
+    if standing_no_dm:
+        standing_no_dm_status_by_tag = await asyncio.to_thread(
+            db.get_cwl_player_season_status_bulk_sync,
+            [entry["player_tag"] for entry in standing_no_dm], season,
+        )
+        extra_signups: List[Dict[str, Any]] = []
+        for entry in standing_no_dm:
+            # Flags come from the entry itself (tracker #0114) — the list now holds bench players
+            # too, whose seeded status is 'auto_passive', not 'declined'.
+            status, source = resolve_seeded_cwl_signup_status(
+                standing_no_dm_status_by_tag.get(entry["player_tag"]),
+                bool(entry.get("permanent_optout")), False, bool(entry.get("permanent_bench")),
+            )
+            extra_signups.append({
+                "player_tag": entry["player_tag"],
+                "player_name": entry["player_name"],
+                "dmed_discord_id": entry["discord_id"],
+                "preferred_league_rank": None,
+                "source": source,
+                "status": status,
+            })
+        await asyncio.to_thread(db.bulk_create_cwl_signups_sync, event["id"], extra_signups)
+        summary["seeded"] += len(extra_signups)
+
+    # Auto-assignment seed — the initial "who probably plays where" suggestion, from each
+    # player's own last real CWL attack, anywhere (2026-08-14 redesign — see
+    # resolve_prior_cwl_assignments()'s docstring). Runs once, here; every later change happens
+    # via manual drag-and-drop on the Manage Enrollment board (assignment_source='admin_override',
+    # locked=True there). Scoped to the guild's FULL member-clan roster, not just this season's
+    # participating clans — the auto-assign target is still restricted to participating clans
+    # (nothing else has a column), but the candidate pool it draws players from is every current
+    # member of every guild clan, so a player whose real clan didn't opt into CWL this season (or
+    # who transferred since their last CWL war) is still correctly resolved and assignable.
+    #
+    # Unioned with participating_clan_tags (2026-08-16, live-testing feedback: a guest clan added
+    # before Start Enrollment ran got a completely empty column despite several of its own current
+    # members having real prior-CWL-attack history for exactly that clan) — resolve_guild_member_
+    # clan_tags() only ever returns the guild's own family by definition, which structurally
+    # excludes every guest clan (the whole point of a guest clan is that it's NOT part of the
+    # family). Without this union, a guest clan's own current members were never even in the
+    # candidate pool to begin with, so resolve_prior_cwl_assignments() could never place them no
+    # matter how much real history they had — this is the exact same union
+    # _build_enrollment_payload() (web_bridge.py) already applies to its own player pool, for the
+    # identical underlying reason.
+    all_member_clan_tags = list(set(resolve_guild_member_clan_tags(guild_id)) | set(participating_clan_tags))
+    all_members = db.get_current_clan_members_sync(all_member_clan_tags)
+    current_member_tags = {p["player_tag"] for p in all_members}
+    # resolve_prior_cwl_assignments() only ever resolves entries for the player_tags it was
+    # given, so prior_assignments' keys are already a subset of current_member_tags — no extra
+    # membership filter needed here (unlike the pre-2026-08-14 design, which queried clan
+    # rosters independently of current membership and needed one).
+    # Routed through the general assignment method, one player at a time (2026-08-16, live-testing
+    # feedback, project owner's spec — see assign_cwl_player_sync's own docstring), replacing the
+    # old direct bulk_create_cwl_assignments_sync call. Confirmed live-testing bug this fixes:
+    # deleting and recreating a season's event re-ran this exact seed, which previously never
+    # checked whether a candidate was already a CONFIRMED guest in a totally different shared
+    # clan's roster elsewhere in this guild — they got silently double-booked purely because
+    # their last real CWL attack happened to be for this event's target clan. The bulk path also
+    # never branched on the target clan being shared at all (always wrote a plain local
+    # cwl_assignments row even for a shared-clan target) — assign_cwl_player_sync now correctly
+    # writes to cwl_shared_clan_players instead when that's the case, matching every other write
+    # path in this feature.
+    prior_assignments = resolve_prior_cwl_assignments(list(current_member_tags), participating_clan_tags)
+    # A player's CURRENT clan wins over resolve_prior_cwl_assignments' stale "last real CWL
+    # attack" history whenever that current clan is itself a valid, participating target AND the
+    # history it's overriding points OUTSIDE the guild's own clan family (2026-08-19 fix, live bug
+    # report, project owner: "when staycalm gets added during the very start of adding the new
+    # season the theqcrew members get auto assigned to staycalm and not to the qcrew as they
+    # should"). resolve_prior_cwl_assignments' own documented design ("assign to wherever they
+    # last actually played, not wherever they're currently rostered") is still exactly right for a
+    # player whose CURRENT clan isn't participating this season (or isn't tracked at all) — there's
+    # nowhere better to put them, that's the whole reason history is consulted in the first place.
+    # But for a player who is a genuine CURRENT member of a clan that IS participating, that's
+    # unambiguously where they actually belong right now; some earlier season's history for a
+    # totally different participating clan OUTSIDE the family (a guest clan — this override's
+    # actual original bug) must never override that live fact.
+    #
+    # The family-membership guard (2026-08-20 fix, live bug report, project owner: a multi-clan
+    # family's own player who genuinely played CWL for the family's OTHER clan (#2JYQ909PC, "The
+    # Marines II") last season, then transferred to this family's #2J00L8YRU ("The Marines")
+    # afterward — completely normal end-of-season churn — got redirected away from their accurate,
+    # one-season-old history to their new current clan anyway, purely because that new clan also
+    # happens to participate this season) is what the original fix's own docstring already called
+    # out as the intended scope ("most commonly a guest clan") but the code never actually encoded:
+    # it redirected on ANY participating current clan, not specifically a foreign/guest one. History
+    # that already points at one of the family's OWN clans is real, current-family CWL history, not
+    # stale foreign data — it must be left alone; only history pointing outside the family gets
+    # redirected to the player's real current (participating) clan.
+    #
+    # Only ever REDIRECTS an existing entry — never ADDS one for a tag resolve_prior_cwl_
+    # assignments left out entirely. That set already reflects every other exclusion this
+    # function's caller (start_cwl_enrollment) applies before this point (permanently opted-out
+    # accounts, no real CWL history at all) — reusing it here means this override can't
+    # accidentally resurrect an excluded player into a fresh assignment/signup; it can only fix
+    # WHICH already-valid entry a player has, never manufacture a new one from nothing (see
+    # test_no_cwl_history_leaves_player_unassigned / test_skips_permanently_opted_out_accounts,
+    # which lock this scoping in).
+    current_clan_by_tag = {m["player_tag"]: m["clan_tag"] for m in all_members}
+    participating_set = set(participating_clan_tags)
+    family_clan_tags = set(resolve_guild_member_clan_tags(guild_id))
+    for tag in list(prior_assignments):
+        current_clan = current_clan_by_tag.get(tag)
+        if (
+            current_clan is not None
+            and current_clan in participating_set
+            and prior_assignments[tag] not in family_clan_tags
+        ):
+            prior_assignments[tag] = current_clan
+    # Whole loop bundled into one asyncio.to_thread() hop (2026-08-16, Pitfall 26,
+    # COPILOT_PITFALLS_COOKBOOK.md) rather than one hop per player — it's pure sync work with no
+    # `await` inside, so one hop is both cheaper and keeps this loop atomic with respect to other
+    # coroutines, matching its behavior before this fix.
+    await asyncio.to_thread(_seed_prior_cwl_assignments_sync, guild_id, event["id"], season, prior_assignments)
+    summary["assigned"] = len(prior_assignments)
+
+    dm_result = await _send_cwl_enrollment_dm_batch(event["id"], guild_id, season, dm_targets)
+    summary["contacted"] += dm_result["contacted"]
+    summary["skipped_dm_guard"] += dm_result["skipped_dm_guard"]
+    summary["dm_guard_skipped"] = dm_result["dm_guard_skipped"]
+    summary["skipped_already_dm_globally"] += dm_result["skipped_already_dm_globally"]
+    # Same "no linked Discord account" bucket the pool resolution above already reports —
+    # this is just the same condition caught a moment later, right before the send (see
+    # _send_cwl_enrollment_dm_batch's live re-check).
+    summary["skipped_unlinked"] += dm_result["skipped_unlinked"]
+    summary["blocked"] = dm_result["blocked"]
+    summary["no_mutual_guild"] = dm_result["no_mutual_guild"]
+    summary["failed"] = dm_result["failed"]
+
+    await asyncio.to_thread(db.update_cwl_event_status_sync, event["id"], "signup_open")
+    summary["ok"] = True
+    # Success-path audit line (2026-08-21) — this action previously logged NOTHING on success,
+    # which is exactly why tracker #0011's investigation couldn't tell from a full day of PROD
+    # logs whether/when it had run, or how its DM set compared to the seeded signup rows.
+    logging.info(
+        f"[CWL-ENROLLMENT] Start Enrollment complete: guild={guild_id} season={season} "
+        f"event={event['id']} seeded={summary['seeded']} contacted={summary['contacted']} "
+        f"assigned={summary['assigned']} skipped_optout={summary['skipped_optout']} "
+        f"skipped_unlinked={summary['skipped_unlinked']} "
+        f"skipped_dm_guard={summary['skipped_dm_guard']} "
+        f"skipped_already_dm_globally={summary['skipped_already_dm_globally']} "
+        f"blocked={len(summary['blocked'])} no_mutual_guild={len(summary['no_mutual_guild'])} "
+        f"failed={len(summary['failed'])}"
+    )
+    return summary
+
+
+def resolve_cwl_pool_dm_targets_sync(
+    guild_id: int, event_id: int, season: str,
+    preloaded_members: Optional[List[Dict[str, Any]]] = None,
+) -> Dict[str, Any]:
+    """The single definition of "who is in this event's player pool, and can we DM them" — shared
+    by start_cwl_enrollment() and notify_new_cwl_pool_members() (the "Notify New Pool Members"
+    button, web_bridge.py) so the two can never disagree about the pool. Both used to resolve
+    their own recipients independently (Start Enrollment from a clan-scoped current-member scan,
+    the button from the heavyweight board payload `_build_enrollment_payload_sync`), which is
+    exactly how a manually-invited guest player ended up reachable by one and invisible to the
+    other (2026-08-20 live bug report).
+
+    The pool is the union of three sources, deduped by player_tag, first non-empty discord_id
+    winning:
+      1. current members of the guild's whole clan family unioned with every clan configured for
+         this event — participating or not (rule b/f, CWL_ENROLLMENT_PLAYER_POOL_REDESIGN_PLAN.md).
+         "Participating or not" is INTENTIONAL and re-confirmed by the project owner 2026-08-22:
+         a family member whose own clan is unchecked this season is still DMed and still shows on
+         the board (usually in Unassigned), because a lead must be able to pull any family member
+         into any participating clan's roster — the DM asks "do you want to play CWL this
+         season?" about the PLAYER, not about whether their clan happens to be checked in.
+         Expect a large family to legitimately produce far more DMs than there are roster slots;
+         that is not a bug, and narrowing this to participating clans would silently drop exactly
+         the bench a lead needs. (Raised as a suspected defect during the tracker #0016
+         investigation — all 27 affected players had participating=0 clans — and rejected.);
+      2. this event's existing cwl_signups rows — the only way an individually-invited guest
+         player is reachable at all, since their real current clan is by definition none of the
+         above (deliberately not filtered by `source`: every row here is in the pool, see
+         Cardinal Rule 24 on not gating behavior on a static write-time marker);
+      3. cross-guild shared clans' rosters (cwl_shared_clan_players), whose players may have no
+         local row of either kind.
+
+    Returns {"targets", "skipped_optout", "skipped_unlinked", "standing_no_dm"} — targets are the
+    {player_tag, player_name, discord_id} dicts _send_cwl_enrollment_dm_batch() consumes, and
+    skipped_optout/skipped_unlinked are the two counts the Start Enrollment summary reports.
+    cwl_permanent_optout is honoured for every source, not just source 1 (its per-account "never
+    DM me about CWL" semantics don't care how the player got pooled) — UNLESS
+    cwl_optout_send_dm_anyway is also set, in which case the invitation DM is still sent so the
+    member can override their own auto-decline (plans/cwl-personal-hub.md Phase 4c). standing_no_dm
+    is the same-shaped list of every entry that WAS skipped for opt-out (with or without the DM
+    override) — Phase 4b-bis's callers seed a 'declined' cwl_signups row for each of these,
+    because this resolver is the only place that ever sees an opted-out guest/shared-clan player
+    (pool sources 2/3) at all; a plain clan-member scan structurally cannot. preloaded_members
+    lets start_cwl_enrollment pass the member list it already fetched (plus its account-wide
+    expansion) rather than re-running that scan.
+
+    Plain synchronous function (Pitfall 26, COPILOT_PITFALLS_COOKBOOK.md) — no `await` anywhere
+    inside, so callers wrap the whole thing in one asyncio.to_thread() hop.
+    """
+    db = CACHE.db_manager
+    result: Dict[str, Any] = {
+        "targets": [], "skipped_optout": 0, "skipped_bench": 0, "skipped_unlinked": 0,
+        "standing_no_dm": [],
+    }
+    if db is None:
+        return result
+
+    all_clans = db.get_cwl_event_clans_sync(event_id)
+    members = preloaded_members
+    if members is None:
+        members = db.get_current_clan_members_sync(resolve_cwl_pool_clan_tags_sync(guild_id, event_id))
+
+    pool: Dict[str, Dict[str, Any]] = {}
+    optout_by_tag: Dict[str, bool] = {}
+    # Tracker #0114: "always bench" suppresses the invitation DM exactly like "never play" does
+    # (project owner, 2026-09-22) — it is a standing answer, so there is nothing left to ask. The
+    # same cwl_optout_send_dm_anyway checkbox brings the DM back for either preference.
+    bench_by_tag: Dict[str, bool] = {}
+    dm_anyway_by_tag: Dict[str, bool] = {}
+
+    def _merge(
+        player_tag: str,
+        player_name: Optional[str],
+        discord_id: Optional[str],
+        authoritative_discord_id: bool = False,
+    ) -> None:
+        """Merge one source's view of a player into the pool.
+
+        Args:
+            player_tag: The player this row is about.
+            player_name: Name to record if none has been merged yet (always first-wins — the
+                signup's recorded name is the one the DM text should use).
+            discord_id: DM recipient for this player, or None if this source doesn't know one.
+            authoritative_discord_id: When True, `discord_id` REPLACES any previously merged
+                value instead of only filling a None — including replacing it with None, which is
+                what user_players returns for an account that is now in the UNASSIGNED pool
+                (nobody owns it, so nobody should be DMed about it; it correctly falls through to
+                `skipped_unlinked` below). Set by the live user_players source
+                (2026-08-22): with plain first-non-None-wins, a source that runs last can add a
+                missing link but can never CORRECT a stale one, so an enrollment-time
+                cwl_signups snapshot silently kept ownership forever. Verified live: #29JQV2YCL
+                has no current_clan_tag (so the clan-scoped `members` source below never returns
+                it) and its signup row named a Discord user who no longer owns the account — a
+                "Notify New Pool Members" run would have DMed the wrong person about it.
+                Deliberately NOT fixed by reordering the sources: `members` is also live and must
+                keep winning over the snapshot.
+        """
+        entry = pool.setdefault(
+            player_tag, {"player_tag": player_tag, "player_name": None, "discord_id": None}
+        )
+        entry["player_name"] = entry["player_name"] or player_name
+        if authoritative_discord_id:
+            entry["discord_id"] = discord_id
+        else:
+            entry["discord_id"] = entry["discord_id"] or discord_id
+
+    for member in members:
+        optout_by_tag[member["player_tag"]] = bool(member["cwl_permanent_optout"])
+        bench_by_tag[member["player_tag"]] = bool(member.get("cwl_permanent_bench"))
+        dm_anyway_by_tag[member["player_tag"]] = bool(member.get("cwl_optout_send_dm_anyway"))
+        _merge(member["player_tag"], member["player_name"], member["discord_id"])
+
+    for signup in db.get_cwl_signups_for_event_sync(event_id):
+        _merge(signup["player_tag"], signup["player_name"], signup["dmed_discord_id"])
+
+    for clan in all_clans:
+        if not clan.get("participating", 1):
+            continue
+        shared = db.get_cwl_shared_clan_sync(clan["clan_tag"], season)
+        if shared is None:
+            continue
+        for shared_player in db.get_cwl_shared_clan_players_sync(shared["id"]):
+            _merge(shared_player["player_tag"], shared_player["player_name"], shared_player["dmed_discord_id"])
+
+    # Sources 2/3 carry no opt-out flag and may carry no discord_id at all (the Guests search can
+    # add a tag it found no Discord link for) — user_players is the authority for both.
+    # authoritative_discord_id=True (2026-08-22): sources 2/3 are enrollment-time snapshots, so
+    # whatever they supplied here may name a Discord user who no longer owns the account; this
+    # live source must be able to overwrite it, not merely fill a gap. Query scope is unchanged —
+    # optout_by_tag is populated only from `members` (source 1, also live), so `unknown_tags` is
+    # precisely the set whose discord_id could have come from a snapshot.
+    unknown_tags = [tag for tag in pool if tag not in optout_by_tag]
+    for tag, link in (db.get_player_links_sync(unknown_tags) if unknown_tags else {}).items():
+        optout_by_tag[tag] = link["cwl_permanent_optout"]
+        bench_by_tag[tag] = bool(link.get("cwl_permanent_bench"))
+        dm_anyway_by_tag[tag] = bool(link.get("cwl_optout_send_dm_anyway"))
+        _merge(tag, link["player_name"], link["discord_id"], authoritative_discord_id=True)
+
+    for entry in pool.values():
+        tag = entry["player_tag"]
+        opted_out = bool(optout_by_tag.get(tag))
+        benched = bool(bench_by_tag.get(tag))
+        if opted_out or benched:
+            # Recorded regardless of what happens below — a seeded row is owed to EVERY pool entry
+            # whose standing preference already answers for them (Phase 4b-bis: 'declined' for an
+            # opt-out, tracker #0114: 'auto_passive' for a bench), whether it goes on to get DMed
+            # via send_dm_anyway or not; harmlessly redundant (ON CONFLICT DO NOTHING) for an
+            # entry some other seed path already covers, and the ONLY source of a row at all for
+            # one that doesn't (a guest/shared-clan entry skipped from DM entirely). The flags
+            # ride along so the caller seeds the RIGHT status without re-reading preferences.
+            result["standing_no_dm"].append({
+                **entry, "permanent_optout": opted_out, "permanent_bench": benched,
+            })
+        if (opted_out or benched) and not dm_anyway_by_tag.get(tag):
+            # narrows from "has a standing answer" to "…and didn't ask for the DM anyway" (Phase 4c)
+            if opted_out:
+                result["skipped_optout"] += 1
+            else:
+                result["skipped_bench"] += 1
+        elif entry["discord_id"]:
+            result["targets"].append(entry)
+        else:
+            result["skipped_unlinked"] += 1
+    return result
+
+
+def resolve_cwl_pending_reminder_targets_sync(event_id: int) -> Dict[str, Any]:
+    """Tracker #0038's "Remind Pending" pool resolution — every `cwl_signups` row for this event
+    still `status='pending'`, live-link-resolved (same `get_player_links_sync` source of truth as
+    `resolve_cwl_pool_dm_targets_sync`) and grouped by Discord user, since the reminder DM covers
+    all of one person's pending accounts in a single combined message rather than one DM per
+    account (project owner's spec).
+
+    Unlike `resolve_cwl_pool_dm_targets_sync`, there is no snapshot `dmed_discord_id` fallback
+    here — a pending signup with no CURRENT live link has nobody to remind (this is exactly the
+    "unlinked" half `split_cwl_pending_signups_by_link_sync` reports on the season overview), and
+    `cwl_permanent_optout` is honoured the same way (a permanent opt-out must not be re-pinged
+    just because their signup row still reads 'pending').
+
+    Deliberately UNCHANGED by plans/cwl-personal-hub.md Phase 4: `status == "pending"` below
+    already excludes 'auto_confirmed' rows — a standing opt-in preference already answered for
+    that account, so "Remind Pending" must not re-ping them. And since Phase 4b's seed now gives
+    an opted-out account a 'declined' row (never 'pending') from the moment enrollment starts,
+    the `cwl_permanent_optout` check just below is belt-and-braces rather than load-bearing —
+    kept rather than removed, since a row can still reach 'pending' with the flag set via an
+    older event that predates Phase 4b's seeding change.
+
+    Returns {"groups": {discord_id: [{"player_tag", "player_name"}, ...]}, "skipped_unlinked",
+    "skipped_optout"}. Plain sync function (Pitfall 26) — caller wraps in one asyncio.to_thread()
+    hop."""
+    db = CACHE.db_manager
+    result: Dict[str, Any] = {"groups": {}, "skipped_unlinked": 0, "skipped_optout": 0}
+    if db is None:
+        return result
+
+    pending = [s for s in db.get_cwl_signups_for_event_sync(event_id) if s["status"] == "pending"]
+    if not pending:
+        return result
+
+    links = db.get_player_links_sync([s["player_tag"] for s in pending])
+    groups: Dict[str, List[Dict[str, Any]]] = {}
+    for signup in pending:
+        link = links.get(signup["player_tag"])
+        if link is None or not link.get("discord_id"):
+            result["skipped_unlinked"] += 1
+            continue
+        if link.get("cwl_permanent_optout"):
+            result["skipped_optout"] += 1
+            continue
+        groups.setdefault(link["discord_id"], []).append({
+            "player_tag": signup["player_tag"],
+            "player_name": signup["player_name"] or link.get("player_name"),
+        })
+    result["groups"] = groups
+    return result
+
+
+def _dm_guard_blocks(discord_id: str) -> bool:
+    """True when CONFIG.cwl_dm_restrict_to_admin is on and this recipient is neither the server
+    admin nor a PROD tester — extracted from _send_cwl_enrollment_dm_batch's inline check
+    (2026-08-23, tracker #0038) so the reminder batch (send_cwl_reminder_dm_group) applies the
+    exact same DM-testing guard rather than duplicating it."""
+    from clashcontrol.config import CONFIG
+
+    is_admin = discord_id == CONFIG.server_admin
+    is_prod_tester = not CONFIG.is_dev_mode and discord_id in CACHE.testers
+    return bool(CONFIG.cwl_dm_restrict_to_admin and not (is_admin or is_prod_tester))
+
+
+DISCORD_MESSAGE_LIMIT = 2000
+
+
+def dm_guard_skipped_entries(accounts: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """The {player_tag, player_name} records every DM-sending process adds to its
+    `dm_guard_skipped` list when _dm_guard_blocks() holds a recipient back — the input of
+    format_cwl_dm_guard_skipped_report()."""
+    return [{"player_tag": a["player_tag"], "player_name": a.get("player_name")} for a in accounts]
+
+
+def format_cwl_dm_guard_skipped_report(
+    skipped: List[Dict[str, Any]], guild_id: int, user_id: Optional[str] = None,
+) -> List[str]:
+    """DEV-mode report of the players the DM guard held back, grouped by their CURRENT clan
+    (2026-09-22, project owner's request) — the Start Enrollment summary only gives a count.
+
+    Clans sorted by name, players by name; players with no known current clan (e.g. an
+    individually invited guest who left their clan) go in a last "no current clan" group. Split
+    into as many messages as needed to stay under Discord's 2000-character limit, never mid-line.
+    Plain sync (one indexed DB lookup) — async callers wrap it in asyncio.to_thread().
+
+    Args:
+        skipped: {player_tag, player_name} dicts, as _send_cwl_enrollment_dm_batch returns them.
+        guild_id: For i18n.
+        user_id: The admin who will see it (ephemeral), for i18n.
+
+    Returns:
+        Message texts to send in order; empty list when nobody was skipped.
+    """
+    from clashcontrol.i18n import t
+
+    if not skipped:
+        return []
+    db = CACHE.db_manager
+    tags = [entry["player_tag"] for entry in skipped]
+    clan_by_tag = db.get_current_clan_tags_for_players_sync(tags) if db is not None else {}
+
+    groups: Dict[Optional[str], List[Dict[str, Any]]] = {}
+    for entry in skipped:
+        groups.setdefault(clan_by_tag.get(entry["player_tag"]), []).append(entry)
+
+    def _name(entry: Dict[str, Any]) -> str:
+        return str(entry.get("player_name") or entry["player_tag"])
+
+    no_clan_label = t('cwl.management.dm_guard_report_no_clan', user_id=user_id, guild_id=guild_id)
+    ordered_clans = sorted(
+        (tag for tag in groups if tag is not None),
+        key=lambda tag: str(CACHE.get_clan_name(tag, tag) or tag).lower(),
+    )
+    lines: List[str] = [t('cwl.management.dm_guard_report_header', user_id=user_id, guild_id=guild_id, count=len(skipped))]
+    for clan_tag in ordered_clans + ([None] if None in groups else []):
+        members = sorted(groups[clan_tag], key=lambda e: _name(e).lower())
+        heading = no_clan_label if clan_tag is None else f"{CACHE.get_clan_name(clan_tag, clan_tag)} ({clan_tag})"
+        lines.append(f"\n**{heading}** — {len(members)}")
+        lines.extend(f"• {_name(e)} ({e['player_tag']})" for e in members)
+
+    messages: List[str] = []
+    current = ""
+    for line in lines:
+        candidate = f"{current}\n{line}" if current else line
+        if len(candidate) > DISCORD_MESSAGE_LIMIT and current:
+            messages.append(current)
+            current = line.lstrip("\n")
+        else:
+            current = candidate
+    if current:
+        messages.append(current)
+    return messages
+
+
+async def _send_cwl_enrollment_dm_batch(
+    event_id: int, guild_id: int, season: str, dm_targets: List[Dict[str, Any]],
+) -> Dict[str, Any]:
+    """Shared DM-sending loop for start_cwl_enrollment() — one place for the admin DM-guard and
+    the per-recipient outcome bookkeeping (2026-08-18, item 3 of the enrollment redesign: a
+    Discord error must never abort the batch — that's now guaranteed one layer down, in
+    cache_manager.py's send_user_dm_detailed(), which retries a transient error internally and
+    never raises — so this loop just needs to keep going and record what happened to who).
+
+    Returns {"contacted", "skipped_dm_guard", "skipped_already_dm_globally", "skipped_unlinked",
+    "blocked", "no_mutual_guild", "failed"} — the latter three are lists of player_name (or
+    player_tag) strings for the Start Enrollment summary to report back to the admin, since
+    "blocked" (DMs closed/bot blocked), "no_mutual_guild" (recipient left every guild the bot is
+    in — discord code 50278, tracker #0031) and "failed" (transient error, retries exhausted) call
+    for different admin follow-up.
+    "skipped_unlinked" is deliberately the same bucket name resolve_cwl_pool_dm_targets_sync()
+    uses for "no linked Discord account at pool-resolution time" — this one just catches the same
+    condition discovered a moment later, right before the send (see the live re-check below), so
+    callers can fold it straight into that same counter without a new i18n line.
+
+    Global dm_sent dedup (2026-08-18, rule h, project owner's spec: "we generally need only one
+    enrollment DM per player regardless of how many guilds and/or clans invite him") — checked
+    once per batch via a single bulk lookup, not per-recipient, so a guild pooling hundreds of
+    players doesn't cost hundreds of extra queries. A player skipped here already has their real
+    global status seeded into this guild's own cwl_signups row by start_cwl_enrollment's caller
+    (see the bulk status lookup right before signups_to_create is built) — this function only
+    ever decides whether to DM, never touches status.
+    """
+    result: Dict[str, Any] = {
+        "contacted": 0, "skipped_dm_guard": 0, "skipped_already_dm_globally": 0, "skipped_unlinked": 0,
+        "blocked": [], "no_mutual_guild": [], "failed": [],
+        # Who the DM guard held back ({player_tag, player_name}) — for the DEV-mode per-clan
+        # report every DM action's summary sends (ui_cwl_roster.send_dev_dm_guard_report). 2026-09-22.
+        "dm_guard_skipped": [],
+    }
+    db = CACHE.db_manager
+    already_dm_by_tag = await asyncio.to_thread(
+        db.get_cwl_player_season_dm_status_bulk_sync, [p["player_tag"] for p in dm_targets], season,
+    ) if db is not None else {}
+
+    # Decide who we will actually DM BEFORE sending, so the signup rows their buttons need can be
+    # seeded in one batch (2026-08-22, tracker #0016). CwlSignupResponseButton resolves a click by
+    # (event_id, player_tag) and returns `no_longer_valid` when no cwl_signups row exists, so a DM
+    # sent without one carries a permanently dead button. start_cwl_enrollment seeds its rows
+    # before calling this; "Notify New Pool Members" (web_bridge.notify_new_cwl_pool_members) did
+    # not — and since its whole job is reaching pool members added AFTER Start Enrollment ran,
+    # i.e. exactly the players with no row yet, every DM it sent to a new member was dead on
+    # arrival. Confirmed live: 27 such DMs across 4 users, all stuck 'pending' because nobody
+    # could respond. Putting the invariant here rather than in that one caller means any future
+    # caller of this batch helper inherits it.
+    to_dm: List[Dict[str, Any]] = []
+    for participant in dm_targets:
+        if already_dm_by_tag.get(participant["player_tag"]):
+            result["skipped_already_dm_globally"] += 1
+            continue
+        if _dm_guard_blocks(str(participant["discord_id"])):
+            result["skipped_dm_guard"] += 1
+            result["dm_guard_skipped"].extend(dm_guard_skipped_entries([participant]))
+            continue
+        to_dm.append(participant)
+
+    # Re-check live ownership immediately before sending (2026-08-22, live bug report: "Daniel",
+    # a player with NO linked Discord account at all, was still sent a signup DM and turned up in
+    # the "blocked" report). resolve_cwl_pool_dm_targets_sync() resolves the pool once, up front;
+    # everything from here on is real network I/O (row seeding below, then one Discord API round
+    # trip per recipient, each possibly retried by send_user_dm_detailed) — plenty of time for an
+    # admin to unlink the very account already queued to be DMed. Re-reading user_players right
+    # before acting on it closes that window, same "live wins over a stale snapshot" rule already
+    # applied at pool-build time (see _merge's authoritative_discord_id), just applied again here
+    # at send time. Done BEFORE the row-seeding block below so an unlinked player never gets a
+    # cwl_signups row seeded with a dmed_discord_id that was never actually DMed.
+    live_links: Dict[str, Any] = {}
+    if db is not None and to_dm:
+        live_links = await asyncio.to_thread(db.get_player_links_sync, [p["player_tag"] for p in to_dm])
+        still_linked: List[Dict[str, Any]] = []
+        for participant in to_dm:
+            live_discord_id = (live_links.get(participant["player_tag"]) or {}).get("discord_id")
+            if live_discord_id is None:
+                result["skipped_unlinked"] += 1
+                continue
+            participant["discord_id"] = live_discord_id
+            still_linked.append(participant)
+        to_dm = still_linked
+
+    # Only the players we're actually about to DM — a target skipped by either guard above must
+    # not gain a board entry as a side effect of a DM it never received. bulk_create is
+    # ON CONFLICT(event_id, player_tag) DO NOTHING, so this is a no-op for Start Enrollment's
+    # already-seeded rows and never clobbers a response a player has already given.
+    if db is not None and to_dm:
+        # Both reads go through asyncio.to_thread (Pitfall 26) and are BULK — this runs on the
+        # DM-blast path, where a per-player query would be one blocking round trip per recipient.
+        existing_rows = await asyncio.to_thread(db.get_cwl_signups_for_event_sync, event_id)
+        existing_tags = {s["player_tag"] for s in existing_rows}
+        missing = [p for p in to_dm if p["player_tag"] not in existing_tags]
+        if missing:
+            global_status_by_tag = await asyncio.to_thread(
+                db.get_cwl_player_season_status_bulk_sync, [p["player_tag"] for p in missing], season,
+            )
+            # Same resolve_seeded_cwl_signup_status precedence start_cwl_enrollment's own seed
+            # loop uses (plans/cwl-personal-hub.md Phase 4b-bis) — the flags come from
+            # `live_links` (already fetched above for the live-ownership re-check), which after
+            # Phase 1b carries cwl_permanent_optin/cwl_optout_send_dm_anyway alongside the
+            # existing cwl_permanent_optout. Not a new query.
+            missing_signups: List[Dict[str, Any]] = []
+            for p in missing:
+                link = live_links.get(p["player_tag"]) or {}
+                status, source = resolve_seeded_cwl_signup_status(
+                    global_status_by_tag.get(p["player_tag"]),
+                    bool(link.get("cwl_permanent_optout")),
+                    bool(link.get("cwl_permanent_optin")),
+                    bool(link.get("cwl_permanent_bench")),
+                )
+                missing_signups.append({
+                    "player_tag": p["player_tag"],
+                    "player_name": p["player_name"],
+                    "dmed_discord_id": p["discord_id"],
+                    "preferred_league_rank": None,
+                    "source": source,
+                    "status": status,
+                })
+            await asyncio.to_thread(db.bulk_create_cwl_signups_sync, event_id, missing_signups)
+            logging.info(
+                f"[CWL-ENROLLMENT] Seeded {len(missing)} missing cwl_signups row(s) for event "
+                f"{event_id} before DMing — their buttons would otherwise have been dead (#0016)"
+            )
+
+    # The bench legend goes into the FIRST DM each player gets in this batch only (2026-09-23);
+    # their other accounts' DMs follow with just the question and the three buttons.
+    legend_sent_to: Set[str] = set()
+    for participant in to_dm:
+        recipient = str(participant["discord_id"])
+        sent, outcome, dm_message_id, dm_channel_id = await send_cwl_signup_template_dm(
+            event_id, guild_id, season, participant, with_legend=recipient not in legend_sent_to,
+        )
+        if sent:
+            legend_sent_to.add(recipient)
+            result["contacted"] += 1
+            if db is not None:
+                await asyncio.to_thread(
+                    db.mark_cwl_player_dm_sent_sync,
+                    participant["player_tag"], season, participant["player_name"], participant["discord_id"],
+                    event_id, guild_id, datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%MZ"),
+                    dm_message_id, dm_channel_id,
+                )
+        elif outcome == "blocked":
+            result["blocked"].append(participant["player_name"] or participant["player_tag"])
+        elif outcome == "no_mutual_guild":
+            result["no_mutual_guild"].append(participant["player_name"] or participant["player_tag"])
+        else:
+            result["failed"].append(participant["player_name"] or participant["player_tag"])
+    return result
+
+
+def build_cwl_signup_dm(
+    event_id: int, guild_id: int, season: str, discord_id: Any, player_tag: str,
+    player_name: Optional[str], *, with_legend: bool, bench: Optional[bool] = None,
+) -> Tuple[str, Any]:
+    """(content, view) of ONE account's sign-up DM — the single definition both the fresh send
+    (send_cwl_signup_template_dm) and the bench upgrade of an already-sent DM
+    (upgrade_pending_cwl_dms_for_bench) render through, so an upgraded DM is identical to one sent
+    in extended mode from the start (project owner, 2026-09-23).
+
+    Standard mode: the plain question with Confirm / Opt Out — no legend, the buttons explain
+    themselves. Extended (bench) mode: Confirm / Bench / Opt Out, and the three-line legend only
+    when `with_legend` — i.e. in the FIRST DM a player gets in a batch, at its top. Every further
+    account's DM is the plain question with the three buttons, so a player with several accounts
+    reads the legend once instead of once per account.
+
+    Args:
+        event_id / guild_id / season: the sending event, its guild (language, bench rule) and season.
+        discord_id: the recipient.
+        player_tag / player_name: the account this DM asks about.
+        with_legend: put the legend into this DM (extended mode only).
+        bench: force the bench decision; None = cwl_bench_enabled_for(discord_id, guild_id).
+    """
+    from clashcontrol.i18n import t
+    from clashcontrol.ui_cwl_roster import build_cwl_signup_response_view
+
+    if bench is None:
+        # Tracker #0114: the Bench option follows the PLAYER, not the sending guild — a player
+        # gets exactly one enrollment DM per season, sent by whichever guild's event got there
+        # first, so a guild-only rule would hand out the option by luck of who sent it.
+        bench = cwl_bench_enabled_for(discord_id, guild_id)
+    content = t(
+        'cwl.template.dm_body_bench' if bench and with_legend else 'cwl.template.dm_body',
+        guild_id=guild_id,
+        user_id=discord_id,
+        season=season,
+        player_name=player_name or player_tag,
+        **signup_dm_icons(),
+    )
+    view = build_cwl_signup_response_view(event_id, player_tag, guild_id, bench=bench)
+    return content, view
+
+
+async def send_cwl_signup_template_dm(
+    event_id: int, guild_id: int, season: str, participant: Dict[str, Any],
+    *, with_legend: bool = True,
+) -> Tuple[bool, str, Optional[str], Optional[str]]:
+    """Send one template-copy confirm/opt-out DM. Originally kept as its own function just so
+    start_cwl_enrollment stayed readable — no longer private (dropped the leading underscore
+    2026-08-15) since the Guests invite flow (web_bridge.py's handle_post_cwl_enrollment_guest)
+    now calls it directly too, for a one-off single-recipient send outside the bulk loop below.
+
+    Returns (sent, outcome, message_id, channel_id) — see CacheManager.send_user_dm_detailed()'s
+    own docstring for what "blocked" vs "failed" means (2026-08-18, item 3 of the enrollment
+    redesign). message_id/channel_id (2026-08-19, added for the Delete-Season DM-retraction fix —
+    see db_manager.py's cwl_player_season_status CREATE TABLE comment) are None whenever sent is
+    False, and are the caller's only way to later find/delete this exact DM."""
+    discord_id = participant["discord_id"]
+    message, view = build_cwl_signup_dm(
+        event_id, guild_id, season, discord_id, participant["player_tag"], participant["player_name"],
+        with_legend=with_legend,
+    )
+    sent_message_ref: List[Any] = []
+    sent, outcome = await CACHE.send_user_dm_detailed(
+        str(discord_id), message, view=view, sent_message_out=sent_message_ref
+    )
+    dm_message = sent_message_ref[0] if sent_message_ref else None
+    message_id = str(dm_message.id) if dm_message is not None else None
+    channel_id = str(dm_message.channel.id) if dm_message is not None else None
+    return sent, outcome, message_id, channel_id
+
+
+async def send_cwl_reminder_dm_group(
+    event_id: int, guild_id: int, season: str, discord_id: str, accounts: List[Dict[str, Any]],
+) -> Dict[str, Any]:
+    """Tracker #0038's "Remind Pending" send, for one Discord user's whole pending-account group
+    at once: a verbose, personally-addressed intro DM (no buttons — explains what's still pending
+    and why a fast reply matters), followed by one or more combined confirm/decline-button DMs
+    (build_cwl_reminder_response_view, ui_cwl_roster.py), chunked to at most 5 accounts per
+    message (Discord's 5-action-row cap, 2 buttons/account). The caller
+    (remind_pending_cwl_players, web_bridge.py) has already retracted this user's old per-account
+    invitation DM(s) and cleared their dm_sent dedup before calling this.
+
+    Returns {"contacted": int accounts reminded, "blocked"/"no_mutual_guild"/"failed": [player
+    names]} — same vocabulary _send_cwl_enrollment_dm_batch() uses, so the summary UI can reuse
+    its existing i18n lines. An empty return (all buckets zero/empty) other than a guard skip
+    means every send genuinely went out — the caller decides skipped_dm_guard purely from whether
+    it called this function at all for that group."""
+    from clashcontrol.i18n import t
+    from clashcontrol.ui_cwl_roster import build_cwl_reminder_response_view
+
+    result: Dict[str, Any] = {"contacted": 0, "blocked": [], "no_mutual_guild": [], "failed": []}
+    names = [a["player_name"] or a["player_tag"] for a in accounts]
+
+    display_name = CACHE.user_accounts.get(discord_id, {}).get("display_name") or discord_id
+    intro = t(
+        'cwl.reminder.dm_intro_body',
+        user_id=discord_id, guild_id=guild_id,
+        display_name=display_name, season=season, count=len(accounts),
+    )
+    sent, outcome = await CACHE.send_user_dm_detailed(discord_id, intro)
+    if not sent:
+        result[outcome].extend(names)
+        return result
+
+    db = CACHE.db_manager
+    sent_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%MZ")
+    for start in range(0, len(accounts), 5):
+        chunk = accounts[start:start + 5]
+        chunk_names = [a["player_name"] or a["player_tag"] for a in chunk]
+        bench = cwl_bench_enabled_for(discord_id, guild_id)
+        content = t(
+            'cwl.reminder.dm_buttons_intro_bench' if bench else 'cwl.reminder.dm_buttons_intro',
+            user_id=discord_id, guild_id=guild_id, season=season, **signup_dm_icons(),
+        )
+        view = build_cwl_reminder_response_view(event_id, chunk, guild_id, bench=bench)
+        sent_message_ref: List[Any] = []
+        chunk_sent, chunk_outcome = await CACHE.send_user_dm_detailed(
+            discord_id, content, view=view, sent_message_out=sent_message_ref
+        )
+        if not chunk_sent:
+            result[chunk_outcome].extend(chunk_names)
+            continue
+        message = sent_message_ref[0] if sent_message_ref else None
+        message_id = str(message.id) if message is not None else None
+        channel_id = str(message.channel.id) if message is not None else None
+        result["contacted"] += len(chunk)
+        if db is not None:
+            for account in chunk:
+                await asyncio.to_thread(
+                    db.mark_cwl_player_dm_sent_sync,
+                    account["player_tag"], season, account["player_name"], discord_id,
+                    event_id, guild_id, sent_at, message_id, channel_id,
+                )
+    return result
+
+
+def has_cwl_pending_signups_to_remind(guild_id: int, season: str) -> bool:
+    """Button-gating check for "Remind Pending" (tracker #0038), mirroring
+    has_cwl_pool_members_missing_dm's own shape — true iff resolve_cwl_pending_reminder_targets_
+    sync() finds at least one DM-able group for this event. Safe on the synchronous CWL Management
+    render path for the same reason that function is (Pitfall 26): a handful of indexed lookups,
+    not the board payload builder."""
+    db = CACHE.db_manager
+    if db is None:
+        return False
+    event = db.get_cwl_event_sync(str(guild_id), season)
+    if event is None or event["status"] in ("draft", "cancelled"):
+        return False
+    return bool(resolve_cwl_pending_reminder_targets_sync(event["id"])["groups"])
+
+
+# ----------------------------------------------------------------------------------
+# "Start CWL" (Phase 5) + switch verification (Phase 6) — CWL_ROSTER_PLANNING_PLAN.md.
+#
+# Phase 5 announces the finished roster to the players on it; Phase 6 then watches who
+# actually moved. Both hang off ONE fact — "is this player already sitting in the clan
+# they were assigned to?" — which is the same green/amber split the Manage Teams board
+# renders (clanMatchClass(), enrollmentBoard.ts). resolve_cwl_announcement_targets_sync() below
+# is the single place that computes it, so the board, the announcement DM and the alarms
+# can never disagree about the same player.
+# ----------------------------------------------------------------------------------
+
+# Escalation thresholds for Phase 6's switch alarms, in hours before the player's OWN assigned
+# clan's cwl_start_at. Stage N is sent once the remaining time drops below _CWL_ALARM_STAGES[N-1];
+# alarm_stage_sent stores the highest stage already sent, so a sweep running every cycle inside one
+# window never re-sends. Ordered most-distant-first.
+_CWL_ALARM_STAGES: List[float] = [24.0, 2.0]
+
+# ----------------------------------------------------------------------------------
+# The four-phase model (2026-08-30, project owner's spec) — Setup -> Enrollment ->
+# Preparation -> War.
+#
+# Phase is DERIVED here and nowhere else, from two inputs: cwl_events.status and whether
+# any participating clan has locked_at set. Deriving it in one place is what lets the step
+# indicator, the button labels and the freeze guards never disagree about where a guild is.
+#
+# Note the deliberate asymmetry between the guild phase and the per-clan one: a guild enters
+# War as soon as the FIRST participating clan starts CWL in-game, while every other clan may
+# still be in Preparation. Clans in one family genuinely start at different times (it's a
+# manual in-game action), so there is no single moment the whole family transitions — which
+# is exactly why the freeze guards are per-clan (locked_at) and only the DISPLAY is per-guild.
+# ----------------------------------------------------------------------------------
+
+CWL_PHASE_SETUP = 1
+CWL_PHASE_ENROLLMENT = 2
+CWL_PHASE_PREPARATION = 3
+CWL_PHASE_WAR = 4
+_CWL_PHASE_KEYS = {
+    CWL_PHASE_SETUP: "setup",
+    CWL_PHASE_ENROLLMENT: "enrollment",
+    CWL_PHASE_PREPARATION: "preparation",
+    CWL_PHASE_WAR: "war",
+}
+
+
+def is_cwl_coordinator_for_current_season(guild_id: int, discord_user_id: int) -> bool:
+    """True when this user is a standing CWL Coordinator (tracker #0046) for a clan that is
+    actually PARTICIPATING in the guild's currently-selected season.
+
+    Grants "Teams Management" board access (2026-08-30, project owner's spec: "Coordinators should
+    get the right to open and use the Teams Management view for this season"). Like the Leader/
+    Co-Leader tier it sits beside, holding it for ONE clan grants the whole board — a coordinator
+    routinely has to move a player between their clan and a sibling, which is impossible if they
+    can only see one column.
+
+    Scoped to participating clans deliberately, per that "for this season" wording: the coordinator
+    config itself is standing and carries forward every CWL month (see cwl_clan_coordinators' own
+    CREATE TABLE comment), so without this scoping a coordinator of a clan sitting out the season
+    would still hold board access for a roster they have nothing to do with.
+
+    Plain sync (Pitfall 26) — two indexed lookups; callers on async paths wrap in one to_thread."""
+    db = CACHE.db_manager
+    if db is None:
+        return False
+    by_clan = CACHE.server_config.get(str(guild_id), {}).get("cwl_clan_coordinators") or {}
+    if not by_clan:
+        return False
+    coordinated = {
+        clan_tag for clan_tag, ids in by_clan.items() if str(discord_user_id) in {str(i) for i in ids}
+    }
+    if not coordinated:
+        return False
+
+    event = db.get_cwl_event_sync(str(guild_id), resolve_selected_cwl_season(guild_id))
+    if event is None or event["status"] == "cancelled":
+        return False
+    return any(
+        c["clan_tag"] in coordinated
+        for c in db.get_cwl_event_clans_sync(event["id"]) if c.get("participating", 1)
+    )
+
+
+def resolve_cwl_phase(
+    event: Optional[Dict[str, Any]], clans: Optional[List[Dict[str, Any]]] = None,
+) -> Dict[str, Any]:
+    """Which of the four phases a guild's CWL season is in, plus the clan counts the War step
+    needs. The single source of phase truth (see the module comment above).
+
+    Mapping — status is authoritative except that ANY locked participating clan means War, even
+    if the sweep hasn't yet written status='war' (it runs once per cycle, so there is a window
+    where the clan is demonstrably locked and the event row hasn't caught up; the indicator must
+    show reality, not lag behind it):
+        draft        -> 1 Setup
+        signup_open  -> 2 Enrollment
+        announced    -> 3 Preparation
+        war          -> 4 War
+        cancelled    -> phase 0, rendered as no indicator at all
+
+    `finished` (2026-09-22, project owner's request) marks a season that is simply over. There is
+    no 'completed' event status — a finished season sits in 'war' forever — so it is derived from
+    the clock by is_cwl_event_active_or_upcoming(): the last phase then renders as done (a
+    checkmark) instead of as the current one (a blue dot), which otherwise claimed a CWL from
+    months ago was still running.
+
+    Returns {"phase", "key", "clans_started", "clans_total", "finished"}."""
+    if event is None or event.get("status") == "cancelled":
+        return {"phase": 0, "key": None, "clans_started": 0, "clans_total": 0, "finished": False}
+
+    participating = [c for c in (clans or []) if c.get("participating", 1)]
+    started = sum(1 for c in participating if c.get("locked_at"))
+
+    status = event.get("status")
+    if status == "war" or started:
+        phase = CWL_PHASE_WAR
+    elif status == "announced":
+        phase = CWL_PHASE_PREPARATION
+    elif status == "signup_open":
+        phase = CWL_PHASE_ENROLLMENT
+    else:
+        phase = CWL_PHASE_SETUP
+    # The clan start times live on the clan rows here; is_cwl_event_active_or_upcoming() reads
+    # them from the event under the key get_cwl_events_containing_clan_sync() uses, so hand them
+    # over in that shape rather than duplicating the season-window arithmetic.
+    # A row without a season key can't be dated (it never comes from the DB — only from callers
+    # that build a minimal dict for the phase mapping alone), so it is never reported finished.
+    finished = bool(event.get("cwl_season")) and not is_cwl_event_active_or_upcoming({
+        **event,
+        "clan_cwl_start_ats": [c["cwl_start_at"] for c in participating if c.get("cwl_start_at")],
+    })
+    return {
+        "phase": phase, "key": _CWL_PHASE_KEYS[phase],
+        "clans_started": started, "clans_total": len(participating),
+        "finished": finished,
+    }
+
+
+def render_cwl_step_indicator(phase_info: Dict[str, Any], guild_id: int) -> Optional[str]:
+    """The step indicator shown at the top of the CWL Management embed (2026-08-30, project
+    owner's spec: "a clear visualization of the phases and where we are at the moment ... in the
+    form of a typical step indicator").
+
+    A web-style stepper with connector lines can't be reproduced in a Discord embed, so this uses
+    the same three-state vocabulary a stepper conveys visually — done / current / upcoming — as
+    ✅ / 🔵+bold / ⚪, joined by connectors. Once the season is over every step reads ✅, including
+    the last one: a blue dot means "we are here right now", which a finished season no longer is. Deliberately NOT a code block: those don't render
+    emoji at a useful size and would lose the bold on the current step.
+
+    The War step carries its clan count ("War (2/8 started)") rather than reading as a flat
+    "everyone is at war" — a guild reaches War the moment the FIRST clan starts, while the rest
+    are still moving players around, and a bare label there would actively mislead.
+
+    Returns None when there's no season (or it was cancelled) — nothing to indicate."""
+    from clashcontrol.i18n import t
+
+    current = phase_info["phase"]
+    if not current:
+        return None
+
+    parts: List[str] = []
+    for step in (CWL_PHASE_SETUP, CWL_PHASE_ENROLLMENT, CWL_PHASE_PREPARATION, CWL_PHASE_WAR):
+        label = t(f'cwl.phase.step_{_CWL_PHASE_KEYS[step]}', guild_id=guild_id)
+        if step == CWL_PHASE_WAR and current == CWL_PHASE_WAR and phase_info["clans_total"]:
+            label = t(
+                'cwl.phase.step_war_progress', guild_id=guild_id,
+                label=label, started=phase_info["clans_started"], total=phase_info["clans_total"],
+            )
+        if step < current or (phase_info.get("finished") and step == current):
+            parts.append(f"✅ {label}")
+        elif step == current:
+            parts.append(f"🔵 **{label}**")
+        else:
+            parts.append(f"⚪ {label}")
+    return " ── ".join(parts)
+
+
+def resolve_cwl_announcement_targets_sync(
+    guild_id: int, event_id: int, season: str, *, include_notified: bool = False,
+) -> Dict[str, Any]:
+    """Resolve every player assigned to a participating clan of this event, annotated with whether
+    they are already in that clan ("green") or still need to move ("amber"), grouped by the Discord
+    user to DM.
+
+    Placement is read from the same two stores the board merges, and with the same precedence: a
+    cross-guild SHARED clan's roster lives in cwl_shared_clan_players (assigned = 1) and OVERRIDES
+    any stale local row for that clan, everything else comes from this event's own cwl_assignments.
+
+    Three deliberate exclusions:
+      - An assignment pointing at a clan that is not a participating column here — the board's
+        "Assigned to other Guild" pseudo-column. That placement belongs to another guild's event and
+        that guild's own Start CWL is what should announce it; DMing from here would mean two guilds
+        announcing the same player with potentially different start times.
+      - A shared clan this guild does not OWN (cwl_shared_clans.owner_guild_id). Without this, every
+        attached guild would DM that clan's whole roster. Counted as skipped_not_owner rather than
+        silently dropped, so the summary can say it was deliberate.
+      - A player with no live Discord link — counted in skipped_unlinked and NAMED in
+        unlinked_names, since they are exactly who a lead has to chase by hand.
+
+    Discord ownership always comes from get_player_links_sync(), never from the enrollment-time
+    dmed_discord_id snapshot (Pitfall 37). Current clan comes from get_current_clan_tags_for_players_
+    sync() — kept fresh by every regular clan poll, so this costs no CoC API call.
+
+    Returns {"groups": {discord_id: [account, ...]}, "skipped_unlinked", "unlinked_names",
+    "skipped_not_owner", "missing_start_times", "total_assigned", "already_notified"} where an
+    account is {"player_tag", "player_name", "clan_tag", "clan_name", "cwl_start_at", "in_clan",
+    "current_clan_tag", "current_clan_name", "shared_clan_id", "notified"}. Plain sync function
+    (Pitfall 26) — the caller wraps it in one asyncio.to_thread() hop."""
+    db = CACHE.db_manager
+    result: Dict[str, Any] = {
+        "groups": {}, "skipped_unlinked": 0, "unlinked_names": [], "skipped_not_owner": 0,
+        "missing_start_times": [], "total_assigned": 0, "already_notified": 0,
+    }
+    if db is None:
+        return result
+
+    participating = {
+        c["clan_tag"]: c for c in db.get_cwl_event_clans_sync(event_id) if c.get("participating", 1)
+    }
+    if not participating:
+        return result
+    result["missing_start_times"] = [tag for tag, c in participating.items() if not c.get("cwl_start_at")]
+
+    shared_by_tag = get_event_shared_clans_by_tag_sync(event_id, season)
+
+    # placements: player_tag -> (clan_tag, shared_clan_id or None, notified, notified_clan_tag)
+    placements: Dict[str, Tuple[str, Optional[int], bool, Optional[str]]] = {}
+    names_by_tag: Dict[str, Optional[str]] = {}
+
+    for assignment in db.get_cwl_assignments_sync(event_id):
+        clan_tag = assignment["assigned_clan_tag"]
+        if clan_tag not in participating or clan_tag in shared_by_tag:
+            # Not a column here, or a shared clan whose real roster is read below instead.
+            continue
+        placements[assignment["player_tag"]] = (
+            clan_tag, None, bool(assignment["notified"]), assignment["notified_clan_tag"],
+        )
+
+    for clan_tag, shared in shared_by_tag.items():
+        if clan_tag not in participating:
+            continue
+        if str(shared["owner_guild_id"]) != str(guild_id):
+            result["skipped_not_owner"] += sum(
+                1 for p in db.get_cwl_shared_clan_players_sync(shared["id"]) if p["assigned"]
+            )
+            continue
+        for shared_player in db.get_cwl_shared_clan_players_sync(shared["id"]):
+            if not shared_player["assigned"]:
+                continue
+            tag = shared_player["player_tag"]
+            placements[tag] = (
+                clan_tag, shared["id"], bool(shared_player["notified"]),
+                shared_player["notified_clan_tag"],
+            )
+            names_by_tag[tag] = shared_player["player_name"]
+
+    if not placements:
+        return result
+    result["total_assigned"] = len(placements)
+
+    player_tags = list(placements.keys())
+    links = db.get_player_links_sync(player_tags)
+    current_clans = db.get_current_clan_tags_for_players_sync(player_tags)
+    status_by_tag: Dict[str, str] = {}
+    for signup in db.get_cwl_signups_for_event_sync(event_id):
+        names_by_tag.setdefault(signup["player_tag"], signup["player_name"])
+        # Tracker #0114: carried so the announcement can mark a bench player's line — they asked
+        # not to attack regularly, and being told "you play for X" without that acknowledged reads
+        # as if nobody registered their answer.
+        status_by_tag[signup["player_tag"]] = signup["status"]
+
+    groups: Dict[str, List[Dict[str, Any]]] = {}
+    for tag, (clan_tag, shared_clan_id, notified, notified_clan_tag) in placements.items():
+        link = links.get(tag) or {}
+        player_name = names_by_tag.get(tag) or link.get("player_name") or tag
+        # `include_notified` is what turns this from "who still needs a first announcement" into
+        # "every assigned player and what they were last told" — the latter is what the pending-
+        # update comparison needs, and building it from one resolver rather than a second one is
+        # what stops the announcement and the update paths ever disagreeing about placement.
+        already_current = notified and notified_clan_tag == clan_tag
+        if notified and (not include_notified or already_current):
+            result["already_notified"] += 1
+            continue
+        if not link.get("discord_id"):
+            result["skipped_unlinked"] += 1
+            result["unlinked_names"].append(player_name)
+            continue
+        current_clan_tag = current_clans.get(tag)
+        groups.setdefault(str(link["discord_id"]), []).append({
+            "player_tag": tag,
+            "player_name": player_name,
+            "signup_status": status_by_tag.get(tag),
+            "clan_tag": clan_tag,
+            "clan_name": CACHE.get_clan_name(clan_tag, clan_tag) or clan_tag,
+            "cwl_start_at": participating[clan_tag].get("cwl_start_at"),
+            # The board renders an unknown current clan as a plain (neither green nor amber) card,
+            # but a DM has to pick a side. Amber: its text ("make sure you're in X before Y") stays
+            # true wherever they actually are, while green would assert something we cannot back up.
+            "in_clan": current_clan_tag is not None and current_clan_tag == clan_tag,
+            "current_clan_tag": current_clan_tag,
+            "current_clan_name": CACHE.get_clan_name(current_clan_tag, None) if current_clan_tag else None,
+            "shared_clan_id": shared_clan_id,
+            "notified": notified,
+            "notified_clan_tag": notified_clan_tag,
+            "discord_id": str(link["discord_id"]),
+        })
+    result["groups"] = groups
+    return result
+
+
+def resolve_cwl_pending_roster_updates_sync(guild_id: int, event_id: int, season: str) -> Dict[str, Any]:
+    """Which already-announced players are now owed an UPDATE DM because the board changed under
+    them (2026-08-30, project owner's spec item 4).
+
+    Three categories, all DERIVED rather than queued — this is what makes drag-and-drop safe:
+
+      moved   — assigned somewhere other than the clan we last told them (notified_clan_tag)
+      dropped — announced, then taken off the roster entirely (the tombstone table, since their
+                assignment row no longer exists to compare against)
+      new     — assigned but never announced at all; the ordinary first-announcement case
+
+    Because "pending" is a comparison against what was last SENT, a player dragged A→B→A cancels
+    itself out completely and produces no DM. That is the avalanche protection the spec asks for,
+    obtained structurally instead of by debouncing timers — an admin can shuffle the whole board
+    for an hour and only the players whose end state actually differs get contacted.
+
+    Returns {"moved": [...], "dropped": [...], "new": [...]} where each entry carries enough to
+    render its DM. Plain sync (Pitfall 26); the caller wraps it in one to_thread hop."""
+    db = CACHE.db_manager
+    result: Dict[str, Any] = {"moved": [], "dropped": [], "new": []}
+    if db is None:
+        return result
+
+    targets = resolve_cwl_announcement_targets_sync(guild_id, event_id, season, include_notified=True)
+    for accounts in targets["groups"].values():
+        for account in accounts:
+            if account["notified_clan_tag"] is None:
+                result["new"].append(account)
+            elif account["notified_clan_tag"] != account["clan_tag"]:
+                result["moved"].append(account)
+
+    dropped_rows = db.get_cwl_dropped_notified_players_sync(event_id)
+    if dropped_rows:
+        links = db.get_player_links_sync([r["player_tag"] for r in dropped_rows])
+        for row in dropped_rows:
+            link = links.get(row["player_tag"]) or {}
+            result["dropped"].append({
+                "player_tag": row["player_tag"],
+                "player_name": row["player_name"] or link.get("player_name") or row["player_tag"],
+                "notified_clan_tag": row["notified_clan_tag"],
+                "clan_name": CACHE.get_clan_name(row["notified_clan_tag"], row["notified_clan_tag"]),
+                "discord_id": link.get("discord_id"),
+            })
+    return result
+
+
+def resolve_cwl_underfilled_clans_sync(guild_id: int, event_id: int, season: str) -> List[Dict[str, Any]]:
+    """Participating clans whose roster has fewer players than their configured roster_size
+    (2026-08-30, spec item 6: "do a check if the rosters of all participating clans are filled up
+    completely. If not give an ephemeral to the user telling him and ask if he wants to start the
+    next phase anyway").
+
+    Counts placements the same way the announcement itself does — local assignments, or the shared
+    roster for a cross-guild clan — so the number an admin is warned about is exactly the number of
+    people who will be DMed. Over-filled clans (deliberate reserves) are never flagged.
+
+    Returns [{"clan_tag", "clan_name", "assigned", "roster_size"}] for clans that are short."""
+    db = CACHE.db_manager
+    if db is None:
+        return []
+
+    participating = [
+        c for c in db.get_cwl_event_clans_sync(event_id) if c.get("participating", 1)
+    ]
+    if not participating:
+        return []
+    shared_by_tag = get_event_shared_clans_by_tag_sync(event_id, season)
+
+    counts: Dict[str, int] = {c["clan_tag"]: 0 for c in participating}
+    for assignment in db.get_cwl_assignments_sync(event_id):
+        clan_tag = assignment["assigned_clan_tag"]
+        if clan_tag in counts and clan_tag not in shared_by_tag:
+            counts[clan_tag] += 1
+    for clan_tag, shared in shared_by_tag.items():
+        if clan_tag not in counts:
+            continue
+        counts[clan_tag] = sum(
+            1 for p in db.get_cwl_shared_clan_players_sync(shared["id"]) if p["assigned"]
+        )
+
+    return [
+        {
+            "clan_tag": clan["clan_tag"],
+            "clan_name": CACHE.get_clan_name(clan["clan_tag"], clan["clan_tag"]),
+            "assigned": counts[clan["clan_tag"]],
+            "roster_size": clan["roster_size"],
+        }
+        for clan in participating
+        if counts[clan["clan_tag"]] < clan["roster_size"]
+    ]
+
+
+def resolve_cwl_clans_missing_coordinator_sync(guild_id: int, event_id: int) -> List[Dict[str, Any]]:
+    """Participating clans with no standing CWL Coordinator configured (tracker #0084: "check
+    before start of preparation phase ... if for all participating clans there is at least one cwl
+    coordinator defined. If not point this out to the user and ask him if he wants to continue
+    anyway"). Purely a completeness nudge, same spirit as resolve_cwl_underfilled_clans_sync
+    (spec item 6) beside it — coordinators can still be set after Preparation starts, so this never
+    blocks the transition, only warns about it.
+
+    Reads cwl_clan_coordinators the same way is_cwl_coordinator_for_current_season does: standing
+    per-clan config, keyed by clan_tag, carried forward across seasons rather than reset per event.
+
+    Returns [{"clan_tag", "clan_name"}] for clans with an empty or absent coordinator list."""
+    db = CACHE.db_manager
+    if db is None:
+        return []
+    participating = [
+        c for c in db.get_cwl_event_clans_sync(event_id) if c.get("participating", 1)
+    ]
+    if not participating:
+        return []
+    by_clan = CACHE.server_config.get(str(guild_id), {}).get("cwl_clan_coordinators") or {}
+    return [
+        {
+            "clan_tag": clan["clan_tag"],
+            "clan_name": CACHE.get_clan_name(clan["clan_tag"], clan["clan_tag"]),
+        }
+        for clan in participating
+        if not by_clan.get(clan["clan_tag"])
+    ]
+
+
+def count_cwl_pending_roster_updates(guild_id: int, season: str) -> int:
+    """Total pending update DMs for the guild's selected season — the number every one of the
+    three triggers (board button, close-DM, Hub button) keys off, so they can never disagree about
+    whether anything is outstanding. Safe on the synchronous embed-render path, same as the other
+    button-gating helpers here.
+
+    Excludes `signup_open` in addition to draft/cancelled (2026-08-30 fix, live bug report: closing
+    the Teams Management board during Enrollment produced "11 line-up update(s) still unsent" — a
+    message that only makes sense in Preparation/War). resolve_cwl_pending_roster_updates_sync()
+    correctly counts every never-announced assigned player as "new" — that's right for a caller
+    asking "what does Announce Rosters still need to reach", but wrong for THIS question, "what
+    does Send Roster Updates still need to reach", since a pre-announcement player was never told
+    anything to begin with — there's nothing to correct them about yet. The Hub's own button
+    avoided this by branching around the call entirely (`if status == "signup_open": ... else:
+    count_cwl_pending_roster_updates(...)`); the close-board DM (_dm_pending_roster_updates_notice,
+    web_bridge.py) had no such branch and called this function unconditionally, so the gate now
+    lives here instead — the one place every caller shares, rather than something each new caller
+    has to remember to re-derive."""
+    db = CACHE.db_manager
+    if db is None:
+        return 0
+    event = db.get_cwl_event_sync(str(guild_id), season)
+    if event is None or event["status"] in ("draft", "cancelled", "signup_open"):
+        return 0
+    pending = resolve_cwl_pending_roster_updates_sync(guild_id, event["id"], season)
+    return len(pending["moved"]) + len(pending["dropped"]) + len(pending["new"])
+
+
+async def send_cwl_roster_updates(guild_id: int, season: str) -> Dict[str, Any]:
+    """Send the outstanding update DMs — the shared implementation behind all three triggers the
+    spec asks for (the board's own button, the DM sent when the board is closed with changes
+    outstanding, and the Hub's highlighted button).
+
+    Grouped per Discord user like every other CWL DM batch, so someone whose main moved AND whose
+    alt was dropped gets one message, not two."""
+    from clashcontrol.i18n import t
+
+    db = CACHE.db_manager
+    if db is None:
+        return {"ok": False, "error": "no_database"}
+    event = await asyncio.to_thread(db.get_cwl_event_sync, str(guild_id), season)
+    if event is None:
+        return {"ok": False, "error": "no_event"}
+    if event["status"] in ("draft", "cancelled"):
+        return {"ok": False, "error": "not_open"}
+
+    pending = await asyncio.to_thread(
+        resolve_cwl_pending_roster_updates_sync, guild_id, event["id"], season
+    )
+    summary: Dict[str, Any] = {
+        "ok": True, "moved": 0, "dropped": 0, "new": 0, "contacted_users": 0,
+        "skipped_dm_guard": 0, "dm_guard_skipped": [], "skipped_unlinked": 0,
+        "blocked": [], "no_mutual_guild": [], "failed": [],
+    }
+
+    # One bucket per recipient, so a user with several affected accounts gets a single DM.
+    by_user: Dict[str, List[Tuple[str, Dict[str, Any]]]] = {}
+    for kind in ("moved", "new", "dropped"):
+        for account in pending[kind]:
+            discord_id = account.get("discord_id")
+            if not discord_id:
+                summary["skipped_unlinked"] += 1
+                continue
+            by_user.setdefault(str(discord_id), []).append((kind, account))
+
+    # One bulk lookup for the whole batch rather than one per recipient (Pitfall 26): who has
+    # already been asked the "do you want to play?" question at all this season, by ANY guild.
+    already_dm_by_tag = await asyncio.to_thread(
+        db.get_cwl_player_season_dm_status_bulk_sync,
+        [a["player_tag"] for entries in by_user.values() for _kind, a in entries],
+        season,
+    )
+
+    for discord_id, entries in by_user.items():
+        if _dm_guard_blocks(discord_id):
+            summary["skipped_dm_guard"] += len(entries)
+            summary["dm_guard_skipped"].extend(dm_guard_skipped_entries(a for _kind, a in entries))
+            continue
+        display_name = CACHE.user_accounts.get(discord_id, {}).get("display_name") or discord_id
+        intro = t(
+            'cwl.update.dm_intro', user_id=discord_id, guild_id=guild_id,
+            display_name=display_name, season=season, count=len(entries),
+        )
+        lines: List[str] = []
+        for kind, account in entries:
+            if kind == "dropped":
+                lines.append(t(
+                    'cwl.update.dm_line_dropped', user_id=discord_id, guild_id=guild_id,
+                    player_name=account["player_name"], clan_name=account["clan_name"],
+                ))
+            elif kind == "moved":
+                lines.extend(_build_cwl_roster_account_lines([account], discord_id, guild_id))
+                lines[-1] = t(
+                    'cwl.update.dm_line_moved_prefix', user_id=discord_id, guild_id=guild_id,
+                    player_name=account["player_name"],
+                    old_clan_name=CACHE.get_clan_name(
+                        account["notified_clan_tag"], account["notified_clan_tag"]
+                    ),
+                ) + lines[-1]
+            else:
+                lines.extend(_build_cwl_roster_account_lines([account], discord_id, guild_id))
+
+        # A player added to a roster in Preparation phase who was NEVER contacted at all this
+        # season (their clan joined the season after Start Enrollment ran — spec item 5) has two
+        # unanswered questions at once: "do you even want to play?" and "here's where you play".
+        # Sending those as two separate DMs is confusing and doubles the volume, so they go out as
+        # ONE message: the assignment lines above, plus this account's confirm/opt-out buttons.
+        never_asked = [
+            account for kind, account in entries
+            if kind == "new" and not already_dm_by_tag.get(account["player_tag"])
+        ]
+        view = None
+        if never_asked:
+            from clashcontrol.ui_cwl_roster import build_cwl_reminder_response_view
+
+            # Discord's 5-action-row cap at 2 buttons per account; a member with more linked
+            # accounts than that is vanishingly rare, and the overflow still gets the roster
+            # information — just not their buttons, and "Notify New Pool Members" covers them.
+            bench = cwl_bench_enabled_for(discord_id, guild_id)
+            view = build_cwl_reminder_response_view(
+                event["id"], never_asked[:5], guild_id, bench=bench
+            )
+            lines.append(t(
+                'cwl.update.dm_confirm_prompt_bench' if bench else 'cwl.update.dm_confirm_prompt',
+                user_id=discord_id, guild_id=guild_id, **signup_dm_icons(),
+            ))
+
+        sent_message_ref: List[Any] = []
+        sent, outcome = await _send_cwl_dm_chunks(
+            discord_id, intro, lines, view=view, sent_message_out=sent_message_ref
+        )
+        if not sent:
+            names = [a["player_name"] for _kind, a in entries]
+            summary[outcome].extend(names)
+            continue
+        if never_asked:
+            # Record the DM globally so "Notify New Pool Members" doesn't send them a second,
+            # redundant invitation — this message already asked the question.
+            #
+            # Phase 0b (2026-09-22): record the message/channel ids too. They were None here while
+            # every other DM sender stored them, which left this one message unfindable — it could
+            # not be retracted by Delete Season, re-rendered after an answer, or upgraded when a
+            # guild switches on extended sign-up.
+            sent_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%MZ")
+            dm_message = sent_message_ref[0] if sent_message_ref else None
+            dm_message_id = str(dm_message.id) if dm_message is not None else None
+            dm_channel_id = str(dm_message.channel.id) if dm_message is not None else None
+            for account in never_asked[:5]:
+                await asyncio.to_thread(
+                    db.mark_cwl_player_dm_sent_sync,
+                    account["player_tag"], season, account["player_name"], discord_id,
+                    event["id"], guild_id, sent_at, dm_message_id, dm_channel_id,
+                )
+        summary["contacted_users"] += 1
+        for kind, account in entries:
+            summary[kind] += 1
+            if kind == "dropped":
+                await asyncio.to_thread(
+                    db.clear_cwl_dropped_notified_player_sync, event["id"], account["player_tag"]
+                )
+            elif account["shared_clan_id"] is not None:
+                await asyncio.to_thread(
+                    db.set_cwl_shared_clan_player_notified_sync,
+                    account["shared_clan_id"], account["player_tag"], True, account["clan_tag"],
+                )
+            else:
+                await asyncio.to_thread(
+                    db.mark_cwl_assignment_notified_sync,
+                    event["id"], account["player_tag"], True, account["clan_tag"],
+                )
+
+    logging.info(
+        f"[CWL-UPDATE] Roster updates sent: guild={guild_id} season={season} event={event['id']} "
+        f"moved={summary['moved']} new={summary['new']} dropped={summary['dropped']} "
+        f"users={summary['contacted_users']} skipped_dm_guard={summary['skipped_dm_guard']} "
+        f"skipped_unlinked={summary['skipped_unlinked']}"
+    )
+    return summary
+
+
+def has_cwl_roster_announcements_pending(guild_id: int, season: str) -> bool:
+    """Button-gating check for "Start CWL" (Phase 5), mirroring has_cwl_pending_signups_to_remind's
+    own shape — true iff at least one assigned player still hasn't had their announcement DM.
+
+    That "still hasn't" clause is what makes the button self-managing, exactly as it does for
+    "Notify New Pool Members": it disappears once everyone has been told and comes back on its own
+    the moment a lead drags a late arrival onto the board, so there is no separate re-notify action
+    and no permanently-greyed control. Deliberately NOT gated on start times being set — a missing
+    start time must produce a *sayable* error on click, which an invisible button cannot do."""
+    db = CACHE.db_manager
+    if db is None:
+        return False
+    event = db.get_cwl_event_sync(str(guild_id), season)
+    if event is None or event["status"] in ("draft", "cancelled"):
+        return False
+    return bool(resolve_cwl_announcement_targets_sync(guild_id, event["id"], season)["groups"])
+
+
+def _build_cwl_roster_account_lines(
+    accounts: List[Dict[str, Any]], discord_id: str, guild_id: int,
+) -> List[str]:
+    """One rendered line per assigned account for the "Start CWL" DM — green ("you're already
+    there") or amber ("you still need to move, here's the link"), chosen per account, because one
+    person's main and alt can legitimately be in different clans starting on different days.
+
+    Times use Discord's native <t:unix:style> markup (cwl_start_at_discord_timestamp), so each
+    recipient sees their OWN timezone with no per-guild timezone setting involved. The link is
+    coc_clan_profile_url() — a real https link that hands off to the CoC app on that clan's
+    profile, which is as close to "move me" as CoC's API allows (there is no join API)."""
+    from clashcontrol.i18n import t
+    from QBhelperfunctions import coc_clan_profile_url
+
+    lines: List[str] = []
+    for account in accounts:
+        start_full = cwl_start_at_discord_timestamp(account["cwl_start_at"], "F") or "?"
+        start_rel = cwl_start_at_discord_timestamp(account["cwl_start_at"], "R") or "?"
+        bench_suffix = (
+            " " + t(
+                'cwl.start.dm_line_bench_suffix', user_id=discord_id, guild_id=guild_id,
+                bench=bench_emoji(),
+            )
+            if account.get("signup_status") in CWL_BENCH_STATUSES else ""
+        )
+        if account["in_clan"]:
+            lines.append(t(
+                'cwl.start.dm_line_green',
+                user_id=discord_id, guild_id=guild_id,
+                player_name=account["player_name"], clan_name=account["clan_name"],
+                start_full=start_full, start_rel=start_rel,
+            ) + bench_suffix)
+        else:
+            lines.append(t(
+                'cwl.start.dm_line_amber',
+                user_id=discord_id, guild_id=guild_id,
+                player_name=account["player_name"], clan_name=account["clan_name"],
+                current_clan_name=(
+                    account["current_clan_name"] or account["current_clan_tag"]
+                    or t('cwl.start.dm_unknown_clan', user_id=discord_id, guild_id=guild_id)
+                ),
+                start_full=start_full, start_rel=start_rel,
+                clan_url=coc_clan_profile_url(account["clan_tag"]),
+            ) + bench_suffix)
+    return lines
+
+
+async def _send_cwl_dm_chunks(
+    discord_id: str, intro: str, lines: List[str], *, view: Optional[Any] = None,
+    sent_message_out: Optional[List[Any]] = None,
+) -> Tuple[bool, str]:
+    """Send an intro plus a list of per-account lines as one DM, splitting into further messages
+    only if Discord's 2000-character limit would be exceeded (a member with many linked accounts).
+
+    `view`, when given, is attached to the LAST chunk — so the confirm/opt-out buttons for a
+    late-added player (spec item 5's combined DM) always sit directly under the roster information
+    they relate to, rather than in an earlier message the reader has already scrolled past.
+
+    `sent_message_out`, when given, receives the message object of the chunk the view was attached
+    to (Phase 0b, 2026-09-22) — the chunk whose buttons a later re-render or DM upgrade has to find,
+    which is why it is that chunk and not the first one. Left empty when nothing was sent or no
+    view was passed.
+
+    Returns (sent, outcome) using send_user_dm_detailed's own vocabulary. A partial send counts as
+    sent — the recipient did get the announcement — but any failure after the first chunk is logged,
+    since silently dropping half a roster announcement would be worse than noisy."""
+    _DM_LIMIT = 1900  # headroom under Discord's 2000 for the separator newlines
+    messages: List[str] = []
+    current = intro
+    for line in lines:
+        candidate = f"{current}\n{line}"
+        if len(candidate) > _DM_LIMIT and current:
+            messages.append(current)
+            current = line
+        else:
+            current = candidate
+    if current:
+        messages.append(current)
+
+    first_outcome = "failed"
+    for index, message in enumerate(messages):
+        is_last = index == len(messages) - 1
+        carries_view = is_last and view is not None
+        sent, outcome = await CACHE.send_user_dm_detailed(
+            discord_id, message, view=view if carries_view else None,
+            sent_message_out=sent_message_out if carries_view else None,
+        )
+        if index == 0:
+            if not sent:
+                return False, outcome
+            first_outcome = outcome
+        elif not sent:
+            logging.warning(
+                f"[CWL-START] Partial DM to {discord_id}: chunk {index + 1}/{len(messages)} "
+                f"failed with outcome={outcome}"
+            )
+    return True, first_outcome
+
+
+async def send_cwl_roster_dm_group(
+    guild_id: int, season: str, discord_id: str, accounts: List[Dict[str, Any]],
+) -> Dict[str, Any]:
+    """"Start CWL"'s send, for one Discord user's whole set of assigned accounts at once.
+
+    Grouped per Discord USER rather than per account for the same reason "Remind Pending"
+    (send_cwl_reminder_dm_group) is: someone with a main in one clan and an alt in another must get
+    one coherent message, not two DMs that each read like the whole story. A mixed green/amber
+    group is a normal case, not an edge case — each account renders its own variant.
+
+    Returns {"contacted": int accounts announced, "blocked"/"no_mutual_guild"/"failed": [names]} —
+    the same vocabulary every other CWL DM batch uses, so the summary UI reuses its i18n lines."""
+    from clashcontrol.i18n import t
+
+    result: Dict[str, Any] = {"contacted": 0, "blocked": [], "no_mutual_guild": [], "failed": []}
+    names = [a["player_name"] for a in accounts]
+
+    display_name = CACHE.user_accounts.get(discord_id, {}).get("display_name") or discord_id
+    intro = t(
+        'cwl.start.dm_intro',
+        user_id=discord_id, guild_id=guild_id,
+        display_name=display_name, season=season, count=len(accounts),
+    )
+    lines = _build_cwl_roster_account_lines(accounts, discord_id, guild_id)
+    sent, outcome = await _send_cwl_dm_chunks(discord_id, intro, lines)
+    if not sent:
+        result[outcome].extend(names)
+        return result
+    result["contacted"] = len(accounts)
+    return result
+
+
+async def announce_cwl_rosters(guild_id: int, season: str) -> Dict[str, Any]:
+    """"Start CWL" (Phase 5): announce the finished roster to every assigned player — where they
+    play, when it starts, and (for anyone not yet in their assigned clan) a direct link to move.
+
+    Re-fetches the event fresh by (guild_id, season) rather than trusting a caller-held dict, the
+    same re-read discipline every other action in this feature uses.
+
+    Refuses outright (never a partial send) when any participating clan still has no cwl_start_at —
+    the surviving half of the original Phase 4 "Finalize" gate: an announcement whose central fact
+    is a start time cannot go out for a clan that hasn't got one. Returns the offending clans so the
+    caller can name them.
+
+    Marks each successfully-announced placement notified — cwl_assignments.notified for a local
+    assignment, cwl_shared_clan_players.notified for a shared one — which makes the whole action
+    idempotent and re-runnable for late arrivals. Then transitions signup_open -> announced, the
+    only writer of 'announced' in the codebase.
+
+    Returns {"ok", "error"?, "missing_start_times"?, "contacted", "contacted_users",
+    "skipped_dm_guard", "skipped_unlinked", "unlinked_names", "skipped_not_owner", "blocked",
+    "no_mutual_guild", "failed"}."""
+    db = CACHE.db_manager
+    if db is None:
+        return {"ok": False, "error": "no_database"}
+    event = await asyncio.to_thread(db.get_cwl_event_sync, str(guild_id), season)
+    if event is None:
+        return {"ok": False, "error": "no_event"}
+    if event["status"] in ("draft", "cancelled"):
+        return {"ok": False, "error": "not_open"}
+
+    targets = await asyncio.to_thread(resolve_cwl_announcement_targets_sync, guild_id, event["id"], season)
+    if targets["missing_start_times"]:
+        return {
+            "ok": False, "error": "missing_start_times",
+            "missing_start_times": [
+                CACHE.get_clan_name(tag, tag) or tag for tag in targets["missing_start_times"]
+            ],
+        }
+    if not targets["groups"] and not targets["skipped_unlinked"]:
+        return {"ok": False, "error": "nobody_to_notify"}
+
+    summary: Dict[str, Any] = {
+        "ok": True, "contacted": 0, "contacted_users": 0, "skipped_dm_guard": 0, "dm_guard_skipped": [],
+        "skipped_unlinked": targets["skipped_unlinked"], "unlinked_names": targets["unlinked_names"],
+        "skipped_not_owner": targets["skipped_not_owner"],
+        "blocked": [], "no_mutual_guild": [], "failed": [],
+    }
+    for discord_id, accounts in targets["groups"].items():
+        if _dm_guard_blocks(discord_id):
+            summary["skipped_dm_guard"] += len(accounts)
+            summary["dm_guard_skipped"].extend(dm_guard_skipped_entries(accounts))
+            continue
+        group_result = await send_cwl_roster_dm_group(guild_id, season, discord_id, accounts)
+        summary["contacted"] += group_result["contacted"]
+        if group_result["contacted"]:
+            summary["contacted_users"] += 1
+            for account in accounts:
+                # Record WHICH clan they were told, not just that they were told — that's what
+                # makes a later move detectable as a pending update.
+                if account["shared_clan_id"] is not None:
+                    await asyncio.to_thread(
+                        db.set_cwl_shared_clan_player_notified_sync,
+                        account["shared_clan_id"], account["player_tag"], True, account["clan_tag"],
+                    )
+                else:
+                    await asyncio.to_thread(
+                        db.mark_cwl_assignment_notified_sync,
+                        event["id"], account["player_tag"], True, account["clan_tag"],
+                    )
+        summary["blocked"].extend(group_result["blocked"])
+        summary["no_mutual_guild"].extend(group_result["no_mutual_guild"])
+        summary["failed"].extend(group_result["failed"])
+
+    # Best-effort per the send_user_dm contract: individual DM failures don't hold the season back,
+    # they're reported to the admin instead. Re-running the button picks up anyone still un-notified.
+    if event["status"] != "announced":
+        await asyncio.to_thread(db.update_cwl_event_status_sync, event["id"], "announced")
+
+    logging.info(
+        f"[CWL-START] Start CWL complete: guild={guild_id} season={season} event={event['id']} "
+        f"contacted_accounts={summary['contacted']} contacted_users={summary['contacted_users']} "
+        f"skipped_dm_guard={summary['skipped_dm_guard']} skipped_unlinked={summary['skipped_unlinked']} "
+        f"skipped_not_owner={summary['skipped_not_owner']} blocked={len(summary['blocked'])} "
+        f"no_mutual_guild={len(summary['no_mutual_guild'])} failed={len(summary['failed'])}"
+    )
+    return summary
+
+
+def _hours_until(cwl_start_at: Optional[str], now: Optional[datetime] = None) -> Optional[float]:
+    """Hours from `now` until a stored "YYYY-MM-DDTHH:MMZ" UTC start time, negative once past.
+    None if unset/unparseable — callers treat that as "can't schedule an alarm for this clan"
+    rather than as zero, since a wrong guess here means DMing someone at the wrong time."""
+    if not cwl_start_at:
+        return None
+    try:
+        naive = datetime.strptime(cwl_start_at.rstrip("Z"), "%Y-%m-%dT%H:%M")
+    except ValueError:
+        return None
+    reference = now or datetime.now(timezone.utc)
+    return (naive.replace(tzinfo=timezone.utc) - reference).total_seconds() / 3600.0
+
+
+def _due_cwl_alarm_stage(hours_left: Optional[float], already_sent: int) -> Optional[int]:
+    """The next escalation stage due for a player, or None if none is. Stage N (1-based) becomes
+    due once `hours_left` drops below _CWL_ALARM_STAGES[N-1]; a stage at or below `already_sent` is
+    never re-offered, which is what makes an every-cycle sweep safe inside one threshold window.
+
+    Returns the HIGHEST due stage, not the next one up — a bot that was down across a threshold
+    must not send a now-pointless 24h nudge before the 2h one; it should go straight to the urgent
+    message. Also returns a stage for an already-started clan (negative hours_left), since a player
+    who still hasn't moved by then is the most urgent case there is, not the least."""
+    if hours_left is None:
+        return None
+    due = 0
+    for index, threshold in enumerate(_CWL_ALARM_STAGES, start=1):
+        if hours_left <= threshold:
+            due = index
+    return due if due > already_sent else None
+
+
+def resolve_cwl_switch_monitoring_sync(guild_id: int, event_id: int, season: str) -> Dict[str, Any]:
+    """Phase 6's per-event read: every ANNOUNCED assignment in a still-unlocked participating clan,
+    annotated with whether the player has since moved into that clan.
+
+    Deliberately built on resolve_cwl_announcement_targets_sync's own placement resolution rather than a
+    second one — "who is assigned where, and are they there yet" is the same question Phase 5 asks,
+    and two independent answers to it is exactly how the board and the DMs would drift apart. The
+    difference is only which players are interesting: Phase 5 wants the NOT-yet-notified ones,
+    Phase 6 wants the notified ones who haven't switched.
+
+    Returns {"switched": [account...], "pending": [account...], "locked_clan_tags": set}. `pending`
+    accounts carry `hours_left`/`alarm_stage_sent` for the escalation decision."""
+    db = CACHE.db_manager
+    result: Dict[str, Any] = {"switched": [], "pending": [], "locked_clan_tags": set()}
+    if db is None:
+        return result
+
+    participating = {
+        c["clan_tag"]: c for c in db.get_cwl_event_clans_sync(event_id) if c.get("participating", 1)
+    }
+    result["locked_clan_tags"] = {tag for tag, c in participating.items() if c.get("locked_at")}
+    open_clans = {tag: c for tag, c in participating.items() if not c.get("locked_at")}
+    if not open_clans:
+        return result
+
+    shared_by_tag = get_event_shared_clans_by_tag_sync(event_id, season)
+    now = datetime.now(timezone.utc)
+
+    def _consider(
+        tag: str, clan_tag: str, player_name: Optional[str], notified: bool,
+        switched_at: Optional[str], alarm_stage_sent: int, shared_clan_id: Optional[int],
+    ) -> Optional[Dict[str, Any]]:
+        if clan_tag not in open_clans or not notified or switched_at:
+            return None
+        return {
+            "player_tag": tag, "player_name": player_name or tag, "clan_tag": clan_tag,
+            "clan_name": CACHE.get_clan_name(clan_tag, clan_tag) or clan_tag,
+            "cwl_start_at": open_clans[clan_tag].get("cwl_start_at"),
+            "alarm_stage_sent": alarm_stage_sent, "shared_clan_id": shared_clan_id,
+        }
+
+    candidates: List[Dict[str, Any]] = []
+    for assignment in db.get_cwl_assignments_sync(event_id):
+        clan_tag = assignment["assigned_clan_tag"]
+        if clan_tag in shared_by_tag:
+            continue  # a shared clan's truth is its own roster, read below
+        candidate = _consider(
+            assignment["player_tag"], clan_tag, None, bool(assignment["notified"]),
+            assignment["switched_at"], int(assignment["alarm_stage_sent"] or 0), None,
+        )
+        if candidate is not None:
+            candidates.append(candidate)
+
+    for clan_tag, shared in shared_by_tag.items():
+        # Only the owner guild alarms for a shared clan, same rule as Phase 5's announcement —
+        # otherwise every attached guild nags the same player about the same clan.
+        if clan_tag not in open_clans or str(shared["owner_guild_id"]) != str(guild_id):
+            continue
+        for shared_player in db.get_cwl_shared_clan_players_sync(shared["id"]):
+            if not shared_player["assigned"]:
+                continue
+            candidate = _consider(
+                shared_player["player_tag"], clan_tag, shared_player["player_name"],
+                bool(shared_player["notified"]), shared_player["switched_at"],
+                int(shared_player["alarm_stage_sent"] or 0), shared["id"],
+            )
+            if candidate is not None:
+                candidates.append(candidate)
+
+    if not candidates:
+        return result
+
+    tags = [c["player_tag"] for c in candidates]
+    current_clans = db.get_current_clan_tags_for_players_sync(tags)
+    links = db.get_player_links_sync(tags)
+    signup_names = {
+        s["player_tag"]: s["player_name"] for s in db.get_cwl_signups_for_event_sync(event_id)
+    }
+    for candidate in candidates:
+        tag = candidate["player_tag"]
+        if candidate["player_name"] == tag:
+            candidate["player_name"] = (
+                signup_names.get(tag) or (links.get(tag) or {}).get("player_name") or tag
+            )
+        if current_clans.get(tag) == candidate["clan_tag"]:
+            result["switched"].append(candidate)
+            continue
+        candidate["discord_id"] = (links.get(tag) or {}).get("discord_id")
+        candidate["current_clan_tag"] = current_clans.get(tag)
+        candidate["current_clan_name"] = (
+            CACHE.get_clan_name(current_clans[tag], None) if current_clans.get(tag) else None
+        )
+        candidate["hours_left"] = _hours_until(candidate["cwl_start_at"], now)
+        result["pending"].append(candidate)
+    return result
+
+
+async def _send_cwl_switch_alarm(account: Dict[str, Any], guild_id: int, stage: int) -> bool:
+    """One escalating "you still haven't moved" DM. Reuses Phase 5's own amber line verbatim (same
+    clan, same start time, same join link) under a stage-specific urgency header, so a player who
+    gets both never has to reconcile two differently-worded versions of the same instruction."""
+    from clashcontrol.i18n import t
+
+    discord_id = account.get("discord_id")
+    if not discord_id or _dm_guard_blocks(str(discord_id)):
+        return False
+    header = t(
+        f'cwl.alarm.dm_header_stage{stage}',
+        user_id=discord_id, guild_id=guild_id, player_name=account["player_name"],
+    )
+    lines = _build_cwl_roster_account_lines([{**account, "in_clan": False}], str(discord_id), guild_id)
+    sent, _outcome = await _send_cwl_dm_chunks(str(discord_id), header, lines)
+    return sent
+
+
+async def snapshot_cwl_locked_clan_roster(clan_tag: str, season: str) -> int:
+    """Capture who was actually in a clan when its CWL roster locked — the one moment this is
+    knowable (see cwl_locked_clan_members' CREATE TABLE comment).
+
+    Primary source is the CoC league group (CACHE.get_league_group, an existing cache_manager
+    wrapper per Cardinal Rule 9), which returns the authoritative locked roster straight from the
+    game. One call per clan per season, so the cost is negligible even for a large family.
+
+    Falls back to live user_players membership if that call fails or the clan isn't in the group
+    response yet — lock detection must never block on the API. The fallback is genuinely less
+    accurate (a player who left between the real in-game lock and this cycle's detection is
+    wrongly excluded), which is exactly why `source` is stored per row: a later investigation can
+    tell an authoritative snapshot from a best-effort one instead of guessing.
+
+    Returns the number of members recorded; 0 means a snapshot already existed (write-once)."""
+    db = CACHE.db_manager
+    if db is None:
+        return 0
+    if await asyncio.to_thread(db.get_cwl_locked_clan_member_tags_sync, season, clan_tag):
+        return 0  # already snapshotted — never re-taken, membership has drifted since
+
+    members: List[Dict[str, Any]] = []
+    source = "league_group"
+    try:
+        group = await CACHE.get_league_group(clan_tag)
+        for group_clan in (getattr(group, "clans", None) or []):
+            if str(getattr(group_clan, "tag", "")).upper() != clan_tag.upper():
+                continue
+            for member in (getattr(group_clan, "members", None) or []):
+                members.append({
+                    "player_tag": str(member.tag), "player_name": getattr(member, "name", None),
+                })
+    except Exception as e:
+        logging.warning(f"[CWL-LOCK] get_league_group({clan_tag}) failed, falling back to live membership: {e}")
+
+    if not members:
+        source = "live_membership"
+        members = [
+            {"player_tag": m["player_tag"], "player_name": m["player_name"]}
+            for m in await asyncio.to_thread(db.get_current_clan_members_sync, [clan_tag])
+        ]
+    stored = await asyncio.to_thread(db.store_cwl_locked_clan_members_sync, season, clan_tag, members, source)
+    logging.info(f"[CWL-LOCK] {clan_tag} {season}: locked roster snapshot = {stored} member(s) via {source}")
+    return stored
+
+
+async def reconcile_cwl_locked_clan_roster(
+    guild_id: int, event_id: int, season: str, clan_tag: str, clan_name: str,
+) -> Dict[str, Any]:
+    """Bring a just-locked clan's board roster in line with reality (2026-08-30, project owner's
+    spec): "A player that did not switch to the clan in time should be removed from that clan's
+    player roster and be sent to the unassigned pool instead."
+
+    Whoever is assigned to this clan but wasn't in it at lock time physically cannot play for it,
+    so their assignment is removed and they return to the pool where a lead can still place them
+    somewhere else. Each such player is DMed once — they were told to move, they didn't, and
+    silently dropping them means they turn up expecting to play (confirmed decision, 2026-08-30).
+
+    Deliberately DOES NOT touch anyone who IS eligible, and never adds anyone: a player who was in
+    the clan at lock time but sits unassigned on the board stays unassigned. They remain eligible
+    and a lead may drag them in (the one exception to the freeze), but that is a human decision
+    about who actually plays, not something to guess automatically."""
+    db = CACHE.db_manager
+    result: Dict[str, Any] = {"dropped": 0, "dm_sent": 0}
+    if db is None:
+        return result
+
+    eligible = await asyncio.to_thread(db.get_cwl_locked_clan_member_tags_sync, season, clan_tag)
+    if not eligible:
+        # No snapshot (API failed AND no live membership on record) — dropping the whole roster on
+        # the strength of an empty set would be catastrophic and wrong, so do nothing at all.
+        logging.warning(f"[CWL-LOCK] {clan_tag} {season}: no locked-roster snapshot, skipping reconciliation")
+        return result
+
+    assignments = await asyncio.to_thread(db.get_cwl_assignments_sync, event_id)
+    no_shows = [
+        a for a in assignments
+        if a["assigned_clan_tag"] == clan_tag and a["player_tag"] not in eligible
+    ]
+    if not no_shows:
+        return result
+
+    links = await asyncio.to_thread(db.get_player_links_sync, [a["player_tag"] for a in no_shows])
+    signup_names = {
+        s["player_tag"]: s["player_name"]
+        for s in await asyncio.to_thread(db.get_cwl_signups_for_event_sync, event_id)
+    }
+    from clashcontrol.i18n import t
+
+    for assignment in no_shows:
+        tag = assignment["player_tag"]
+        link = links.get(tag) or {}
+        player_name = signup_names.get(tag) or link.get("player_name") or tag
+        await asyncio.to_thread(db.delete_cwl_assignment_sync, event_id, tag)
+        result["dropped"] += 1
+        discord_id = link.get("discord_id")
+        # Only worth a DM if they were actually told to be there in the first place.
+        if not assignment["notified"] or not discord_id or _dm_guard_blocks(str(discord_id)):
+            continue
+        sent, _outcome = await CACHE.send_user_dm_detailed(
+            str(discord_id),
+            t(
+                'cwl.alarm.dm_missed_lock',
+                user_id=str(discord_id), guild_id=guild_id,
+                player_name=player_name, clan_name=clan_name, season=season,
+            ),
+        )
+        if sent:
+            result["dm_sent"] += 1
+    logging.info(
+        f"[CWL-LOCK] {clan_tag} {season} (guild {guild_id}): dropped {result['dropped']} no-show(s) "
+        f"to the unassigned pool, {result['dm_sent']} DM(s) sent"
+    )
+    return result
+
+
+# How long before a clan's own cwl_start_at its coordinators get the roster status report
+# (2026-08-30, spec item 7). One shot, deduped by cwl_event_clans.coordinator_reminder_sent_at.
+_CWL_COORDINATOR_REMINDER_MINUTES = 30
+
+
+async def send_cwl_coordinator_start_reminders(
+    guild_id: int, event_id: int, season: str, clans: List[Dict[str, Any]],
+) -> int:
+    """Spec item 7: 30 minutes before a clan's announced start, DM its CWL Coordinators a status
+    report — is the roster full, and is everyone actually in the clan yet.
+
+    Those are the only two things a coordinator can still act on in the last half hour: pull in a
+    reserve to fill an empty slot, or chase whoever hasn't transferred. Anything else would be
+    noise at the one moment they're busiest.
+
+    Written as an informational report rather than a call to action with a link, because a
+    coordinator is NOT necessarily able to act on the board — coordinator status grants Teams
+    Management access only for clans participating this season (see
+    is_cwl_coordinator_for_current_season), and even then the fix is usually in-game, not in the
+    bot. Returns the number of DMs sent."""
+    from clashcontrol.i18n import t
+
+    db = CACHE.db_manager
+    if db is None:
+        return 0
+    now = datetime.now(timezone.utc)
+    sent_count = 0
+
+    coordinators_by_clan = (
+        CACHE.server_config.get(str(guild_id), {}).get("cwl_clan_coordinators") or {}
+    )
+    for clan in clans:
+        if not clan.get("participating", 1) or clan.get("coordinator_reminder_sent_at"):
+            continue
+        if clan.get("locked_at"):
+            continue  # already started — the report would be about a roster nobody can change
+        hours_left = _hours_until(clan.get("cwl_start_at"), now)
+        if hours_left is None or hours_left > _CWL_COORDINATOR_REMINDER_MINUTES / 60.0:
+            continue
+
+        clan_tag = clan["clan_tag"]
+        coordinators = coordinators_by_clan.get(clan_tag) or []
+        # Stamp regardless of whether anyone is configured: without this a clan with no
+        # coordinators would be re-evaluated every single cycle for the rest of the window.
+        await asyncio.to_thread(db.mark_cwl_coordinator_reminder_sent_sync, event_id, clan_tag)
+        if not coordinators:
+            continue
+
+        underfilled = await asyncio.to_thread(
+            resolve_cwl_underfilled_clans_sync, guild_id, event_id, season
+        )
+        shortfall = next((u for u in underfilled if u["clan_tag"] == clan_tag), None)
+        monitoring = await asyncio.to_thread(
+            resolve_cwl_switch_monitoring_sync, guild_id, event_id, season
+        )
+        missing = [p["player_name"] for p in monitoring["pending"] if p["clan_tag"] == clan_tag]
+        clan_name = CACHE.get_clan_name(clan_tag, clan_tag)
+
+        for coordinator_id in coordinators:
+            if _dm_guard_blocks(str(coordinator_id)):
+                continue
+            roster_line = t(
+                'cwl.alarm.coordinator_roster_short' if shortfall else 'cwl.alarm.coordinator_roster_full',
+                user_id=str(coordinator_id), guild_id=guild_id,
+                assigned=shortfall["assigned"] if shortfall else 0,
+                roster_size=shortfall["roster_size"] if shortfall else 0,
+            )
+            missing_line = t(
+                'cwl.alarm.coordinator_missing_some' if missing else 'cwl.alarm.coordinator_missing_none',
+                user_id=str(coordinator_id), guild_id=guild_id,
+                count=len(missing), names=", ".join(missing),
+            )
+            sent, _outcome = await CACHE.send_user_dm_detailed(
+                str(coordinator_id),
+                t(
+                    'cwl.alarm.coordinator_start_reminder',
+                    user_id=str(coordinator_id), guild_id=guild_id,
+                    clan_name=clan_name, season=season,
+                    start_rel=cwl_start_at_discord_timestamp(clan.get("cwl_start_at"), "R") or "?",
+                    roster_line=roster_line, missing_line=missing_line,
+                ),
+            )
+            if sent:
+                sent_count += 1
+    return sent_count
+
+
+async def check_cwl_roster_switches() -> Dict[str, int]:
+    """Phase 6's once-per-cycle sweep: detect who has moved into their assigned clan, escalate to
+    those who haven't, and stop entirely per clan the moment its CWL roster locks.
+
+    Hooked into the same once-per-cycle slot as sweep_cwl_ended_flags() (QBhelperfunctions.py,
+    tracker #0017) — the established precedent for cheap, DB-bound, fleet-wide CWL housekeeping.
+
+    Costs ZERO CoC API calls, by design. "Has this player moved?" is answered from
+    user_players.current_clan_tag, which every regular clan poll already refreshes — the same signal
+    the Manage Teams board's green/amber cards and Phase 5's DM both use. The original plan's
+    accelerated-refresh bucket (force every participating clan into every cycle) was deliberately
+    NOT built: it would re-create precisely the per-cycle load pattern trackers #0009 (the 6 GB RSS
+    plateau) and #0017 (redundant mid-month CWL fetches) were fixed by removing, and it buys nothing
+    over a ~30 min membership staleness across a multi-DAY monitoring window.
+
+    Returns per-sweep counters for the caller's log line."""
+    db = CACHE.db_manager
+    counters = {
+        "events": 0, "locked": 0, "switched": 0, "alarms": 0, "coordinator_dms": 0,
+        "no_shows_dropped": 0, "entered_war": 0,
+    }
+    if db is None:
+        return counters
+
+    events = await asyncio.to_thread(db.get_active_cwl_events_sync)
+    for event in events:
+        guild_id = int(event["guild_id"])
+        season = event["cwl_season"]
+        counters["events"] += 1
+
+        # 1. Lock detection, before anything else — a clan that locked this cycle must not also
+        #    have alarms fired for it in the same pass.
+        clans = await asyncio.to_thread(db.get_cwl_event_clans_sync, event["id"])
+        open_tags = [
+            c["clan_tag"] for c in clans if c.get("participating", 1) and not c.get("locked_at")
+        ]
+        if open_tags:
+            locked_now = await asyncio.to_thread(
+                db.get_clans_with_cwl_data_for_season_sync, open_tags, season
+            )
+            still_open = [tag for tag in open_tags if tag not in locked_now]
+            if still_open:
+                # Fallback for clans whose own CWL war can't be observed (private war log).
+                locked_now |= await asyncio.to_thread(
+                    db.get_clans_in_cwl_league_group_sync, still_open, season
+                )
+            clan_names = {c["clan_tag"]: CACHE.get_clan_name(c["clan_tag"], c["clan_tag"]) for c in clans}
+            for clan_tag in locked_now:
+                stamped = await asyncio.to_thread(db.mark_cwl_event_clan_locked_sync, clan_tag, season)
+                if stamped:
+                    counters["locked"] += stamped
+                    logging.info(
+                        f"[CWL-SWITCH] {clan_tag} season={season}: CWL roster observed locked — "
+                        f"switch monitoring stops for {stamped} event-clan row(s)"
+                    )
+                # Snapshot + reconcile run for this guild's event even when `stamped` is 0 (another
+                # guild's sweep pass may have stamped the shared clan first) — the snapshot is
+                # write-once on its own, and each guild still has to clean up ITS OWN board.
+                await snapshot_cwl_locked_clan_roster(clan_tag, season)
+                reconciled = await reconcile_cwl_locked_clan_roster(
+                    guild_id, event["id"], season, clan_tag, clan_names.get(clan_tag) or clan_tag
+                )
+                counters["no_shows_dropped"] += reconciled["dropped"]
+
+        # A guild enters War phase the moment its FIRST participating clan starts in-game
+        # (2026-08-30, project owner's spec). Re-read rather than reusing `clans` above, which was
+        # fetched before this cycle's own locks were stamped.
+        if event["status"] == "announced":
+            refreshed = await asyncio.to_thread(db.get_cwl_event_clans_sync, event["id"])
+            if any(c.get("participating", 1) and c.get("locked_at") for c in refreshed):
+                await asyncio.to_thread(db.update_cwl_event_status_sync, event["id"], "war")
+                counters["entered_war"] += 1
+                logging.info(
+                    f"[CWL-SWITCH] guild={guild_id} season={season}: first clan started CWL — "
+                    f"event {event['id']} moved to war phase"
+                )
+                from clashcontrol.ui_cwl_roster import refresh_cwl_management_hub_message
+
+                await refresh_cwl_management_hub_message(guild_id)
+
+        # 2. Switch detection + escalation for whatever is still open.
+        monitoring = await asyncio.to_thread(
+            resolve_cwl_switch_monitoring_sync, guild_id, event["id"], season
+        )
+        for account in monitoring["switched"]:
+            switched_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%MZ")
+            if account["shared_clan_id"] is not None:
+                await asyncio.to_thread(
+                    db.set_cwl_shared_clan_player_switched_sync,
+                    account["shared_clan_id"], account["player_tag"], switched_at,
+                )
+            else:
+                await asyncio.to_thread(
+                    db.mark_cwl_assignment_switched_sync, event["id"], account["player_tag"], switched_at,
+                )
+            counters["switched"] += 1
+
+        for account in monitoring["pending"]:
+            stage = _due_cwl_alarm_stage(account["hours_left"], account["alarm_stage_sent"])
+            if stage is None:
+                continue
+            if await _send_cwl_switch_alarm(account, guild_id, stage):
+                counters["alarms"] += 1
+            # Bumped even when the DM couldn't go out (unlinked, blocked, guard) — otherwise an
+            # unreachable player would be retried every single cycle forever. The leadership
+            # escalation below is what actually covers them.
+            if account["shared_clan_id"] is not None:
+                await asyncio.to_thread(
+                    db.set_cwl_shared_clan_player_alarm_stage_sync,
+                    account["shared_clan_id"], account["player_tag"], stage,
+                )
+            else:
+                await asyncio.to_thread(
+                    db.bump_cwl_alarm_stage_sync, event["id"], account["player_tag"], stage,
+                )
+        # NOTE: leadership escalation is deliberately NOT also fired here at stage 2 (2026-08-30).
+        # An earlier draft DMed coordinators a "still missing" list at T-2h as well as the T-30min
+        # status report below — 90 minutes apart, saying nearly the same thing. That is precisely
+        # the DM avalanche the rest of this feature works to avoid, just aimed at leadership instead
+        # of players. Coordinators now get exactly ONE message per clan (the richer one: roster fill
+        # AND who's missing), while players keep both of their own escalating alarms, so nobody
+        # loses lead time.
+
+        # 30-minutes-before roster status report (spec item 7). Re-reads the clan rows so it sees
+        # this cycle's own locked_at stamps and doesn't report on a clan that just started.
+        counters["coordinator_dms"] += await send_cwl_coordinator_start_reminders(
+            guild_id, event["id"], season,
+            await asyncio.to_thread(db.get_cwl_event_clans_sync, event["id"]),
+        )
+
+    if any(counters[key] for key in ("locked", "switched", "alarms", "coordinator_dms", "entered_war")):
+        logging.info(
+            f"[CWL-SWITCH] Sweep: events={counters['events']} locked={counters['locked']} "
+            f"switched={counters['switched']} alarms={counters['alarms']} "
+            f"coordinator_dms={counters['coordinator_dms']} "
+            f"no_shows_dropped={counters['no_shows_dropped']} entered_war={counters['entered_war']}"
+        )
+    return counters
+
+
+async def _retract_enrollment_dms_for_tags(
+    event_id: int, player_tags: List[str], context: str,
+) -> None:
+    """Retract the enrollment DMs of specific players whose signup rows were just purged
+    (2026-08-21, tracker #0011). Thin async bridge so a plain-sync cleanup running under
+    asyncio.to_thread can still get its DMs retracted: the sync side returns the affected tags,
+    this resolves their DM refs and hands them to cleanup_stale_cwl_enrollment_dms().
+
+    Uses QBcore.bot rather than taking a bot/interaction parameter — the only production caller
+    (remove_cwl_guest_clan, reached from web_bridge.py's clan-config save) has no interaction in
+    scope, and this matches how other non-interaction contexts in this codebase reach the client.
+    Best-effort throughout, exactly like the Delete-Season path it mirrors."""
+    import QBcore
+
+    db = CACHE.db_manager
+    bot = getattr(QBcore, "bot", None)
+    if db is None or bot is None:
+        return
+
+    wanted = set(player_tags)
+    all_refs = await asyncio.to_thread(
+        db.get_cwl_player_season_status_dm_refs_for_event_sync, event_id
+    )
+    dm_refs = [r for r in all_refs if r["player_tag"] in wanted]
+    if not dm_refs:
+        return
+
+    result = await cleanup_stale_cwl_enrollment_dms(bot, dm_refs)
+    logging.info(
+        f"[CWL-ENROLLMENT] {context} (event {event_id}): retracted "
+        f"{result['deleted']}/{len(dm_refs)} now-stale enrollment DM(s), "
+        f"{result['failed']} could not be removed."
+    )
+
+
+async def cleanup_stale_cwl_enrollment_dms(bot: Any, dm_refs: List[Dict[str, Any]]) -> Dict[str, int]:
+    """Best-effort delete of the CWL enrollment DMs a just-deleted event sent (2026-08-19 fix,
+    live bug report: "Delete Season" left every recipient's Confirm/Opt Out buttons sitting
+    live-looking in their DMs — clicking one now correctly reports the sign-up as no longer
+    valid, but the button itself stayed there looking clickable in the meantime, which is more
+    confusing than just removing the message outright — project owner's stated preference).
+
+    dm_refs comes from db.get_cwl_player_season_status_dm_refs_for_event_sync(event_id), read by
+    the caller BEFORE delete_cwl_event_sync() clears those rows away — this function only ever
+    talks to the Discord API, never the DB.
+
+    Always called AFTER the season itself is already deleted, so every failure mode here (DMs
+    closed, bot blocked, the user or message already gone, any other API hiccup) is non-fatal and
+    silently skipped — there's nothing left to roll back to, and a stale DM that can't be
+    retracted is no worse than the pre-fix behavior."""
+    import discord
+
+    result = {"deleted": 0, "failed": 0}
+    for ref in dm_refs:
+        try:
+            user = await bot.fetch_user(int(ref["dmed_discord_id"]))
+            dm_channel = user.dm_channel or await user.create_dm()
+            message = await dm_channel.fetch_message(int(ref["message_id"]))
+            await message.delete()
+            result["deleted"] += 1
+        except discord.NotFound:
+            pass  # message and/or user already gone — nothing to retract
+        except discord.Forbidden:
+            result["failed"] += 1  # DMs closed / bot blocked
+        except (discord.HTTPException, ValueError, TypeError) as e:
+            logging.warning(
+                f"[CWL-ENROLLMENT] Could not delete stale enrollment DM for "
+                f"discord_id={ref.get('discord_id')}: {e}"
+            )
+            result["failed"] += 1
+    return result
+
+
+# Bound on how many enrollment DMs one sweep will re-route (2026-08-22, tracker #0019). A mass
+# re-link — or a bug in the detection query — must never be able to turn into an unbounded DM
+# burst inside a single cycle. Anything over the cap is simply picked up by the next cycle, and
+# the sweep logs when it hits the limit so that is visible rather than silent.
+_MAX_DM_REROUTES_PER_CYCLE = 25
+
+
+async def reroute_cwl_enrollment_dms_after_ownership_change() -> Dict[str, int]:
+    """Re-route still-unanswered CWL enrollment DMs whose account has changed Discord owner
+    (2026-08-22, tracker #0019).
+
+    The reported bug: when a CoC account changes owner, an enrollment DM already sitting in the
+    OLD owner's inbox keeps pointing at that account. The sign-up button still works for whoever
+    received the DM (deliberately — tracker #0016 widened the guard to accept the recorded
+    recipient, because rejecting them would have broken DMs that were legitimately delivered), so
+    the previous owner can answer on behalf of an account they no longer own, and the NEW owner is
+    never asked at all.
+
+    Project owner's spec:
+      - UNANSWERED (cwl_player_season_status.status = 'pending') -> delete the old owner's DM and
+        re-send it to the new owner.
+      - ANSWERED (confirmed/declined) -> leave it completely untouched. The response is a real
+        historical fact and must not be retracted or re-asked. Enforced by the detection query's
+        own `status = 'pending'` filter, not by anything here.
+
+    Why a periodic sweep rather than hooking the link/unlink path: that path is account-protection
+    code (Cardinal Rule 2), and a re-route means two Discord round trips (a delete and a send,
+    each internally retryable) — neither belongs inside the synchronous user-facing linking flow.
+    A startup-only pass was the other option and is not enough on its own: the bot runs for weeks
+    while an enrollment window lasts days, so it would routinely miss the window entirely. This
+    sweep subsumes startup anyway, since the first cycle runs shortly after boot.
+
+    Idempotent by construction (Cardinal Rule 12): a re-routed row's dmed_discord_id then matches
+    the live owner, so it stops matching the detection on every subsequent pass.
+
+    An account that has simply been UNLINKED is deliberately NOT re-routed. Unlinking is ownership
+    *removal*, not an ownership *change* — there is nobody to re-send to, and the project owner
+    explicitly confirmed for the live #LLV0Y9PQ / .zuurn case that the old recipient's button
+    should keep working. get_player_links_sync() reports an UNASSIGNED-pool account as
+    discord_id=None, so both "no row at all" and "in the UNASSIGNED pool" fall through untouched.
+
+    Returns:
+        {"checked", "rerouted", "retracted", "send_failed", "capped"} — counts for the cycle log.
+        Best-effort throughout: every failure is logged and skipped, never raised, since this runs
+        inside the main update cycle and must never break it.
+    """
+    import QBcore
+
+    result: Dict[str, int] = {"checked": 0, "rerouted": 0, "retracted": 0, "send_failed": 0, "capped": 0}
+    db = CACHE.db_manager
+    bot = getattr(QBcore, "bot", None)
+    if db is None or bot is None:
+        return result
+
+    candidates = await asyncio.to_thread(db.find_cwl_enrollment_dms_needing_reroute_sync)
+    if not candidates:
+        return result
+    result["checked"] = len(candidates)
+
+    # One bulk ownership lookup for the whole candidate set, not one per row — this runs every
+    # cycle, and the helper already does the verified-wins / UNASSIGNED-last dedup that decides
+    # which user_players row is the real owner (see the detection query's own docstring).
+    live_links = await asyncio.to_thread(
+        db.get_player_links_sync, [c["player_tag"] for c in candidates]
+    )
+
+    stale: List[Dict[str, Any]] = []
+    for candidate in candidates:
+        live_owner = (live_links.get(candidate["player_tag"]) or {}).get("discord_id")
+        # None covers both "never linked" and "sitting in the UNASSIGNED pool" — see the docstring
+        # on why neither is a re-route.
+        if not live_owner or live_owner == candidate["dmed_discord_id"]:
+            continue
+        candidate["new_owner_id"] = live_owner
+        stale.append(candidate)
+
+    if not stale:
+        return result
+
+    if len(stale) > _MAX_DM_REROUTES_PER_CYCLE:
+        result["capped"] = len(stale) - _MAX_DM_REROUTES_PER_CYCLE
+        stale = stale[:_MAX_DM_REROUTES_PER_CYCLE]
+
+    for entry in stale:
+        player_tag = entry["player_tag"]
+        season = entry["cwl_season"]
+        event_id = entry["event_id"]
+        guild_id = int(entry["guild_id"])
+
+        # 1. Retract the old owner's DM FIRST, so they lose the ability to answer even if the
+        #    re-send below fails. Best-effort — a row predating the 2026-08-19 dm_sent_via_*
+        #    columns has no message id at all, and step 3 covers that case on its own.
+        if entry.get("message_id"):
+            try:
+                retract = await cleanup_stale_cwl_enrollment_dms(
+                    bot,
+                    [{
+                        "player_tag": player_tag,
+                        "dmed_discord_id": entry["dmed_discord_id"],
+                        "message_id": entry["message_id"],
+                    }],
+                )
+                result["retracted"] += retract["deleted"]
+            except Exception as e:
+                logging.warning(
+                    f"[CWL-DM-REROUTE] Could not retract the old enrollment DM for {player_tag}: {e}"
+                )
+
+        # 2. Clear the global dm_sent record. Load-bearing: _send_cwl_enrollment_dm_batch()'s
+        #    global dedup would otherwise count this player as already contacted this season and
+        #    send nothing at all.
+        await asyncio.to_thread(db.clear_cwl_player_dm_sent_sync, player_tag, season)
+
+        # 3. Re-point the local signup row's recorded recipient. This is what closes the hole for
+        #    a legacy row whose message could not be deleted above — the button's guard is
+        #    {signup.dmed_discord_id, live_discord_id}, so once both name the new owner the old
+        #    owner's surviving DM correctly rejects them.
+        await asyncio.to_thread(
+            db.set_cwl_signup_dmed_discord_id_sync, event_id, player_tag, entry["new_owner_id"]
+        )
+
+        # 4. Re-send to the new owner. Through the batch helper, never a hand-rolled send — it
+        #    seeds the cwl_signups row the button needs (Pitfall 38) and re-stamps the global
+        #    row's dmed_discord_id via mark_cwl_player_dm_sent_sync on success.
+        batch = await _send_cwl_enrollment_dm_batch(
+            event_id, guild_id, season,
+            [{
+                "player_tag": player_tag,
+                "player_name": entry.get("player_name") or player_tag,
+                "discord_id": entry["new_owner_id"],
+            }],
+        )
+        if batch["contacted"]:
+            result["rerouted"] += 1
+            logging.info(
+                f"[CWL-DM-REROUTE] {player_tag} ({season}): enrollment DM moved from "
+                f"{entry['dmed_discord_id']} to {entry['new_owner_id']} (event {event_id})"
+            )
+        else:
+            # Left at status='pending' with dm_sent=0 — exactly the state "Notify New Pool
+            # Members" already picks up, so this recovers on its own rather than stranding
+            # the player with no DM at all.
+            result["send_failed"] += 1
+            logging.warning(
+                f"[CWL-DM-REROUTE] {player_tag} ({season}): retracted the old DM but could not "
+                f"reach the new owner {entry['new_owner_id']} — left pending for a later "
+                f"\"Notify New Pool Members\" run"
+            )
+
+    if result["capped"]:
+        logging.info(
+            f"[CWL-DM-REROUTE] Hit the per-cycle cap of {_MAX_DM_REROUTES_PER_CYCLE} — "
+            f"{result['capped']} more will be re-routed next cycle"
+        )
+    return result
+
+
+def fire_cwl_dm_reroute_after_ownership_change() -> None:
+    """Fire-and-forget trigger for reroute_cwl_enrollment_dms_after_ownership_change(), called
+    right after a player-linking flow finishes displacing a previous owner (API token override,
+    admin override, or the unverified-duplicate replace — see the three call sites in
+    _link_player_to_user(), QBdiscocmdshelper.py) — 2026-08-23 follow-up to tracker #0019.
+
+    Deliberately NOT awaited by the caller: the linking flow is account-protection code (Cardinal
+    Rule 2), and the periodic sweep's own docstring already explains why a delete-plus-send DM
+    round trip (each internally retryable) doesn't belong inside that synchronous, user-facing
+    path. Scheduling this as a background task gets the near-real-time reroute without adding any
+    latency or failure surface to that path — the linking flow just schedules it and moves on. The
+    per-cycle sweep in ClashControl.py's main() keeps running unconditionally regardless, as the safety
+    net for whenever this task loses the race against a slower DB write, fails outright, or the
+    bot restarts before it runs.
+
+    Must be called only after the caller's own persistence of BOTH sides of the ownership change
+    has completed (old owner removed AND new owner's row written) — calling it any earlier risks
+    the task's DB read landing in the gap where the tag is briefly unowned, which the sweep's own
+    logic (correctly) treats as "unlinked, nobody to route to" and skips. That would just cost one
+    missed instant reroute (the next periodic cycle still catches it), never a wrong result, but
+    there's no reason to take the race."""
+    asyncio.create_task(_run_cwl_dm_reroute_and_log(prefix="instant"))
+
+
+async def _run_cwl_dm_reroute_and_log(prefix: str) -> None:
+    """Runs the sweep and logs with `prefix` distinguishing an instant (post-link) run from the
+    regular per-cycle one in ClashControl.py — reroute_cwl_enrollment_dms_after_ownership_change()
+    itself is already best-effort/never-raises, but a fire-and-forget asyncio task with no
+    handler at all would otherwise surface any future regression only as asyncio's generic
+    "Task exception was never retrieved" warning."""
+    try:
+        result = await reroute_cwl_enrollment_dms_after_ownership_change()
+        if result["rerouted"] or result["send_failed"]:
+            logging.info(
+                f"[CWL-DM-REROUTE] ({prefix}) {result['rerouted']} DM(s) re-routed to a new owner "
+                f"({result['retracted']} old message(s) retracted, "
+                f"{result['send_failed']} could not be re-sent) out of "
+                f"{result['checked']} unanswered DM(s) checked"
+            )
+    except Exception as e:
+        logging.warning(f"[CWL-DM-REROUTE] ({prefix}) sweep raised unexpectedly: {e}")
+

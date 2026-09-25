@@ -14,8 +14,8 @@ import pytest
 
 os.environ.setdefault("DISCORD_TOKEN", "test-token")
 
-from qapbot.db_manager import WarHistoryDB
-from qapbot.ui_tracker import (
+from clashcontrol.db_manager import WarHistoryDB
+from clashcontrol.ui_tracker import (
     PRIORITY_VALUES,
     TRACKER_SETTING_BUG_CHANNEL,
     TRACKER_SETTING_DONE_TESTING_CHANNEL,
@@ -77,7 +77,7 @@ async def db(tmp_path):
 
 @pytest.fixture(autouse=True)
 def _wire_cache_db(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     monkeypatch.setattr(CACHE, "db_manager", db)
     monkeypatch.setattr(CACHE, "tracker_settings", {})
     return db
@@ -85,7 +85,7 @@ def _wire_cache_db(db, monkeypatch):
 
 @pytest.fixture(autouse=True)
 def _configure_admin(monkeypatch):
-    from qapbot.config import CONFIG
+    from clashcontrol.config import CONFIG
     import dataclasses
     # tracker_enabled=True: the ambient test CONFIG defaults to DEV-like settings (is_dev_mode
     # True, tracker_enabled False) absent real PROD env vars -- this whole file exercises tracker
@@ -93,9 +93,9 @@ def _configure_admin(monkeypatch):
     # fixture makes for cwl_dm_restrict_to_admin. Needed since 2026-08-22's live bug report fix:
     # handle_tracker_test_reaction() now gates on tracker_enabled (see its own docstring).
     monkeypatch.setattr(
-        "qapbot.config.CONFIG", dataclasses.replace(CONFIG, server_admin=ADMIN_ID, tracker_enabled=True)
+        "clashcontrol.config.CONFIG", dataclasses.replace(CONFIG, server_admin=ADMIN_ID, tracker_enabled=True)
     )
-    # ui_tracker imports CONFIG inside its functions (`from qapbot.config import CONFIG`),
+    # ui_tracker imports CONFIG inside its functions (`from clashcontrol.config import CONFIG`),
     # which re-reads the module attribute each call, so the patch above is picked up live.
 
 
@@ -186,7 +186,7 @@ async def test_tracker_schema_backfill_skipped_when_tracker_unconfigured(db):
 # -- create_tracker_item_for_agent (tracker item #0015) --------------------
 
 async def test_create_tracker_item_for_agent_persists_and_posts(monkeypatch, db):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     CACHE.tracker_settings[TRACKER_SETTING_BUG_CHANNEL] = "1"
     channel = _fake_channel()
     _wire_bot(monkeypatch, channel=channel)
@@ -203,7 +203,7 @@ async def test_create_tracker_item_for_agent_persists_and_posts(monkeypatch, db)
 
 
 async def test_create_tracker_item_for_agent_feature_ignores_environment(monkeypatch, db):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     CACHE.tracker_settings[TRACKER_SETTING_BUG_CHANNEL] = "1"
     _wire_bot(monkeypatch, channel=_fake_channel())
 
@@ -214,7 +214,7 @@ async def test_create_tracker_item_for_agent_feature_ignores_environment(monkeyp
 
 
 async def test_create_tracker_item_for_agent_rejects_bad_item_type(monkeypatch, db):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     CACHE.tracker_settings[TRACKER_SETTING_BUG_CHANNEL] = "1"
     with pytest.raises(ValueError):
         await create_tracker_item_for_agent(item_type="epic", title="T", description="D")
@@ -226,7 +226,7 @@ async def test_create_tracker_item_for_agent_requires_configured_channel(monkeyp
 
 
 async def test_create_tracker_item_for_agent_respects_disabled_flag(monkeypatch, db):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     CACHE.tracker_settings[TRACKER_SETTING_BUG_CHANNEL] = "1"
     CACHE.tracker_settings[TRACKER_SETTING_ENABLED] = "0"
     with pytest.raises(ValueError):
@@ -237,7 +237,7 @@ async def test_create_tracker_item_for_agent_persists_tracker_home_guild(monkeyp
     """tracker item #0023: the stored guild_id must be the tracker's configured home guild
     (where the reports channel/discussion thread actually live), not left NULL -- otherwise
     _item_jump_link()'s Discord URL for an agent-filed item names no guild at all."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     CACHE.tracker_settings[TRACKER_SETTING_BUG_CHANNEL] = "1"
     CACHE.tracker_settings[TRACKER_SETTING_GUILD_ID] = "1145641080621109312"
     _wire_bot(monkeypatch, channel=_fake_channel())
@@ -253,8 +253,8 @@ async def test_create_tracker_item_for_agent_caps_overlong_title(monkeypatch, db
     """tracker item #0037: title has no client-side cap on this (non-Discord-modal) path, so an
     over-length title must be truncated at creation -- otherwise the item becomes permanently
     un-editable (opening Edit fails Discord's own max_length validation on the modal's default)."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_tracker import TRACKER_TITLE_MAX_LENGTH
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_tracker import TRACKER_TITLE_MAX_LENGTH
     CACHE.tracker_settings[TRACKER_SETTING_BUG_CHANNEL] = "1"
     _wire_bot(monkeypatch, channel=_fake_channel())
 
@@ -320,7 +320,7 @@ async def test_build_tracker_embed_stays_english_regardless_of_guild_language(db
     same for everyone, so it must ignore the viewing guild's/reporter's configured language
     (previously status labels like "Implemented"/"Umgesetzt" showed inconsistently depending
     on which guild's language setting happened to apply -- confusing for whoever's triaging)."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     item_number = await _make_item(db, item_type="bug", guild_id="987654321")
     await db.update_tracker_item(item_number, status="implemented")
@@ -343,7 +343,7 @@ def test_modal_respects_guild_language_unlike_the_posted_record(monkeypatch):
     previously forced English by the same module-level t() shadow; project owner: "The modal
     should be translated while the resulting channel message or at least its status labels
     should remain english always"."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     monkeypatch.setattr(CACHE, "server_config", {"987654321": {"language": "de"}})
     monkeypatch.setattr(CACHE, "user_accounts", {})  # no per-user override -- guild language applies
@@ -359,7 +359,7 @@ def test_modal_respects_guild_language_unlike_the_posted_record(monkeypatch):
 
 
 def test_modal_falls_back_to_english_without_a_guild_or_user_language(monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     monkeypatch.setattr(CACHE, "server_config", {})
     monkeypatch.setattr(CACHE, "user_accounts", {})
@@ -374,8 +374,8 @@ def test_modal_falls_back_to_english_without_a_guild_or_user_language(monkeypatc
 async def test_tracker_disabled_and_not_configured_messages_respect_language(monkeypatch, mock_interaction):
     """The two /bug and /feature early-return gating messages are ephemeral (seen only by the
     person who ran the command), same category as the modal above -- not the posted record."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_tracker import start_tracker_item
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_tracker import start_tracker_item
 
     monkeypatch.setattr(CACHE, "server_config", {"987654321": {"language": "de"}})
     monkeypatch.setattr(CACHE, "user_accounts", {})
@@ -436,7 +436,7 @@ def test_modal_clamps_overlong_initial_title_on_edit():
     other path that skipped it) can still have a >100-char title stored. Opening Edit on it must
     not construct a modal whose title field default itself exceeds max_length -- Discord rejects
     that with a 400 before the modal is even shown, permanently blocking Edit on that item."""
-    from qapbot.ui_tracker import TRACKER_TITLE_MAX_LENGTH
+    from clashcontrol.ui_tracker import TRACKER_TITLE_MAX_LENGTH
     overlong = "x" * (TRACKER_TITLE_MAX_LENGTH + 20)
 
     modal = TrackerItemModal(
@@ -579,7 +579,7 @@ def test_draft_preview_defaults_priority_to_medium_when_unset():
 async def test_on_submit_posts_to_the_shared_bug_channel(db, monkeypatch, mock_interaction, item_type):
     """Both /bug and /feature must resolve to TRACKER_SETTING_BUG_CHANNEL now that the separate
     feature channel setting is retired — only one channel is ever configured any more."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     channel = _fake_channel()
     _wire_bot(monkeypatch, channel=channel)
@@ -608,7 +608,7 @@ async def test_on_submit_persists_tracker_home_guild_not_reporting_guild(db, mon
     the row once the invited reporter joined (on_member_join always fires for the tracker's home
     guild), so the auto-grant-on-join step silently never applied -- exactly the "invite didn't
     work" symptom reported."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     channel = _fake_channel()
     _wire_bot(monkeypatch, channel=channel)
@@ -635,7 +635,7 @@ async def test_on_submit_persists_no_guild_when_tracker_home_guild_unconfigured(
     """Defensive fallback: if the tracker's home guild somehow isn't configured (shouldn't
     happen in practice -- Bot Setup's Save always stamps it alongside the reports channel), the
     item still gets created rather than crashing, with guild_id left NULL like before this fix."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     channel = _fake_channel()
     _wire_bot(monkeypatch, channel=channel)
@@ -659,7 +659,7 @@ async def test_on_submit_persists_no_guild_when_tracker_home_guild_unconfigured(
 async def test_on_submit_second_click_does_not_create_a_second_item(db, monkeypatch, mock_interaction):
     """A user double-clicking Submit before the first click's response lands (Discord hadn't
     yet made the button vanish) must not create a second tracker item for the same report."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     channel = _fake_channel()
     _wire_bot(monkeypatch, channel=channel)
@@ -682,7 +682,7 @@ async def test_on_submit_second_click_does_not_create_a_second_item(db, monkeypa
 async def test_on_submit_disables_buttons_via_edit_message_response(db, monkeypatch, mock_interaction):
     """Buttons must vanish as fast as possible: edit_message() as the interaction response
     itself (not a separate defer-then-edit round trip), with every button disabled."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     channel = _fake_channel()
     _wire_bot(monkeypatch, channel=channel)
@@ -716,7 +716,7 @@ async def test_expired_draft_replaces_buttons_with_notice_and_closes_its_upload_
     """An abandoned draft must not keep showing buttons that only fail when clicked: expiry edits
     it to a notice (no view) and drops the upload window it opened, so a later file posted in
     that channel is ordinary chat again."""
-    from qapbot import ui_tracker
+    from clashcontrol import ui_tracker
 
     draft = _draft()
     draft.message = AsyncMock()
@@ -753,7 +753,7 @@ async def test_expire_prefers_the_latest_interaction_that_responded_on_the_draft
 
 @pytest.mark.asyncio
 async def test_expire_after_submit_is_a_no_op(db, monkeypatch, mock_interaction):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     _wire_bot(monkeypatch, channel=_fake_channel())
     monkeypatch.setattr(CACHE, "tracker_settings", {TRACKER_SETTING_BUG_CHANNEL: "42"})
@@ -770,7 +770,7 @@ async def test_expire_after_submit_is_a_no_op(db, monkeypatch, mock_interaction)
 
 @pytest.mark.asyncio
 async def test_touch_restarts_the_timer_and_stop_cancels_it(monkeypatch):
-    from qapbot import ui_tracker
+    from clashcontrol import ui_tracker
 
     monkeypatch.setattr(ui_tracker, "DRAFT_EXPIRY_SECONDS", 0.01)
     draft = _draft()
@@ -790,7 +790,7 @@ async def test_touch_restarts_the_timer_and_stop_cancels_it(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_timer_expires_an_untouched_draft(monkeypatch):
-    from qapbot import ui_tracker
+    from clashcontrol import ui_tracker
 
     monkeypatch.setattr(ui_tracker, "DRAFT_EXPIRY_SECONDS", 0.01)
     draft = _draft()
@@ -843,7 +843,7 @@ async def test_discard_edits_via_the_discard_click_itself(mock_interaction):
 
 @pytest.mark.asyncio
 async def test_start_tracker_item_opens_modal_regardless_of_existing_open_item_count(db, monkeypatch, mock_interaction):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     monkeypatch.setattr(CACHE, "tracker_settings", {TRACKER_SETTING_BUG_CHANNEL: "42"})
 
     reporter_id = str(mock_interaction.user.id)
@@ -871,7 +871,7 @@ async def test_status_select_edits_dropdown_message_in_place(db, monkeypatch, mo
     """The status dropdown is a single-use picker (like ConfirmItemDoneView/ConfirmForceMoveView)
     -- picking a value must replace its own message via edit_original_response(), not leave the
     stale dropdown behind while a separate confirmation message is sent (message-clutter Pitfall
-    2, qapbot/docs/COPILOT_PITFALLS_COOKBOOK.md; 2026-08-23 fix)."""
+    2, clashcontrol/docs/COPILOT_PITFALLS_COOKBOOK.md; 2026-08-23 fix)."""
     _wire_bot(monkeypatch, channel=None)
     item_number = await _make_item(db)
     view = TrackerStatusSelectView(item_number, "new", str(mock_interaction.user.id), mock_interaction.guild.id)
@@ -1090,7 +1090,7 @@ async def test_apply_status_change_done_moves_item_only_not_test_message(db, mon
     """Decoupled (tracker item #0015 follow-up, 2026-08-22): the item's own `done` transition
     must never touch the test-case message — that only moves on its own trigger
     (move_testcases_to_done_channel / finalize_testcases_move)."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     CACHE.tracker_settings[TRACKER_SETTING_IMPLEMENTED_CHANNEL] = "50"
     CACHE.tracker_settings[TRACKER_SETTING_DONE_TESTING_CHANNEL] = "60"
 
@@ -1143,7 +1143,7 @@ async def test_apply_status_change_rejected_and_duplicate_also_move_to_implement
     Implemented channel — rejected/duplicate fell into the plain in-place-refresh branch and
     lingered in the working reports channel forever instead of being archived like everything
     else that's finished."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     CACHE.tracker_settings[TRACKER_SETTING_IMPLEMENTED_CHANNEL] = "50"
 
     old_item_message = _fake_message(message_id=100)
@@ -1170,7 +1170,7 @@ async def test_apply_status_change_rejected_and_duplicate_also_move_to_implement
 async def test_finalize_testcases_move_moves_test_message_independent_of_item_status(db, monkeypatch):
     """The other half of the decoupling: moving the test-case message must never touch the
     item's own status/channel fields."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     CACHE.tracker_settings[TRACKER_SETTING_DONE_TESTING_CHANNEL] = "60"
 
     old_test_message = _fake_message(message_id=200)
@@ -1220,7 +1220,7 @@ async def test_movedone_button_does_not_crash_when_linked_item_already_done(db, 
     """End-to-end reproduction of the reported crash: click Move to Done (no unchecked cases,
     straight to completion) on a test-case set whose linked tracker item is already 'done' --
     get_linked_item_if_eligible_for_done() returns None, which used to blow up the followup."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     CACHE.tracker_settings[TRACKER_SETTING_DONE_TESTING_CHANNEL] = "60"
     old_test_channel = _fake_channel(fetch_message=_fake_message(message_id=200))
     done_testing_channel = _fake_channel(send_message=_fake_message(message_id=600))
@@ -1256,7 +1256,7 @@ async def test_apply_status_change_done_without_implemented_channel_falls_back_t
 
 @pytest.mark.asyncio
 async def test_apply_status_change_done_skips_move_when_already_in_implemented_channel(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     CACHE.tracker_settings[TRACKER_SETTING_IMPLEMENTED_CHANNEL] = "50"
     message = _fake_message()
     channel = _fake_channel(fetch_message=message)
@@ -1274,7 +1274,7 @@ async def test_apply_status_change_done_skips_move_when_already_in_implemented_c
 
 @pytest.mark.asyncio
 async def test_apply_status_change_done_without_test_message_skips_test_move_cleanly(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     CACHE.tracker_settings[TRACKER_SETTING_DONE_TESTING_CHANNEL] = "60"
     _wire_bot(monkeypatch, channel=None)
     item_number = await _make_item(db)
@@ -1289,7 +1289,7 @@ async def test_apply_status_change_done_without_test_message_skips_test_move_cle
 
 @pytest.mark.asyncio
 async def test_post_test_cases_transitions_to_testing(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     CACHE.tracker_settings[TRACKER_SETTING_TEST_CHANNEL] = "1"
     channel = _fake_channel()
     _wire_bot(monkeypatch, channel=channel)
@@ -1302,7 +1302,7 @@ async def test_post_test_cases_transitions_to_testing(db, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_post_test_cases_renders_per_case_priority(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     CACHE.tracker_settings[TRACKER_SETTING_TEST_CHANNEL] = "1"
     channel = _fake_channel()
     _wire_bot(monkeypatch, channel=channel)
@@ -1322,7 +1322,7 @@ async def test_post_test_cases_renders_per_case_priority(db, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_post_test_cases_does_not_downgrade_done(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     CACHE.tracker_settings[TRACKER_SETTING_TEST_CHANNEL] = "1"
     channel = _fake_channel()
     _wire_bot(monkeypatch, channel=channel)
@@ -1340,7 +1340,7 @@ async def test_post_test_cases_after_archive_reposts_to_live_channel_not_done_te
     first and silently keep posting into the archive channel forever after — the new cases
     never reached the live channel testers were actually watching, even though the DB write and
     the item's 'testing' status both looked entirely normal from the caller's side."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     CACHE.tracker_settings[TRACKER_SETTING_TEST_CHANNEL] = "1"
     CACHE.tracker_settings[TRACKER_SETTING_DONE_TESTING_CHANNEL] = "60"
     live_channel = _fake_channel()
@@ -1434,7 +1434,7 @@ async def test_post_test_cases_small_set_still_edits_in_place_on_repost(db, monk
     """Regression guard for the common case: a test-case list that has always fit in one message
     must keep today's edit-in-place behavior (same message, no delete+repost) after the chunking
     refactor -- this is the path every existing tracker item with a short case list takes."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     CACHE.tracker_settings[TRACKER_SETTING_TEST_CHANNEL] = "1"
     message = _fake_message(message_id=42)
     # send_message: what the first, fresh post() returns. fetch_message: what the second call's
@@ -1461,7 +1461,7 @@ async def test_post_test_cases_small_set_still_edits_in_place_on_repost(db, monk
 
 @pytest.mark.asyncio
 async def test_post_test_cases_overflow_sends_multiple_messages_view_only_on_last(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     CACHE.tracker_settings[TRACKER_SETTING_TEST_CHANNEL] = "1"
     # Unique, freshly-minted message per send() call, how many ever turn out to be needed —
     # the exact chunk count is an internal formatting detail this test deliberately doesn't
@@ -1499,7 +1499,7 @@ async def test_post_test_cases_growing_past_one_message_deletes_the_old_single_m
     """Edit-in-place must be abandoned the moment a repost needs more than one message -- a
     freshly-created overflow message would otherwise land chronologically AFTER the old message
     being edited in place, breaking top-to-bottom reading order."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     CACHE.tracker_settings[TRACKER_SETTING_TEST_CHANNEL] = "1"
     old_message = _fake_message(message_id=200)
     channel = _fake_channel(send_message=old_message, fetch_message=old_message)
@@ -1528,7 +1528,7 @@ async def test_post_test_cases_shrinking_back_to_one_message_deletes_all_old_ove
     """The inverse of the growth case: a case list that shrinks back under the limit must clean
     up EVERY previously-tracked message (primary and overflow), not just leave the overflow ones
     orphaned in the channel."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     CACHE.tracker_settings[TRACKER_SETTING_TEST_CHANNEL] = "1"
     channel = _fake_channel()
     channel.id = 1
@@ -1557,7 +1557,7 @@ async def test_refresh_testcase_message_persists_new_ids_after_rechunk(db, monke
     """_refresh_testcase_message() (called after every Pass/Fail click) must persist a changed
     test_message_id/test_overflow_message_ids when a re-chunk changes them -- otherwise the next
     refresh would keep trying to edit message ids that no longer exist."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     CACHE.tracker_settings[TRACKER_SETTING_TEST_CHANNEL] = "1"
     old_message = _fake_message(message_id=500)
     channel = _fake_channel(send_message=old_message, fetch_message=old_message)
@@ -1585,7 +1585,7 @@ async def test_finalize_testcases_move_moves_every_overflow_message(db, monkeypa
     """The Done-channel move must delete ALL previously-tracked messages from the SOURCE channel
     (not just the primary one) and post fresh chunks to the DESTINATION channel — it can't reuse
     the live-channel edit-in-place path since old and new messages live in different channels."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     CACHE.tracker_settings[TRACKER_SETTING_DONE_TESTING_CHANNEL] = "60"
 
     old_overflow = _fake_message(message_id=301)
@@ -2089,12 +2089,12 @@ async def test_reaction_is_a_noop_when_tracker_disabled(db, monkeypatch):
     every bot present in a channel regardless of which bot's message was reacted to -- unlike
     component interactions, which Discord routes only to the owning application -- so this can't
     rely on "DEV just never sees a matching row" the way the DynamicItem buttons safely can.
-    tracker_enabled=False (DEV's real setting: `not is_dev_mode`, qapbot/config.py) must make
+    tracker_enabled=False (DEV's real setting: `not is_dev_mode`, clashcontrol/config.py) must make
     this a true no-op even when a matching item genuinely exists in this bot's own DB."""
     import dataclasses
-    from qapbot.config import CONFIG as _cfg
+    from clashcontrol.config import CONFIG as _cfg
 
-    monkeypatch.setattr("qapbot.config.CONFIG", dataclasses.replace(_cfg, tracker_enabled=False))
+    monkeypatch.setattr("clashcontrol.config.CONFIG", dataclasses.replace(_cfg, tracker_enabled=False))
     _wire_bot(monkeypatch, channel=None)
     item_number = await _make_item(db)
     await db.set_tracker_testcases(item_number, [{"environment": "PROD", "description": "x"}])
@@ -2136,7 +2136,7 @@ async def test_reaction_on_already_passed_archived_item_is_a_true_noop(db, monke
     already fully passed AND already archived to the Done Testing channel resurrected its
     Pass/Fail/Move-to-Done buttons. Nothing is pending, so this must not touch the message at
     all -- not even a content-only edit."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     CACHE.tracker_settings[TRACKER_SETTING_DONE_TESTING_CHANNEL] = "60"
     message = _fake_message(message_id=600)
     channel = _fake_channel(fetch_message=message)
@@ -2158,8 +2158,8 @@ async def test_refresh_testcase_message_strips_view_once_archived(db, monkeypatc
     triggered by a redundant 👍, or by mark_testing_failed on a different item entirely) must not
     undo that by reattaching a fresh interactive view. Exercises _refresh_testcase_message
     directly so the assertion holds regardless of which caller invokes it."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_tracker import _refresh_testcase_message
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_tracker import _refresh_testcase_message
 
     CACHE.tracker_settings[TRACKER_SETTING_DONE_TESTING_CHANNEL] = "60"
     message = _fake_message(message_id=600)
@@ -2193,7 +2193,7 @@ async def test_reaction_from_non_admin_non_tester_is_ignored(db, monkeypatch):
 async def test_reaction_from_configured_tester_is_honored(db, monkeypatch):
     """Testers (CACHE.testers, the /admin MANAGE_TESTERS allowlist) can sign off test cases the
     same as the bot admin -- not just the admin account (2026-08-23 permission change)."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     monkeypatch.setattr(CACHE, "testers", {"999999"})
     message = _fake_message()
@@ -2811,9 +2811,9 @@ async def test_apply_pending_requestor_access_skips_terminal_item(db, monkeypatc
 
 
 async def test_apply_pending_requestor_access_noop_when_tracker_disabled(db, monkeypatch):
-    from qapbot.config import CONFIG
+    from clashcontrol.config import CONFIG
     import dataclasses
-    monkeypatch.setattr("qapbot.config.CONFIG", dataclasses.replace(CONFIG, tracker_enabled=False))
+    monkeypatch.setattr("clashcontrol.config.CONFIG", dataclasses.replace(CONFIG, tracker_enabled=False))
 
     channel = _fake_channel()
     channel.set_permissions = AsyncMock()
@@ -2836,7 +2836,7 @@ async def test_apply_pending_requestor_access_noop_when_tracker_disabled(db, mon
 # -- grant_access_for_agent / reply_and_invite_for_agent (tracker item #0102) ---------------
 
 async def test_grant_access_for_agent_grants_when_already_member(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     CACHE.tracker_settings[TRACKER_SETTING_GUILD_ID] = "999"
 
     channel = _fake_channel()
@@ -2862,7 +2862,7 @@ async def test_grant_access_for_agent_already_has_access_skips_overwrite(db, mon
     """Shared `_apply_requestor_grant()` behavior (tracker item #0104): the agent-facing path
     must get the same "don't re-grant what's already granted" treatment as the Discord button's,
     since both funnel through the same function."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     CACHE.tracker_settings[TRACKER_SETTING_GUILD_ID] = "999"
 
     channel = _fake_channel()
@@ -2885,7 +2885,7 @@ async def test_grant_access_for_agent_already_has_access_skips_overwrite(db, mon
 
 
 async def test_grant_access_for_agent_invites_non_member(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     CACHE.tracker_settings[TRACKER_SETTING_GUILD_ID] = "999"
 
     fake_user = AsyncMock()
@@ -2911,7 +2911,7 @@ async def test_grant_access_for_agent_invites_non_member(db, monkeypatch):
 
 
 async def test_grant_access_for_agent_no_reporter_for_agent_filed_item(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     CACHE.tracker_settings[TRACKER_SETTING_GUILD_ID] = "999"
     _wire_bot(monkeypatch, channel=None)
 
@@ -2940,7 +2940,7 @@ async def test_grant_access_for_agent_raises_for_unknown_item(db, monkeypatch):
 
 
 async def test_reply_and_invite_for_agent_posts_comment_and_grants(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     CACHE.tracker_settings[TRACKER_SETTING_GUILD_ID] = "999"
 
     thread = _fake_channel()
@@ -2975,7 +2975,7 @@ async def test_reply_and_invite_for_agent_raises_without_thread(db, monkeypatch)
 
 
 async def test_apply_status_change_done_revokes_requestor_access_when_moved(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     CACHE.tracker_settings[TRACKER_SETTING_IMPLEMENTED_CHANNEL] = "50"
 
     old_item_message = _fake_message(message_id=100)
@@ -3003,7 +3003,7 @@ async def test_apply_status_change_done_revokes_requestor_access_when_moved(db, 
 
 
 async def test_apply_status_change_done_keeps_access_with_another_open_item_in_same_channel(db, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
     CACHE.tracker_settings[TRACKER_SETTING_IMPLEMENTED_CHANNEL] = "50"
 
     old_item_message = _fake_message(message_id=100)

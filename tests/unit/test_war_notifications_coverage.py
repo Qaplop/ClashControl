@@ -1,4 +1,4 @@
-"""Extended tests for qapbot/war_notifications.py — pure/sync helper functions.
+"""Extended tests for clashcontrol/war_notifications.py — pure/sync helper functions.
 
 Targets uncovered lines: 93-136, 181-182, 187, 193-196, 230-232, 294-301,
 328, 335-340, 346-347, 381-472 and more.
@@ -26,7 +26,7 @@ class TestGetHoursUntilWarEnd:
     def test_future_datetime_parsed_correctly(self):
         """Actual UTC datetime is parsed; stale seconds_until is ignored."""
         from datetime import timedelta
-        from qapbot.war_notifications import _get_hours_until_war_end
+        from clashcontrol.war_notifications import _get_hours_until_war_end
         future = datetime.now(timezone.utc) + timedelta(hours=2)
         end_str = (
             f"<Timestamp time=datetime.datetime({future.year}, {future.month}, {future.day}, "
@@ -39,7 +39,7 @@ class TestGetHoursUntilWarEnd:
     def test_expired_datetime_returns_negative(self):
         """War that ended hours ago returns negative value → filtered out."""
         from datetime import timedelta
-        from qapbot.war_notifications import _get_hours_until_war_end
+        from clashcontrol.war_notifications import _get_hours_until_war_end
         past = datetime.now(timezone.utc) - timedelta(hours=4)
         end_str = (
             f"<Timestamp time=datetime.datetime({past.year}, {past.month}, {past.day}, "
@@ -52,7 +52,7 @@ class TestGetHoursUntilWarEnd:
     def test_5_field_datetime_no_seconds(self):
         """Datetime with only 5 fields (no seconds component) is handled."""
         from datetime import timedelta
-        from qapbot.war_notifications import _get_hours_until_war_end
+        from clashcontrol.war_notifications import _get_hours_until_war_end
         future = datetime.now(timezone.utc) + timedelta(hours=3)
         # Omit seconds field intentionally
         end_str = (
@@ -65,20 +65,20 @@ class TestGetHoursUntilWarEnd:
 
     def test_fallback_seconds_until_when_no_datetime(self):
         """No datetime component → fall back to seconds_until."""
-        from qapbot.war_notifications import _get_hours_until_war_end
+        from clashcontrol.war_notifications import _get_hours_until_war_end
         wd = {"end_time": "<Timestamp seconds_until=7200>"}
         assert _get_hours_until_war_end(wd) == 2.0
 
     def test_missing_end_time(self):
-        from qapbot.war_notifications import _get_hours_until_war_end
+        from clashcontrol.war_notifications import _get_hours_until_war_end
         assert _get_hours_until_war_end({}) is None
 
     def test_invalid_format(self):
-        from qapbot.war_notifications import _get_hours_until_war_end
+        from clashcontrol.war_notifications import _get_hours_until_war_end
         assert _get_hours_until_war_end({"end_time": "garbage"}) is None
 
     def test_empty_string(self):
-        from qapbot.war_notifications import _get_hours_until_war_end
+        from clashcontrol.war_notifications import _get_hours_until_war_end
         assert _get_hours_until_war_end({"end_time": ""}) is None
 
 
@@ -88,12 +88,12 @@ class TestGetHoursUntilWarEnd:
 
 class TestGetWarId:
     def test_strips_hashes(self):
-        from qapbot.war_notifications import _get_war_id
+        from clashcontrol.war_notifications import _get_war_id
         wd = {"opponent": {"tag": "#OPP123"}}
         assert _get_war_id("#CLAN99", wd) == "CLAN99_OPP123"
 
     def test_missing_opponent(self):
-        from qapbot.war_notifications import _get_war_id
+        from clashcontrol.war_notifications import _get_war_id
         result = _get_war_id("#CLAN", {})
         assert result == "CLAN_UNKNOWN"
 
@@ -108,8 +108,8 @@ class TestShouldNotifyForWarType:
         mock_cache.user_accounts = {
             "42": {"notification_settings": {"notification_type": "all_wars"}}
         }
-        monkeypatch.setattr("qapbot.war_notifications.CACHE", mock_cache)
-        from qapbot.war_notifications import _should_notify_for_war_type
+        monkeypatch.setattr("clashcontrol.war_notifications.CACHE", mock_cache)
+        from clashcontrol.war_notifications import _should_notify_for_war_type
         assert _should_notify_for_war_type("42", {}) is True
 
     def test_cwl_only_true_for_cwl_war(self, monkeypatch):
@@ -117,8 +117,8 @@ class TestShouldNotifyForWarType:
         mock_cache.user_accounts = {
             "42": {"notification_settings": {"notification_type": "cwl_only"}}
         }
-        monkeypatch.setattr("qapbot.war_notifications.CACHE", mock_cache)
-        from qapbot.war_notifications import _should_notify_for_war_type
+        monkeypatch.setattr("clashcontrol.war_notifications.CACHE", mock_cache)
+        from clashcontrol.war_notifications import _should_notify_for_war_type
         assert _should_notify_for_war_type("42", {"type": "cwl"}) is True
 
     def test_cwl_only_true_for_is_cwl_flag(self, monkeypatch):
@@ -126,8 +126,8 @@ class TestShouldNotifyForWarType:
         mock_cache.user_accounts = {
             "42": {"notification_settings": {"notification_type": "cwl_only"}}
         }
-        monkeypatch.setattr("qapbot.war_notifications.CACHE", mock_cache)
-        from qapbot.war_notifications import _should_notify_for_war_type
+        monkeypatch.setattr("clashcontrol.war_notifications.CACHE", mock_cache)
+        from clashcontrol.war_notifications import _should_notify_for_war_type
         assert _should_notify_for_war_type("42", {"is_cwl": True}) is True
 
     def test_cwl_only_false_for_regular_war(self, monkeypatch):
@@ -135,8 +135,8 @@ class TestShouldNotifyForWarType:
         mock_cache.user_accounts = {
             "42": {"notification_settings": {"notification_type": "cwl_only"}}
         }
-        monkeypatch.setattr("qapbot.war_notifications.CACHE", mock_cache)
-        from qapbot.war_notifications import _should_notify_for_war_type
+        monkeypatch.setattr("clashcontrol.war_notifications.CACHE", mock_cache)
+        from clashcontrol.war_notifications import _should_notify_for_war_type
         assert _should_notify_for_war_type("42", {"type": "regular"}) is False
 
     def test_unknown_type_defaults_true(self, monkeypatch):
@@ -144,15 +144,15 @@ class TestShouldNotifyForWarType:
         mock_cache.user_accounts = {
             "42": {"notification_settings": {"notification_type": "future_mode"}}
         }
-        monkeypatch.setattr("qapbot.war_notifications.CACHE", mock_cache)
-        from qapbot.war_notifications import _should_notify_for_war_type
+        monkeypatch.setattr("clashcontrol.war_notifications.CACHE", mock_cache)
+        from clashcontrol.war_notifications import _should_notify_for_war_type
         assert _should_notify_for_war_type("42", {}) is True
 
     def test_user_not_in_cache(self, monkeypatch):
         mock_cache = MagicMock()
         mock_cache.user_accounts = {}
-        monkeypatch.setattr("qapbot.war_notifications.CACHE", mock_cache)
-        from qapbot.war_notifications import _should_notify_for_war_type
+        monkeypatch.setattr("clashcontrol.war_notifications.CACHE", mock_cache)
+        from clashcontrol.war_notifications import _should_notify_for_war_type
         assert _should_notify_for_war_type("42", {}) is False
 
 
@@ -162,24 +162,24 @@ class TestShouldNotifyForWarType:
 
 class TestGetPlayerDiscordId:
     def test_finds_registered_player(self, monkeypatch):
-        import qapbot.war_notifications as wn
+        import clashcontrol.war_notifications as wn
         monkeypatch.setattr(wn, "_notification_player_index", {"PLAYER1": "100"})
         assert wn._get_player_discord_id("#PLAYER1") == "100"
 
     def test_notifications_disabled_returns_none(self, monkeypatch):
         # war_reminders=False → player excluded from index at build time → None
-        import qapbot.war_notifications as wn
+        import clashcontrol.war_notifications as wn
         monkeypatch.setattr(wn, "_notification_player_index", {})
         assert wn._get_player_discord_id("#PLAYER1") is None
 
     def test_unregistered_player(self, monkeypatch):
-        import qapbot.war_notifications as wn
+        import clashcontrol.war_notifications as wn
         monkeypatch.setattr(wn, "_notification_player_index", {})
         assert wn._get_player_discord_id("#NOONE") is None
 
     def test_tag_without_hash_still_matches(self, monkeypatch):
         # lstrip("#") normalises both stored key and lookup input
-        import qapbot.war_notifications as wn
+        import clashcontrol.war_notifications as wn
         monkeypatch.setattr(wn, "_notification_player_index", {"PLAYER1": "100"})
         assert wn._get_player_discord_id("#PLAYER1") == "100"
 
@@ -190,19 +190,19 @@ class TestGetPlayerDiscordId:
 
 class TestGetBuddyWatcherDiscordIds:
     def test_finds_watchers(self, monkeypatch):
-        import qapbot.war_notifications as wn
+        import clashcontrol.war_notifications as wn
         monkeypatch.setattr(wn, "_notification_watcher_index", {"PLAYER1": ["100", "300"]})
         watchers = wn._get_buddy_watcher_discord_ids("#PLAYER1")
         assert set(watchers) == {"100", "300"}
 
     def test_no_watchers(self, monkeypatch):
-        import qapbot.war_notifications as wn
+        import clashcontrol.war_notifications as wn
         monkeypatch.setattr(wn, "_notification_watcher_index", {"OTHER": ["100"]})
         assert wn._get_buddy_watcher_discord_ids("#PLAYER1") == []
 
     def test_case_insensitive_match(self, monkeypatch):
         # index keys are upper-case; lookup also uppercases → matches lowercase input
-        import qapbot.war_notifications as wn
+        import clashcontrol.war_notifications as wn
         monkeypatch.setattr(wn, "_notification_watcher_index", {"PLAYER1": ["100"]})
         assert wn._get_buddy_watcher_discord_ids("#player1") == ["100"]
 
@@ -215,8 +215,8 @@ class TestIsAlreadyNotified:
     def test_not_notified(self, monkeypatch):
         mock_cache = MagicMock()
         mock_cache.notification_state = {}
-        monkeypatch.setattr("qapbot.war_notifications.CACHE", mock_cache)
-        from qapbot.war_notifications import _is_already_notified
+        monkeypatch.setattr("clashcontrol.war_notifications.CACHE", mock_cache)
+        from clashcontrol.war_notifications import _is_already_notified
         assert _is_already_notified("war1", "#PLAYER1") is False
 
     def test_already_notified(self, monkeypatch):
@@ -224,8 +224,8 @@ class TestIsAlreadyNotified:
         mock_cache.notification_state = {
             "war1": {"notified_players": {"PLAYER1": {"notification_time": "2025-01-01 00:00:00"}}}
         }
-        monkeypatch.setattr("qapbot.war_notifications.CACHE", mock_cache)
-        from qapbot.war_notifications import _is_already_notified
+        monkeypatch.setattr("clashcontrol.war_notifications.CACHE", mock_cache)
+        from clashcontrol.war_notifications import _is_already_notified
         assert _is_already_notified("war1", "#PLAYER1") is True
 
 
@@ -238,14 +238,14 @@ class TestShouldSendNotification:
         mock_cache = MagicMock()
         mock_cache.user_accounts = {"42": user_data}
         mock_cache.notification_state = notif_state
-        monkeypatch.setattr("qapbot.war_notifications.CACHE", mock_cache)
+        monkeypatch.setattr("clashcontrol.war_notifications.CACHE", mock_cache)
 
     def test_user_not_in_cache(self, monkeypatch):
         mock_cache = MagicMock()
         mock_cache.user_accounts = {}
         mock_cache.notification_state = {}
-        monkeypatch.setattr("qapbot.war_notifications.CACHE", mock_cache)
-        from qapbot.war_notifications import _should_send_notification
+        monkeypatch.setattr("clashcontrol.war_notifications.CACHE", mock_cache)
+        from clashcontrol.war_notifications import _should_send_notification
         assert _should_send_notification("war1", "#P", "42", 3.0) is False
 
     def test_outside_threshold(self, monkeypatch):
@@ -253,7 +253,7 @@ class TestShouldSendNotification:
             {"notification_settings": {"notification_mode": "once", "hours_before_end": 4}},
             {}
         )
-        from qapbot.war_notifications import _should_send_notification
+        from clashcontrol.war_notifications import _should_send_notification
         assert _should_send_notification("war1", "#P", "42", 5.0) is False
 
     def test_once_mode_first_time(self, monkeypatch):
@@ -261,7 +261,7 @@ class TestShouldSendNotification:
             {"notification_settings": {"notification_mode": "once", "hours_before_end": 4}},
             {}
         )
-        from qapbot.war_notifications import _should_send_notification
+        from clashcontrol.war_notifications import _should_send_notification
         assert _should_send_notification("war1", "#P", "42", 3.0) is True
 
     def test_once_mode_already_notified(self, monkeypatch):
@@ -269,7 +269,7 @@ class TestShouldSendNotification:
             {"notification_settings": {"notification_mode": "once", "hours_before_end": 4}},
             {"war1": {"notified_players": {"P": {"notification_time": "2025-01-01 00:00:00"}}}}
         )
-        from qapbot.war_notifications import _should_send_notification
+        from clashcontrol.war_notifications import _should_send_notification
         assert _should_send_notification("war1", "#P", "42", 3.0) is False
 
     def test_repeated_mode_first_time(self, monkeypatch):
@@ -277,7 +277,7 @@ class TestShouldSendNotification:
             {"notification_settings": {"notification_mode": "repeated", "hours_before_end": 4}},
             {}
         )
-        from qapbot.war_notifications import _should_send_notification
+        from clashcontrol.war_notifications import _should_send_notification
         assert _should_send_notification("war1", "#P", "42", 3.0) is True
 
     def test_repeated_mode_too_soon(self, monkeypatch):
@@ -286,7 +286,7 @@ class TestShouldSendNotification:
             {"notification_settings": {"notification_mode": "repeated", "hours_before_end": 4}},
             {"war1": {"notified_players": {"P": {"notification_time": now_str}}}}
         )
-        from qapbot.war_notifications import _should_send_notification
+        from clashcontrol.war_notifications import _should_send_notification
         # Just notified → should be False (interval not met)
         assert _should_send_notification("war1", "#P", "42", 3.0) is False
 
@@ -296,7 +296,7 @@ class TestShouldSendNotification:
             {"notification_settings": {"notification_mode": "repeated", "hours_before_end": 10}},
             {"war1": {"notified_players": {"P": {"notification_time": old_time}}}}
         )
-        from qapbot.war_notifications import _should_send_notification
+        from clashcontrol.war_notifications import _should_send_notification
         # 3h passed, >2h remaining → interval=2h → should be True
         assert _should_send_notification("war1", "#P", "42", 3.0) is True
 
@@ -306,7 +306,7 @@ class TestShouldSendNotification:
             {"notification_settings": {"notification_mode": "repeated", "hours_before_end": 10}},
             {"war1": {"notified_players": {"P": {"notification_time": old_time}}}}
         )
-        from qapbot.war_notifications import _should_send_notification
+        from clashcontrol.war_notifications import _should_send_notification
         # 1.5h passed, 1.5h remaining → interval=1h → should be True
         assert _should_send_notification("war1", "#P", "42", 1.5) is True
 
@@ -315,7 +315,7 @@ class TestShouldSendNotification:
             {"notification_settings": {"notification_mode": "repeated", "hours_before_end": 4}},
             {"war1": {"notified_players": {"P": {}}}}  # no notification_time key
         )
-        from qapbot.war_notifications import _should_send_notification
+        from clashcontrol.war_notifications import _should_send_notification
         assert _should_send_notification("war1", "#P", "42", 3.0) is True
 
 
@@ -328,14 +328,14 @@ class TestShouldSendBuddyNotification:
         mock_cache = MagicMock()
         mock_cache.user_accounts = {"42": user_data}
         mock_cache.notification_state = notif_state
-        monkeypatch.setattr("qapbot.war_notifications.CACHE", mock_cache)
+        monkeypatch.setattr("clashcontrol.war_notifications.CACHE", mock_cache)
 
     def test_user_not_found(self, monkeypatch):
         mock_cache = MagicMock()
         mock_cache.user_accounts = {}
         mock_cache.notification_state = {}
-        monkeypatch.setattr("qapbot.war_notifications.CACHE", mock_cache)
-        from qapbot.war_notifications import _should_send_buddy_notification
+        monkeypatch.setattr("clashcontrol.war_notifications.CACHE", mock_cache)
+        from clashcontrol.war_notifications import _should_send_buddy_notification
         assert _should_send_buddy_notification("war1", "#P", "42", 3.0) is False
 
     def test_outside_threshold(self, monkeypatch):
@@ -343,7 +343,7 @@ class TestShouldSendBuddyNotification:
             {"notification_settings": {"notification_mode": "once", "hours_before_end": 2}},
             {}
         )
-        from qapbot.war_notifications import _should_send_buddy_notification
+        from clashcontrol.war_notifications import _should_send_buddy_notification
         assert _should_send_buddy_notification("war1", "#P", "42", 5.0) is False
 
     def test_once_mode_first_time(self, monkeypatch):
@@ -351,7 +351,7 @@ class TestShouldSendBuddyNotification:
             {"notification_settings": {"notification_mode": "once", "hours_before_end": 4}},
             {}
         )
-        from qapbot.war_notifications import _should_send_buddy_notification
+        from clashcontrol.war_notifications import _should_send_buddy_notification
         assert _should_send_buddy_notification("war1", "#P", "42", 3.0) is True
 
     def test_once_mode_already_sent(self, monkeypatch):
@@ -359,7 +359,7 @@ class TestShouldSendBuddyNotification:
             {"notification_settings": {"notification_mode": "once", "hours_before_end": 4}},
             {"war1": {"buddy_notifications": {"42_P": {"notification_time": "2025-01-01 00:00:00"}}}}
         )
-        from qapbot.war_notifications import _should_send_buddy_notification
+        from clashcontrol.war_notifications import _should_send_buddy_notification
         assert _should_send_buddy_notification("war1", "#P", "42", 3.0) is False
 
     def test_repeated_first_time(self, monkeypatch):
@@ -367,7 +367,7 @@ class TestShouldSendBuddyNotification:
             {"notification_settings": {"notification_mode": "repeated", "hours_before_end": 4}},
             {}
         )
-        from qapbot.war_notifications import _should_send_buddy_notification
+        from clashcontrol.war_notifications import _should_send_buddy_notification
         assert _should_send_buddy_notification("war1", "#P", "42", 3.0) is True
 
     def test_repeated_too_soon(self, monkeypatch):
@@ -376,7 +376,7 @@ class TestShouldSendBuddyNotification:
             {"notification_settings": {"notification_mode": "repeated", "hours_before_end": 4}},
             {"war1": {"buddy_notifications": {"42_P": {"notification_time": now_str}}}}
         )
-        from qapbot.war_notifications import _should_send_buddy_notification
+        from clashcontrol.war_notifications import _should_send_buddy_notification
         assert _should_send_buddy_notification("war1", "#P", "42", 3.0) is False
 
 
@@ -388,8 +388,8 @@ class TestRecordBuddyNotification:
     def test_creates_state_structure(self, monkeypatch):
         mock_cache = MagicMock()
         mock_cache.notification_state = {}
-        monkeypatch.setattr("qapbot.war_notifications.CACHE", mock_cache)
-        from qapbot.war_notifications import _record_buddy_notification
+        monkeypatch.setattr("clashcontrol.war_notifications.CACHE", mock_cache)
+        from clashcontrol.war_notifications import _record_buddy_notification
         player_info = {
             "player_tag": "#P1",
             "player_name": "TestPlayer",
@@ -410,8 +410,8 @@ class TestRecordBuddyNotification:
                 "buddy_notifications": {"99_X": {"player_name": "OtherPlayer"}}
             }
         }
-        monkeypatch.setattr("qapbot.war_notifications.CACHE", mock_cache)
-        from qapbot.war_notifications import _record_buddy_notification
+        monkeypatch.setattr("clashcontrol.war_notifications.CACHE", mock_cache)
+        from clashcontrol.war_notifications import _record_buddy_notification
         _record_buddy_notification("war1", {
             "player_tag": "#P2",
             "player_name": "NewPlayer",
@@ -430,8 +430,8 @@ class TestIsChannelNotificationSent:
     def test_not_sent(self, monkeypatch):
         mock_cache = MagicMock()
         mock_cache.notification_state = {}
-        monkeypatch.setattr("qapbot.war_notifications.CACHE", mock_cache)
-        from qapbot.war_notifications import _is_channel_notification_sent
+        monkeypatch.setattr("clashcontrol.war_notifications.CACHE", mock_cache)
+        from clashcontrol.war_notifications import _is_channel_notification_sent
         assert _is_channel_notification_sent("war1", "guild1") is False
 
     def test_already_sent(self, monkeypatch):
@@ -439,8 +439,8 @@ class TestIsChannelNotificationSent:
         mock_cache.notification_state = {
             "war1": {"channel_notifications": {"guild1": {"notification_time": "2025-01-01"}}}
         }
-        monkeypatch.setattr("qapbot.war_notifications.CACHE", mock_cache)
-        from qapbot.war_notifications import _is_channel_notification_sent
+        monkeypatch.setattr("clashcontrol.war_notifications.CACHE", mock_cache)
+        from clashcontrol.war_notifications import _is_channel_notification_sent
         assert _is_channel_notification_sent("war1", "guild1") is True
 
 
@@ -454,8 +454,8 @@ class TestRecordNotification:
         mock_cache = MagicMock()
         mock_cache.notification_state = {}
         mock_cache.persist_player_notification = AsyncMock()
-        monkeypatch.setattr("qapbot.war_notifications.CACHE", mock_cache)
-        from qapbot.war_notifications import _record_notification
+        monkeypatch.setattr("clashcontrol.war_notifications.CACHE", mock_cache)
+        from clashcontrol.war_notifications import _record_notification
         await _record_notification("war1", {
             "player_tag": "#P1",
             "player_name": "Test",
@@ -477,8 +477,8 @@ class TestRecordChannelNotification:
         mock_cache = MagicMock()
         mock_cache.notification_state = {}
         mock_cache.persist_channel_notification = AsyncMock()
-        monkeypatch.setattr("qapbot.war_notifications.CACHE", mock_cache)
-        from qapbot.war_notifications import _record_channel_notification
+        monkeypatch.setattr("clashcontrol.war_notifications.CACHE", mock_cache)
+        from clashcontrol.war_notifications import _record_channel_notification
         await _record_channel_notification("war1", "guild1", "MyClan", "EnemyClan")
         state = mock_cache.notification_state["war1"]["channel_notifications"]["guild1"]
         assert state["clan_name"] == "MyClan"
@@ -491,7 +491,7 @@ class TestRecordChannelNotification:
 
 class TestGetPlayersWithAttacksRemaining:
     def test_basic(self, monkeypatch):
-        from qapbot.war_notifications import _get_players_with_attacks_remaining
+        from clashcontrol.war_notifications import _get_players_with_attacks_remaining
         wd = {
             "end_time": "<Timestamp time=datetime.datetime(2025, 12, 24, 10, 7, 9) seconds_until=7200>",
             "attacks_per_member": 2,
@@ -512,7 +512,7 @@ class TestGetPlayersWithAttacksRemaining:
         assert players[1]["attacks_remaining"] == 2
 
     def test_all_attacks_used(self, monkeypatch):
-        from qapbot.war_notifications import _get_players_with_attacks_remaining
+        from clashcontrol.war_notifications import _get_players_with_attacks_remaining
         wd = {
             "end_time": "<Timestamp time=datetime.datetime(2025, 12, 24, 10, 7, 9) seconds_until=7200>",
             "attacks_per_member": 1,
@@ -527,7 +527,7 @@ class TestGetPlayersWithAttacksRemaining:
         assert _get_players_with_attacks_remaining(wd) == []
 
     def test_missing_end_time(self):
-        from qapbot.war_notifications import _get_players_with_attacks_remaining
+        from clashcontrol.war_notifications import _get_players_with_attacks_remaining
         wd = {
             "attacks_per_member": 2,
             "clan": {"name": "MyClan", "members": [{"tag": "#P1", "name": "P1", "attacks": []}]},
@@ -543,9 +543,9 @@ class TestGetPlayersWithAttacksRemaining:
 class TestFormatAggregatedReminderMessage:
     def test_single_player_message(self, monkeypatch):
         # Stub t() to return key
-        monkeypatch.setattr("qapbot.war_notifications.t", lambda key, **kwargs: key)
-        monkeypatch.setattr("qapbot.war_notifications.normalize_player_name", lambda n: n)
-        from qapbot.war_notifications import _format_aggregated_reminder_message
+        monkeypatch.setattr("clashcontrol.war_notifications.t", lambda key, **kwargs: key)
+        monkeypatch.setattr("clashcontrol.war_notifications.normalize_player_name", lambda n: n)
+        from clashcontrol.war_notifications import _format_aggregated_reminder_message
         players = [{
             "player_name": "TestPlayer",
             "attacks_remaining": 1,
@@ -559,9 +559,9 @@ class TestFormatAggregatedReminderMessage:
         assert "Alex" not in msg or True  # greeting key will contain display_name
 
     def test_buddy_section_appears(self, monkeypatch):
-        monkeypatch.setattr("qapbot.war_notifications.t", lambda key, **kwargs: key)
-        monkeypatch.setattr("qapbot.war_notifications.normalize_player_name", lambda n: n)
-        from qapbot.war_notifications import _format_aggregated_reminder_message
+        monkeypatch.setattr("clashcontrol.war_notifications.t", lambda key, **kwargs: key)
+        monkeypatch.setattr("clashcontrol.war_notifications.normalize_player_name", lambda n: n)
+        from clashcontrol.war_notifications import _format_aggregated_reminder_message
         players = [
             {"player_name": "OwnAccount", "attacks_remaining": 1, "hours_remaining": 2.0,
              "clan_name": "C", "opponent_name": "O", "is_buddy": False},
@@ -578,9 +578,9 @@ class TestFormatAggregatedReminderMessage:
         def mock_t(key, **kw):
             calls.append(key)
             return key
-        monkeypatch.setattr("qapbot.war_notifications.t", mock_t)
-        monkeypatch.setattr("qapbot.war_notifications.normalize_player_name", lambda n: n)
-        from qapbot.war_notifications import _format_aggregated_reminder_message
+        monkeypatch.setattr("clashcontrol.war_notifications.t", mock_t)
+        monkeypatch.setattr("clashcontrol.war_notifications.normalize_player_name", lambda n: n)
+        from clashcontrol.war_notifications import _format_aggregated_reminder_message
         players = [{
             "player_name": "P", "attacks_remaining": 1, "hours_remaining": 0.5,
             "clan_name": "C", "opponent_name": "O", "is_buddy": False,

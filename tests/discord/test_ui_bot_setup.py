@@ -1,5 +1,5 @@
 """Tests for the `/admin -> Bot Setup` tracker-channel configuration screen
-(BUG_FEATURE_TRACKER_PLAN.md Phase 2): qapbot.ui_tracker.BotSetupView + start_bot_setup().
+(BUG_FEATURE_TRACKER_PLAN.md Phase 2): clashcontrol.ui_tracker.BotSetupView + start_bot_setup().
 """
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ import pytest
 
 os.environ.setdefault("DISCORD_TOKEN", "test-token")
 
-from qapbot.ui_tracker import (
+from clashcontrol.ui_tracker import (
     TRACKER_SETTING_BUG_CHANNEL,
     TRACKER_SETTING_DONE_TESTING_CHANNEL,
     TRACKER_SETTING_ENABLED,
@@ -162,7 +162,7 @@ def test_format_header_shows_all_four_configured_channels():
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_on_save_persists_every_configured_channel_and_guild_id(mock_interaction, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     set_setting = AsyncMock()
     monkeypatch.setattr(CACHE, "set_tracker_setting", set_setting)
@@ -185,7 +185,7 @@ async def test_on_save_persists_every_configured_channel_and_guild_id(mock_inter
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_on_save_persists_implemented_and_done_testing_channels(mock_interaction, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     set_setting = AsyncMock()
     monkeypatch.setattr(CACHE, "set_tracker_setting", set_setting)
@@ -206,7 +206,7 @@ async def test_on_save_persists_implemented_and_done_testing_channels(mock_inter
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_on_toggle_enabled_flips_state_and_persists(mock_interaction, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     set_setting = AsyncMock()
     monkeypatch.setattr(CACHE, "set_tracker_setting", set_setting)
@@ -242,7 +242,7 @@ async def test_on_close_deletes_message(mock_interaction):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_start_bot_setup_sends_view_seeded_from_cache_settings(mock_interaction, monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     bug_channel = MagicMock(spec=discord.TextChannel)
     bug_channel.id = 111

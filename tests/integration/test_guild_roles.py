@@ -15,12 +15,12 @@ from typing import Any, TYPE_CHECKING
 import pytest
 
 if TYPE_CHECKING:
-    from qapbot.db_manager import WarHistoryDB
+    from clashcontrol.db_manager import WarHistoryDB
 
 
 @pytest.fixture
 async def db(tmp_path: Path):
-    from qapbot.db_manager import WarHistoryDB
+    from clashcontrol.db_manager import WarHistoryDB
 
     db_path = tmp_path / "qapbot_role_test.db"
     manager = WarHistoryDB()

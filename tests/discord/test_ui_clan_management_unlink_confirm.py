@@ -13,7 +13,7 @@ os.environ.setdefault("DISCORD_TOKEN", "test-token")
 
 
 def _make_view(discord_user_id="222", verified=False):
-    from qapbot.ui_clan_management import ClanManagementUnlinkPlayerConfirmView
+    from clashcontrol.ui_clan_management import ClanManagementUnlinkPlayerConfirmView
 
     parent_view = MagicMock()
     sent_message = MagicMock()
@@ -42,7 +42,7 @@ def _make_interaction():
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_on_confirm_defers_before_any_slow_work(monkeypatch):
-    monkeypatch.setattr("qapbot.QBdiscocmdshelper.unlink_player", AsyncMock(return_value=True))
+    monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.unlink_player", AsyncMock(return_value=True))
 
     view = _make_view()
     interaction = _make_interaction()
@@ -60,7 +60,7 @@ async def test_on_confirm_defers_before_any_slow_work(monkeypatch):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_on_confirm_success_uses_edit_original_response(monkeypatch):
-    monkeypatch.setattr("qapbot.QBdiscocmdshelper.unlink_player", AsyncMock(return_value=True))
+    monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.unlink_player", AsyncMock(return_value=True))
 
     view = _make_view()
     interaction = _make_interaction()
@@ -75,7 +75,7 @@ async def test_on_confirm_success_uses_edit_original_response(monkeypatch):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_on_confirm_not_found_uses_edit_original_response(monkeypatch):
-    monkeypatch.setattr("qapbot.QBdiscocmdshelper.unlink_player", AsyncMock(return_value=False))
+    monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.unlink_player", AsyncMock(return_value=False))
 
     view = _make_view()
     interaction = _make_interaction()

@@ -22,8 +22,8 @@ import pytest
 
 os.environ.setdefault("DISCORD_TOKEN", "test-token")
 
-from qapbot.config import CONFIG
-from qapbot.web_bridge import _check_secret
+from clashcontrol.config import CONFIG
+from clashcontrol.web_bridge import _check_secret
 
 
 def _request(header_value: str | None) -> MagicMock:
@@ -38,7 +38,7 @@ def configured(monkeypatch):
     """Point the module's CONFIG lookup at a known secret. _check_secret imports CONFIG inside
     the function, so patching the module attribute is what takes effect."""
     def _set(secret: str):
-        import qapbot.config as cfg
+        import clashcontrol.config as cfg
         monkeypatch.setattr(cfg, "CONFIG", dataclasses.replace(CONFIG, web_bridge_secret=secret))
     return _set
 

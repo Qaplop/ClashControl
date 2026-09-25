@@ -20,8 +20,8 @@ def _guild_clans_one(_guild_id: int) -> list[str]:
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_show_player_search_modal_no_clans(monkeypatch: pytest.MonkeyPatch):
-    import qapbot.ui_registration as ui
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.ui_registration as ui
+    import clashcontrol.QBdiscocmdshelper as helper
 
     interaction = make_interaction()
     monkeypatch.setattr(ui, "t", identity_t)
@@ -35,8 +35,8 @@ async def test_show_player_search_modal_no_clans(monkeypatch: pytest.MonkeyPatch
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_show_player_search_modal_no_players(monkeypatch: pytest.MonkeyPatch):
-    import qapbot.ui_registration as ui
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.ui_registration as ui
+    import clashcontrol.QBdiscocmdshelper as helper
 
     interaction = make_interaction()
     monkeypatch.setattr(ui, "t", identity_t)
@@ -51,8 +51,8 @@ async def test_show_player_search_modal_no_players(monkeypatch: pytest.MonkeyPat
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_show_player_search_modal_sends_modal(monkeypatch: pytest.MonkeyPatch):
-    import qapbot.ui_registration as ui
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.ui_registration as ui
+    import clashcontrol.QBdiscocmdshelper as helper
 
     interaction = make_interaction()
     monkeypatch.setattr(ui, "t", identity_t)
@@ -93,8 +93,8 @@ async def test_show_player_search_modal_sends_modal(monkeypatch: pytest.MonkeyPa
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_clan_filter_callback_no_players(monkeypatch: pytest.MonkeyPatch):
-    import qapbot.ui_registration as ui
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.ui_registration as ui
+    import clashcontrol.QBdiscocmdshelper as helper
 
     interaction = make_interaction()
     monkeypatch.setattr(ui, "t", identity_t)
@@ -108,8 +108,8 @@ async def test_clan_filter_callback_no_players(monkeypatch: pytest.MonkeyPatch):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_clan_filter_callback_too_many_after_filter(monkeypatch: pytest.MonkeyPatch):
-    import qapbot.ui_registration as ui
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.ui_registration as ui
+    import clashcontrol.QBdiscocmdshelper as helper
 
     interaction = make_interaction()
     monkeypatch.setattr(ui, "t", identity_t)
@@ -125,8 +125,8 @@ async def test_clan_filter_callback_too_many_after_filter(monkeypatch: pytest.Mo
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_clan_filter_callback_single_match_registers(monkeypatch: pytest.MonkeyPatch):
-    import qapbot.ui_registration as ui
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.ui_registration as ui
+    import clashcontrol.QBdiscocmdshelper as helper
 
     interaction = make_interaction()
     monkeypatch.setattr(ui, "t", identity_t)
@@ -147,8 +147,8 @@ async def test_clan_filter_callback_single_match_registers(monkeypatch: pytest.M
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_clan_filter_callback_multiple_matches_shows_select(monkeypatch: pytest.MonkeyPatch):
-    import qapbot.ui_registration as ui
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.ui_registration as ui
+    import clashcontrol.QBdiscocmdshelper as helper
 
     interaction = make_interaction()
     monkeypatch.setattr(ui, "t", identity_t)
@@ -179,7 +179,7 @@ async def test_clan_filter_callback_multiple_matches_shows_select(monkeypatch: p
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_user_player_select_callback_calls_registration(monkeypatch: pytest.MonkeyPatch):
-    import qapbot.ui_registration as ui
+    import clashcontrol.ui_registration as ui
 
     interaction = make_interaction()
     register = AsyncMock()
@@ -202,7 +202,7 @@ async def test_user_player_select_callback_calls_registration(monkeypatch: pytes
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_account_action_view_link_new_path(monkeypatch: pytest.MonkeyPatch):
-    import qapbot.ui_registration as ui
+    import clashcontrol.ui_registration as ui
 
     interaction = make_interaction()
     action_interaction = make_interaction(user_id=999)
@@ -227,7 +227,7 @@ async def test_account_action_view_link_new_path(monkeypatch: pytest.MonkeyPatch
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_account_action_view_verify_missing_player(monkeypatch: pytest.MonkeyPatch):
-    import qapbot.ui_registration as ui
+    import clashcontrol.ui_registration as ui
 
     interaction = make_interaction()
     action_interaction = make_interaction(user_id=999)
@@ -248,7 +248,7 @@ async def test_account_action_view_verify_missing_player(monkeypatch: pytest.Mon
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_verify_account_modal_submit_error_paths(monkeypatch: pytest.MonkeyPatch):
-    import qapbot.ui_registration as ui
+    import clashcontrol.ui_registration as ui
 
     interaction = make_interaction()
     cache = FakeCache()

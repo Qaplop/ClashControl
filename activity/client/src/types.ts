@@ -1,4 +1,4 @@
-/** Matches qapbot/web_bridge.py's GET/POST /api/cwl/clan-config payload shape exactly. */
+/** Matches clashcontrol/web_bridge.py's GET/POST /api/cwl/clan-config payload shape exactly. */
 export type ClanConfig = {
   clan_tag: string
   name: string
@@ -11,7 +11,7 @@ export type ClanConfig = {
    * on the bot side) or null if unset. */
   cwl_start_at: string | null
   /** Cross-guild shared CWL clan status (2026-08-15), GET-only (never sent back on save — the
-   * backend derives it fresh, see qapbot/web_bridge.py's _build_clan_config_payload). Null when
+   * backend derives it fresh, see clashcontrol/web_bridge.py's _build_clan_config_payload). Null when
    * this clan isn't shared with anyone. `is_owner` gates whether the Evict action is offered —
    * only the owner guild may remove another guild from a shared clan
    * (CWL_ROSTER_PLANNING_PLAN.md). */
@@ -50,7 +50,7 @@ export type ScreenPayload = {
   screen: 'clan_config' | 'enrollment' | 'player_prefs' | 'landing'
 }
 
-/** Matches qapbot/web_bridge.py's GET /api/cwl/enrollment payload shape exactly. */
+/** Matches clashcontrol/web_bridge.py's GET /api/cwl/enrollment payload shape exactly. */
 export type EnrollmentClan = {
   clan_tag: string
   name: string | null
@@ -178,7 +178,7 @@ export type WaitResponse = { changed: boolean; version: number }
 /** One flat result from GET /api/cwl/guest-search — the Guests invite search on Configure
  * Participating Clans (2026-08-15). A "clan" hit gets added straight into the same `clans` array
  * ClanConfig already edits (POST /api/cwl/clan-config persists it, participating=true, exactly
- * like any other clan — see qapbot/web_bridge.py's _search_cwl_guests docstring for why that
+ * like any other clan — see clashcontrol/web_bridge.py's _search_cwl_guests docstring for why that
  * needs no separate endpoint). A "player" hit is added via POST /api/cwl/enrollment/guest — its
  * `discord_id` is null when the tag isn't linked to any Discord account yet, in which case
  * "send DM now" isn't offered (there's nobody to DM).
@@ -212,7 +212,7 @@ export type GuestSearchResponse = { results: GuestSearchResult[]; stale?: boolea
 /** The three statuses an admin may set from the board's right-click "Set enrollment status"
  * submenu (2026-08-22, tracker #0014). A strict subset of EnrollmentPlayer.signup_status:
  * `null` isn't settable (it means "no row yet", not a choice) and `withdrawn` is legacy-only.
- * Must stay in sync with ADMIN_SETTABLE_ENROLLMENT_STATUSES in qapbot/web_bridge.py, which
+ * Must stay in sync with ADMIN_SETTABLE_ENROLLMENT_STATUSES in clashcontrol/web_bridge.py, which
  * rejects anything else with a 400. */
 /** Tracker #0114: 'passive' (Bench) is offered per card, gated on EnrollmentPlayer.bench_enabled
  * — never 'auto_passive', which means "a standing preference seeded this" and is no more
@@ -232,7 +232,7 @@ export type SetStatusResult = {
   dm: { sent: boolean; reason: 'unlinked' | 'blocked' | 'dm_guard' | 'failed' | null } | null
 }
 
-/** Matches qapbot/web_bridge.py's GET/POST /api/cwl/player-prefs payload shape exactly
+/** Matches clashcontrol/web_bridge.py's GET/POST /api/cwl/player-prefs payload shape exactly
  * (2026-08-23, plans/cwl-personal-hub.md Phase 5c). One account's standing CWL preference —
  * block I of the player_prefs screen. */
 export type PlayerPrefsAccount = {

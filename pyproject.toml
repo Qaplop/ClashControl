@@ -21,11 +21,11 @@ filterwarnings = [
 source = ["."]
 omit = [
     "tests/*",
-    "qapbot/scripts/*",
+    "clashcontrol/scripts/*",
     # UI-heavy / bot-lifecycle files: ~90% Discord wiring, not unit-testable
-    "qapbot/ui_clan_management.py",
+    "clashcontrol/ui_clan_management.py",
     "QBdiscordcmds.py",
-    "QapBot.py",
+    "ClashControl.py",
 ]
 
 [tool.coverage.report]

@@ -11,8 +11,8 @@ import pytest
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_get_clan_raises_when_client_missing():
-    from qapbot.coc_cache import CoCClanCache
-    from qapbot.exceptions import CacheError
+    from clashcontrol.coc_cache import CoCClanCache
+    from clashcontrol.exceptions import CacheError
 
     cache = CoCClanCache()
 
@@ -22,7 +22,7 @@ async def test_get_clan_raises_when_client_missing():
 
 @pytest.mark.integration
 def test_clear_expired_removes_only_hard_expired_entries():
-    from qapbot.coc_cache import CoCClanCache
+    from clashcontrol.coc_cache import CoCClanCache
 
     now = datetime.now(timezone.utc)
     cache = CoCClanCache(soft_ttl_seconds=5, hard_ttl_seconds=30)
@@ -40,7 +40,7 @@ def test_clear_expired_removes_only_hard_expired_entries():
 
 @pytest.mark.integration
 def test_get_stats_empty_and_non_empty():
-    from qapbot.coc_cache import CoCClanCache
+    from clashcontrol.coc_cache import CoCClanCache
 
     cache = CoCClanCache()
     empty = cache.get_stats()
@@ -57,7 +57,7 @@ def test_get_stats_empty_and_non_empty():
 
 @pytest.mark.integration
 def test_get_memory_usage_mb_empty_is_zero():
-    from qapbot.coc_cache import CoCClanCache
+    from clashcontrol.coc_cache import CoCClanCache
 
     cache = CoCClanCache()
     assert cache.get_memory_usage_mb() == 0.0
@@ -66,7 +66,7 @@ def test_get_memory_usage_mb_empty_is_zero():
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_update_warlog_status_persists_when_status_changes():
-    from qapbot.coc_cache import CoCClanCache
+    from clashcontrol.coc_cache import CoCClanCache
 
     cache = CoCClanCache()
     persist_clan = AsyncMock()
@@ -88,7 +88,7 @@ async def test_update_warlog_status_persists_when_status_changes():
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_update_player_info_updates_and_persists_only_affected_users():
-    from qapbot.coc_cache import CoCClanCache
+    from clashcontrol.coc_cache import CoCClanCache
 
     cache = CoCClanCache()
 

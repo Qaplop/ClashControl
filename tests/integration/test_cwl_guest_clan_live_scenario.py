@@ -18,7 +18,7 @@ import pytest
 
 os.environ.setdefault("DISCORD_TOKEN", "test-token")
 
-from qapbot.db_manager import WarHistoryDB
+from clashcontrol.db_manager import WarHistoryDB
 
 
 @pytest.fixture
@@ -54,9 +54,9 @@ async def _cwl_war(db, clan_tag, players, date="2026-07-01T08:00"):
 
 @pytest.mark.asyncio
 async def test_live_scenario_qcrew_plus_shared_staycalm(db, monkeypatch):
-    from qapbot import config as config_module
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import start_cwl_enrollment
+    from clashcontrol import config as config_module
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import start_cwl_enrollment
 
     monkeypatch.setattr(config_module, "CONFIG", dataclasses.replace(
         config_module.CONFIG, is_dev_mode=False, cwl_dm_restrict_to_admin=False))
@@ -146,9 +146,9 @@ async def test_untracked_guest_clan_members_still_enter_the_pool(db, monkeypatch
     tracks independently therefore had ZERO member rows and seeded nobody. (Masked in all earlier
     testing because the guest clans used until then happened to be another guild's member clan.)
     """
-    from qapbot import config as config_module
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import start_cwl_enrollment
+    from clashcontrol import config as config_module
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import start_cwl_enrollment
 
     monkeypatch.setattr(config_module, "CONFIG", dataclasses.replace(
         config_module.CONFIG, is_dev_mode=False, cwl_dm_restrict_to_admin=False))
@@ -193,9 +193,9 @@ async def test_guest_clan_added_after_enrollment_seeds_untracked_members(db, mon
     """Same gap on the OTHER entry point: a guest clan added to the roster once enrollment is
     already open goes through auto_assign_prior_cwl_members() instead of Start Enrollment's bulk
     seed, and read the same empty member list."""
-    from qapbot import config as config_module
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import auto_assign_prior_cwl_members
+    from clashcontrol import config as config_module
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import auto_assign_prior_cwl_members
 
     monkeypatch.setattr(config_module, "CONFIG", dataclasses.replace(
         config_module.CONFIG, is_dev_mode=False, cwl_dm_restrict_to_admin=False))
@@ -229,9 +229,9 @@ async def test_guest_clan_added_after_enrollment_seeds_untracked_members(db, mon
 async def test_live_scenario_then_remove_staycalm(db, monkeypatch):
     """Continues the scenario: after enrollment, Remove StayCalm. QCrew members must stay in
     QCrew's column; StayCalm's own members must be purged from the pool."""
-    from qapbot import config as config_module
-    from qapbot.cache_manager import CACHE
-    from qapbot.QBdiscocmdshelper_cwl import start_cwl_enrollment, remove_cwl_guest_clan
+    from clashcontrol import config as config_module
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import start_cwl_enrollment, remove_cwl_guest_clan
 
     monkeypatch.setattr(config_module, "CONFIG", dataclasses.replace(
         config_module.CONFIG, is_dev_mode=False, cwl_dm_restrict_to_admin=False))

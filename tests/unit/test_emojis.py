@@ -1,8 +1,8 @@
-"""Tests for qapbot/emojis.py's CDN-URL helpers (added for the CWL "Manage Enrollment" board,
+"""Tests for clashcontrol/emojis.py's CDN-URL helpers (added for the CWL "Manage Enrollment" board,
 which renders TH icons in plain HTML and so can't use Discord's native <:name:id> emoji markup)."""
 from __future__ import annotations
 
-from qapbot.emojis import BotEmojis, emoji_cdn_url, th_icon_url
+from clashcontrol.emojis import BotEmojis, emoji_cdn_url, th_icon_url
 
 
 def test_emoji_cdn_url_extracts_id_from_custom_emoji_string():

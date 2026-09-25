@@ -1,4 +1,4 @@
-"""Extended tests for qapbot/i18n.py — TranslationManager and helper functions.
+"""Extended tests for clashcontrol/i18n.py — TranslationManager and helper functions.
 
 Covers:
 - TranslationManager singleton, load/reload, nested value lookup
@@ -16,7 +16,7 @@ import pytest
 from pathlib import Path
 from unittest.mock import MagicMock, AsyncMock, patch
 
-from qapbot.i18n import (
+from clashcontrol.i18n import (
     TranslationManager,
     t,
     get_guild_language,
@@ -172,14 +172,14 @@ class TestGetGuildLanguage:
     def test_guild_with_language_in_cache(self, monkeypatch: pytest.MonkeyPatch):
         mock_cache = MagicMock()
         mock_cache.server_config = {"999": {"language": "de"}}
-        with patch("qapbot.cache_manager.CACHE", mock_cache):
+        with patch("clashcontrol.cache_manager.CACHE", mock_cache):
             result = get_guild_language(999)
         assert result == "de"
 
     def test_guild_without_language_returns_default(self, monkeypatch: pytest.MonkeyPatch):
         mock_cache = MagicMock()
         mock_cache.server_config = {"999": {}}
-        with patch("qapbot.cache_manager.CACHE", mock_cache):
+        with patch("clashcontrol.cache_manager.CACHE", mock_cache):
             result = get_guild_language(999)
         assert result == "en"
 
@@ -192,21 +192,21 @@ class TestGetUserLanguage:
     def test_user_with_language_preference(self, monkeypatch: pytest.MonkeyPatch):
         mock_cache = MagicMock()
         mock_cache.user_accounts = {"42": {"user_language": "fr"}}
-        with patch("qapbot.cache_manager.CACHE", mock_cache):
+        with patch("clashcontrol.cache_manager.CACHE", mock_cache):
             result = get_user_language("42")
         assert result == "fr"
 
     def test_user_without_language_returns_none(self, monkeypatch: pytest.MonkeyPatch):
         mock_cache = MagicMock()
         mock_cache.user_accounts = {"42": {}}
-        with patch("qapbot.cache_manager.CACHE", mock_cache):
+        with patch("clashcontrol.cache_manager.CACHE", mock_cache):
             result = get_user_language("42")
         assert result is None
 
     def test_user_not_in_accounts_returns_none(self, monkeypatch: pytest.MonkeyPatch):
         mock_cache = MagicMock()
         mock_cache.user_accounts = {}
-        with patch("qapbot.cache_manager.CACHE", mock_cache):
+        with patch("clashcontrol.cache_manager.CACHE", mock_cache):
             result = get_user_language("999")
         assert result is None
 
@@ -221,7 +221,7 @@ class TestSetGuildLanguage:
         mock_cache = MagicMock()
         mock_cache.server_config = {}
         mock_cache.persist_server_config = AsyncMock()
-        with patch("qapbot.cache_manager.CACHE", mock_cache):
+        with patch("clashcontrol.cache_manager.CACHE", mock_cache):
             result = await set_guild_language(123, "de")
         assert result is True
         assert mock_cache.server_config["123"]["language"] == "de"

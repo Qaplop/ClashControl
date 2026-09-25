@@ -14,7 +14,7 @@ import pytest
 
 def _make_cm(**overrides):
     """Create a minimal CacheManager-like object for testing."""
-    from qapbot.cache_manager import CacheManager
+    from clashcontrol.cache_manager import CacheManager
     cm = CacheManager.__new__(CacheManager)
     cm.user_accounts = overrides.get("user_accounts", {})
     cm.clan_name_cache = overrides.get("clan_name_cache", {})
@@ -118,7 +118,7 @@ class TestVerifyApiToken:
     @pytest.mark.asyncio
     async def test_valid_token(self):
         cm = _make_cm()
-        with patch("qapbot.cache_manager.coc_retry", new_callable=AsyncMock) as mock_retry:
+        with patch("clashcontrol.cache_manager.coc_retry", new_callable=AsyncMock) as mock_retry:
             mock_retry.return_value = MagicMock(status="ok")
             result = await cm.verify_api_token("#P1", "token123")
             assert result[0] is True or result[0] is False  # Just verify it runs
@@ -126,7 +126,7 @@ class TestVerifyApiToken:
     @pytest.mark.asyncio
     async def test_exception_returns_false(self):
         cm = _make_cm()
-        with patch("qapbot.cache_manager.coc_retry", new_callable=AsyncMock) as mock_retry:
+        with patch("clashcontrol.cache_manager.coc_retry", new_callable=AsyncMock) as mock_retry:
             mock_retry.side_effect = Exception("API error")
             ok, msg = await cm.verify_api_token("#P1", "bad_token")
             assert ok is False
@@ -217,7 +217,7 @@ class TestSendUserDmDetailed:
         user.send = AsyncMock(side_effect=[error, error, None])  # fails twice, then works
         cm.get_user_for_dm = AsyncMock(return_value=user)
 
-        with patch("qapbot.cache_manager.asyncio.sleep", new_callable=AsyncMock):
+        with patch("clashcontrol.cache_manager.asyncio.sleep", new_callable=AsyncMock):
             sent, outcome = await cm.send_user_dm_detailed("123", "hello")
 
         assert (sent, outcome) == (True, "sent")
@@ -228,7 +228,7 @@ class TestSendUserDmDetailed:
         # The actual bug this fixes: this must return, never raise — a caller looping over many
         # recipients (start_cwl_enrollment) must be able to keep going to the next one.
         import discord
-        from qapbot.cache_manager import DM_SEND_MAX_RETRIES
+        from clashcontrol.cache_manager import DM_SEND_MAX_RETRIES
 
         cm = _make_cm()
         user = MagicMock()
@@ -236,7 +236,7 @@ class TestSendUserDmDetailed:
         user.send = AsyncMock(side_effect=error)
         cm.get_user_for_dm = AsyncMock(return_value=user)
 
-        with patch("qapbot.cache_manager.asyncio.sleep", new_callable=AsyncMock):
+        with patch("clashcontrol.cache_manager.asyncio.sleep", new_callable=AsyncMock):
             sent, outcome = await cm.send_user_dm_detailed("123", "hello")
 
         assert (sent, outcome) == (False, "failed")

@@ -14,7 +14,7 @@ os.environ.setdefault("DISCORD_TOKEN", "test-token")
 
 
 def _make_notifications_view(guild):
-    from qapbot.ui_clan_management import ClanManagementView
+    from clashcontrol.ui_clan_management import ClanManagementView
 
     sent_message = MagicMock(guild=guild)
     return ClanManagementView(
@@ -38,8 +38,8 @@ def test_notifications_mode_includes_custodians_button():
 
 @pytest.mark.discord
 def test_roles_mode_has_no_custodians_button():
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_clan_management import ClanManagementView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_clan_management import ClanManagementView
 
     CACHE.server_config["8002"] = {}
     guild = MagicMock()
@@ -57,8 +57,8 @@ def test_roles_mode_has_no_custodians_button():
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_on_custodians_opens_view_seeded_from_cache():
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_clan_management import CustodianConfigurationView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_clan_management import CustodianConfigurationView
 
     guild = MagicMock()
     guild.id = 8003
@@ -85,7 +85,7 @@ async def test_on_custodians_opens_view_seeded_from_cache():
 
 @pytest.mark.discord
 def test_user_select_enforces_cap_of_five():
-    from qapbot.ui_clan_management import CustodianConfigurationView, CUSTODIAN_LIMIT
+    from clashcontrol.ui_clan_management import CustodianConfigurationView, CUSTODIAN_LIMIT
 
     guild = MagicMock()
     guild.id = 8004
@@ -100,7 +100,7 @@ def test_user_select_enforces_cap_of_five():
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_user_select_callback_updates_state_and_rebuilds(mock_interaction):
-    from qapbot.ui_clan_management import CustodianConfigurationView
+    from clashcontrol.ui_clan_management import CustodianConfigurationView
 
     view = CustodianConfigurationView(guild=mock_interaction.guild, clan_tag="#CLAN1", current_custodian_ids=[])
     mock_interaction.data = {"values": ["333", "444"]}
@@ -118,7 +118,7 @@ async def test_user_select_callback_updates_state_and_rebuilds(mock_interaction)
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_clear_button_empties_selection(mock_interaction):
-    from qapbot.ui_clan_management import CustodianConfigurationView
+    from clashcontrol.ui_clan_management import CustodianConfigurationView
 
     view = CustodianConfigurationView(guild=mock_interaction.guild, clan_tag="#CLAN1", current_custodian_ids=["111"])
     mock_interaction.edit_original_response = AsyncMock()
@@ -133,8 +133,8 @@ async def test_clear_button_empties_selection(mock_interaction):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_apply_persists_and_updates_cache(mock_interaction):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_clan_management import CustodianConfigurationView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_clan_management import CustodianConfigurationView
 
     guild_id_str = str(mock_interaction.guild.id)
     CACHE.server_config[guild_id_str] = {}
@@ -153,8 +153,8 @@ async def test_apply_persists_and_updates_cache(mock_interaction):
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_apply_with_empty_selection_clears_cache_entry(mock_interaction):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_clan_management import CustodianConfigurationView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_clan_management import CustodianConfigurationView
 
     guild_id_str = str(mock_interaction.guild.id)
     CACHE.server_config[guild_id_str] = {"clan_custodians": {"#CLAN1": ["111"]}}

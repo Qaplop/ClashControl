@@ -31,8 +31,8 @@ def _row(tag: str, message_id: str, user: str = "777") -> Dict[str, Any]:
 
 
 def _wire(monkeypatch, rows: List[Dict[str, Any]], messages: Dict[str, MagicMock]) -> List[Dict[str, Any]]:
-    from qapbot.cache_manager import CACHE
-    import qapbot.QBdiscocmdshelper_cwl as helper
+    from clashcontrol.cache_manager import CACHE
+    import clashcontrol.QBdiscocmdshelper_cwl as helper
 
     CACHE.server_config.clear()
     CACHE.server_config["1"] = {"cwl_signup_mode": "extended"}
@@ -63,7 +63,7 @@ def _wire(monkeypatch, rows: List[Dict[str, Any]], messages: Dict[str, MagicMock
 # ---------------------------------------------------------------------------
 
 def test_standard_mode_dm_has_no_legend_and_two_buttons():
-    from qapbot.QBdiscocmdshelper_cwl import build_cwl_signup_dm
+    from clashcontrol.QBdiscocmdshelper_cwl import build_cwl_signup_dm
 
     content, view = build_cwl_signup_dm(7, 1, "2026-10", "777", "#P1", "Alpha", with_legend=True, bench=False)
     assert "**Bench**" not in content
@@ -71,7 +71,7 @@ def test_standard_mode_dm_has_no_legend_and_two_buttons():
 
 
 def test_extended_mode_legend_only_when_asked_and_at_the_top():
-    from qapbot.QBdiscocmdshelper_cwl import build_cwl_signup_dm
+    from clashcontrol.QBdiscocmdshelper_cwl import build_cwl_signup_dm
 
     first, view = build_cwl_signup_dm(7, 1, "2026-10", "777", "#P1", "Alpha", with_legend=True, bench=True)
     later, _ = build_cwl_signup_dm(7, 1, "2026-10", "777", "#P2", "Beta", with_legend=False, bench=True)
@@ -88,7 +88,7 @@ def test_extended_mode_legend_only_when_asked_and_at_the_top():
 
 @pytest.mark.asyncio
 async def test_an_upgraded_signup_dm_is_identical_to_a_fresh_extended_send(monkeypatch):
-    from qapbot.QBdiscocmdshelper_cwl import build_cwl_signup_dm, upgrade_pending_cwl_dms_for_bench
+    from clashcontrol.QBdiscocmdshelper_cwl import build_cwl_signup_dm, upgrade_pending_cwl_dms_for_bench
 
     messages = {"100": _signup_message("📋 Sign-up … Alpha?", "#P1")}
     edits = _wire(monkeypatch, [_row("#P1", "100")], messages)
@@ -105,7 +105,7 @@ async def test_an_upgraded_signup_dm_is_identical_to_a_fresh_extended_send(monke
 
 @pytest.mark.asyncio
 async def test_upgrade_puts_the_legend_on_the_players_oldest_dm_only(monkeypatch):
-    from qapbot.QBdiscocmdshelper_cwl import upgrade_pending_cwl_dms_for_bench
+    from clashcontrol.QBdiscocmdshelper_cwl import upgrade_pending_cwl_dms_for_bench
 
     messages = {
         "300": _signup_message("… Gamma?", "#P3"),
@@ -123,7 +123,7 @@ async def test_upgrade_puts_the_legend_on_the_players_oldest_dm_only(monkeypatch
 @pytest.mark.asyncio
 async def test_a_player_whose_legend_dm_is_already_upgraded_gets_no_second_one(monkeypatch):
     """E.g. a partial earlier run: the oldest DM already carries the legend and three buttons."""
-    from qapbot.QBdiscocmdshelper_cwl import build_cwl_signup_dm, upgrade_pending_cwl_dms_for_bench
+    from clashcontrol.QBdiscocmdshelper_cwl import build_cwl_signup_dm, upgrade_pending_cwl_dms_for_bench
 
     done_content, done_view = build_cwl_signup_dm(7, 1, "2026-10", "777", "#P1", "P1", with_legend=True, bench=True)
     done = MagicMock()
@@ -142,10 +142,10 @@ async def test_a_player_whose_legend_dm_is_already_upgraded_gets_no_second_one(m
 
 @pytest.mark.asyncio
 async def test_confirming_the_legend_dm_keeps_the_legend_above_the_thanks(monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.emojis import signup_dm_icons
-    from qapbot.i18n import t
-    from qapbot.ui_cwl_roster import rerender_cwl_dm_after_response
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.emojis import signup_dm_icons
+    from clashcontrol.i18n import t
+    from clashcontrol.ui_cwl_roster import rerender_cwl_dm_after_response
 
     legend = t('cwl.template.bench_explanation', user_id="777", guild_id=None, **signup_dm_icons())
     db = MagicMock()

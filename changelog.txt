@@ -1,6 +1,25 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-25 (15)  Build 112.
+- Changed (rename to ClashControl, phase 5 of 8: code names, no behavior change):
+  - Package folder qapbot/ -> clashcontrol/ (every `qapbot.*` import, `qapbot/` path and
+    os.path.join(..., "qapbot", ...) follows), entry module QapBot.py -> ClashControl.py
+    (`from QapBot import` / `QapBot.<func>` refs, test monkeypatch targets).
+  - Class QBcore.QapBot -> ClashControlBot, exception QapBotError -> ClashControlError.
+  - Tracker MCP server qapbot-tracker -> clashcontrol-tracker (.mcp.json, .vscode/mcp.json,
+    SERVER_NAME; module clashcontrol.mcp.tracker_mcp). Tool names are now
+    mcp__clashcontrol-tracker__* (Claude Code asks for tool permissions again once).
+  4.6k replacements in 250 files by a scripted, rule-based rewrite. Deliberately unchanged:
+  the domain qapbot.uk (bridge-prod.qapbot.uk tunnel), the cloudflared tunnel name, the
+  workers.dev subdomain, the Discord channel #qapbot-test, DB/log file names (qapbot.db,
+  qapbot_history.db, qapbot*.log -> phase 6), NAS/local folder paths and .bat scripts, the
+  NAS script start_qapbot.sh (phase 7), history (changelog, plans/implemented, archives).
+  DEPLOY (DEV and PROD): start the bot with `ClashControl.py` instead of `QapBot.py`
+  (start_qapbot.sh / any autostart); after copying the new files, DELETE the old `qapbot/`
+  folder and `QapBot.py` on the target, or they linger as dead copies next to the live code.
+  3563 tests pass; tracker MCP answers initialize as clashcontrol-tracker.
+
 2026-09-25 (14)  Build 111.
 - Changed (rename to ClashControl, phase 4 of 8: prose only, no behavior change): "QapBot" as
   the product name -> "ClashControl" in README, CLAUDE.md, the playbook, qapbot/docs/*.md,

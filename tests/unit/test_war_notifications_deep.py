@@ -28,7 +28,7 @@ def _mock_cache(**overrides) -> MagicMock:
 
 class TestGetHoursUntilWarEnd:
     def _fn(self):
-        from qapbot.war_notifications import _get_hours_until_war_end
+        from clashcontrol.war_notifications import _get_hours_until_war_end
         return _get_hours_until_war_end
 
     def test_future_datetime_returns_correct_hours(self):
@@ -70,7 +70,7 @@ class TestGetHoursUntilWarEnd:
 
 class TestGetWarId:
     def _fn(self):
-        from qapbot.war_notifications import _get_war_id
+        from clashcontrol.war_notifications import _get_war_id
         return _get_war_id
 
     def test_basic(self):
@@ -97,7 +97,7 @@ class TestGetWarId:
 
 class TestGetPlayersWithAttacksRemaining:
     def _fn(self):
-        from qapbot.war_notifications import _get_players_with_attacks_remaining
+        from clashcontrol.war_notifications import _get_players_with_attacks_remaining
         return _get_players_with_attacks_remaining
 
     def _war_data(self, members, attacks_per_member=2, seconds_until=7200):
@@ -173,14 +173,14 @@ class TestGetPlayersWithAttacksRemaining:
 
 class TestShouldNotifyForWarType:
     def _fn(self):
-        from qapbot.war_notifications import _should_notify_for_war_type
+        from clashcontrol.war_notifications import _should_notify_for_war_type
         return _should_notify_for_war_type
 
     def test_all_wars_always_true(self, monkeypatch):
         cache = _mock_cache(user_accounts={
             "U1": {"notification_settings": {"notification_type": "all_wars"}}
         })
-        monkeypatch.setattr("qapbot.war_notifications.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.war_notifications.CACHE", cache)
         wd = {"attacks_per_member": 2}
         assert self._fn()("U1", wd) is True
 
@@ -188,7 +188,7 @@ class TestShouldNotifyForWarType:
         cache = _mock_cache(user_accounts={
             "U1": {"notification_settings": {"notification_type": "cwl_only"}}
         })
-        monkeypatch.setattr("qapbot.war_notifications.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.war_notifications.CACHE", cache)
         wd = {"type": "cwl", "is_cwl": True}
         assert self._fn()("U1", wd) is True
 
@@ -196,19 +196,19 @@ class TestShouldNotifyForWarType:
         cache = _mock_cache(user_accounts={
             "U1": {"notification_settings": {"notification_type": "cwl_only"}}
         })
-        monkeypatch.setattr("qapbot.war_notifications.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.war_notifications.CACHE", cache)
         wd = {"type": "regular", "is_cwl": False}
         assert self._fn()("U1", wd) is False
 
     def test_no_preference_defaults_all_wars(self, monkeypatch):
         cache = _mock_cache(user_accounts={"U1": {"notification_settings": {}}})
-        monkeypatch.setattr("qapbot.war_notifications.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.war_notifications.CACHE", cache)
         wd = {"attacks_per_member": 2}
         assert self._fn()("U1", wd) is True
 
     def test_unknown_user_returns_false(self, monkeypatch):
         cache = _mock_cache(user_accounts={})
-        monkeypatch.setattr("qapbot.war_notifications.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.war_notifications.CACHE", cache)
         wd = {"attacks_per_member": 2}
         assert self._fn()("UNKNOWN", wd) is False
 
@@ -219,36 +219,36 @@ class TestShouldNotifyForWarType:
 
 class TestGetPlayerDiscordId:
     def _fn(self):
-        from qapbot.war_notifications import _get_player_discord_id
+        from clashcontrol.war_notifications import _get_player_discord_id
         return _get_player_discord_id
 
     def test_finds_mapped_user(self, monkeypatch):
-        import qapbot.war_notifications as wn
+        import clashcontrol.war_notifications as wn
         monkeypatch.setattr(wn, "_notification_player_index", {"P1": "U1"})
         result = self._fn()("#P1")
         assert result == "U1"
 
     def test_war_reminders_disabled(self, monkeypatch):
         # war_reminders=False → player excluded from index at build time → None
-        import qapbot.war_notifications as wn
+        import clashcontrol.war_notifications as wn
         monkeypatch.setattr(wn, "_notification_player_index", {})
         result = self._fn()("#P1")
         assert result is None
 
     def test_no_notification_settings(self, monkeypatch):
-        import qapbot.war_notifications as wn
+        import clashcontrol.war_notifications as wn
         monkeypatch.setattr(wn, "_notification_player_index", {})
         result = self._fn()("#P1")
         assert result is None
 
     def test_player_not_found(self, monkeypatch):
-        import qapbot.war_notifications as wn
+        import clashcontrol.war_notifications as wn
         monkeypatch.setattr(wn, "_notification_player_index", {"OTHER": "U1"})
         result = self._fn()("#P1")
         assert result is None
 
     def test_empty_accounts(self, monkeypatch):
-        import qapbot.war_notifications as wn
+        import clashcontrol.war_notifications as wn
         monkeypatch.setattr(wn, "_notification_player_index", {})
         result = self._fn()("#P1")
         assert result is None

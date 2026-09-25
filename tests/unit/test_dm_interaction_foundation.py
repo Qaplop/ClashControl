@@ -7,7 +7,7 @@ Covers:
   cross-guild rejection case flagged in the plan as the one behavior change with
   real security weight (an admin of guild A must not pass a check resolved
   against guild B).
-- QapBot.on_message(): DM free-text fallback reply; guild messages and the bot's
+- ClashControl.on_message(): DM free-text fallback reply; guild messages and the bot's
   own messages are left alone.
 """
 from __future__ import annotations
@@ -39,8 +39,8 @@ class _FakeCache:
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_resolve_guild_context_guild_invoked_is_passthrough(mock_interaction, monkeypatch):
-    from qapbot.QBdiscocmdshelper import resolve_guild_context
-    import qapbot.QBdiscocmdshelper as helper
+    from clashcontrol.QBdiscocmdshelper import resolve_guild_context
+    import clashcontrol.QBdiscocmdshelper as helper
 
     fake_cache = _FakeCache()
     monkeypatch.setattr(helper, "CACHE", fake_cache)
@@ -54,8 +54,8 @@ async def test_resolve_guild_context_guild_invoked_is_passthrough(mock_interacti
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_resolve_guild_context_dm_no_linked_accounts_returns_none(mock_interaction, monkeypatch):
-    from qapbot.QBdiscocmdshelper import resolve_guild_context
-    import qapbot.QBdiscocmdshelper as helper
+    from clashcontrol.QBdiscocmdshelper import resolve_guild_context
+    import clashcontrol.QBdiscocmdshelper as helper
 
     mock_interaction.guild = None
     fake_cache = _FakeCache()
@@ -67,8 +67,8 @@ async def test_resolve_guild_context_dm_no_linked_accounts_returns_none(mock_int
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_resolve_guild_context_dm_single_match_resolves_silently(mock_interaction, monkeypatch):
-    from qapbot.QBdiscocmdshelper import resolve_guild_context
-    import qapbot.QBdiscocmdshelper as helper
+    from clashcontrol.QBdiscocmdshelper import resolve_guild_context
+    import clashcontrol.QBdiscocmdshelper as helper
 
     mock_interaction.guild = None
     fake_cache = _FakeCache()
@@ -85,8 +85,8 @@ async def test_resolve_guild_context_dm_single_match_resolves_silently(mock_inte
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_resolve_guild_context_dm_linked_but_no_guild_configured_returns_none(mock_interaction, monkeypatch):
-    from qapbot.QBdiscocmdshelper import resolve_guild_context
-    import qapbot.QBdiscocmdshelper as helper
+    from clashcontrol.QBdiscocmdshelper import resolve_guild_context
+    import clashcontrol.QBdiscocmdshelper as helper
 
     mock_interaction.guild = None
     fake_cache = _FakeCache()
@@ -102,8 +102,8 @@ async def test_resolve_guild_context_dm_linked_but_no_guild_configured_returns_n
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_resolve_guild_context_dm_multiple_matches_delegates_to_picker(mock_interaction, monkeypatch):
-    from qapbot.QBdiscocmdshelper import resolve_guild_context
-    import qapbot.QBdiscocmdshelper as helper
+    from clashcontrol.QBdiscocmdshelper import resolve_guild_context
+    import clashcontrol.QBdiscocmdshelper as helper
 
     mock_interaction.guild = None
     fake_cache = _FakeCache()
@@ -133,8 +133,8 @@ async def test_resolve_guild_context_dm_multiple_matches_delegates_to_picker(moc
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_prompt_dm_guild_picker_resolves_from_selection(mock_interaction, monkeypatch):
-    from qapbot.QBdiscocmdshelper import _prompt_dm_guild_picker
-    import qapbot.QBdiscocmdshelper as helper
+    from clashcontrol.QBdiscocmdshelper import _prompt_dm_guild_picker
+    import clashcontrol.QBdiscocmdshelper as helper
 
     fake_cache = _FakeCache()
     monkeypatch.setattr(helper, "CACHE", fake_cache)
@@ -171,8 +171,8 @@ async def test_prompt_dm_guild_picker_resolves_from_selection(mock_interaction, 
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_prompt_dm_guild_picker_timeout_resolves_none(mock_interaction, monkeypatch):
-    from qapbot.QBdiscocmdshelper import _prompt_dm_guild_picker
-    import qapbot.QBdiscocmdshelper as helper
+    from clashcontrol.QBdiscocmdshelper import _prompt_dm_guild_picker
+    import clashcontrol.QBdiscocmdshelper as helper
 
     fake_cache = _FakeCache()
     monkeypatch.setattr(helper, "CACHE", fake_cache)
@@ -211,7 +211,7 @@ async def test_prompt_dm_guild_picker_timeout_resolves_none(mock_interaction, mo
 async def test_check_admin_permissions_dm_without_resolved_guild_unchanged(mock_interaction):
     """No resolved_guild_id passed (Phase 0b not yet wired for this call site) —
     behaves exactly as before: falls straight to the bot-admin check."""
-    from qapbot.QBdiscocmdshelper import check_admin_permissions
+    from clashcontrol.QBdiscocmdshelper import check_admin_permissions
 
     mock_interaction.guild = None
     assert await check_admin_permissions(mock_interaction, str(mock_interaction.user.id)) is True
@@ -221,7 +221,7 @@ async def test_check_admin_permissions_dm_without_resolved_guild_unchanged(mock_
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_check_admin_permissions_dm_resolved_guild_grants_guild_admin(mock_interaction):
-    from qapbot.QBdiscocmdshelper import check_admin_permissions
+    from clashcontrol.QBdiscocmdshelper import check_admin_permissions
 
     mock_interaction.guild = None
     member = MagicMock()
@@ -240,7 +240,7 @@ async def test_check_admin_permissions_dm_resolved_guild_grants_guild_admin(mock
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_check_admin_permissions_dm_resolved_guild_member_not_admin_falls_through(mock_interaction):
-    from qapbot.QBdiscocmdshelper import check_admin_permissions
+    from clashcontrol.QBdiscocmdshelper import check_admin_permissions
 
     mock_interaction.guild = None
     member = MagicMock()
@@ -259,7 +259,7 @@ async def test_check_admin_permissions_dm_resolved_guild_member_not_admin_falls_
 async def test_check_admin_permissions_dm_cross_guild_rejection(mock_interaction):
     """Security case called out explicitly in the plan: an admin of guild A must
     not pass a permission check resolved against guild B they aren't a member of."""
-    from qapbot.QBdiscocmdshelper import check_admin_permissions
+    from clashcontrol.QBdiscocmdshelper import check_admin_permissions
 
     mock_interaction.guild = None
     guild_b = MagicMock()
@@ -277,7 +277,7 @@ async def test_check_admin_permissions_dm_cross_guild_rejection(mock_interaction
 async def test_check_admin_permissions_dm_resolved_guild_not_cached_falls_through(mock_interaction):
     """resolved_guild_id doesn't correspond to a guild the bot's cache knows about
     (e.g. stale/bad id) — must not raise, just fall through to the bot-admin check."""
-    from qapbot.QBdiscocmdshelper import check_admin_permissions
+    from clashcontrol.QBdiscocmdshelper import check_admin_permissions
 
     mock_interaction.guild = None
     mock_interaction.client = MagicMock()
@@ -288,13 +288,13 @@ async def test_check_admin_permissions_dm_resolved_guild_not_cached_falls_throug
 
 
 # ---------------------------------------------------------------------------
-# QapBot.on_message()
+# ClashControl.on_message()
 # ---------------------------------------------------------------------------
 
 @pytest.fixture()
 def qapbot_module():
-    import QapBot  # noqa: E402  (module-level code is side-effect-light; see test_periodic_main_control.py)
-    return QapBot
+    import ClashControl  # noqa: E402  (module-level code is side-effect-light; see test_periodic_main_control.py)
+    return ClashControl
 
 
 def _make_message(*, guild, is_bot: bool, content: str = "hello"):
@@ -378,7 +378,7 @@ async def test_on_message_guild_message_skips_dm_reply(qapbot_module, fake_bot):
 @pytest.mark.asyncio
 async def test_on_message_dm_tracker_hint_mentions_are_clickable(qapbot_module, fake_bot, monkeypatch):
     """Tracker #0127: /bug and /feature in the free-text reply are clickable command mentions."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     monkeypatch.setattr(
         qapbot_module, "CONFIG", dataclasses.replace(qapbot_module.CONFIG, tracker_enabled=True)

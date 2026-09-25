@@ -21,8 +21,8 @@ class _FakeCache:
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_add_clan_by_search_invalid_parent_view(monkeypatch: pytest.MonkeyPatch, mock_interaction):
-    import qapbot.ui_clan_management as ui
-    import qapbot.cache_manager as cache_manager_module
+    import clashcontrol.ui_clan_management as ui
+    import clashcontrol.cache_manager as cache_manager_module
 
     monkeypatch.setattr(cache_manager_module, "CACHE", _FakeCache())
 
@@ -35,8 +35,8 @@ async def test_add_clan_by_search_invalid_parent_view(monkeypatch: pytest.Monkey
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_add_clan_by_search_invalid_tag_sends_error(monkeypatch: pytest.MonkeyPatch, mock_interaction):
-    import qapbot.ui_clan_management as ui
-    import qapbot.cache_manager as cache_manager_module
+    import clashcontrol.ui_clan_management as ui
+    import clashcontrol.cache_manager as cache_manager_module
 
     parent_view = SimpleNamespace(family_clans=[])
     monkeypatch.setattr(cache_manager_module, "CACHE", _FakeCache())
@@ -50,8 +50,8 @@ async def test_add_clan_by_search_invalid_tag_sends_error(monkeypatch: pytest.Mo
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_add_clan_by_search_tag_already_in_list(monkeypatch: pytest.MonkeyPatch, mock_interaction):
-    import qapbot.ui_clan_management as ui
-    import qapbot.cache_manager as cache_manager_module
+    import clashcontrol.ui_clan_management as ui
+    import clashcontrol.cache_manager as cache_manager_module
 
     parent_view = SimpleNamespace(family_clans=["#ABC123"])
     monkeypatch.setattr(cache_manager_module, "CACHE", _FakeCache())
@@ -65,8 +65,8 @@ async def test_add_clan_by_search_tag_already_in_list(monkeypatch: pytest.Monkey
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_add_clan_by_search_known_tag_adds_directly(monkeypatch: pytest.MonkeyPatch, mock_interaction):
-    import qapbot.ui_clan_management as ui
-    import qapbot.cache_manager as cache_manager_module
+    import clashcontrol.ui_clan_management as ui
+    import clashcontrol.cache_manager as cache_manager_module
 
     cache = _FakeCache()
     cache.clan_name_cache = {"#ABC123": {"name": "Alpha"}}
@@ -82,8 +82,8 @@ async def test_add_clan_by_search_known_tag_adds_directly(monkeypatch: pytest.Mo
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_add_clan_by_search_unknown_tag_fetches_api(monkeypatch: pytest.MonkeyPatch, mock_interaction):
-    import qapbot.ui_clan_management as ui
-    import qapbot.cache_manager as cache_manager_module
+    import clashcontrol.ui_clan_management as ui
+    import clashcontrol.cache_manager as cache_manager_module
 
     cache = _FakeCache()
     cache.coc_clan_cache.get_clan = AsyncMock(return_value=SimpleNamespace(name="FetchedClan"))
@@ -100,8 +100,8 @@ async def test_add_clan_by_search_unknown_tag_fetches_api(monkeypatch: pytest.Mo
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_add_clan_by_search_name_exact_match_autoads(monkeypatch: pytest.MonkeyPatch, mock_interaction):
-    import qapbot.ui_clan_management as ui
-    import qapbot.cache_manager as cache_manager_module
+    import clashcontrol.ui_clan_management as ui
+    import clashcontrol.cache_manager as cache_manager_module
 
     cache = _FakeCache()
     cache.clan_name_cache = {
@@ -120,8 +120,8 @@ async def test_add_clan_by_search_name_exact_match_autoads(monkeypatch: pytest.M
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_add_clan_by_search_no_matches_sends_error(monkeypatch: pytest.MonkeyPatch, mock_interaction):
-    import qapbot.ui_clan_management as ui
-    import qapbot.cache_manager as cache_manager_module
+    import clashcontrol.ui_clan_management as ui
+    import clashcontrol.cache_manager as cache_manager_module
 
     cache = _FakeCache()
     cache.clan_name_cache = {"#AAA111": {"name": "Alpha Clan"}}

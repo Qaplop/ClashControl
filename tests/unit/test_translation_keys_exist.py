@@ -26,7 +26,7 @@ _T_CALL = re.compile(r"""\bt\(\s*(['"])([A-Za-z0-9_.]+)\1""")
 
 def _static_keys() -> dict[str, set[str]]:
     keys: dict[str, set[str]] = {}
-    for path in glob.glob("qapbot/**/*.py", recursive=True) + glob.glob("*.py"):
+    for path in glob.glob("clashcontrol/**/*.py", recursive=True) + glob.glob("*.py"):
         if "/scripts/" in path.replace("\\", "/"):
             continue  # translation tooling talks ABOUT keys, it doesn't render them
         for match in _T_CALL.finditer(open(path, encoding="utf-8").read()):
@@ -44,7 +44,7 @@ def _exists(translations: dict, key: str) -> bool:
 
 
 def test_every_literal_translation_key_exists_in_english():
-    en = json.load(open("qapbot/translations/en.json", encoding="utf-8"))
+    en = json.load(open("clashcontrol/translations/en.json", encoding="utf-8"))
     keys = _static_keys()
     assert len(keys) > 500, "the t() scan found suspiciously few keys — did the call shape change?"
 
@@ -61,13 +61,13 @@ def test_every_literal_translation_key_exists_in_english():
 def test_known_missing_list_has_no_stale_entries():
     """Once one of those pre-existing gaps is fixed, it has to leave the list — otherwise the list
     slowly turns into a place where real bugs hide."""
-    en = json.load(open("qapbot/translations/en.json", encoding="utf-8"))
+    en = json.load(open("clashcontrol/translations/en.json", encoding="utf-8"))
     fixed = sorted(key for key in KNOWN_MISSING_KEYS if _exists(en, key))
     assert not fixed, f"these keys now exist — remove them from KNOWN_MISSING_KEYS: {fixed}"
 
 
 def test_the_cwl_signup_count_labels_resolve():
     """The concrete 2026-09-22 regression: the season overview's own count lines."""
-    en = json.load(open("qapbot/translations/en.json", encoding="utf-8"))
+    en = json.load(open("clashcontrol/translations/en.json", encoding="utf-8"))
     for status in ("pending", "confirmed", "auto_confirmed", "declined", "passive", "auto_passive"):
         assert _exists(en, f"cwl.management.signup_status_{status}"), status

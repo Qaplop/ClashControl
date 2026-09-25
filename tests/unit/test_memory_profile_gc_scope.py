@@ -30,7 +30,7 @@ from unittest.mock import MagicMock
 os.environ.setdefault("DISCORD_TOKEN", "test-token")
 
 import QBcore
-from qapbot.QBdiscocmdshelper_admin_command import handle_memory_profile
+from clashcontrol.QBdiscocmdshelper_admin_command import handle_memory_profile
 
 
 def _fake_cache() -> MagicMock:

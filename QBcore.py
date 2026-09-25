@@ -78,8 +78,8 @@ def _patch_coc_battle_modifiers() -> None:
                 BattleModifier._member_names_.append(_name)     # type: ignore[attr-defined]
 
 _patch_coc_battle_modifiers()
-from qapbot.constants import SECONDS_PER_HOUR
-from qapbot.i18n import t  # type: ignore[attr-defined]
+from clashcontrol.constants import SECONDS_PER_HOUR
+from clashcontrol.i18n import t  # type: ignore[attr-defined]
 
 BOT_VERSION: str = "1.3.39"
 
@@ -87,7 +87,7 @@ BOT_VERSION: str = "1.3.39"
 # .github/copilot-instructions.md.  BOT_VERSION answers "which release is this?";
 # BOT_BUILD answers "which edit of it is actually running?", which is the question that
 # matters when reading the server-machine's log after a file-copy deploy.
-BOT_BUILD: int = 111
+BOT_BUILD: int = 112
 
 
 def source_fingerprint() -> str:
@@ -99,7 +99,7 @@ def source_fingerprint() -> str:
     code, whatever their build numbers say.  Logged next to BOT_BUILD at startup so a
     mismatch between "same build, different fingerprint" is immediately visible.
 
-    Covers the repo-root modules and the ``qapbot`` package (excluding ``__pycache__``);
+    Covers the repo-root modules and the ``clashcontrol`` package (excluding ``__pycache__``);
     tests, scripts and the virtualenv are deliberately out of scope since they do not
     affect the running bot.  Cost is one pass over a few MB at startup only.
 
@@ -116,7 +116,7 @@ def source_fingerprint() -> str:
         for _name in _os.listdir(_root):
             if _name.endswith(".py"):
                 _files.append(_os.path.join(_root, _name))
-        for _dirpath, _dirnames, _filenames in _os.walk(_os.path.join(_root, "qapbot")):
+        for _dirpath, _dirnames, _filenames in _os.walk(_os.path.join(_root, "clashcontrol")):
             _dirnames[:] = [d for d in _dirnames if d != "__pycache__"]
             _files.extend(
                 _os.path.join(_dirpath, f) for f in _filenames if f.endswith(".py")
@@ -137,7 +137,7 @@ intents.message_content = True  # Enable privileged message content intent for c
 intents.members = True  # Enable privileged members intent for guild member access
 intents.presences = True  # Enable privileged presence intent for status/activity tracking
 
-class QapBot(commands.Bot):
+class ClashControlBot(commands.Bot):
     """Extended Discord bot with ClashControl-specific attributes for type safety."""
     start_time: Optional[datetime] = None
     last_sync: Optional[datetime] = None
@@ -154,7 +154,7 @@ class QapBot(commands.Bot):
         self.fully_initialized: bool = False
         self.initialization_in_progress: bool = False
 
-bot: QapBot = QapBot(
+bot: ClashControlBot = ClashControlBot(
     command_prefix=commands.when_mentioned,  # responds only to @Bot mentions (and you won't add any)
     intents=intents,
 )
@@ -251,7 +251,7 @@ async def _maintenance_interaction_check(interaction: discord.Interaction) -> bo
 
     # Block commands during startup (before on_ready finishes initializing)
     if not getattr(bot, 'fully_initialized', False):
-        from qapbot.i18n import t as _t
+        from clashcontrol.i18n import t as _t
         guild_id = interaction.guild.id if interaction.guild else None
         msg = _t('commands.errors.startup_in_progress', guild_id=guild_id)
         record_interaction_rejection("startup_in_progress", interaction_command_label(interaction))
@@ -271,7 +271,7 @@ async def _maintenance_interaction_check(interaction: discord.Interaction) -> bo
     # During DB maintenance (VACUUM/REINDEX), block ALL commands with a short notice.
     # This is a temporary state (minutes, not hours) — no admin escape hatch needed.
     if db_maintenance_mode and not maintenance_mode:
-        from qapbot.i18n import t as _t
+        from clashcontrol.i18n import t as _t
         guild_id = interaction.guild.id if interaction.guild else None
         msg = _t('commands.errors.db_maintenance_active', guild_id=guild_id)
         record_interaction_rejection("db_maintenance", interaction_command_label(interaction))
@@ -289,7 +289,7 @@ async def _maintenance_interaction_check(interaction: discord.Interaction) -> bo
         if action_value.upper() == "MAINTENANCE_END":
             return True
     # All other commands get a polite maintenance notice
-    from qapbot.i18n import t as _t
+    from clashcontrol.i18n import t as _t
     guild_id = interaction.guild.id if interaction.guild else None
     msg = _t('commands.errors.maintenance_mode_active', guild_id=guild_id)
     record_interaction_rejection("maintenance_mode", interaction_command_label(interaction))
@@ -320,7 +320,7 @@ _original_modal_interaction_check = discord.ui.Modal.interaction_check
 async def _maintenance_view_interaction_check(
     self: discord.ui.View, interaction: discord.Interaction
 ) -> bool:
-    from qapbot.ui_common import check_maintenance_block
+    from clashcontrol.ui_common import check_maintenance_block
     if await check_maintenance_block(interaction):
         return False
     return bool(await _original_view_interaction_check(self, interaction))
@@ -329,7 +329,7 @@ async def _maintenance_view_interaction_check(
 async def _maintenance_modal_interaction_check(
     self: discord.ui.Modal, interaction: discord.Interaction
 ) -> bool:
-    from qapbot.ui_common import check_maintenance_block
+    from clashcontrol.ui_common import check_maintenance_block
     if await check_maintenance_block(interaction):
         return False
     return bool(await _original_modal_interaction_check(self, interaction))
@@ -505,7 +505,7 @@ IMPORTANT - Caching:
 coc_key_sanity_task: Optional["asyncio.Task[None]"] = None
 """
 Strong reference to the fire-and-forget CoC API key validation task started
-right after login in startup_login() (see QapBot.py's _validate_coc_api_keys()).
+right after login in startup_login() (see ClashControl.py's _validate_coc_api_keys()).
 Holding this reference here prevents the task from being garbage-collected
 mid-flight — a standard asyncio.create_task() pitfall. The task only logs
 (CRITICAL on a broken key, INFO once all keys pass); nothing awaits its result.
@@ -739,7 +739,7 @@ Cleared (set to None) after use.
 pending_clan_timestamp_retries: list[tuple[str, str]] = []
 """
 (timestamp_iso, clan_tag) pairs from a bulk_update_clan_timestamps() call that failed
-mid-cycle (both QapBot.py call sites — the categorization-loop batch and the Phase-3
+mid-cycle (both ClashControl.py call sites — the categorization-loop batch and the Phase-3
 batch — share this single queue). Without this, a failed batch write was previously
 only logged: the in-memory clan_name_cache already had the new last_war_update, but the
 DB row didn't, so after a restart those clans looked overdue and got needlessly re-polled
@@ -826,11 +826,11 @@ nightly_maintenance_durations: deque[float] = deque(maxlen=10)
 """
 Rolling window of the last 10 completed nightly-maintenance run durations
 (seconds), oldest first. Populated by run_nightly_maintenance_routine() in
-QapBot.py after every run — the scheduled 03:00 UTC task, /admin Execute
+ClashControl.py after every run — the scheduled 03:00 UTC task, /admin Execute
 Nightly Maintenance, and the deferred-optimize path all share that one
 function, so all three feed this same history.
 Read by /status and /admin Check Logs (via
-qapbot.QBdiscocmdshelper_admin_command.format_nightly_maintenance_stats) to
+clashcontrol.QBdiscocmdshelper_admin_command.format_nightly_maintenance_stats) to
 report min/avg/max. Empty until this process completes its own first run —
 until then those commands fall back to the last run's duration read from the
 log file (find_last_nightly_maintenance_duration), since maintenance runs at
@@ -862,7 +862,7 @@ async def on_guild_channel_delete(channel: discord.abc.GuildChannel) -> None:
     guild_id_str = str(channel.guild.id)
 
     try:
-        from qapbot.cache_manager import CACHE
+        from clashcontrol.cache_manager import CACHE
 
         # 1. Collect affected clan tags BEFORE removing subscriptions (for status update)
         channel_subs = CACHE.get_channel_subscriptions(channel_id_str)

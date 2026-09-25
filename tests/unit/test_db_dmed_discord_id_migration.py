@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import pytest
 
-from qapbot.db_manager import WarHistoryDB
+from clashcontrol.db_manager import WarHistoryDB
 
 
 CWL_SNAPSHOT_TABLES = ("cwl_signups", "cwl_shared_clan_players", "cwl_player_season_status")

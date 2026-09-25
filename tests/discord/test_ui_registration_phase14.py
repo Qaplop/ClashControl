@@ -65,7 +65,7 @@ class _FakePlayer:
 @pytest.mark.asyncio
 async def test_build_message_content_shows_th_and_clan_suffix(monkeypatch: pytest.MonkeyPatch) -> None:
     """TH level and clan name appear in the player line when both are set."""
-    import qapbot.ui_registration as ui
+    import clashcontrol.ui_registration as ui
 
     cache = FakeCache()
     cache.user_accounts["123"] = {
@@ -86,7 +86,7 @@ async def test_build_message_content_shows_th_and_clan_suffix(monkeypatch: pytes
 @pytest.mark.asyncio
 async def test_build_message_content_no_suffix_when_no_th_data(monkeypatch: pytest.MonkeyPatch) -> None:
     """No TH/clan suffix when th_level is None and current_clan_tag is None."""
-    import qapbot.ui_registration as ui
+    import clashcontrol.ui_registration as ui
 
     cache = FakeCache()
     cache.user_accounts["123"] = {
@@ -109,7 +109,7 @@ async def test_build_message_content_no_suffix_when_no_th_data(monkeypatch: pyte
 @pytest.mark.asyncio
 async def test_on_refresh_click_updates_fields_and_persists(monkeypatch: pytest.MonkeyPatch) -> None:
     """When CoC API returns changed data, fields are updated and persist_user is called."""
-    import qapbot.ui_registration as ui
+    import clashcontrol.ui_registration as ui
 
     cache = FakeCache()
     cache.user_accounts["123"] = {
@@ -140,7 +140,7 @@ async def test_on_refresh_click_updates_fields_and_persists(monkeypatch: pytest.
 @pytest.mark.asyncio
 async def test_on_refresh_click_no_changes_skips_persist(monkeypatch: pytest.MonkeyPatch) -> None:
     """When API returns identical data, persist_user is NOT called."""
-    import qapbot.ui_registration as ui
+    import clashcontrol.ui_registration as ui
 
     cache = FakeCache()
     cache.user_accounts["123"] = {
@@ -175,7 +175,7 @@ async def test_on_refresh_click_no_changes_skips_persist(monkeypatch: pytest.Mon
 @pytest.mark.asyncio
 async def test_on_refresh_click_api_error_does_not_crash(monkeypatch: pytest.MonkeyPatch) -> None:
     """When CoC API raises an exception for a player, refresh completes gracefully."""
-    import qapbot.ui_registration as ui
+    import clashcontrol.ui_registration as ui
 
     cache = FakeCache()
     cache.user_accounts["123"] = {
@@ -208,7 +208,7 @@ async def test_build_message_content_truncates_long_account_list(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Many linked accounts must not push the message past Discord's limit."""
-    import qapbot.ui_registration as ui
+    import clashcontrol.ui_registration as ui
 
     cache = FakeCache()
     cache.user_accounts["123"] = {
@@ -220,7 +220,7 @@ async def test_build_message_content_truncates_long_account_list(
     view = ui.AccountManagementView(user_id="123", guild_id=1, display_name="Alice")
     content = view._build_message_content()
 
-    # NOTE: _build_message_content does a function-local `from qapbot.i18n import t`, which
+    # NOTE: _build_message_content does a function-local `from clashcontrol.i18n import t`, which
     # shadows the module-level monkeypatch above — so the REAL translation renders here, and
     # asserting on real text (rather than the key) is what actually proves the key exists.
     assert len(content) < ui._DISCORD_MESSAGE_CHAR_LIMIT
@@ -233,7 +233,7 @@ async def test_build_message_content_keeps_short_list_untruncated(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """The common case (a handful of accounts) is unchanged — no truncation note."""
-    import qapbot.ui_registration as ui
+    import clashcontrol.ui_registration as ui
 
     cache = FakeCache()
     cache.user_accounts["123"] = {
@@ -260,7 +260,7 @@ async def test_build_message_content_clamps_oversized_status_message(
     status_message is caller-supplied and interpolated raw, so capping only the player list
     does not by itself keep the result under Discord's limit.
     """
-    import qapbot.ui_registration as ui
+    import clashcontrol.ui_registration as ui
 
     cache = FakeCache()
     cache.user_accounts["123"] = {"players": [_user_player("#P1")]}

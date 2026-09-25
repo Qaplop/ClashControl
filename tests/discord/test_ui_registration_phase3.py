@@ -9,7 +9,7 @@ import pytest
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_link_account_with_unverified_players_shows_action_view(monkeypatch: pytest.MonkeyPatch, mock_interaction):
-    import qapbot.ui_registration as ui
+    import clashcontrol.ui_registration as ui
 
     monkeypatch.setattr(ui, "update_user_metadata_from_interaction", AsyncMock())
     show_modal = AsyncMock()
@@ -40,7 +40,7 @@ async def test_link_account_with_unverified_players_shows_action_view(monkeypatc
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_link_account_without_unverified_opens_search_modal(monkeypatch: pytest.MonkeyPatch, mock_interaction):
-    import qapbot.ui_registration as ui
+    import clashcontrol.ui_registration as ui
 
     monkeypatch.setattr(ui, "update_user_metadata_from_interaction", AsyncMock())
     show_modal = AsyncMock()
@@ -67,7 +67,7 @@ async def test_link_account_without_unverified_opens_search_modal(monkeypatch: p
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_api_verification_no_players_sends_info(monkeypatch: pytest.MonkeyPatch, mock_interaction):
-    import qapbot.ui_registration as ui
+    import clashcontrol.ui_registration as ui
 
     monkeypatch.setattr(ui, "update_user_metadata_from_interaction", AsyncMock())
 
@@ -88,7 +88,7 @@ async def test_api_verification_no_players_sends_info(monkeypatch: pytest.Monkey
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_api_verification_all_verified_sends_info(monkeypatch: pytest.MonkeyPatch, mock_interaction):
-    import qapbot.ui_registration as ui
+    import clashcontrol.ui_registration as ui
 
     monkeypatch.setattr(ui, "update_user_metadata_from_interaction", AsyncMock())
 
@@ -115,7 +115,7 @@ async def test_api_verification_all_verified_sends_info(monkeypatch: pytest.Monk
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_api_verification_single_unverified_skips_selector_opens_modal(monkeypatch: pytest.MonkeyPatch, mock_interaction):
-    import qapbot.ui_registration as ui
+    import clashcontrol.ui_registration as ui
 
     monkeypatch.setattr(ui, "update_user_metadata_from_interaction", AsyncMock())
 
@@ -143,7 +143,7 @@ async def test_api_verification_single_unverified_skips_selector_opens_modal(mon
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_api_verification_multiple_unverified_shows_selector(monkeypatch: pytest.MonkeyPatch, mock_interaction):
-    import qapbot.ui_registration as ui
+    import clashcontrol.ui_registration as ui
 
     monkeypatch.setattr(ui, "update_user_metadata_from_interaction", AsyncMock())
 

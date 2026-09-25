@@ -30,7 +30,7 @@ class _FakeCache:
 
 @pytest.mark.smoke
 def test_generate_family_tag_format() -> None:
-    from qapbot.QBdiscocmdshelper import generate_family_tag
+    from clashcontrol.QBdiscocmdshelper import generate_family_tag
 
     tag = generate_family_tag("Alpha Family", ["#AAA", "#BBB"])
 
@@ -39,7 +39,7 @@ def test_generate_family_tag_format() -> None:
 
 @pytest.mark.smoke
 def test_normalize_family_tag_handles_hash_o_replacement_and_invalid() -> None:
-    from qapbot.QBdiscocmdshelper import normalize_family_tag
+    from clashcontrol.QBdiscocmdshelper import normalize_family_tag
 
     assert normalize_family_tag("3457o457b9") == "#34570457B9"
     assert normalize_family_tag("#abc123") is None
@@ -47,7 +47,7 @@ def test_normalize_family_tag_handles_hash_o_replacement_and_invalid() -> None:
 
 @pytest.mark.smoke
 def test_build_autocomplete_choices_filters_and_limits() -> None:
-    from qapbot.QBdiscocmdshelper import _build_autocomplete_choices
+    from clashcontrol.QBdiscocmdshelper import _build_autocomplete_choices
 
     items = [("a", "Alpha"), ("b", "Beta"), ("c", "Gamma")]
     choices = _build_autocomplete_choices(items, current="a", max_choices=1)
@@ -59,7 +59,7 @@ def test_build_autocomplete_choices_filters_and_limits() -> None:
 
 @pytest.mark.smoke
 def test_display_name_helpers(monkeypatch: pytest.MonkeyPatch) -> None:
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.QBdiscocmdshelper as helper
 
     cache = _FakeCache()
     cache.clan_name_cache = {"#C1": {"name": "Clan One"}}
@@ -75,7 +75,7 @@ def test_display_name_helpers(monkeypatch: pytest.MonkeyPatch) -> None:
 
 @pytest.mark.smoke
 def test_is_already_subscribed_matches_mode_and_year() -> None:
-    from qapbot.QBdiscocmdshelper import is_already_subscribed
+    from clashcontrol.QBdiscocmdshelper import is_already_subscribed
 
     subs: list[dict[str, Any]] = [
         {"clan_tag": "#C1", "subscription_type": "attack", "year": None},
@@ -89,7 +89,7 @@ def test_is_already_subscribed_matches_mode_and_year() -> None:
 
 @pytest.mark.smoke
 def test_get_guild_subscribed_clans_expands_families(monkeypatch: pytest.MonkeyPatch) -> None:
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.QBdiscocmdshelper as helper
 
     cache = _FakeCache()
     cache.clan_families = {
@@ -113,7 +113,7 @@ def test_get_guild_subscribed_clans_expands_families(monkeypatch: pytest.MonkeyP
 
 @pytest.mark.smoke
 def test_get_guild_clans_including_member_config_combines_sources(monkeypatch: pytest.MonkeyPatch) -> None:
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.QBdiscocmdshelper as helper
 
     cache = _FakeCache()
     cache.clan_families = {
@@ -137,7 +137,7 @@ def test_get_guild_clans_including_member_config_combines_sources(monkeypatch: p
 @pytest.mark.smoke
 @pytest.mark.asyncio
 async def test_resolve_clan_or_family_tag_paths(monkeypatch: pytest.MonkeyPatch) -> None:
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.QBdiscocmdshelper as helper
 
     cache = _FakeCache()
     cache.clan_families = {"#FAM0000001": {"name": "Family", "clans": ["#C1"]}}
@@ -155,7 +155,7 @@ async def test_resolve_clan_or_family_tag_paths(monkeypatch: pytest.MonkeyPatch)
 
 @pytest.mark.smoke
 def test_get_user_player_handles_invalid_players_shape() -> None:
-    from qapbot.QBdiscocmdshelper import get_user_player
+    from clashcontrol.QBdiscocmdshelper import get_user_player
 
     assert get_user_player({}, "#P1") is None
     assert get_user_player({"players": "bad"}, "#P1") is None
@@ -167,7 +167,7 @@ def test_get_user_player_handles_invalid_players_shape() -> None:
 
 @pytest.mark.smoke
 def test_get_registered_player_ids_ignores_unassigned(monkeypatch: pytest.MonkeyPatch) -> None:
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.QBdiscocmdshelper as helper
 
     cache = _FakeCache()
     cache.user_accounts = {
@@ -183,7 +183,7 @@ def test_get_registered_player_ids_ignores_unassigned(monkeypatch: pytest.Monkey
 
 @pytest.mark.smoke
 def test_calculate_activity_score_counts_recent_history_and_temp(monkeypatch: pytest.MonkeyPatch) -> None:
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.QBdiscocmdshelper as helper
 
     cache = _FakeCache()
     now = datetime.now()

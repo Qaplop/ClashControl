@@ -1,8 +1,8 @@
 {
   "mcpServers": {
-    "qapbot-tracker": {
+    "clashcontrol-tracker": {
       "command": "c:/python/QapBot/venv/Scripts/python.exe",
-      "args": ["-m", "qapbot.mcp.tracker_mcp"],
+      "args": ["-m", "clashcontrol.mcp.tracker_mcp"],
       "cwd": "c:/python/QapBot"
     }
   }

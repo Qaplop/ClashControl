@@ -27,7 +27,7 @@ import pytest
 
 @pytest.fixture
 async def db(tmp_path):
-    from qapbot.db_manager import WarHistoryDB
+    from clashcontrol.db_manager import WarHistoryDB
     inst = WarHistoryDB()
     db_path = str(tmp_path / "final_test.db")
     await inst.initialize(db_path)
@@ -47,9 +47,9 @@ class TestCheckWarsForNotifications:
         mock_config = MagicMock()
         mock_config.is_dev_mode = True
 
-        with patch("qapbot.war_notifications.CONFIG", mock_config), \
-             patch("qapbot.war_notifications._get_active_wars") as mock_get:
-            from qapbot.war_notifications import check_wars_for_notifications
+        with patch("clashcontrol.war_notifications.CONFIG", mock_config), \
+             patch("clashcontrol.war_notifications._get_active_wars") as mock_get:
+            from clashcontrol.war_notifications import check_wars_for_notifications
             await check_wars_for_notifications()
             mock_get.assert_not_called()
 
@@ -59,9 +59,9 @@ class TestCheckWarsForNotifications:
         mock_config = MagicMock()
         mock_config.is_dev_mode = False
 
-        with patch("qapbot.war_notifications.CONFIG", mock_config), \
-             patch("qapbot.war_notifications._get_active_wars", return_value=[]):
-            from qapbot.war_notifications import check_wars_for_notifications
+        with patch("clashcontrol.war_notifications.CONFIG", mock_config), \
+             patch("clashcontrol.war_notifications._get_active_wars", return_value=[]):
+            from clashcontrol.war_notifications import check_wars_for_notifications
             await check_wars_for_notifications()
 
     @pytest.mark.asyncio
@@ -73,11 +73,11 @@ class TestCheckWarsForNotifications:
         war_data = {"state": "in_war", "clan": {"tag": "#CL1"}}
         active_wars = [("#CL1", "WID1", war_data)]
 
-        with patch("qapbot.war_notifications.CONFIG", mock_config), \
-             patch("qapbot.war_notifications._get_active_wars", return_value=active_wars), \
-             patch("qapbot.war_notifications._process_war_for_notifications",
+        with patch("clashcontrol.war_notifications.CONFIG", mock_config), \
+             patch("clashcontrol.war_notifications._get_active_wars", return_value=active_wars), \
+             patch("clashcontrol.war_notifications._process_war_for_notifications",
                    new_callable=AsyncMock, return_value=(2, 1)) as mock_proc:
-            from qapbot.war_notifications import check_wars_for_notifications
+            from clashcontrol.war_notifications import check_wars_for_notifications
             await check_wars_for_notifications()
             mock_proc.assert_awaited_once_with("#CL1", "WID1", war_data)
 
@@ -100,11 +100,11 @@ class TestCheckWarsForNotifications:
                 raise RuntimeError("boom")
             return (1, 0)
 
-        with patch("qapbot.war_notifications.CONFIG", mock_config), \
-             patch("qapbot.war_notifications._get_active_wars", return_value=active_wars), \
-             patch("qapbot.war_notifications._process_war_for_notifications",
+        with patch("clashcontrol.war_notifications.CONFIG", mock_config), \
+             patch("clashcontrol.war_notifications._get_active_wars", return_value=active_wars), \
+             patch("clashcontrol.war_notifications._process_war_for_notifications",
                    new_callable=AsyncMock, side_effect=side_effect):
-            from qapbot.war_notifications import check_wars_for_notifications
+            from clashcontrol.war_notifications import check_wars_for_notifications
             await check_wars_for_notifications()
             assert call_count == 2
 
@@ -114,10 +114,10 @@ class TestCheckWarsForNotifications:
         mock_config = MagicMock()
         mock_config.is_dev_mode = False
 
-        with patch("qapbot.war_notifications.CONFIG", mock_config), \
-             patch("qapbot.war_notifications._get_active_wars", side_effect=RuntimeError("fail")):
-            from qapbot.war_notifications import check_wars_for_notifications
-            from qapbot.exceptions import NotificationError
+        with patch("clashcontrol.war_notifications.CONFIG", mock_config), \
+             patch("clashcontrol.war_notifications._get_active_wars", side_effect=RuntimeError("fail")):
+            from clashcontrol.war_notifications import check_wars_for_notifications
+            from clashcontrol.exceptions import NotificationError
             with pytest.raises(NotificationError):
                 await check_wars_for_notifications()
 
@@ -129,11 +129,11 @@ class TestCheckWarsForNotifications:
 
         active_wars = [("#CL1", "WID1", {})]
 
-        with patch("qapbot.war_notifications.CONFIG", mock_config), \
-             patch("qapbot.war_notifications._get_active_wars", return_value=active_wars), \
-             patch("qapbot.war_notifications._process_war_for_notifications",
+        with patch("clashcontrol.war_notifications.CONFIG", mock_config), \
+             patch("clashcontrol.war_notifications._get_active_wars", return_value=active_wars), \
+             patch("clashcontrol.war_notifications._process_war_for_notifications",
                    new_callable=AsyncMock, return_value=(0, 0)):
-            from qapbot.war_notifications import check_wars_for_notifications
+            from clashcontrol.war_notifications import check_wars_for_notifications
             await check_wars_for_notifications()
 
 
@@ -191,7 +191,7 @@ class TestGuildConfigRoundTrip:
         mock_cache = MagicMock()
         mock_cache.clan_name_cache = {"#GCMC1234": {"name": "GuildClan"}}
         mock_cache.clan_families = {}
-        with patch("qapbot.cache_manager.CACHE", mock_cache):
+        with patch("clashcontrol.cache_manager.CACHE", mock_cache):
             config = {
                 "language": "en",
                 "member_clans": ["#GCMC1234"],
@@ -280,11 +280,11 @@ class TestInitializeError:
     @pytest.mark.asyncio
     async def test_aiosqlite_error(self, tmp_path):
         """If aiosqlite connection fails, should raise RuntimeError."""
-        from qapbot.db_manager import WarHistoryDB
+        from clashcontrol.db_manager import WarHistoryDB
         import aiosqlite
 
         inst = WarHistoryDB()
-        with patch("qapbot.db_manager.aiosqlite") as mock_aiosqlite:
+        with patch("clashcontrol.db_manager.aiosqlite") as mock_aiosqlite:
             mock_aiosqlite.connect = AsyncMock(side_effect=aiosqlite.Error("connect failed"))
             mock_aiosqlite.Error = aiosqlite.Error
             mock_aiosqlite.Row = aiosqlite.Row
@@ -294,9 +294,9 @@ class TestInitializeError:
     @pytest.mark.asyncio
     async def test_aiosqlite_not_installed(self, tmp_path):
         """If aiosqlite is None, should raise ImportError."""
-        from qapbot.db_manager import WarHistoryDB
+        from clashcontrol.db_manager import WarHistoryDB
         inst = WarHistoryDB()
-        with patch("qapbot.db_manager.aiosqlite", None):
+        with patch("clashcontrol.db_manager.aiosqlite", None):
             with pytest.raises(ImportError, match="aiosqlite"):
                 await inst.initialize(str(tmp_path / "fail.db"))
 
@@ -354,7 +354,7 @@ class TestDeleteNotificationStateTransactionError:
 class TestCreateSchemaGuard:
     @pytest.mark.asyncio
     async def test_no_conn_raises(self):
-        from qapbot.db_manager import WarHistoryDB
+        from clashcontrol.db_manager import WarHistoryDB
         inst = WarHistoryDB()
         inst.conn = None
         with pytest.raises(RuntimeError, match="not initialized"):

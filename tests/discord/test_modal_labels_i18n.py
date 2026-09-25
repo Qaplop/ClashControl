@@ -24,7 +24,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 @pytest.fixture
 def german_guild(monkeypatch):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     monkeypatch.setattr(CACHE, "server_config", {str(GUILD_ID): {"language": "de"}})
     monkeypatch.setattr(CACHE, "user_accounts", {})  # no per-user override — guild language applies
@@ -36,7 +36,7 @@ def _guild_view(**extra: Any) -> SimpleNamespace:
 
 
 def _build_modals() -> dict[str, discord.ui.Modal]:
-    from qapbot.ui_clan_management import (
+    from clashcontrol.ui_clan_management import (
         AddClanFamilyModal,
         AddClanModal,
         CreateFamilyModal,
@@ -44,8 +44,8 @@ def _build_modals() -> dict[str, discord.ui.Modal]:
         ManualUserIDModal,
         RenameFamilyModal,
     )
-    from qapbot.ui_notifications import LinkBuddyModal
-    from qapbot.ui_registration import (
+    from clashcontrol.ui_notifications import LinkBuddyModal
+    from clashcontrol.ui_registration import (
         ApiTokenEntryModal,
         ApiTokenOwnershipModal,
         PlayerSubstringModal,
@@ -91,7 +91,7 @@ def _labels(modal: discord.ui.Modal) -> list[discord.ui.Label[Any]]:
 
 @pytest.mark.discord
 def test_every_modal_shows_title_labels_and_placeholders_in_the_guild_language(german_guild):
-    en = json.load(open(ROOT / "qapbot/translations/en.json", encoding="utf-8"))
+    en = json.load(open(ROOT / "clashcontrol/translations/en.json", encoding="utf-8"))
     english_placeholders = set(en["ui_components"]["modals"].values()) | {
         en["warnotifications"]["buddy_modal_placeholder"],
         en["playerregistration"]["modal_placeholder_player_name"],
@@ -120,8 +120,8 @@ def test_modals_send_labels_on_the_label_component_not_the_deprecated_text_input
 
 @pytest.mark.discord
 def test_translating_one_instance_never_leaks_into_the_class_or_the_next_modal(german_guild, monkeypatch):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_registration import PlayerSubstringModal
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_registration import PlayerSubstringModal
 
     german = PlayerSubstringModal([], user_id="1", guild_id=GUILD_ID)
     monkeypatch.setattr(CACHE, "server_config", {})
@@ -135,7 +135,7 @@ def test_translating_one_instance_never_leaks_into_the_class_or_the_next_modal(g
 
 @pytest.mark.discord
 def test_rename_family_keeps_the_current_name_prefilled(german_guild):
-    from qapbot.ui_clan_management import RenameFamilyModal
+    from clashcontrol.ui_clan_management import RenameFamilyModal
 
     modal = RenameFamilyModal(_guild_view(), "The QCrew")
     assert cast(discord.ui.TextInput, modal.family_name.component).default == "The QCrew"
@@ -145,7 +145,7 @@ def test_rename_family_keeps_the_current_name_prefilled(german_guild):
 def test_view_guild_id_reads_guild_when_the_view_has_no_guild_id():
     """The family/clan modals once read getattr(view, 'guild_id', None) off views that only have
     .guild, so they were English on every server."""
-    from qapbot.ui_clan_management import _view_guild_id
+    from clashcontrol.ui_clan_management import _view_guild_id
 
     assert _view_guild_id(_guild_view()) == GUILD_ID
     assert _view_guild_id(SimpleNamespace(guild_id=5, guild=SimpleNamespace(id=6))) == 5
@@ -154,7 +154,7 @@ def test_view_guild_id_reads_guild_when_the_view_has_no_guild_id():
 
 def test_modal_titles_and_labels_fit_discords_45_char_limit_in_every_language():
     """A Label.text or modal title over 45 characters 400s the whole modal (Pitfall 66)."""
-    for path in sorted((ROOT / "qapbot/translations").glob("*.json")):
+    for path in sorted((ROOT / "clashcontrol/translations").glob("*.json")):
         data = json.load(open(path, encoding="utf-8"))
         texts = {k: v for k, v in data["ui_components"]["modals"].items() if k.startswith(("label_", "title_"))}
         texts["buddy_modal_title"] = data["warnotifications"]["buddy_modal_title"]
@@ -167,7 +167,7 @@ def test_modal_titles_and_labels_fit_discords_45_char_limit_in_every_language():
 def test_no_modal_sets_the_deprecated_text_input_label():
     """discord.py 2.7 deprecates TextInput(label=...) — wrap the field in discord.ui.Label."""
     problems = []
-    for path in sorted((ROOT / "qapbot").glob("*.py")):
+    for path in sorted((ROOT / "clashcontrol").glob("*.py")):
         tree = ast.parse(path.read_text(encoding="utf-8-sig"))  # some modules carry a BOM
         for node in ast.walk(tree):
             if (

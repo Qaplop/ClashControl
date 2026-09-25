@@ -17,7 +17,7 @@ import pytest
 
 os.environ.setdefault("DISCORD_TOKEN", "test-token")
 
-from qapbot.db_manager import WarHistoryDB
+from clashcontrol.db_manager import WarHistoryDB
 
 
 @pytest.fixture
@@ -33,7 +33,7 @@ async def db(tmp_path):
 
 @pytest.fixture(autouse=True)
 def _bypass_admin_check(monkeypatch):
-    import qapbot.QBdiscocmdshelper as helper
+    import clashcontrol.QBdiscocmdshelper as helper
 
     async def _always_admin(*args, **kwargs):
         return True
@@ -48,7 +48,7 @@ async def _seed_guild_and_clan(db: WarHistoryDB, guild_id: str, clan_tag: str = 
 
 
 def _make_member_clans_view(guild, current_member_clans, current_member_families=None):
-    from qapbot.ui_clan_management import MemberClansConfigurationView
+    from clashcontrol.ui_clan_management import MemberClansConfigurationView
 
     clan_management_view = MagicMock()
     clan_management_view.sent_message = MagicMock(guild=guild)
@@ -71,7 +71,7 @@ def _make_member_clans_view(guild, current_member_clans, current_member_families
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_on_apply_proceeds_immediately_without_cwl_conflict(db, mock_interaction):
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clan(db, "9301", "#CLAN1")
     CACHE.db_manager = db
@@ -91,8 +91,8 @@ async def test_on_apply_proceeds_immediately_without_cwl_conflict(db, mock_inter
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_on_apply_blocks_and_shows_confirmation_when_clan_actively_in_cwl(db, mock_interaction):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_clan_management import CwlLineupRemovalConfirmView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_clan_management import CwlLineupRemovalConfirmView
 
     await _seed_guild_and_clan(db, "9302", "#CLAN1")
     CACHE.db_manager = db
@@ -122,7 +122,7 @@ async def test_on_apply_blocks_and_shows_confirmation_when_clan_actively_in_cwl(
 async def test_on_apply_ignores_clans_still_covered_by_a_kept_family(db, mock_interaction):
     """A clan individually removed but still reachable via a kept family must not trigger the
     conflict check at all — it's not actually being removed from the guild."""
-    from qapbot.cache_manager import CACHE
+    from clashcontrol.cache_manager import CACHE
 
     await _seed_guild_and_clan(db, "9303", "#CLAN1")
     CACHE.db_manager = db
@@ -146,8 +146,8 @@ async def test_on_apply_ignores_clans_still_covered_by_a_kept_family(db, mock_in
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_confirm_view_yes_applies_and_deactivates_cwl_participation(db, mock_interaction):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_clan_management import CwlLineupRemovalConfirmView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_clan_management import CwlLineupRemovalConfirmView
 
     await _seed_guild_and_clan(db, "9304", "#CLAN1")
     CACHE.db_manager = db
@@ -174,8 +174,8 @@ async def test_confirm_view_yes_applies_and_deactivates_cwl_participation(db, mo
 @pytest.mark.asyncio
 async def test_confirm_view_yes_refreshes_the_hub_message(db, mock_interaction, monkeypatch):
     """The Hub's "Participating Clans" table just lost a clan — must not sit stale."""
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_clan_management import CwlLineupRemovalConfirmView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_clan_management import CwlLineupRemovalConfirmView
 
     await _seed_guild_and_clan(db, "9306", "#CLAN1")
     CACHE.db_manager = db
@@ -187,7 +187,7 @@ async def test_confirm_view_yes_refreshes_the_hub_message(db, mock_interaction, 
     member_clans_view._apply_member_clans_changes = AsyncMock()
 
     hub_refresh = AsyncMock()
-    monkeypatch.setattr("qapbot.ui_cwl_roster.refresh_cwl_management_hub_message", hub_refresh)
+    monkeypatch.setattr("clashcontrol.ui_cwl_roster.refresh_cwl_management_hub_message", hub_refresh)
 
     confirm_view = CwlLineupRemovalConfirmView(
         member_clans_view=member_clans_view,
@@ -202,8 +202,8 @@ async def test_confirm_view_yes_refreshes_the_hub_message(db, mock_interaction, 
 @pytest.mark.discord
 @pytest.mark.asyncio
 async def test_confirm_view_cancel_applies_nothing(db, mock_interaction):
-    from qapbot.cache_manager import CACHE
-    from qapbot.ui_clan_management import CwlLineupRemovalConfirmView
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_clan_management import CwlLineupRemovalConfirmView
 
     await _seed_guild_and_clan(db, "9305", "#CLAN1")
     CACHE.db_manager = db

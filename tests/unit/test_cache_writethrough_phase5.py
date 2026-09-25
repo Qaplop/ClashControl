@@ -23,7 +23,7 @@ import pytest
 @pytest.fixture
 def cache():
     """Create a CacheManager with a mocked db_manager."""
-    from qapbot.cache_manager import CacheManager
+    from clashcontrol.cache_manager import CacheManager
     cm = CacheManager.__new__(CacheManager)
     # Initialise required attributes manually (skip __init__ side effects)
     cm.subscriptions = {}

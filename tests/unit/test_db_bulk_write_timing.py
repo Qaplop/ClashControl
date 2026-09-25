@@ -15,7 +15,7 @@ import threading
 
 import pytest
 
-from qapbot.db_manager import WarHistoryDB
+from clashcontrol.db_manager import WarHistoryDB
 
 _CREATE_WAR_ATTACKS = """
     CREATE TABLE IF NOT EXISTS war_attacks (
@@ -191,7 +191,7 @@ class TestReadTimingAggregator:
 
     @pytest.fixture(autouse=True)
     def _reset_accumulator(self):
-        import qapbot.db_manager as dbm
+        import clashcontrol.db_manager as dbm
         dbm._read_timing_samples.clear()
         dbm._read_timing_window_start = 0.0
         yield
@@ -199,7 +199,7 @@ class TestReadTimingAggregator:
         dbm._read_timing_window_start = 0.0
 
     def test_does_not_log_until_the_window_elapses(self, caplog):
-        import qapbot.db_manager as dbm
+        import clashcontrol.db_manager as dbm
         with caplog.at_level("INFO"):
             for _ in range(50):
                 dbm._record_read_timing("probe", 0.001, conn_id=1)
@@ -208,7 +208,7 @@ class TestReadTimingAggregator:
         assert len(dbm._read_timing_samples["probe"]) == 50
 
     def test_flushes_aggregate_once_the_window_has_passed(self, caplog):
-        import qapbot.db_manager as dbm
+        import clashcontrol.db_manager as dbm
         dbm._record_read_timing("probe", 0.010, conn_id=1)
         dbm._record_read_timing("probe", 0.020, conn_id=1)
         # Force the window open rather than sleeping 60s.
@@ -227,7 +227,7 @@ class TestReadTimingAggregator:
     def test_conn_mean_spread_is_zero_when_all_samples_share_a_connection(self, caplog):
         """The OS-page-cache signature: every connection slows together, so the spread
         between per-connection means stays flat."""
-        import qapbot.db_manager as dbm
+        import clashcontrol.db_manager as dbm
         for _ in range(5):
             dbm._record_read_timing("probe", 0.010, conn_id=7)
         dbm._read_timing_window_start -= dbm._READ_TIMING_WINDOW_S + 1
@@ -242,7 +242,7 @@ class TestReadTimingAggregator:
     def test_conn_mean_spread_exposes_one_slow_connection(self, caplog):
         """The per-connection pager signature: one connection carries a polluted cache
         while the others do not. This is the field that tells the two mechanisms apart."""
-        import qapbot.db_manager as dbm
+        import clashcontrol.db_manager as dbm
         for _ in range(5):
             dbm._record_read_timing("probe", 0.001, conn_id=1)
         for _ in range(5):
@@ -261,7 +261,7 @@ class TestReadTimingAggregator:
 class TestWarSummaryStateReadIsSampled:
     @pytest.fixture(autouse=True)
     def _reset_accumulator(self):
-        import qapbot.db_manager as dbm
+        import clashcontrol.db_manager as dbm
         dbm._read_timing_samples.clear()
         dbm._read_timing_window_start = 0.0
         yield
@@ -269,7 +269,7 @@ class TestWarSummaryStateReadIsSampled:
         dbm._read_timing_window_start = 0.0
 
     def test_successful_lookup_is_sampled(self, tmp_path):
-        import qapbot.db_manager as dbm
+        import clashcontrol.db_manager as dbm
         dm = _make_db(tmp_path)
         conn = sqlite3.connect(_path_of(dm))
         conn.execute(
@@ -285,7 +285,7 @@ class TestWarSummaryStateReadIsSampled:
     def test_failed_lookup_is_still_sampled(self, tmp_path):
         """Recorded in `finally`: a read slow enough to error is exactly the case #0113
         cares about, so dropping those samples would bias the aggregate optimistic."""
-        import qapbot.db_manager as dbm
+        import clashcontrol.db_manager as dbm
         dm = _make_db(tmp_path)
         conn = sqlite3.connect(_path_of(dm))
         conn.execute("DROP TABLE war_summary")
@@ -316,7 +316,7 @@ class TestMeminfoSampling:
     ]
 
     def test_parses_the_four_fields_in_mb(self):
-        from qapbot.db_manager import _parse_meminfo_mb
+        from clashcontrol.db_manager import _parse_meminfo_mb
         got = _parse_meminfo_mb(self._SAMPLE)
         assert got == {
             "MemAvailable": 8100, "Cached": 5304, "Dirty": 3, "Writeback": 0,
@@ -325,18 +325,18 @@ class TestMeminfoSampling:
     def test_swapcached_is_not_mistaken_for_cached(self):
         """'Cached' must be an exact key match — a prefix/substring test would read
         SwapCached's value and silently report the wrong number."""
-        from qapbot.db_manager import _parse_meminfo_mb
+        from clashcontrol.db_manager import _parse_meminfo_mb
         assert _parse_meminfo_mb(self._SAMPLE)["Cached"] == 5304   # not 20480 kB -> 20
 
     def test_malformed_line_is_skipped_not_fatal(self):
-        from qapbot.db_manager import _parse_meminfo_mb
+        from clashcontrol.db_manager import _parse_meminfo_mb
         got = _parse_meminfo_mb(["Dirty:  not-a-number", "Cached:   1048576 kB"])
         assert got == {"Cached": 1024}
 
     def test_missing_proc_yields_empty_dict_not_an_exception(self, monkeypatch):
         """The write path calls this inline in a log f-string; raising there would abort a
         committed batch's log line on any non-Linux box."""
-        import qapbot.db_manager as dbm
+        import clashcontrol.db_manager as dbm
 
         def _boom(*_a, **_kw):
             raise FileNotFoundError("/proc/meminfo")
@@ -345,7 +345,7 @@ class TestMeminfoSampling:
         assert dbm._meminfo_mb() == {}
 
     def test_delta_string_reports_signed_change_against_the_before_snapshot(self):
-        from qapbot.db_manager import _meminfo_delta_str
+        from clashcontrol.db_manager import _meminfo_delta_str
         before = {"Cached": 5000, "Dirty": 2, "Writeback": 0, "MemAvailable": 8300}
         after = {"Cached": 5120, "Dirty": 45, "Writeback": 12, "MemAvailable": 8100}
         out = _meminfo_delta_str(before, after)
@@ -356,11 +356,11 @@ class TestMeminfoSampling:
 
     def test_delta_string_is_empty_when_unavailable(self):
         """Must degrade to '' so the [DB-BULK-WRITE] line stays well-formed off Linux."""
-        from qapbot.db_manager import _meminfo_delta_str
+        from clashcontrol.db_manager import _meminfo_delta_str
         assert _meminfo_delta_str({}, {}) == ""
 
     def test_delta_string_omits_deltas_when_no_before_snapshot(self):
-        from qapbot.db_manager import _meminfo_delta_str
+        from clashcontrol.db_manager import _meminfo_delta_str
         out = _meminfo_delta_str({}, {"Cached": 100, "Dirty": 1, "Writeback": 0, "MemAvailable": 50})
         assert "cached=100MB" in out and "(+" not in out
 

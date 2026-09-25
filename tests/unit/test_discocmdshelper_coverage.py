@@ -1,4 +1,4 @@
-"""Tests for qapbot/QBdiscocmdshelper.py — Phase 3 coverage.
+"""Tests for clashcontrol/QBdiscocmdshelper.py — Phase 3 coverage.
 
 Covers: _split_message_into_chunks, _split_embed_by_description,
 normalize_clan_tag, normalize_family_tag, _get_clan_tag,
@@ -24,7 +24,7 @@ import pytest
 
 class TestSplitMessageIntoChunks:
     def _fn(self):
-        from qapbot.QBdiscocmdshelper import _split_message_into_chunks
+        from clashcontrol.QBdiscocmdshelper import _split_message_into_chunks
         return _split_message_into_chunks
 
     def test_short_message_single_chunk(self):
@@ -72,7 +72,7 @@ class TestSplitMessageIntoChunks:
 
 class TestSplitEmbedByDescription:
     def _fn(self):
-        from qapbot.QBdiscocmdshelper import _split_embed_by_description
+        from clashcontrol.QBdiscocmdshelper import _split_embed_by_description
         return _split_embed_by_description
 
     def test_small_embed_returns_single(self):
@@ -117,7 +117,7 @@ class TestSplitEmbedByDescription:
 
 class TestNormalizeClanTag:
     def _fn(self):
-        from qapbot.QBdiscocmdshelper import normalize_clan_tag
+        from clashcontrol.QBdiscocmdshelper import normalize_clan_tag
         return normalize_clan_tag
 
     def test_valid_tag_with_hash(self):
@@ -160,7 +160,7 @@ class TestNormalizeClanTag:
 
 class TestNormalizeFamilyTag:
     def _fn(self):
-        from qapbot.QBdiscocmdshelper import normalize_family_tag
+        from clashcontrol.QBdiscocmdshelper import normalize_family_tag
         return normalize_family_tag
 
     def test_valid_ten_chars(self):
@@ -185,13 +185,13 @@ class TestNormalizeFamilyTag:
 
 class TestGetClanTag:
     def _fn(self):
-        from qapbot.QBdiscocmdshelper import _get_clan_tag
+        from clashcontrol.QBdiscocmdshelper import _get_clan_tag
         return _get_clan_tag
 
     def test_direct_tag_match(self, monkeypatch):
         cache = MagicMock()
         cache.clan_name_cache = {"#ABC12345": {"name": "TestClan"}}
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         count, tag = self._fn()("#ABC12345")
         assert count == 1
         assert tag == "#ABC12345"
@@ -202,7 +202,7 @@ class TestGetClanTag:
             "#C1": {"name": "Alpha Wolves"},
             "#C2": {"name": "Beta Pack"},
         }
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         count, tag = self._fn()("Alpha")
         assert count == 1
         assert tag == "#C1"
@@ -213,14 +213,14 @@ class TestGetClanTag:
             "#C1": {"name": "War Wolves"},
             "#C2": {"name": "War Eagles"},
         }
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         count, tag = self._fn()("War")
         assert count == 2
 
     def test_no_match(self, monkeypatch):
         cache = MagicMock()
         cache.clan_name_cache = {"#C1": {"name": "Test"}}
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         count, tag = self._fn()("Nonexistent")
         assert count == 0
         assert tag is None
@@ -232,7 +232,7 @@ class TestGetClanTag:
 
 class TestGenerateFamilyTag:
     def _fn(self):
-        from qapbot.QBdiscocmdshelper import generate_family_tag
+        from clashcontrol.QBdiscocmdshelper import generate_family_tag
         return generate_family_tag
 
     def test_returns_hash_prefixed(self):
@@ -261,7 +261,7 @@ class TestGenerateFamilyTag:
 
 class TestBuildAutocompleteChoices:
     def _fn(self):
-        from qapbot.QBdiscocmdshelper import _build_autocomplete_choices
+        from clashcontrol.QBdiscocmdshelper import _build_autocomplete_choices
         return _build_autocomplete_choices
 
     def test_no_filter(self):
@@ -297,40 +297,40 @@ class TestBuildAutocompleteChoices:
 
 class TestIsPlayerInMemberClans:
     def _fn(self):
-        from qapbot.QBdiscocmdshelper import is_player_in_member_clans
+        from clashcontrol.QBdiscocmdshelper import is_player_in_member_clans
         return is_player_in_member_clans
 
     def test_none_tag_returns_false(self, monkeypatch):
         cache = MagicMock()
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         assert self._fn()(None, 12345) is False
 
     def test_empty_tag_returns_false(self, monkeypatch):
         cache = MagicMock()
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         assert self._fn()("", 12345) is False
 
     def test_in_member_clans(self, monkeypatch):
         cache = MagicMock()
         cache.server_config = {"12345": {"member_clans": ["#C1", "#C2"], "member_families": []}}
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         assert self._fn()("#C1", 12345) is True
 
     def test_in_family_clans(self, monkeypatch):
         cache = MagicMock()
         cache.server_config = {"12345": {"member_clans": [], "member_families": ["#FAM1"]}}
         cache.clan_families = {"#FAM1": {"clans": ["#C1", "#C2"]}}
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         assert self._fn()("#C2", 12345) is True
 
     def test_not_found(self, monkeypatch):
         cache = MagicMock()
         cache.server_config = {"12345": {"member_clans": ["#C1"], "member_families": []}}
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         assert self._fn()("#NOTFOUND", 12345) is False
 
     def test_no_config_for_guild(self, monkeypatch):
         cache = MagicMock()
         cache.server_config = {}
-        monkeypatch.setattr("qapbot.QBdiscocmdshelper.CACHE", cache)
+        monkeypatch.setattr("clashcontrol.QBdiscocmdshelper.CACHE", cache)
         assert self._fn()("#C1", 99999) is False

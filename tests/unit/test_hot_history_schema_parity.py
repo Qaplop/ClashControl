@@ -1,6 +1,6 @@
 """Guardrail for the class of bug behind the 2026-08-14 hot/history column-order-drift
 incident (Cardinal Rule 1, .github/copilot-instructions.md; full writeup in
-qapbot/docs/DATABASE_ARCHITECTURE.md's "Hot/History DB Split" section).
+clashcontrol/docs/DATABASE_ARCHITECTURE.md's "Hot/History DB Split" section).
 
 That incident was a pure column-REORDER (same column names, different physical order) —
 already made harmless everywhere by 2026-08-16 (see test_hot_history_read_query_column_
@@ -11,7 +11,7 @@ again, by construction, regardless of how the two schemas' physical column order
 What explicit-column-naming does NOT protect against is a column existing in one schema and
 not the other — that's not a reorder, it's a genuinely different column SET, and an explicit
 column list just fails loudly (`no such column`) rather than silently misreading anything.
-`check_hot_history_schema_parity_sync()` (qapbot/db_manager.py) is the tripwire for exactly
+`check_hot_history_schema_parity_sync()` (clashcontrol/db_manager.py) is the tripwire for exactly
 that case: it should be called once at bot startup (logged loudly if non-empty) and is
 exercised here as a regression test, so a future migration that adds a column to `main.<table>`
 without mirroring it onto `history.<table>` (or vice versa) fails CI immediately instead of
@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import pytest
 
-from qapbot.db_manager import WarHistoryDB
+from clashcontrol.db_manager import WarHistoryDB
 
 
 @pytest.fixture

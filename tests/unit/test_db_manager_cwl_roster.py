@@ -10,7 +10,7 @@ from typing import Optional
 
 import pytest
 
-from qapbot.db_manager import WarHistoryDB
+from clashcontrol.db_manager import WarHistoryDB
 
 
 @pytest.fixture
@@ -1788,7 +1788,7 @@ async def _stored_retention(db, guild_id: str) -> int:
 
 @pytest.mark.asyncio
 async def test_a_new_guild_starts_with_twelve_months_retention(db):
-    from qapbot.db_manager import CWL_RETENTION_MONTHS_NEW_GUILD
+    from clashcontrol.db_manager import CWL_RETENTION_MONTHS_NEW_GUILD
 
     config: dict = {"language": "de"}
     await db.save_guild_config("901", config)

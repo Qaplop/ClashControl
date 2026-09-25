@@ -1356,6 +1356,9 @@
       "admins_title": "Server admins: set up your clan",
       "admins_subscribe": "start tracking your clan and post a leaderboard in this channel",
       "admins_management": "language, war notification channel, auto roles and clan families",
+      "support_title": "Need help?",
+      "support_text": "Ask your questions in our public support channel on The QCrew server.",
+      "support_button": "Open support channel",
       "footer": "Found a bug or have an idea? Use /bug or /feature."
     }
   }

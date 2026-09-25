@@ -139,12 +139,13 @@ async function setup(): Promise<void> {
       } catch (err) {
         console.error('[cwl-activity] landing page strings failed, using English:', err)
       }
-      renderLandingPage(root, createTranslator({ ...FALLBACK_STRINGS, ...strings }), () => {
+      renderLandingPage(
+        root,
+        createTranslator({ ...FALLBACK_STRINGS, ...strings }),
         // Default install link: scopes/permissions come from the Developer Portal's install settings.
-        void discordSdk.commands.openExternalLink({
-          url: `https://discord.com/oauth2/authorize?client_id=${encodeURIComponent(clientId)}`,
-        })
-      })
+        `https://discord.com/oauth2/authorize?client_id=${encodeURIComponent(clientId)}`,
+        (url) => void discordSdk.commands.openExternalLink({ url }),
+      )
     }
 
     // Tracker #0128: in the bot DM Discord gives no guild — the bot recorded which server the

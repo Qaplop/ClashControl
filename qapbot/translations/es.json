@@ -1355,6 +1355,9 @@
       "admins_title": "Administradores: configura tu clan",
       "admins_subscribe": "empieza a seguir tu clan y publica una clasificación en este canal",
       "admins_management": "idioma, canal de notificaciones de guerra, roles automáticos y familias de clanes",
+      "support_title": "¿Necesitas ayuda?",
+      "support_text": "Haz tus preguntas en nuestro canal de soporte público del servidor The QCrew.",
+      "support_button": "Abrir canal de soporte",
       "footer": "¿Encontraste un error o tienes una idea? Usa /bug o /feature."
     }
   }

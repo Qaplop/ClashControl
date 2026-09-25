@@ -1355,6 +1355,9 @@
       "admins_title": "Administratores servitoris: gentem tuam constituite",
       "admins_subscribe": "gentem tuam observare incipe et tabulam principum in hoc canali propone",
       "admins_management": "lingua, canalis nuntiorum belli, munera automatica et familiae gentium",
+      "support_title": "Auxilio eges?",
+      "support_text": "Quaestiones tuas in canali auxilii publico nostro in servitore The QCrew pone.",
+      "support_button": "Canalem auxilii aperi",
       "footer": "Errorem invenisti aut consilium habes? Utere /bug vel /feature."
     }
   }

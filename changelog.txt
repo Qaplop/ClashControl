@@ -1,6 +1,15 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-25 (7)  Build 105.
+- New (tracker #0135 follow-up): the Activity landing page has a fourth card, "Need help?", with
+  a button to ClashControl's public support channel on The QCrew server
+  (discord.com/channels/1145641080621109312/1553052010222198865, opened via openExternalLink).
+  New keys activity.landing.support_title/support_text/support_button in all 5 languages + the
+  client's English fallback.
+  Files: qapbot/translations/*.json, activity/client (landingPage.ts, main.ts, index.html),
+  QBcore.py (+ qapbot/docs/CWL_CLAN_CONFIG_ACTIVITY_PLAN.md).
+
 2026-09-25 (6)  Build 104.
 - Improved (tracker #0135 follow-up): landing page language tile ends with "...Request it with
   /feature and we will gladly provide it." (activity.landing.feature_languages, all 5 languages

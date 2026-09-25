@@ -31,6 +31,9 @@ export const FALLBACK_STRINGS: Record<string, string> = {
   admins_title: 'Server admins: set up your clan',
   admins_subscribe: 'start tracking your clan and post a leaderboard in this channel',
   admins_management: 'language, war notification channel, auto roles and clan families',
+  support_title: 'Need help?',
+  support_text: 'Ask your questions in our public support channel on The QCrew server.',
+  support_button: 'Open support channel',
   footer: 'Found a bug or have an idea? Use /bug or /feature.',
 }
 
@@ -53,6 +56,9 @@ const ADMIN_STEPS: [string, string][] = [
   ['/clan management', 'admins_management'],
 ]
 
+// ClashControl's public support channel on The QCrew server.
+const SUPPORT_URL = 'https://discord.com/channels/1145641080621109312/1553052010222198865'
+
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, text?: string): HTMLElementTagNameMap[K] {
   const node = document.createElement(tag)
   if (className) node.className = className
@@ -70,7 +76,20 @@ function buildSteps(steps: [string, string][], t: Translator): HTMLUListElement 
   return list
 }
 
-export function renderLandingPage(root: HTMLElement, t: Translator, onInstall: () => void): void {
+function buildLinkButton(label: string, url: string, className: string, openLink: (url: string) => void): HTMLButtonElement {
+  const button = el('button', className, label)
+  button.type = 'button'
+  button.addEventListener('click', () => openLink(url))
+  return button
+}
+
+/** `openLink` opens a URL outside the Activity iframe (discordSdk.commands.openExternalLink). */
+export function renderLandingPage(
+  root: HTMLElement,
+  t: Translator,
+  installUrl: string,
+  openLink: (url: string) => void,
+): void {
   root.textContent = ''
   const page = el('div', 'landing')
 
@@ -92,10 +111,11 @@ export function renderLandingPage(root: HTMLElement, t: Translator, onInstall: (
   page.appendChild(features)
 
   const install = el('section', 'landing-card landing-card-primary')
-  const installButton = el('button', 'landing-button', t('install_button'))
-  installButton.type = 'button'
-  installButton.addEventListener('click', onInstall)
-  install.append(el('h2', undefined, t('install_title')), el('p', undefined, t('install_text')), installButton)
+  install.append(
+    el('h2', undefined, t('install_title')),
+    el('p', undefined, t('install_text')),
+    buildLinkButton(t('install_button'), installUrl, 'landing-button', openLink),
+  )
 
   const members = el('section', 'landing-card')
   members.append(el('h2', undefined, t('members_title')), el('p', undefined, t('members_text')), buildSteps(MEMBER_STEPS, t))
@@ -103,8 +123,15 @@ export function renderLandingPage(root: HTMLElement, t: Translator, onInstall: (
   const admins = el('section', 'landing-card')
   admins.append(el('h2', undefined, t('admins_title')), buildSteps(ADMIN_STEPS, t))
 
+  const support = el('section', 'landing-card')
+  support.append(
+    el('h2', undefined, t('support_title')),
+    el('p', undefined, t('support_text')),
+    buildLinkButton(t('support_button'), SUPPORT_URL, 'landing-button landing-button-secondary', openLink),
+  )
+
   const cards = el('div', 'landing-cards')
-  cards.append(install, members, admins)
+  cards.append(install, members, admins, support)
   page.append(cards, el('p', 'landing-footer', t('footer')))
   root.appendChild(page)
 }

@@ -1355,6 +1355,9 @@
       "admins_title": "服务器管理员：设置你的部落",
       "admins_subscribe": "开始追踪你的部落，并在此频道发布排行榜",
       "admins_management": "语言、部落战通知频道、自动身份组和部落家族",
+      "support_title": "需要帮助？",
+      "support_text": "在 The QCrew 服务器的公开支持频道中提出你的问题。",
+      "support_button": "打开支持频道",
       "footer": "发现问题或有新想法？使用 /bug 或 /feature。"
     }
   }

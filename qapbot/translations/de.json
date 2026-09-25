@@ -1356,6 +1356,9 @@
       "admins_title": "Server-Admins: richte deinen Clan ein",
       "admins_subscribe": "beginne mit der Verfolgung deines Clans und poste eine Bestenliste in diesem Kanal",
       "admins_management": "Sprache, Kanal für Kriegsbenachrichtigungen, Auto-Rollen und Clan-Familien",
+      "support_title": "Brauchst du Hilfe?",
+      "support_text": "Stell deine Fragen in unserem öffentlichen Support-Kanal auf dem Server The QCrew.",
+      "support_button": "Support-Kanal öffnen",
       "footer": "Fehler gefunden oder eine Idee? Nutze /bug oder /feature."
     }
   }

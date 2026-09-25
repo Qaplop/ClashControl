@@ -1545,9 +1545,10 @@ async def handle_get_i18n(request: web.Request) -> web.Response:
     server has no guild, so only the user's own language (else the default) applies.
 
     `discord_locale` (optional, the user's Discord client language as verified by the Worker) is
-    only sent for the landing page: it slots in after the user's own bot language and before the
-    guild's, so a new user sees the page in the language their Discord runs in. Every other
-    screen leaves it out and keeps matching the bot's DMs."""
+    only sent for the landing page: only a language the user picked by hand (user_language_locked)
+    beats it, then the stored "auto" language, then the guild's — so a user sees the page in the
+    language their Discord runs in right now. Every other screen leaves it out and keeps matching
+    the bot's DMs."""
     if not _check_secret(request):
         return web.json_response({"error": "forbidden"}, status=403)
     try:
@@ -1565,11 +1566,23 @@ async def handle_get_i18n(request: web.Request) -> web.Response:
     # Not to_thread-wrapped (unlike every DB-backed handler here, Pitfall 26) — this is a pure
     # in-memory dict traversal over the already-loaded translation catalog, the same cost class
     # as calling t() directly, which every handler in this file already does unwrapped.
+    user_data = CACHE.user_accounts.get(discord_user_id_str, {})
+    locked_language = user_data.get("user_language") if user_data.get("user_language_locked") else None
+    discord_locale = request.query.get("discord_locale")
     language = (
-        get_user_language(discord_user_id_str)
-        or language_from_discord_locale(request.query.get("discord_locale"))
+        locked_language
+        or language_from_discord_locale(discord_locale)
+        or get_user_language(discord_user_id_str)
         or get_guild_language(guild_id_int)
     )
+    if "discord_locale" in request.query or namespace == "activity.landing":
+        # One line per landing-page load (low volume): every input of the order above, so a
+        # "shows the wrong language" report can be answered from the log alone.
+        logging.info(
+            f"[I18N] {namespace} for user {discord_user_id_str}: locked={locked_language} "
+            f"discord_locale={discord_locale} stored={user_data.get('user_language')} "
+            f"guild={guild_id_int} -> {language}"
+        )
     strings = get_namespace(namespace, language)
     return web.json_response({"lang": language, "strings": strings})
 

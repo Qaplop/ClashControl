@@ -602,16 +602,9 @@ class LanguageSelectionView(TrackedView):
             user_data["user_language_locked"] = False
             # Get current Discord locale to set the language. Latin isn't a Discord client
             # locale, so it's never auto-detected — only selectable manually below.
+            from qapbot.i18n import language_from_discord_locale
             locale = getattr(interaction, 'locale', None)  # type: ignore[arg-type]
-            loc = str(locale) if locale else ''
-            if loc.startswith('de'):
-                user_data["user_language"] = 'de'
-            elif loc.startswith('es'):
-                user_data["user_language"] = 'es'
-            elif loc.startswith('zh'):
-                user_data["user_language"] = 'zh'
-            else:
-                user_data["user_language"] = 'en'  # Default fallback
+            user_data["user_language"] = language_from_discord_locale(str(locale) if locale else None) or 'en'  # Default fallback
         else:
             # Manual selection: set language and lock it
             user_data["user_language"] = selected_language

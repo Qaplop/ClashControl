@@ -6611,12 +6611,26 @@ async def test_i18n_discord_locale_beats_guild_language(bridge_config, client):
 
 @pytest.mark.discord
 @pytest.mark.asyncio
-async def test_i18n_own_bot_language_beats_discord_locale(bridge_config, client):
+async def test_i18n_manually_chosen_bot_language_beats_discord_locale(bridge_config, client):
     from qapbot.cache_manager import CACHE
 
-    CACHE.user_accounts["922"] = {"user_language": "la"}
+    CACHE.user_accounts["922"] = {"user_language": "la", "user_language_locked": True}
 
     assert await _i18n_lang(client, discord_user_id="922", discord_locale="de") == "la"
+
+
+@pytest.mark.discord
+@pytest.mark.asyncio
+async def test_i18n_discord_locale_beats_an_auto_bot_language(bridge_config, client):
+    """Live PROD finding 2026-09-25: an unlocked ("auto") language is only the bot's own guess
+    from an older interaction (it stored "en" for a Spanish Discord) — the current Discord
+    language wins on the landing page; without discord_locale the stored one still applies."""
+    from qapbot.cache_manager import CACHE
+
+    CACHE.user_accounts["925"] = {"user_language": "en", "user_language_locked": False}
+
+    assert await _i18n_lang(client, discord_user_id="925", discord_locale="es-ES") == "es"
+    assert await _i18n_lang(client, discord_user_id="925") == "en"
 
 
 @pytest.mark.discord

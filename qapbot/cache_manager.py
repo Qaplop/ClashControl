@@ -1519,8 +1519,11 @@ class CacheManager:
             if interaction:
                 locale = getattr(interaction, 'locale', None)
                 if locale:
-                    # Map Discord locale to language code
-                    new_language = 'de' if str(locale).startswith('de') else 'en'
+                    # Map Discord locale to language code. Every bot language, not just German: this
+                    # used to be `'de' if ... else 'en'`, which predates es/zh and stored English as
+                    # the "auto" language of every Spanish/Chinese Discord user (found 2026-09-25).
+                    from qapbot.i18n import language_from_discord_locale
+                    new_language = language_from_discord_locale(str(locale)) or 'en'
                     
                     # Only update if user hasn't manually locked their language preference
                     user_language_locked = user_data.get("user_language_locked", False)

@@ -1,6 +1,22 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-25 (10)  Build 108.
+- Fixed: a user's "auto" language (not manually chosen) only ever became German or English.
+  update_user_metadata() re-derives it from the Discord locale on interactions, but mapped
+  everything except German to "en" (predates es/zh), so Spanish/Chinese Discord users were
+  stored, and messaged, in English. It now uses i18n.language_from_discord_locale() (all bot
+  languages, regional variants included), as does the notification settings' "Auto" option,
+  which had its own copy of the mapping. Manually chosen (locked) languages are untouched.
+- Fixed (tracker #0135 follow-up, live PROD test): the landing page stayed English for a user
+  whose Discord runs in Spanish or German. A stored "auto" language ("en", see above) came before
+  the Discord language. Order is now: manually chosen bot language -> Discord language -> stored
+  auto language -> server language -> English. GET /api/i18n logs one [I18N] line per landing
+  load with every input and the result.
+  Files: qapbot/cache_manager.py, qapbot/ui_notifications.py, qapbot/web_bridge.py, QBcore.py
+  (+ tests/unit/test_user_language_auto.py, tests/discord/test_web_bridge.py,
+  qapbot/docs/CWL_CLAN_CONFIG_ACTIVITY_PLAN.md).
+
 2026-09-25 (9)  Build 107.
 - Improved (tracker #0135 follow-up): the Activity landing page follows the user's Discord
   language. The Worker reads the verified `locale` from /users/@me (identify scope, no new

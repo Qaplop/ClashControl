@@ -1542,7 +1542,12 @@ async def handle_get_i18n(request: web.Request) -> web.Response:
     guild/account-specific, unlike every other CWL bridge endpoint.
 
     `guild_id` is optional (tracker #0135): the landing page shown for a launch outside any
-    server has no guild, so only the user's own language (else the default) applies."""
+    server has no guild, so only the user's own language (else the default) applies.
+
+    `discord_locale` (optional, the user's Discord client language as verified by the Worker) is
+    only sent for the landing page: it slots in after the user's own bot language and before the
+    guild's, so a new user sees the page in the language their Discord runs in. Every other
+    screen leaves it out and keeps matching the bot's DMs."""
     if not _check_secret(request):
         return web.json_response({"error": "forbidden"}, status=403)
     try:
@@ -1555,12 +1560,16 @@ async def handle_get_i18n(request: web.Request) -> web.Response:
     if not namespace:
         return web.json_response({"error": "missing ns"}, status=400)
 
-    from qapbot.i18n import get_guild_language, get_namespace, get_user_language
+    from qapbot.i18n import get_guild_language, get_namespace, get_user_language, language_from_discord_locale
 
     # Not to_thread-wrapped (unlike every DB-backed handler here, Pitfall 26) — this is a pure
     # in-memory dict traversal over the already-loaded translation catalog, the same cost class
     # as calling t() directly, which every handler in this file already does unwrapped.
-    language = get_user_language(discord_user_id_str) or get_guild_language(guild_id_int)
+    language = (
+        get_user_language(discord_user_id_str)
+        or language_from_discord_locale(request.query.get("discord_locale"))
+        or get_guild_language(guild_id_int)
+    )
     strings = get_namespace(namespace, language)
     return web.json_response({"lang": language, "strings": strings})
 

@@ -1,6 +1,18 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-25 (9)  Build 107.
+- Improved (tracker #0135 follow-up): the Activity landing page follows the user's Discord
+  language. The Worker reads the verified `locale` from /users/@me (identify scope, no new
+  permission) and, only for the landing page (use_discord_locale=1), passes it to GET /api/i18n
+  as discord_locale. Language order there: own bot language -> Discord language -> server
+  language -> English. New i18n.language_from_discord_locale() maps regional variants
+  ("es-419" -> es, "zh-TW" -> zh); unsupported locales fall through. Other Activity screens are
+  unchanged (still match the bot's DMs). Nothing is stored.
+  Files: qapbot/i18n.py, qapbot/web_bridge.py, QBcore.py, activity/server/src/index.ts,
+  activity/client/src/main.ts (+ tests/discord/test_web_bridge.py,
+  qapbot/docs/CWL_CLAN_CONFIG_ACTIVITY_PLAN.md).
+
 2026-09-25 (8)  Build 106.
 - Improved (tracker #0135/#0136 follow-up): the landing page's support button now opens the
   permanent invite https://discord.gg/Eg3f7VQA2T instead of a channel link (a channel link only

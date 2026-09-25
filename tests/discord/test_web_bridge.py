@@ -6582,3 +6582,50 @@ def test_instance_claims_are_capped(monkeypatch):
         web_bridge._claim_launch_hint(pending, "k", f"i{n}", ("screen", f"i{n}"))
 
     assert list(CACHE.cwl_activity_instance_claims) == [("screen", "i2"), ("screen", "i3"), ("screen", "i4")]
+
+
+# ---------------------------------------------------------------------------
+# Landing page follows the user's Discord language (discord_locale, tracker #0135 follow-up)
+# ---------------------------------------------------------------------------
+
+async def _i18n_lang(client, **params):
+    resp = await client.get(
+        "/api/i18n", params={"ns": "activity.landing", **params}, headers={"X-Bridge-Secret": "test-secret"}
+    )
+    assert resp.status == 200
+    return (await resp.json())["lang"]
+
+
+@pytest.mark.discord
+@pytest.mark.asyncio
+async def test_i18n_discord_locale_beats_guild_language(bridge_config, client):
+    from qapbot.cache_manager import CACHE
+
+    CACHE.server_config["920"] = {"language": "de"}
+    CACHE.user_accounts.pop("921", None)
+
+    assert await _i18n_lang(client, guild_id="920", discord_user_id="921", discord_locale="es-419") == "es"
+    assert await _i18n_lang(client, discord_user_id="921", discord_locale="zh-TW") == "zh"
+    assert await _i18n_lang(client, discord_user_id="921", discord_locale="en-GB") == "en"
+
+
+@pytest.mark.discord
+@pytest.mark.asyncio
+async def test_i18n_own_bot_language_beats_discord_locale(bridge_config, client):
+    from qapbot.cache_manager import CACHE
+
+    CACHE.user_accounts["922"] = {"user_language": "la"}
+
+    assert await _i18n_lang(client, discord_user_id="922", discord_locale="de") == "la"
+
+
+@pytest.mark.discord
+@pytest.mark.asyncio
+async def test_i18n_unsupported_discord_locale_falls_back_to_guild(bridge_config, client):
+    from qapbot.cache_manager import CACHE
+
+    CACHE.server_config["923"] = {"language": "de"}
+    CACHE.user_accounts.pop("924", None)
+
+    assert await _i18n_lang(client, guild_id="923", discord_user_id="924", discord_locale="fr") == "de"
+    assert await _i18n_lang(client, discord_user_id="924", discord_locale="ja") == "en"

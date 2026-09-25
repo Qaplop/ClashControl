@@ -89,7 +89,9 @@ function bridgeNotConfigured(c: AppContext) {
 
 /** Independently verifies the caller's access_token against Discord itself and returns their
  * real user id — never trust a client-supplied discord_user_id for anything security-relevant. */
-async function verifiedDiscordUserId(c: AppContext): Promise<string | null> {
+// `locale` is the user's Discord client language — part of /users/@me under the `identify`
+// scope the Activity already requests, so no extra permission is needed for it.
+async function verifiedDiscordUser(c: AppContext): Promise<{ id: string; locale?: string } | null> {
   const auth = c.req.header('Authorization')
   if (!auth?.startsWith('Bearer ')) return null
 
@@ -98,8 +100,11 @@ async function verifiedDiscordUserId(c: AppContext): Promise<string | null> {
   })
   if (!response.ok) return null
 
-  const user = await response.json<{ id: string }>()
-  return user.id
+  return await response.json<{ id: string; locale?: string }>()
+}
+
+async function verifiedDiscordUserId(c: AppContext): Promise<string | null> {
+  return (await verifiedDiscordUser(c))?.id ?? null
 }
 
 api.get('/cwl/clan-config', async (c) => {
@@ -260,13 +265,17 @@ api.get('/i18n', async (c) => {
   const ns = c.req.query('ns')
   if (!ns) return c.json({ error: 'missing ns' }, 400)
 
-  const discordUserId = await verifiedDiscordUserId(c)
-  if (!discordUserId) return c.json({ error: 'unauthorized' }, 401)
+  const user = await verifiedDiscordUser(c)
+  if (!user) return c.json({ error: 'unauthorized' }, 401)
 
   if (!c.env.BRIDGE_URL || !c.env.BRIDGE_SECRET) return bridgeNotConfigured(c)
 
+  // use_discord_locale=1 (landing page only): pass the verified Discord client language along,
+  // so a new user sees the page in the language their Discord runs in.
+  const localeParam =
+    c.req.query('use_discord_locale') && user.locale ? `&discord_locale=${encodeURIComponent(user.locale)}` : ''
   const upstream = await fetch(
-    `${c.env.BRIDGE_URL}/api/i18n?${guildId ? `guild_id=${encodeURIComponent(guildId)}&` : ''}discord_user_id=${encodeURIComponent(discordUserId)}&ns=${encodeURIComponent(ns)}`,
+    `${c.env.BRIDGE_URL}/api/i18n?${guildId ? `guild_id=${encodeURIComponent(guildId)}&` : ''}discord_user_id=${encodeURIComponent(user.id)}&ns=${encodeURIComponent(ns)}${localeParam}`,
     { headers: { 'X-Bridge-Secret': c.env.BRIDGE_SECRET } },
   )
   return c.json(await upstream.json(), upstream.status as 200 | 400 | 403 | 500)

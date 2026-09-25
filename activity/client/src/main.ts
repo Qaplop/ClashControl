@@ -125,14 +125,16 @@ async function setup(): Promise<void> {
     }
 
     // Tracker #0135: the page for launches no bot button asked for (Discord's own Launch button
-    // on the App Directory profile / app launcher). guildId is null outside a server; the bridge
-    // then picks the language from the user's own setting alone.
+    // on the App Directory profile / app launcher). guildId is null outside a server, where the
+    // server's language simply drops out of the language order.
     const showLandingPage = async (landingGuildId: string | null): Promise<void> => {
       root.textContent = 'Loading…'
       let strings: Record<string, string> = {}
       try {
         const guildParam = landingGuildId ? `guild_id=${encodeURIComponent(landingGuildId)}&` : ''
-        const i18nResponse = await fetch(`/api/i18n?${guildParam}ns=activity.landing`, {
+        // use_discord_locale: after the user's own bot language, the page follows the language
+        // their Discord runs in (before the server's).
+        const i18nResponse = await fetch(`/api/i18n?${guildParam}ns=activity.landing&use_discord_locale=1`, {
           headers: { Authorization: `Bearer ${accessToken}` },
         })
         if (i18nResponse.ok) strings = ((await i18nResponse.json()) as { strings: Record<string, string> }).strings

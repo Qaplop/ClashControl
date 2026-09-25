@@ -471,6 +471,17 @@ def get_available_languages() -> list[str]:
     return _translation_manager.get_available_languages()
 
 
+def language_from_discord_locale(locale: Optional[str]) -> Optional[str]:
+    """The bot language for a Discord client locale ("en-US", "de", "es-419", "zh-TW", ...), or
+    None when the bot has no translation for it. Matches on the part before the "-", so every
+    regional variant maps to the one language file the bot has (zh-TW -> the simplified zh).
+    Tracker #0135 follow-up: lets the Activity landing page follow the user's Discord language."""
+    if not locale:
+        return None
+    base = locale.split("-")[0].lower()
+    return base if base in get_available_languages() else None
+
+
 def get_language_display_name(language_code: str) -> str:
     """
     Native display name for a language code (e.g. "es" -> "Español"), read from that

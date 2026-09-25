@@ -1343,7 +1343,7 @@
       "feature_predictions": "实时部落战预测",
       "feature_notifications": "剩余进攻和突袭周末提醒",
       "feature_stats": "排行榜与详细玩家数据",
-      "feature_languages": "英语、德语、西班牙语、中文和拉丁语",
+      "feature_languages": "英语、德语、西班牙语、中文和拉丁语。没有你的语言？使用 /feature 提出请求。",
       "install_title": "第一次来？将 ClashControl 添加到你的服务器",
       "install_text": "你需要在目标服务器上拥有“管理服务器”权限。",
       "install_button": "添加到服务器",

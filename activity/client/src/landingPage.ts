@@ -19,7 +19,7 @@ export const FALLBACK_STRINGS: Record<string, string> = {
   feature_predictions: 'Live war predictions',
   feature_notifications: 'Reminders for open attacks and raid weekends',
   feature_stats: 'Leaderboards and detailed player stats',
-  feature_languages: 'English, German, Spanish, Chinese and Latin',
+  feature_languages: 'English, German, Spanish, Chinese and Latin. Missing your language? Request it with /feature.',
   install_title: 'New here? Add ClashControl to your server',
   install_text: 'You need the Manage Server permission on the server you add it to.',
   install_button: 'Add to server',

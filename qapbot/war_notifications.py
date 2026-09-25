@@ -1,5 +1,5 @@
 """
-War notification system for QapBot player reminders.
+War notification system for ClashControl player reminders.
 
 This module handles automated Discord DM notifications to players who haven't completed
 their clan war attacks as the war deadline approaches. It integrates with the existing
@@ -439,7 +439,7 @@ def _get_active_raids(now: Optional[datetime] = None) -> List[Tuple[str, str, Di
 
 def parse_war_timestamp_field(ts_str: Any) -> Tuple[Optional[datetime], Optional[int]]:
     """
-    Parse a QapBot war-JSON Timestamp string, e.g.:
+    Parse a ClashControl war-JSON Timestamp string, e.g.:
     "<Timestamp time=datetime.datetime(2025, 8, 29, 13, 20, 53) seconds_until=-72658>"
 
     Shared parser for the embedded datetime plus the stale seconds_until snapshot —

@@ -474,7 +474,7 @@ async def delete_leaderboard_messages_for_clan_channel(clan_tag: str, channel_id
 
 async def cleanup_orphaned_messages_in_channel(channel: discord.TextChannel, bot: discord.Client) -> int:
     """
-    Delete orphaned QapBot-authored messages from the specified Discord channel.
+    Delete orphaned ClashControl-authored messages from the specified Discord channel.
 
     Args:
         channel (discord.TextChannel): The Discord channel to scan for orphaned messages.
@@ -533,7 +533,7 @@ async def cleanup_channel_messages(channel: discord.TextChannel, bot: discord.Cl
     Unified cleanup function for a single Discord channel.
     
     Performs both cleanup tasks in one call:
-    1. Deletes orphaned QapBot-authored messages not tracked in cache
+    1. Deletes orphaned ClashControl-authored messages not tracked in cache
     2. Removes stale leaderboard message IDs from cache (when messages no longer exist)
     
     This function is the single source of truth for channel message cleanup.

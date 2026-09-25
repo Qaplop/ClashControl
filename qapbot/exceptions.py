@@ -1,7 +1,7 @@
 """
-Custom exception hierarchy for QapBot.
+Custom exception hierarchy for ClashControl.
 
-This module defines a structured exception hierarchy for QapBot, making error
+This module defines a structured exception hierarchy for ClashControl, making error
 handling more specific and maintainable. By using custom exceptions:
 - Callers can catch specific error types for targeted handling
 - Error context is preserved with meaningful exception messages
@@ -57,12 +57,12 @@ Usage:
         logging.error(f"War processing failed: {e}")
         # Generic handling
     
-    # Catch all QapBot exceptions
+    # Catch all ClashControl exceptions
     try:
         operation()
     except QapBotError as e:
         logging.error(f"QapBot operation failed: {e}")
-        # Handle all QapBot errors
+        # Handle all ClashControl errors
 """
 from typing import Optional, Dict, Any
 
@@ -73,10 +73,10 @@ from typing import Optional, Dict, Any
 
 class QapBotError(Exception):
     """
-    Base exception for all QapBot-specific errors.
+    Base exception for all ClashControl-specific errors.
     
-    All custom exceptions in QapBot inherit from this class. This allows
-    catching all QapBot-specific errors with a single except clause while
+    All custom exceptions in ClashControl inherit from this class. This allows
+    catching all ClashControl-specific errors with a single except clause while
     distinguishing them from standard Python exceptions.
     
     Attributes:
@@ -85,7 +85,7 @@ class QapBotError(Exception):
     
     Example:
         try:
-            # QapBot operation
+            # ClashControl operation
             pass
         except QapBotError as e:
             logging.error(f"QapBot error: {e}")
@@ -93,7 +93,7 @@ class QapBotError(Exception):
     
     def __init__(self, message: str, context: Optional[Dict[str, Any]] = None):
         """
-        Initialize QapBot exception with message and optional context.
+        Initialize ClashControl exception with message and optional context.
         
         Args:
             message: Human-readable error description

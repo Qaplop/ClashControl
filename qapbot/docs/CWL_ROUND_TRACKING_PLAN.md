@@ -106,7 +106,7 @@ Properties:
   regardless of query order or which clan triggered the call.
 - **Truly unique** — includes `cwl_season` in the hash, so the same 8 clans
   meeting again in a future season produce a different ID.
-- **16 hex chars (64 bits) is the right length at QapBot scale**: 200 000 clans
+- **16 hex chars (64 bits) is the right length at ClashControl scale**: 200 000 clans
   → 25 000 groups/season → ~1.5 M lifetime IDs over 5 years. Birthday-paradox
   collision probability at 64 bits is ~6×10⁻⁸ % (negligible). Shorter lengths
   are unsafe: 12 hex = ~0.4 %, 14 hex = ~0.002 %.

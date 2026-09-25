@@ -1,4 +1,4 @@
-# QapBot Clan and War Cycle Architecture
+# ClashControl Clan and War Cycle Architecture
 
 > Moved here from Copilot repo-scoped memory on 2026-07-11 (was never committed to
 > the repo before — lived only in local VS Code workspace storage). This file is

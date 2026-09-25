@@ -2,7 +2,7 @@
 Admin command helpers for Discord /admin subcommands.
 
 This module provides business logic for all /admin subcommands:
-- CHECK_LOGS: Scan and summarize QapBot logs
+- CHECK_LOGS: Scan and summarize ClashControl logs
 - CHECK_DATA: Check consistency between database and JSON archives (database-only, Phase 2+)
 - LIST_ALL_SUBSCRIPTIONS, CLEANUP_MESSAGES, CLEANUP_MESSAGES_ALL, POST_REGISTRATION: 
   Logic is inlined in QBdiscordcmds.py using existing helper functions

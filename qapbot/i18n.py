@@ -1,5 +1,5 @@
 """
-Internationalization (i18n) support for QapBot.
+Internationalization (i18n) support for ClashControl.
 
 This module provides translation management for user-facing Discord messages.
 All terminal output and logging remains in English only.
@@ -30,7 +30,7 @@ Architecture:
 - Guild language preferences stored in CACHE.discord_server_config
 
 Integration:
-- Used throughout QapBot for all user-facing text
+- Used throughout ClashControl for all user-facing text
 - Initialized on bot startup
 - Provides context-aware translations based on guild_id
 
@@ -240,7 +240,7 @@ def t(key: str, guild_id: Optional[int] = None, user_id: Optional[str] = None, *
     """
     Get translated string for the given key.
     
-    Primary interface for translation lookups throughout QapBot.
+    Primary interface for translation lookups throughout ClashControl.
     Automatically determines language based on context (user or guild preferences).
     
     Args:

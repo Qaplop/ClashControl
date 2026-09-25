@@ -260,7 +260,7 @@ unconditionally. From 2026-08-31 the CoC API began returning a non-empty `clanCa
 with no `districts` key, raising `KeyError: 'districts'` during `Clan` construction (a
 generator expression evaluates its outermost iterable eagerly). The shim normalises the
 payload to `districts: []` before the original parser runs, landing on the same empty list
-the library's own `else` branch produces. Clan Capital data is not persisted by QapBot, so
+the library's own `else` branch produces. Clan Capital data is not persisted by ClashControl, so
 this is lossless here.
 
 Observed cost before the shim (2026-09-01 PROD): 438 distinct clans, 42,871 failed

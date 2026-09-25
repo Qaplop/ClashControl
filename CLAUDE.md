@@ -1,4 +1,4 @@
-# QapBot — Instructions for Claude Code
+# ClashControl — Instructions for Claude Code
 
 This project's coding playbook lives in [.github/copilot-instructions.md](.github/copilot-instructions.md) — read it in full before making non-trivial changes. It covers cardinal rules (account-protection security checks, CACHE-only data access, i18n via `t()`, discord.py modal/interaction patterns, DB access rules), the changelog convention, the test-runner convention, and links to deep-dive docs under `qapbot/docs/` (architecture, DB schema, rate limiting, registration flows, war-file lifecycle).
 

@@ -112,7 +112,7 @@ def apply_coc_library_patches() -> None:
         The fix normalises the payload to ``districts: []`` before the original
         parser sees it, which lands ``capital_districts`` on the same empty list
         the library's own ``else`` branch produces.  Clan Capital data is not
-        used by QapBot (no DB table stores it), so an empty district list is a
+        used by ClashControl (no DB table stores it), so an empty district list is a
         complete, lossless outcome here — the clan's war data, which is what the
         bot actually needs, parses normally.
 

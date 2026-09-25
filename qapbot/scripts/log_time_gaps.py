@@ -30,7 +30,7 @@ TIMESTAMP_FMT = "%Y-%m-%d %H:%M:%S,%f"
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Find biggest time gaps in a QapBot log file.")
+    parser = argparse.ArgumentParser(description="Find biggest time gaps in a ClashControl log file.")
     parser.add_argument(
         "--log",
         default="data/logs/qapbot.log",

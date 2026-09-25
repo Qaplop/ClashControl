@@ -259,7 +259,7 @@ current call site (the plain `tracker_comment` endpoint, `reply_and_invite_for_a
 `TrackerReplyModal.on_submit()`) wants it — there was no remaining case that didn't.
 
 **`tracker_items.guild_id` must always be the tracker's home guild, never the reporting guild
-(2026-09-05 live bug, ticket #0023)**: QapBot serves many Discord guilds, and `/bug`/`/feature`
+(2026-09-05 live bug, ticket #0023)**: ClashControl serves many Discord guilds, and `/bug`/`/feature`
 are global commands — invocable from any of them, or via DM. Before this fix, `TrackerDraftView.
 _on_submit()` persisted `interaction.guild.id` (or `None` from a DM) straight into the item's
 `guild_id` column. That value is correct for exactly one thing — localizing the reporting

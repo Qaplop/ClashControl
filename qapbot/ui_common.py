@@ -1,7 +1,7 @@
 from __future__ import annotations
 # pyright: reportUnknownParameterType=false, reportUnknownVariableType=false, reportUnknownMemberType=false, reportUnknownArgumentType=false
 """
-Common/shared UI components used across multiple QapBot modules.
+Common/shared UI components used across multiple ClashControl modules.
 
 Contains:
 - update_user_metadata_from_interaction: Utility for user metadata updates

@@ -1,6 +1,18 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-25 (14)  Build 111.
+- Changed (rename to ClashControl, phase 4 of 8: prose only, no behavior change): "QapBot" as
+  the product name -> "ClashControl" in README, CLAUDE.md, the playbook, qapbot/docs/*.md,
+  .env.example, the CI workflow name, and Python docstrings/comments (83 spots, 45 files).
+  Python files were rewritten only inside COMMENT/STRING tokens (tokenizer), so no code name
+  changed. README clone/issues URLs point to github.com/Qaplop/ClashControl (repo renamed on
+  GitHub; old URL redirects). Tag `pre-rename` pushed as rollback point.
+  Deliberately unchanged: module references (QapBot.py, QapBot.<func>, `from QapBot import`,
+  class QapBot, QapBotError) and qapbot/ paths -> phase 5; folder paths (/QapBot, \QapBot\)
+  and .bat scripts -> phase 7; "QapBot started"/"Starting QapBot" log markers -> phase 6;
+  history (changelog, plans/, archives) stays as written.
+
 2026-09-25 (13)  Build 110.
 - Changed (rename to ClashControl, phase 2 of 8: user-visible text only): every place a user
   or server admin sees the bot's name now says ClashControl instead of QapBot:

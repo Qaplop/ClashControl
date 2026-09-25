@@ -5,6 +5,6 @@
 CLIENT_ID=your-discord-application-client-id
 CLIENT_SECRET=your-discord-application-client-secret
 
-# Phase B+ only — leave blank until the QapBot bridge API + cloudflared tunnel exist.
+# Phase B+ only — leave blank until the ClashControl bridge API + cloudflared tunnel exist.
 BRIDGE_URL=
 BRIDGE_SECRET=

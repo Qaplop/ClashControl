@@ -1,4 +1,4 @@
-# Copilot Pitfalls Cookbook (QapBot)
+# Copilot Pitfalls Cookbook (ClashControl)
 
 Purpose: keep short, copy-pasteable snippets for common mistakes.
 This is referenced by ../.github/copilot-instructions.md to keep the playbook short.

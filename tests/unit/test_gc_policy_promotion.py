@@ -80,7 +80,7 @@ def _restore_gc_state():
 
 
 class TestPromotionIsWhatStrandsObjects:
-    """The mechanism itself, independent of QapBot. If CPython ever changes this, the whole
+    """The mechanism itself, independent of ClashControl. If CPython ever changes this, the whole
     root-cause analysis needs revisiting — so pin it."""
 
     def test_surviving_one_gen1_collect_makes_an_object_unreachable_to_gen1(self):

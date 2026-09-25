@@ -1,4 +1,4 @@
-# QapBot Test Concept
+# ClashControl Test Concept
 
 **Status**: Implemented  
 **Created**: 2026-02-17  
@@ -131,7 +131,7 @@ fixtures shown below were never added as shared fixtures — individual test mod
 their own local `WarHistoryDB(":memory:")` instances and CACHE/coc-client mocks inline instead.
 
 ```python
-"""Shared fixtures for all QapBot tests."""
+"""Shared fixtures for all ClashControl tests."""
 import json
 import pytest
 import asyncio

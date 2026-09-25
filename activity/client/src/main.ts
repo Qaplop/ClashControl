@@ -1,6 +1,6 @@
 /**
  * Phase A proved the OAuth round-trip and the LAUNCH_ACTIVITY entry point work end to end.
- * Phase B proved the full bridge chain (Worker -> cloudflared tunnel -> QapBot) live. Phase C
+ * Phase B proved the full bridge chain (Worker -> cloudflared tunnel -> ClashControl) live. Phase C
  * (this file) renders the real table — see clanConfigTable.ts — and wires Save back to the
  * bridge. See CWL_CLAN_CONFIG_ACTIVITY_PLAN.md.
  */

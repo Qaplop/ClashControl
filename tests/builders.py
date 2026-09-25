@@ -1,4 +1,4 @@
-"""Reusable test data builders for QapBot tests.
+"""Reusable test data builders for ClashControl tests.
 
 Provides factory functions for creating consistent test data structures
 used across unit, integration, and discord test suites. These builders

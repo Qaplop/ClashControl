@@ -1,7 +1,7 @@
 """
-Configuration management for QapBot with environment variable processing and immutable settings.
+Configuration management for ClashControl with environment variable processing and immutable settings.
 
-This module provides centralized, single-source-of-truth configuration for QapBot. All settings are loaded from environment variables, validated, and exposed via a frozen dataclass singleton (CONFIG). No module should create its own config; all configuration access is via CONFIG.
+This module provides centralized, single-source-of-truth configuration for ClashControl. All settings are loaded from environment variables, validated, and exposed via a frozen dataclass singleton (CONFIG). No module should create its own config; all configuration access is via CONFIG.
 
 Features:
 - Immutable configuration object (frozen dataclass)
@@ -52,9 +52,9 @@ from qapbot.exceptions import ConfigurationError
 @dataclass(frozen=True)
 class BotConfig:
     """
-    Immutable configuration object containing all QapBot settings.
+    Immutable configuration object containing all ClashControl settings.
     
-    Holds all configuration values needed for QapBot operation. The frozen=True parameter makes the object immutable after creation, preventing accidental modification.
+    Holds all configuration values needed for ClashControl operation. The frozen=True parameter makes the object immutable after creation, preventing accidental modification.
     
     Attributes:
         coc_email: Clash of Clans API account email address
@@ -832,7 +832,7 @@ def _validate_config(config: BotConfig) -> None:
 # Global configuration object - immutable singleton
 CONFIG = load_config()
 """
-Global configuration object providing centralized access to all QapBot settings.
+Global configuration object providing centralized access to all ClashControl settings.
 
 This singleton object is loaded once at module import time and provides immutable
 access to all configuration values throughout the application. All modules should

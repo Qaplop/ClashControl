@@ -3568,7 +3568,7 @@ async def periodic_main() -> None:
 
 async def _setup_hook():
     """
-    Discord command registration for QapBot with simplified logic:
+    Discord command registration for ClashControl with simplified logic:
     - If GLOBAL_GUILD_ID = 0: Register commands globally 
     - If GLOBAL_GUILD_ID > 0: Register commands for that specific guild only
     """
@@ -5255,7 +5255,7 @@ async def async_cleanup() -> None:
 
 if __name__ == "__main__":
     """
-    Main entry point for QapBot.
+    Main entry point for ClashControl.
 
     Behavior:
         - Selects Discord token based on DEV/PROD mode (from CONFIG)

@@ -1,4 +1,4 @@
-name: QapBot Tests
+name: ClashControl Tests
 
 on:
   push:

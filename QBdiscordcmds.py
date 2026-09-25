@@ -1,5 +1,5 @@
 """
-Discord command handlers for QapBot with comprehensive argument parsing, cache-centric message management, and unified message ID tracking.
+Discord command handlers for ClashControl with comprehensive argument parsing, cache-centric message management, and unified message ID tracking.
 
 This module contains all Discord bot commands with robust error handling and intelligent message tracking to prevent spam. All business logic 
 uses cache-centric data access and unified message ID tracking for spam prevention and update logic.

@@ -1,5 +1,5 @@
 ﻿"""
-Centralized cache management for QapBot runtime data.
+Centralized cache management for ClashControl runtime data.
 
 This module is the single source of truth for all in-memory and persistent data, including:
 - Clan name mappings and war information
@@ -287,7 +287,7 @@ def build_war_payload(coc_war_obj: Any, my_clan: Any, enemy_clan: Any) -> Dict[s
 
 class CacheManager:
     """
-    Centralized cache manager providing single-source-of-truth for all QapBot runtime and persistent data.
+    Centralized cache manager providing single-source-of-truth for all ClashControl runtime and persistent data.
     
     This class manages all cached data including Discord message IDs, content hashes,
     clan names, war information, subscriptions, families, user accounts, and war stats/history.
@@ -3734,7 +3734,7 @@ class CacheManager:
             # once a season ends, promotions/demotions apply almost
             # immediately and members can diverge to *different* current
             # leagues, so re-deriving from "any member's current league" at
-            # that point is a coin flip, not a fact. This bit QapBot in
+            # that point is a coin flip, not a fact. This bit ClashControl in
             # production twice (see changelog.txt 2026-07-26): a group's
             # league_rank got overwritten with a promoted/demoted member's
             # *post*-season league instead of the league the group actually

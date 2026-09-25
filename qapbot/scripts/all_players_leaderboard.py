@@ -1,7 +1,7 @@
 """Experimental all-players leaderboard generator and Discord poster.
 
 This script generates a comprehensive leaderboard aggregating statistics from ALL clans
-tracked by QapBot, using the war history database and temporary current war files.
+tracked by ClashControl, using the war history database and temporary current war files.
 It serves as a test bed for leaderboard formatting and rendering improvements.
 
 Features:

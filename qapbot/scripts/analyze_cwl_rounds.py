@@ -2,7 +2,7 @@
 Analyze CWL round completion status from the DB and temp war files.
 
 For each CWL round (1-7, or fewer for short groups), shows how many wars are finalized (war_ended)
-vs. still ongoing, for the clans tracked in QapBot.
+vs. still ongoing, for the clans tracked in ClashControl.
 
 Data sources:
   Archive : war_summary table (round_number from DB — no file scanning)

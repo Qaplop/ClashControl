@@ -1,5 +1,5 @@
 """
-Leaderboard rendering and Unicode-aware column alignment for QapBot statistics display.
+Leaderboard rendering and Unicode-aware column alignment for ClashControl statistics display.
 
 This module provides advanced text formatting for leaderboards in Discord and terminal environments, with normalization and display width measurement for international and emoji-rich player names. All leaderboard output uses Unicode-aware width logic and normalization for consistent display.
 

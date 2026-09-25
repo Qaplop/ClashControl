@@ -1,7 +1,7 @@
 ﻿"""
-Core Discord bot and Clash of Clans client initialization for QapBot.
+Core Discord bot and Clash of Clans client initialization for ClashControl.
 
-This module provides the global bot instance, CoC API client, and shutdown coordination for the entire QapBot application. It serves as the central initialization point for all shared resources and state management, ensuring cache-centric and singleton access across all modules.
+This module provides the global bot instance, CoC API client, and shutdown coordination for the entire ClashControl application. It serves as the central initialization point for all shared resources and state management, ensuring cache-centric and singleton access across all modules.
 
 Architecture:
     Implements the singleton pattern for core resources to ensure consistent access across all modules. The bot instance, CoC client, and shutdown coordination are centrally managed here.
@@ -87,7 +87,7 @@ BOT_VERSION: str = "1.3.39"
 # .github/copilot-instructions.md.  BOT_VERSION answers "which release is this?";
 # BOT_BUILD answers "which edit of it is actually running?", which is the question that
 # matters when reading the server-machine's log after a file-copy deploy.
-BOT_BUILD: int = 110
+BOT_BUILD: int = 111
 
 
 def source_fingerprint() -> str:
@@ -138,7 +138,7 @@ intents.members = True  # Enable privileged members intent for guild member acce
 intents.presences = True  # Enable privileged presence intent for status/activity tracking
 
 class QapBot(commands.Bot):
-    """Extended Discord bot with QapBot-specific attributes for type safety."""
+    """Extended Discord bot with ClashControl-specific attributes for type safety."""
     start_time: Optional[datetime] = None
     last_sync: Optional[datetime] = None
     periodic_task_started: bool = False
@@ -146,7 +146,7 @@ class QapBot(commands.Bot):
     initialization_in_progress: bool = False
     
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        """Initialize QapBot with all required attributes."""
+        """Initialize ClashControl with all required attributes."""
         super().__init__(*args, **kwargs)
         self.start_time: Optional[datetime] = None
         self.last_sync: Optional[datetime] = None

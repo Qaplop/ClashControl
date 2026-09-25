@@ -45,14 +45,14 @@ Cloudflare Pages  ──"clan-config.pages.dev"──  Frontend
 Cloudflare Worker  ──"clan-config.workers.dev"──  Backend (Hono)
    - OAuth2 code -> access_token exchange (holds CLIENT_SECRET)
    - Verifies caller is a real Discord user + reads guild_id from the SDK context
-   - Proxies business calls to QapBot, attaching a shared bridge secret
+   - Proxies business calls to ClashControl, attaching a shared bridge secret
    |
    |  HTTPS, shared-secret header
    v
-Cloudflare Tunnel (cloudflared, free)  ──  runs alongside the QapBot process
+Cloudflare Tunnel (cloudflared, free)  ──  runs alongside the ClashControl process
    |
    v
-QapBot bridge API (new: qapbot/web_bridge.py, aiohttp.web)
+ClashControl bridge API (new: qapbot/web_bridge.py, aiohttp.web)
    - Runs IN-PROCESS with the bot (same asyncio loop, same CACHE/db_manager —
      no data duplication, no second source of truth)
    - Re-verifies admin status itself via the exact guild_permissions.administrator /
@@ -61,7 +61,7 @@ QapBot bridge API (new: qapbot/web_bridge.py, aiohttp.web)
    - Exposes exactly the 2 endpoints this MVP needs (see "Bridge API" below)
 ```
 
-Three deployable things, one new local process is *not* one of them — the bridge API runs inside the existing QapBot event loop, not as a separate service to babysit.
+Three deployable things, one new local process is *not* one of them — the bridge API runs inside the existing ClashControl event loop, not as a separate service to babysit.
 
 ---
 
@@ -90,7 +90,7 @@ Three deployable things, one new local process is *not* one of them — the brid
 
 ---
 
-## Bridge API (QapBot side) — `qapbot/web_bridge.py`
+## Bridge API (ClashControl side) — `qapbot/web_bridge.py`
 
 New file, new `aiohttp.web.Application`, started from `QapBot.py`'s `_setup_hook()` alongside the bot (`web.AppRunner` + `web.TCPSite` bound to `127.0.0.1:<port>`, never bound to `0.0.0.0` — only `cloudflared` should ever reach it). Exactly two endpoints for MVP scope:
 
@@ -146,7 +146,7 @@ Extracted `refresh_cwl_management_hub_message(guild_id, mode)` as a free functio
 
 **A real security gap found and closed before this shipped, not after**: the plan's auth model always intended the bridge to independently re-verify admin status (not trust the Worker), but the Worker itself needed fixing too — its first-draft `/cwl/clan-config` proxy would have forwarded whatever `discord_user_id` the *client* claimed, which is trivially spoofable (anyone could claim to be a known admin's Discord ID, e.g. one visible in that guild's own message history). Fixed: the Worker now requires an `Authorization: Bearer <access_token>` header on every `/cwl/clan-config` request and independently calls Discord's own `GET /users/@me` with it to get the *real* user id before forwarding anything to the bridge — a client-supplied `discord_user_id` in the request body is now explicitly overwritten with the verified value, not merely ignored.
 
-**Verified live end-to-end in the DEV guild**: `cloudflared tunnel --url http://127.0.0.1:8788` (Cloudflare's free "quick tunnel," no named-tunnel/account setup needed for DEV) running alongside the DEV bot process, `BRIDGE_URL`/`BRIDGE_SECRET` set as Worker secrets, Activity relaunched from Discord — the full chain (Discord iframe → Cloudflare Pages → Worker → tunnel → QapBot bridge → real `cwl_events`/`cwl_event_clans` data → back through the same chain) returned the actual DEV guild's live CWL clan-config JSON (both participating clans, correct tiers, roster sizes, start times). Two real snags on the way, neither a code bug: `cloudflared` installed via `winget` wasn't on PATH in the already-open terminal (needed a fresh terminal, or the full `C:\Program Files (x86)\cloudflared\cloudflared.exe` path); the Activity's iframe kept showing the pre-fetch-code build after a redeploy (Discord/browser-side caching, not a failed deploy — confirmed by curling the live Pages bundle directly and finding the new code already there) — a full Discord client restart cleared it.
+**Verified live end-to-end in the DEV guild**: `cloudflared tunnel --url http://127.0.0.1:8788` (Cloudflare's free "quick tunnel," no named-tunnel/account setup needed for DEV) running alongside the DEV bot process, `BRIDGE_URL`/`BRIDGE_SECRET` set as Worker secrets, Activity relaunched from Discord — the full chain (Discord iframe → Cloudflare Pages → Worker → tunnel → ClashControl bridge → real `cwl_events`/`cwl_event_clans` data → back through the same chain) returned the actual DEV guild's live CWL clan-config JSON (both participating clans, correct tiers, roster sizes, start times). Two real snags on the way, neither a code bug: `cloudflared` installed via `winget` wasn't on PATH in the already-open terminal (needed a fresh terminal, or the full `C:\Program Files (x86)\cloudflared\cloudflared.exe` path); the Activity's iframe kept showing the pre-fetch-code build after a redeploy (Discord/browser-side caching, not a failed deploy — confirmed by curling the live Pages bundle directly and finding the new code already there) — a full Discord client restart cleared it.
 
 Named/production `cloudflared` tunnel setup (vs. the quick tunnel used for DEV) is a Phase D decision, not resolved here.
 
@@ -312,7 +312,7 @@ Each phase gets its own changelog entry and commit, per the project's establishe
 
 ## Security considerations
 
-- Client Secret and bridge shared-secret: Cloudflare Worker secrets (`wrangler secret put`) + QapBot `.env` only — never in `wrangler.toml`, never committed, never logged.
+- Client Secret and bridge shared-secret: Cloudflare Worker secrets (`wrangler secret put`) + ClashControl `.env` only — never in `wrangler.toml`, never committed, never logged.
 - Bridge API bound to `127.0.0.1` only; `cloudflared` is the only path in from outside.
 - Every bridge request re-derives admin status server-side (bot-side) — the Worker's OAuth check is a UX gate (avoid showing the Activity to non-admins at all), not the security boundary.
 - Every query/mutation is explicitly guild-scoped (`guild_id` from the verified session, never trusted from an arbitrary request body without cross-checking against the OAuth-verified guild).

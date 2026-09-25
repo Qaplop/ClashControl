@@ -8,7 +8,7 @@
 
 ## Why SQLite?
 
-### Advantages for QapBot
+### Advantages for ClashControl
 - **Zero Configuration**: Embedded in Python, no separate server process
 - **Few Files**: Easy backup, deployment, server-machine-compatible (two files since the hot/history DB split — see below)
 - **ACID Compliant**: Reliable transactions and data integrity

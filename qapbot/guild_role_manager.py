@@ -1,5 +1,5 @@
 """
-Guild Role Manager for QapBot.
+Guild Role Manager for ClashControl.
 
 Handles Discord role management for:
 1. CoC In-Game Role (Member / Elder / Co-Leader / Leader)
@@ -1047,7 +1047,7 @@ async def sync_all_roles_for_guild(
     # not found in guild.members after chunk() is ambiguous from the cache alone: guild.chunked
     # is a live count comparison (guild.member_count == len(guild._members)), not a "did we ever
     # chunk" flag, so a cache miss here could mean the user genuinely left the guild (the common
-    # case — QapBot doesn't auto-unregister on leave, and this bot's registration pool is shared
+    # case — ClashControl doesn't auto-unregister on leave, and this bot's registration pool is shared
     # across multiple guilds so a user can be legitimately absent from any one of them) OR a
     # transient gap (chunk() raced a member join, a brief Discord hiccup). Don't guess from the
     # cache — let sync_roles_for_user's own get_member()-then-fetch_member() fallback (already

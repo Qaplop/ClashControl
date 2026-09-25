@@ -1,4 +1,4 @@
-"""Shared fixtures for QapBot tests.
+"""Shared fixtures for ClashControl tests.
 
 Phase 1 focuses on unit smoke tests + optional DEV live smoke.
 Fixtures are kept lightweight and avoid touching PROD paths or on-disk data.

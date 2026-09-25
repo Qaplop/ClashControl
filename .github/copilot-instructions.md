@@ -1,4 +1,4 @@
-# Copilot Instructions for QapBot (Playbook)
+# Copilot Instructions for ClashControl (Playbook)
 
 This file is intentionally short and high-signal so Copilot can reliably apply it.
 Deep dives and long examples live in the docs referenced below.

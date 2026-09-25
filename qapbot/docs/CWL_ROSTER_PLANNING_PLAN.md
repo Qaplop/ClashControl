@@ -1,6 +1,6 @@
 # CWL Roster Planning
 
-**Status: shipped, in production use.** QapBot owns the whole CWL roster workflow end to end —
+**Status: shipped, in production use.** ClashControl owns the whole CWL roster workflow end to end —
 pick participating clans → open sign-ups → drag-and-drop assignment on a Discord Activity board →
 announce the roster with a DM to every player → automatic detection of when CWL actually starts
 in-game → per-clan roster freeze → switch-verification alarms. This document describes the
@@ -357,7 +357,7 @@ latest `cwl_start_at` + 9 days). Removing a guest clan from a *season* (the Acti
 leaves the persisted status alone.
 
 Note for "why did nobody get a DM": the enrollment DM can only reach a player whose CoC account is
-linked to a Discord user. A guest clan whose players never registered with QapBot shows up in the
+linked to a Discord user. A guest clan whose players never registered with ClashControl shows up in the
 pool as "Not Linked" and "Notify New Pool Members" contacts nobody. Member-role rights for guest
 clans are what give those players a reason to join the server and link.
 

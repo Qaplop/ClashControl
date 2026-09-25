@@ -1,8 +1,8 @@
-# QapBot Code Structure (2026-03-01, Database-Only Architecture Edition)
+# ClashControl Code Structure (2026-03-01, Database-Only Architecture Edition)
 
 ## Architecture Overview
 
-QapBot is a modular Python Discord bot for Clash of Clans, featuring:
+ClashControl is a modular Python Discord bot for Clash of Clans, featuring:
 - Main orchestration and periodic update loop
 - Discord bot command handling with modular UI components
 - Business logic for leaderboard generation and war prediction

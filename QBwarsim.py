@@ -1,5 +1,5 @@
 """
-War simulation and prediction module for QapBot with Monte Carlo analysis and cache-centric integration.
+War simulation and prediction module for ClashControl with Monte Carlo analysis and cache-centric integration.
 
 This module provides Monte Carlo simulation capabilities for predicting Clash of Clans war outcomes based on remaining attacks, town hall
 level matchups, and historical attack success probabilities. All simulation logic is integrated with cache-centric business rules and

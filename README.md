@@ -1,4 +1,4 @@
-# QapBot - Clash of Clans Discord Bot
+# ClashControl - Clash of Clans Discord Bot
 
 A powerful, modular Discord bot designed for Clash of Clans clan management, featuring automated leaderboards, war predictions, player notifications, and comprehensive clan family support.
 
@@ -101,8 +101,8 @@ A powerful, modular Discord bot designed for Clash of Clans clan management, fea
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/Qaplop/QapBot.git
-   cd QapBot
+   git clone https://github.com/Qaplop/ClashControl.git
+   cd ClashControl
    ```
 
 2. **Create virtual environment**
@@ -209,7 +209,7 @@ action. There is no separate `/clans`, `/list_families`, `/list_players`, `/list
   noted per action — "admin" = server admin, "bot admin" = bot's configured `SERVER_ADMIN` only):
   - **CLEANUP_MESSAGES** - Clean up orphaned messages in current channel (admin)
   - **CLEANUP_MESSAGES_ALL** - Clean up messages across all channels/servers (bot admin)
-  - **CHECK_LOGS** - Scan and summarize QapBot logs (bot admin)
+  - **CHECK_LOGS** - Scan and summarize ClashControl logs (bot admin)
   - **CHECK_DATA** - Validate data consistency (bot admin)
   - **LIST_ALL_SUBSCRIPTIONS** - View all channel subscriptions (bot admin)
   - **TEST_NOTIFY** - Test war notifications for a clan (bot admin)
@@ -303,7 +303,7 @@ migration job moves data older than the retention window from hot to history —
 
 ### Discord Application Setup
 
-**CRITICAL**: QapBot uses TWO separate Discord applications for development and production:
+**CRITICAL**: ClashControl uses TWO separate Discord applications for development and production:
 
 #### DEV App (`DISCORD_TOKEN_DEV`):
 - Used for development and testing
@@ -402,7 +402,7 @@ live / e2e), fixture strategy, and CI pipeline details.
 
 ## 🌐 Internationalization
 
-QapBot supports multiple languages through JSON translation files:
+ClashControl supports multiple languages through JSON translation files:
 - Translation files located in `qapbot/translations/`
 - Language preferences stored per Discord server
 - Use `t()` function for all user-facing text
@@ -491,7 +491,7 @@ This project is private. All rights reserved.
 
 ## 📞 Support
 
-For issues, questions, or feature requests, please [open an issue on GitHub](https://github.com/Qaplop/QapBot/issues).
+For issues, questions, or feature requests, please [open an issue on GitHub](https://github.com/Qaplop/ClashControl/issues).
 
 ## 🔄 Version History
 
@@ -555,4 +555,4 @@ Use `/admin CHECK_LOGS` to scan recent logs for:
 
 ---
 
-**QapBot** - Empowering Clash of Clans communities with intelligent automation 🤖⚔️
+**ClashControl** - Empowering Clash of Clans communities with intelligent automation 🤖⚔️

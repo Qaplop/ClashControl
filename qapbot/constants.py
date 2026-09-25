@@ -1,5 +1,5 @@
 """
-Application-wide constants for QapBot.
+Application-wide constants for ClashControl.
 
 This module centralizes all magic numbers and constant values used throughout the
 application. By defining constants here, we:

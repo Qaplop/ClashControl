@@ -1,5 +1,5 @@
 """
-Helper functions for leaderboard generation, war info updates, Discord posting, and cache-centric message management for QapBot.
+Helper functions for leaderboard generation, war info updates, Discord posting, and cache-centric message management for ClashControl.
 
 This module provides the core business logic for QapBot's primary functions:
 

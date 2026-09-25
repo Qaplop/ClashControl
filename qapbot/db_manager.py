@@ -1,5 +1,5 @@
 """
-Database manager for QapBot persistent storage.
+Database manager for ClashControl persistent storage.
 
 This module provides SQLite database operations for war history and all persistent data,
 serving as the single database access layer for the application.
@@ -8300,7 +8300,7 @@ class WarHistoryDB:
           side).  Only included when the opponent clan is also tracked in the DB.
 
         Defender TH falls back to attacker_th (equal-TH) when the defender player
-        is not in the DB (opponents tracked in a different QapBot instance, etc.).
+        is not in the DB (opponents tracked in a different ClashControl instance, etc.).
 
         Returns:
             List of dicts with keys:

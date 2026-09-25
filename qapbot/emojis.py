@@ -1,7 +1,7 @@
 """Centralized emoji definitions for Discord custom emojis.
 
 This module provides a single source of truth for all Discord custom emoji IDs
-used throughout QapBot. Centralizing emoji definitions makes updates easier and
+used throughout ClashControl. Centralizing emoji definitions makes updates easier and
 ensures consistency across the codebase.
 
 Usage:
@@ -48,7 +48,7 @@ class _ResolvingEmojiMeta(type):
 
 
 class BotEmojis(metaclass=_ResolvingEmojiMeta):
-    """Custom emoji constants for QapBot.
+    """Custom emoji constants for ClashControl.
 
     All Discord custom emoji strings are defined here. When Discord emojis need
     to be updated, changes only need to be made in this single location.

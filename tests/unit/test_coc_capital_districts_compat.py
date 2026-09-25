@@ -10,7 +10,7 @@ failure happened during construction and killed the *whole* clan fetch, not just
 the capital part. 438 clans stopped being war-tracked; 42,871 fetches failed in
 one day, each retried 3x with 1s+2s backoff.
 
-Clan Capital data is not persisted anywhere in QapBot, so normalising the missing
+Clan Capital data is not persisted anywhere in ClashControl, so normalising the missing
 key to an empty district list is lossless for this bot.
 """
 # pyright: reportPrivateUsage=false, reportUnknownMemberType=false, reportMissingParameterType=false, reportUnknownVariableType=false, reportAttributeAccessIssue=false

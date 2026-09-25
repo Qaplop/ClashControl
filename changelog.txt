@@ -1,6 +1,12 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-25 (5)  Build 103.
+- Improved (tracker #0135 follow-up): landing page stats tile now reads "Leaderboards and
+  detailed player and clan stats" (activity.landing.feature_stats, all 5 languages + the
+  client's English fallback).
+  Files: qapbot/translations/*.json, activity/client/src/landingPage.ts, QBcore.py.
+
 2026-09-25 (4)  Build 102.
 - Improved (tracker #0135 follow-up): the Activity landing page's language tile now adds that a
   missing language can be requested with /feature (activity.landing.feature_languages, all 5

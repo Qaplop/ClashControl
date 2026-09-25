@@ -1343,7 +1343,7 @@
       "feature_cwl": "CWL-Verwaltung, auch für mehrere Clans",
       "feature_predictions": "Live-Kriegsprognosen",
       "feature_notifications": "Erinnerungen an offene Angriffe und Raid-Wochenenden",
-      "feature_stats": "Bestenlisten und detaillierte Spielerstatistiken",
+      "feature_stats": "Bestenlisten und detaillierte Spieler- und Clanstatistiken",
       "feature_languages": "Englisch, Deutsch, Spanisch, Chinesisch und Latein. Deine Sprache fehlt? Wünsch sie dir mit /feature.",
       "install_title": "Neu hier? Füge ClashControl deinem Server hinzu",
       "install_text": "Dafür brauchst du auf dem Server die Berechtigung „Server verwalten“.",

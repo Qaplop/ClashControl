@@ -1342,7 +1342,7 @@
       "feature_cwl": "Gestión de CWL, también para varios clanes",
       "feature_predictions": "Predicciones de guerra en vivo",
       "feature_notifications": "Recordatorios de ataques pendientes y fines de semana de incursiones",
-      "feature_stats": "Clasificaciones y estadísticas detalladas de jugadores",
+      "feature_stats": "Clasificaciones y estadísticas detalladas de jugadores y clanes",
       "feature_languages": "Inglés, alemán, español, chino y latín. ¿Falta tu idioma? Pídelo con /feature.",
       "install_title": "¿Eres nuevo? Añade ClashControl a tu servidor",
       "install_text": "Necesitas el permiso «Gestionar servidor» en el servidor al que lo añadas.",

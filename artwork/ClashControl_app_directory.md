@@ -41,7 +41,7 @@ Bot todo en uno para Clash of Clans: gestión de clanes con roles automáticos, 
 ### English (Default)
 
 ````markdown
-**Your clan's command center for Clash of Clans**
+**ClashControl - Your clan's command center for Clash of Clans**
 
 ClashControl tracks your clans around the clock and keeps your Discord server in sync with the game. It handles roles, wars, CWL rosters, reminders and stats, so leaders can spend less time on spreadsheets and more time playing.
 
@@ -96,7 +96,7 @@ ClashControl speaks **English, German, Spanish, Chinese (Simplified) and Latin.*
 ### German
 
 ````markdown
-**Die Kommandozentrale für deinen Clash of Clans Clan**
+**ClashControl - Die Kommandozentrale für deinen Clash of Clans Clan**
 
 ClashControl behält deine Clans rund um die Uhr im Blick und hält deinen Discord-Server mit dem Spiel synchron. Rollen, Kriege, CWL-Aufstellungen, Erinnerungen und Statistiken laufen automatisch – so verbringen Anführer weniger Zeit mit Tabellen und mehr Zeit mit dem Spiel.
 
@@ -151,7 +151,7 @@ ClashControl spricht **Englisch, Deutsch, Spanisch, Chinesisch (vereinfacht) und
 ### Spanish
 
 ````markdown
-**El centro de mando de tu clan en Clash of Clans**
+**ClashControl - El centro de mando de tu clan en Clash of Clans**
 
 ClashControl sigue tus clanes las 24 horas y mantiene tu servidor de Discord sincronizado con el juego. Se encarga de roles, guerras, alineaciones de CWL, recordatorios y estadísticas, para que los líderes pasen menos tiempo con hojas de cálculo y más tiempo jugando.
 
@@ -206,7 +206,7 @@ ClashControl habla **inglés, alemán, español, chino (simplificado) y latín.*
 ### Chinese (Simplified)
 
 ````markdown
-**你的 Clash of Clans 部落指挥中心**
+**ClashControl - 你的 Clash of Clans 部落指挥中心**
 
 ClashControl 全天候追踪你的部落，让你的 Discord 服务器与游戏保持同步。身份组、部落战、联赛阵容、提醒和数据统计全部自动处理——首领们可以少花时间在表格上，多花时间在游戏里。
 

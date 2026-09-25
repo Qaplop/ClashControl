@@ -8,6 +8,7 @@ import { DiscordSDK, RPCCloseCodes } from '@discord/embedded-app-sdk'
 import { renderClanConfigTable } from './clanConfigTable'
 import { renderEnrollmentBoard } from './enrollmentBoard'
 import { renderPlayerPrefs } from './playerPrefs'
+import { FALLBACK_STRINGS, renderLandingPage } from './landingPage'
 import { createTranslator } from './i18n'
 import type {
   AdminSettableStatus,
@@ -123,6 +124,29 @@ async function setup(): Promise<void> {
       sessionStorage.setItem(CACHED_TOKEN_KEY, accessToken)
     }
 
+    // Tracker #0135: the page for launches no bot button asked for (Discord's own Launch button
+    // on the App Directory profile / app launcher). guildId is null outside a server; the bridge
+    // then picks the language from the user's own setting alone.
+    const showLandingPage = async (landingGuildId: string | null): Promise<void> => {
+      root.textContent = 'Loading…'
+      let strings: Record<string, string> = {}
+      try {
+        const guildParam = landingGuildId ? `guild_id=${encodeURIComponent(landingGuildId)}&` : ''
+        const i18nResponse = await fetch(`/api/i18n?${guildParam}ns=activity.landing`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        })
+        if (i18nResponse.ok) strings = ((await i18nResponse.json()) as { strings: Record<string, string> }).strings
+      } catch (err) {
+        console.error('[cwl-activity] landing page strings failed, using English:', err)
+      }
+      renderLandingPage(root, createTranslator({ ...FALLBACK_STRINGS, ...strings }), () => {
+        // Default install link: scopes/permissions come from the Developer Portal's install settings.
+        void discordSdk.commands.openExternalLink({
+          url: `https://discord.com/oauth2/authorize?client_id=${encodeURIComponent(clientId)}`,
+        })
+      })
+    }
+
     // Tracker #0128: in the bot DM Discord gives no guild — the bot recorded which server the
     // user's DM /cwl preferences resolved to, so ask it. Only if that fails too (e.g. started from
     // Discord's own app launcher instead of the command) is there no way to continue.
@@ -140,7 +164,7 @@ async function setup(): Promise<void> {
       }
     }
     if (!resolvedGuildId) {
-      root.textContent = 'This Activity must be launched from inside a guild.'
+      await showLandingPage(null)
       return
     }
     const guildId: string = resolvedGuildId
@@ -191,6 +215,11 @@ async function setup(): Promise<void> {
       throw new Error(`failed to resolve screen (${screenResponse.status}): ${body}`)
     }
     const { screen } = (await screenResponse.json()) as ScreenPayload
+
+    if (screen === 'landing') {
+      await showLandingPage(guildId)
+      return
+    }
 
     if (screen === 'enrollment') {
       root.textContent = 'Loading enrollment…'

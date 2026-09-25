@@ -1326,5 +1326,29 @@
       "optout_button_labeled": "{player_name}",
       "bench_button_labeled": "{player_name}"
     }
+  },
+  "activity": {
+    "landing": {
+      "tagline": "Die Kommandozentrale für deinen Clash of Clans Clan",
+      "intro": "ClashControl behält deine Clans rund um die Uhr im Blick und hält deinen Discord-Server mit dem Spiel synchron: Rollen, Kriege, CWL-Aufstellungen, Erinnerungen und Statistiken.",
+      "feature_clan": "Clanverwaltung mit automatischen Discord-Rollen",
+      "feature_cwl": "CWL-Verwaltung, auch für mehrere Clans",
+      "feature_predictions": "Live-Kriegsprognosen",
+      "feature_notifications": "Erinnerungen an offene Angriffe und Raid-Wochenenden",
+      "feature_stats": "Bestenlisten und detaillierte Spielerstatistiken",
+      "feature_languages": "Englisch, Deutsch, Spanisch, Chinesisch und Latein",
+      "install_title": "Neu hier? Füge ClashControl deinem Server hinzu",
+      "install_text": "Dafür brauchst du auf dem Server die Berechtigung „Server verwalten“.",
+      "install_button": "Zum Server hinzufügen",
+      "members_title": "Schon auf deinem Server? So legst du los",
+      "members_text": "Gib diese Befehle auf deinem Server oder in einer DM an ClashControl ein:",
+      "members_registration": "verknüpfe deine Clash of Clans Accounts und richte Kriegserinnerungen ein",
+      "members_cwl": "sag deinen Clan-Anführern, ob du CWL spielen möchtest",
+      "members_help": "alles, was ClashControl kann",
+      "admins_title": "Server-Admins: richte deinen Clan ein",
+      "admins_subscribe": "beginne mit der Verfolgung deines Clans und poste eine Bestenliste in diesem Kanal",
+      "admins_management": "Sprache, Kanal für Kriegsbenachrichtigungen, Auto-Rollen und Clan-Familien",
+      "footer": "Fehler gefunden oder eine Idee? Nutze /bug oder /feature."
+    }
   }
 }

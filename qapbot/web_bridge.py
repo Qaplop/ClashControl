@@ -1436,6 +1436,12 @@ async def handle_get_cwl_screen(request: web.Request) -> web.Response:
     Three screens as of plans/cwl-personal-hub.md Phase 5a ('clan_config' / 'enrollment' /
     'player_prefs') — this handler needed no code change for the third; it already returns
     whatever CwlPlayerHubView's button (or /cwl preferences) recorded.
+
+    Tracker #0135: with nothing recorded the answer is 'landing', not 'clan_config'. Every
+    bot-side launch goes through _launch_cwl_activity, which records a screen first, so an empty
+    slot means the Activity was started from Discord's own Launch button (App Directory profile /
+    app launcher) — show the getting-started page, not an admin screen. Trade-off: the dict is
+    in-memory, so a pop-out re-run after a bot restart also lands there.
     """
     if not _check_secret(request):
         return web.json_response({"error": "forbidden"}, status=403)
@@ -1445,7 +1451,7 @@ async def handle_get_cwl_screen(request: web.Request) -> web.Response:
     except (KeyError, ValueError):
         return web.json_response({"error": "missing/invalid guild_id or discord_user_id"}, status=400)
 
-    screen = CACHE.pending_cwl_activity_screen.get((guild_id_str, discord_user_id_str), "clan_config")
+    screen = CACHE.pending_cwl_activity_screen.get((guild_id_str, discord_user_id_str), "landing")
     return web.json_response({"screen": screen})
 
 
@@ -1483,11 +1489,15 @@ async def handle_get_i18n(request: web.Request) -> web.Response:
     receives from the bot.
 
     No permission gate beyond the bridge secret: a translation catalog reveals nothing
-    guild/account-specific, unlike every other CWL bridge endpoint."""
+    guild/account-specific, unlike every other CWL bridge endpoint.
+
+    `guild_id` is optional (tracker #0135): the landing page shown for a launch outside any
+    server has no guild, so only the user's own language (else the default) applies."""
     if not _check_secret(request):
         return web.json_response({"error": "forbidden"}, status=403)
     try:
-        guild_id_int = int(request.query["guild_id"])
+        guild_id_raw = request.query.get("guild_id")
+        guild_id_int = int(guild_id_raw) if guild_id_raw else None
         discord_user_id_str = str(int(request.query["discord_user_id"]))
     except (KeyError, ValueError):
         return web.json_response({"error": "missing/invalid guild_id or discord_user_id"}, status=400)

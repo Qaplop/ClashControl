@@ -180,10 +180,48 @@ async def test_i18n_requires_secret(bridge_config, client):
 @pytest.mark.asyncio
 async def test_i18n_missing_params_returns_400(bridge_config, client):
     headers = {"X-Bridge-Secret": "test-secret"}
-    resp = await client.get("/api/i18n", params={"discord_user_id": "2", "ns": "cwl.player_hub"}, headers=headers)
+    resp = await client.get("/api/i18n", params={"guild_id": "1", "ns": "cwl.player_hub"}, headers=headers)
     assert resp.status == 400
     resp2 = await client.get("/api/i18n", params={"guild_id": "1", "discord_user_id": "2"}, headers=headers)
     assert resp2.status == 400
+    resp3 = await client.get(
+        "/api/i18n", params={"guild_id": "x", "discord_user_id": "2", "ns": "cwl.player_hub"}, headers=headers
+    )
+    assert resp3.status == 400
+
+
+@pytest.mark.discord
+@pytest.mark.asyncio
+async def test_i18n_without_guild_uses_user_language(bridge_config, client):
+    """Tracker #0135: the landing page shown outside any server has no guild_id to send."""
+    from qapbot.cache_manager import CACHE
+
+    CACHE.user_accounts["910"] = {"user_language": "de"}
+    CACHE.user_accounts.pop("911", None)
+    headers = {"X-Bridge-Secret": "test-secret"}
+
+    resp = await client.get("/api/i18n", params={"discord_user_id": "910", "ns": "cwl.player_hub"}, headers=headers)
+    assert resp.status == 200
+    assert (await resp.json())["lang"] == "de"
+
+    resp2 = await client.get("/api/i18n", params={"discord_user_id": "911", "ns": "cwl.player_hub"}, headers=headers)
+    assert resp2.status == 200
+    assert (await resp2.json())["lang"] == "en"
+
+
+@pytest.mark.discord
+@pytest.mark.asyncio
+async def test_i18n_activity_landing_namespace_is_complete_in_every_language(bridge_config, client):
+    """Tracker #0135: every language ships every landing-page key (no silent English fallback)."""
+    from qapbot.i18n import get_namespace
+
+    english_keys = set(get_namespace("activity.landing", "en"))
+    assert english_keys
+    for lang in ("de", "es", "zh", "la"):
+        from qapbot.i18n import _translation_manager
+
+        subtree = _translation_manager.translations[lang]["activity"]["landing"]
+        assert set(subtree) == english_keys, lang
 
 
 @pytest.mark.discord
@@ -1890,7 +1928,9 @@ async def test_dm_guild_get_requires_bridge_secret(bridge_config, client):
 
 @pytest.mark.discord
 @pytest.mark.asyncio
-async def test_screen_get_defaults_to_clan_config_when_nothing_recorded(bridge_config, client):
+async def test_screen_get_defaults_to_landing_when_nothing_recorded(bridge_config, client):
+    """Tracker #0135: nothing recorded = launched from Discord's own Launch button, not a bot
+    button — the getting-started page, never an admin screen."""
     from qapbot.cache_manager import CACHE
 
     CACHE.pending_cwl_activity_screen.pop(("3", "4"), None)
@@ -1901,7 +1941,7 @@ async def test_screen_get_defaults_to_clan_config_when_nothing_recorded(bridge_c
         headers={"X-Bridge-Secret": "test-secret"},
     )
     assert resp.status == 200
-    assert (await resp.json())["screen"] == "clan_config"
+    assert (await resp.json())["screen"] == "landing"
 
 
 @pytest.mark.discord

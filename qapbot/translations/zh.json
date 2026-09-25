@@ -1325,5 +1325,29 @@
       "optout_button_labeled": "{player_name}",
       "bench_button_labeled": "{player_name}"
     }
+  },
+  "activity": {
+    "landing": {
+      "tagline": "你的 Clash of Clans 部落指挥中心",
+      "intro": "ClashControl 全天候追踪你的部落，让你的 Discord 服务器与游戏保持同步：身份组、部落战、联赛阵容、提醒和数据统计。",
+      "feature_clan": "部落管理与自动 Discord 身份组",
+      "feature_cwl": "联赛（CWL）管理，支持多部落",
+      "feature_predictions": "实时部落战预测",
+      "feature_notifications": "剩余进攻和突袭周末提醒",
+      "feature_stats": "排行榜与详细玩家数据",
+      "feature_languages": "英语、德语、西班牙语、中文和拉丁语",
+      "install_title": "第一次来？将 ClashControl 添加到你的服务器",
+      "install_text": "你需要在目标服务器上拥有“管理服务器”权限。",
+      "install_button": "添加到服务器",
+      "members_title": "已经在你的服务器上？开始使用",
+      "members_text": "在你的服务器中或与 ClashControl 的私信中输入以下命令：",
+      "members_registration": "绑定你的 Clash of Clans 账号并设置部落战提醒",
+      "members_cwl": "告诉部落首领你是否想参加联赛",
+      "members_help": "查看 ClashControl 的全部功能",
+      "admins_title": "服务器管理员：设置你的部落",
+      "admins_subscribe": "开始追踪你的部落，并在此频道发布排行榜",
+      "admins_management": "语言、部落战通知频道、自动身份组和部落家族",
+      "footer": "发现问题或有新想法？使用 /bug 或 /feature。"
+    }
   }
 }

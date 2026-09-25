@@ -1,6 +1,23 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-25 (2)  Build 100.
+- New (tracker #0135): landing page in the Discord Activity for launches no bot button started,
+  i.e. Discord's own "Launch" button on the App Directory profile / app launcher. Before, that
+  showed "This Activity must be launched from inside a guild." in a DM, and inside a server fell
+  back to the CWL clan-config screen. Now it shows what ClashControl does, an "Add to server"
+  button (default install link, so the Developer Portal's install settings apply), and the first
+  commands for members (/registration, /cwl preferences, /help) and admins (/subscribe,
+  /clan management). New namespace activity.landing in all 5 languages.
+  Bridge: GET /api/cwl/screen answers "landing" instead of "clan_config" when nothing was
+  recorded (every bot button records its screen first, so they're unaffected); GET /api/i18n
+  accepts a missing guild_id (user language, else default). Trade-off: a pop-out re-run after a
+  bot restart now also lands on the landing page (recorded screens are in memory only).
+  Files: qapbot/web_bridge.py, qapbot/translations/*.json, QBcore.py,
+  activity/client (landingPage.ts, main.ts, types.ts, index.html, public/clashcontrol-icon.png),
+  activity/server/src/index.ts (+ tests/discord/test_web_bridge.py,
+  qapbot/docs/CWL_CLAN_CONFIG_ACTIVITY_PLAN.md).
+
 2026-09-25 (1)  Build 99.
 - Improved: an abandoned /bug or /feature draft preview now says it expired instead of keeping
   buttons that only fail with "This interaction failed". After 14 minutes without activity the

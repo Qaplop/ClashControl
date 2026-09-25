@@ -47,7 +47,7 @@ export type ClanConfigPayload = {
  * cwl-personal-hub.md Phase 5a) is CwlPlayerHubView's single button / the /cwl preferences
  * command — member-facing, no admin gate on the bridge side. */
 export type ScreenPayload = {
-  screen: 'clan_config' | 'enrollment' | 'player_prefs'
+  screen: 'clan_config' | 'enrollment' | 'player_prefs' | 'landing'
 }
 
 /** Matches qapbot/web_bridge.py's GET /api/cwl/enrollment payload shape exactly. */

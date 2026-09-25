@@ -243,11 +243,12 @@ api.post('/cwl/player-prefs/status', async (c) => {
 
 // Bulk-fetch translation strings (2026-08-23, plans/cwl-personal-hub.md Phase 6c) — same
 // verify-identity-then-proxy shape as /cwl/screen above. No CWL-specific logic at all; kept
-// outside the /cwl/* namespace since it isn't one.
+// outside the /cwl/* namespace since it isn't one. guild_id is optional (tracker #0135): the
+// landing page shown for a launch outside any server has none — the bridge then uses only the
+// user's own language.
 api.get('/i18n', async (c) => {
   const guildId = c.req.query('guild_id')
   const ns = c.req.query('ns')
-  if (!guildId) return c.json({ error: 'missing guild_id' }, 400)
   if (!ns) return c.json({ error: 'missing ns' }, 400)
 
   const discordUserId = await verifiedDiscordUserId(c)
@@ -256,7 +257,7 @@ api.get('/i18n', async (c) => {
   if (!c.env.BRIDGE_URL || !c.env.BRIDGE_SECRET) return bridgeNotConfigured(c)
 
   const upstream = await fetch(
-    `${c.env.BRIDGE_URL}/api/i18n?guild_id=${encodeURIComponent(guildId)}&discord_user_id=${encodeURIComponent(discordUserId)}&ns=${encodeURIComponent(ns)}`,
+    `${c.env.BRIDGE_URL}/api/i18n?${guildId ? `guild_id=${encodeURIComponent(guildId)}&` : ''}discord_user_id=${encodeURIComponent(discordUserId)}&ns=${encodeURIComponent(ns)}`,
     { headers: { 'X-Bridge-Secret': c.env.BRIDGE_SECRET } },
   )
   return c.json(await upstream.json(), upstream.status as 200 | 400 | 403 | 500)

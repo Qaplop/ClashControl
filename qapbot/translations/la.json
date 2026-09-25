@@ -1325,5 +1325,29 @@
       "optout_button_labeled": "{player_name}",
       "bench_button_labeled": "{player_name}"
     }
+  },
+  "activity": {
+    "landing": {
+      "tagline": "Arx imperii gentis tuae in Clash of Clans",
+      "intro": "ClashControl gentes tuas die noctuque observat et servitorem tuum Discord cum ludo concordem tenet: munera, bella, ordines CWL, admonitiones et statisticas.",
+      "feature_clan": "Administratio gentis cum muneribus Discord automaticis",
+      "feature_cwl": "Administratio CWL, etiam pro pluribus gentibus",
+      "feature_predictions": "Praedictiones bellorum vivae",
+      "feature_notifications": "Admonitiones de impetibus reliquis et finibus hebdomadae praedationis",
+      "feature_stats": "Tabulae principum et statisticae lusorum accuratae",
+      "feature_languages": "Anglice, Germanice, Hispanice, Sinice et Latine",
+      "install_title": "Novus hic es? Adde ClashControl servitori tuo",
+      "install_text": "Licentia „Servitorem administrare“ in servitore illo tibi opus est.",
+      "install_button": "Adde servitori",
+      "members_title": "Iam in servitore tuo est? Incipe sic",
+      "members_text": "Haec mandata in servitore tuo vel in nuntio privato ad ClashControl scribe:",
+      "members_registration": "rationes tuas Clash of Clans iunge et admonitiones belli constitue",
+      "members_cwl": "ducibus gentis tuae dic an CWL ludere velis",
+      "members_help": "omnia quae ClashControl facere potest",
+      "admins_title": "Administratores servitoris: gentem tuam constituite",
+      "admins_subscribe": "gentem tuam observare incipe et tabulam principum in hoc canali propone",
+      "admins_management": "lingua, canalis nuntiorum belli, munera automatica et familiae gentium",
+      "footer": "Errorem invenisti aut consilium habes? Utere /bug vel /feature."
+    }
   }
 }

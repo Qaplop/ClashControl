@@ -5023,6 +5023,7 @@ async def test_about_dm_refusal_sends_the_landing_text(mock_interaction, monkeyp
 
     text = mock_interaction.user.send.await_args.args[0]
     assert "https://discord.com/oauth2/authorize?client_id=1442060461783781479" in text
+    assert "https://discord.gg/Eg3f7VQA2T" in text
     assert "{" not in text
 
 

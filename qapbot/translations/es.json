@@ -214,7 +214,7 @@
     },
     "status": {},
     "about": {
-      "fallback": "**ClashControl** — el centro de mando de tu clan en Clash of Clans.\n\n➕ Añádelo a tu servidor: {install_url}\n👤 ¿Ya está en tu servidor? Empieza con {registration} (vincula tus cuentas), {cwl_preferences} y {help}."
+      "fallback": "**ClashControl** — el centro de mando de tu clan en Clash of Clans.\n\n➕ Añádelo a tu servidor: {install_url}\n👤 ¿Ya está en tu servidor? Empieza con {registration} (vincula tus cuentas), {cwl_preferences} y {help}.\n💬 ¿Preguntas? Únete a nuestro canal de soporte: {support_url}"
     },
     "help": {
       "list_title": "Comandos de QapBot",

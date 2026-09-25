@@ -56,8 +56,10 @@ const ADMIN_STEPS: [string, string][] = [
   ['/clan management', 'admins_management'],
 ]
 
-// ClashControl's public support channel on The QCrew server.
-const SUPPORT_URL = 'https://discord.com/channels/1145641080621109312/1553052010222198865'
+// Permanent invite to ClashControl's public support channel on The QCrew server (an invite, not a
+// channel link: a channel link only opens for people who are already members of the server).
+// Same link as SUPPORT_INVITE_URL in qapbot/constants.py.
+const SUPPORT_URL = 'https://discord.gg/Eg3f7VQA2T'
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, text?: string): HTMLElementTagNameMap[K] {
   const node = document.createElement(tag)

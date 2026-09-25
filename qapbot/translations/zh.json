@@ -214,7 +214,7 @@
     },
     "status": {},
     "about": {
-      "fallback": "**ClashControl** — 你的 Clash of Clans 部落指挥中心。\n\n➕ 添加到你的服务器：{install_url}\n👤 已经在你的服务器上？从 {registration}（绑定账号）、{cwl_preferences} 和 {help} 开始。"
+      "fallback": "**ClashControl** — 你的 Clash of Clans 部落指挥中心。\n\n➕ 添加到你的服务器：{install_url}\n👤 已经在你的服务器上？从 {registration}（绑定账号）、{cwl_preferences} 和 {help} 开始。\n💬 有问题？加入我们的支持频道：{support_url}"
     },
     "help": {
       "list_title": "QapBot 命令",

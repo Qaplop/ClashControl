@@ -214,7 +214,7 @@
     },
     "status": {},
     "about": {
-      "fallback": "**ClashControl** — arx imperii gentis tuae in Clash of Clans.\n\n➕ Adde eum servitori tuo: {install_url}\n👤 Iam in servitore tuo est? Incipe cum {registration} (rationes tuas iunge), {cwl_preferences} et {help}."
+      "fallback": "**ClashControl** — arx imperii gentis tuae in Clash of Clans.\n\n➕ Adde eum servitori tuo: {install_url}\n👤 Iam in servitore tuo est? Incipe cum {registration} (rationes tuas iunge), {cwl_preferences} et {help}.\n💬 Quaestiones? Veni in canalem auxilii nostrum: {support_url}"
     },
     "help": {
       "list_title": "Mandata QapBot",

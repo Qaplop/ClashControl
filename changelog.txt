@@ -1,6 +1,16 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-25 (8)  Build 106.
+- Improved (tracker #0135/#0136 follow-up): the landing page's support button now opens the
+  permanent invite https://discord.gg/Eg3f7VQA2T instead of a channel link (a channel link only
+  opens for existing members of The QCrew). /about's text fallback (commands.about.fallback, all
+  5 languages) gained the same invite as a "Questions? Join our support channel" line; the link
+  lives in qapbot/constants.py (SUPPORT_INVITE_URL).
+  Files: qapbot/constants.py, qapbot/ui_cwl_roster.py, qapbot/translations/*.json, QBcore.py,
+  activity/client/src/landingPage.ts (+ tests/discord/test_ui_cwl_roster.py,
+  qapbot/docs/CWL_CLAN_CONFIG_ACTIVITY_PLAN.md).
+
 2026-09-25 (7)  Build 105.
 - New (tracker #0135 follow-up): the Activity landing page has a fourth card, "Need help?", with
   a button to ClashControl's public support channel on The QCrew server

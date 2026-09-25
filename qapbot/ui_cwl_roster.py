@@ -1128,7 +1128,8 @@ def _server_jump_link(client: discord.Client, guild_id: int) -> str:
 
 def _landing_fallback_text(interaction: discord.Interaction) -> str:
     """Tracker #0136: what /about says when the Activity can't be opened (refused launch): the
-    landing page's essentials as text — install link and the first commands."""
+    landing page's essentials as text — install link, the first commands and the support invite."""
+    from qapbot.constants import SUPPORT_INVITE_URL
     from qapbot.i18n import t
     from qapbot.QBdiscocmdshelper import command_mention
     return t(
@@ -1139,6 +1140,7 @@ def _landing_fallback_text(interaction: discord.Interaction) -> str:
         registration=command_mention("registration"),
         cwl_preferences=command_mention("cwl preferences"),
         help=command_mention("help"),
+        support_url=SUPPORT_INVITE_URL,
     )
 
 

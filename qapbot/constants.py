@@ -18,6 +18,14 @@ Usage:
 from typing import Tuple
 
 # ============================================================================
+# ClashControl links
+# ============================================================================
+
+SUPPORT_INVITE_URL = "https://discord.gg/Eg3f7VQA2T"
+"""Permanent invite to ClashControl's public support channel on The QCrew server (tracker #0135
+follow-up). Same link as SUPPORT_URL in activity/client/src/landingPage.ts."""
+
+# ============================================================================
 # Discord API Limits
 # ============================================================================
 

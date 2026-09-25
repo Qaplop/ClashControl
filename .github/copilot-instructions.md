@@ -402,6 +402,8 @@ All pitfalls: short snippets + details in ../qapbot/docs/COPILOT_PITFALLS_COOKBO
 
 41) Editing an ephemeral message later (a timeout notice, a refresh after an upload, a final "submitted" text) → it can only be edited through the token of an interaction that responded ON it (`edit_original_response()`, or the `WebhookMessage` from that interaction's `followup.send()`), and every such token dies **15 minutes** after its interaction. discord.py's `View(timeout=...)` restarts on EVERY click — including one answered with a modal, which yields no token for the message — so an `on_timeout` that edits an ephemeral message can fire with every usable token already expired, and the edit fails silently (401). Keep the latest interaction that responded on the message and edit through it, and time out below 15 minutes counted from THAT interaction, not from the last click. Reference: `TrackerDraftView.touch()/expire()/_edit_draft()` in `qapbot/ui_tracker.py` (2026-09-25, abandoned /bug drafts).
 
+42) A brand-new slash command looks broken right after the bot restart → the Discord client caches the command list. Until it refreshes (**Ctrl+R** / restart Discord), the new command's `</name:id>` mention renders as plain, non-clickable text in `/help`, and typing the command does nothing (the client never sends it to the bot, so there's nothing in the bot log). Check the log's `[SETUP_HOOK] Remembered N command ids` line and reload the client before debugging code (2026-09-25, `/about`, tracker #0136).
+
 ---
 
 ## Implementation Workflow

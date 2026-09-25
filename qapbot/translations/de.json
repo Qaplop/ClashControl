@@ -2,7 +2,7 @@
   "_meta": {
     "language": "Deutsch",
     "language_code": "de",
-    "translator": "QapBot Development Team",
+    "translator": "ClashControl Development Team",
     "last_updated": "2025-12-31"
   },
   "common": {
@@ -217,7 +217,7 @@
       "fallback": "**ClashControl** — die Kommandozentrale für deinen Clash of Clans Clan.\n\n➕ Zu deinem Server hinzufügen: {install_url}\n👤 Schon auf deinem Server? Starte mit {registration} (Accounts verknüpfen), {cwl_preferences} und {help}.\n💬 Fragen? Komm in unseren Support-Kanal: {support_url}"
     },
     "help": {
-      "list_title": "QapBot Befehle",
+      "list_title": "ClashControl Befehle",
       "list_description": "Verwende `/help command:BefehlName` für detaillierte Hilfe zu einem bestimmten Befehl.",
       "dm_server_only_legend": "{marker} = funktioniert nur auf einem Server. Wird hier angezeigt, damit du siehst, was ich alles kann; führe den Befehl auf einem Server aus.",
       "server_only_detail_note": "{marker} Dieser Befehl funktioniert nur auf einem Server, nicht hier in der DM.",
@@ -325,12 +325,12 @@
         "detailed": "Zeige Hilfeinformationen für Bot-Befehle an.\n\n**Verwendung:**\n`/help [command:<befehlsname>]`\n\n**Parameter:**\n• `command` - Optional: Bestimmter Befehl, für den detaillierte Hilfe angezeigt werden soll\n\n**Ohne Parameter:**\nZeigt Liste aller verfügbaren Befehle nach Kategorien organisiert mit Kurzbeschreibungen.\n\n**Mit command-Parameter:**\nZeigt detaillierte Hilfe für den angegebenen Befehl einschließlich Verwendungsbeispielen und Parameterbeschreibungen.\n\n**Beispiele:**\n`/help` - Alle Befehle anzeigen\n`/help command:subscribe` - Detaillierte Hilfe für subscribe-Befehl\n`/help command:leaderboard` - Detaillierte Hilfe für leaderboard-Befehl"
       },
       "bug": {
-        "short": "Einen Fehler an den QapBot-Betreuer melden",
+        "short": "Einen Fehler an den ClashControl-Betreuer melden",
         "title": "🐞 Bug-Befehl",
         "detailed": "Öffnet ein Formular, um einen Fehler zu melden. Funktioniert in jedem Server, in dem der Bot ist, sowie in DMs.\n\n**Verwendung:**\n`/bug [attachment1:<Datei>] [attachment2:<Datei>] [attachment3:<Datei>]`\n\n**Parameter:**\n• `attachment1`/`attachment2`/`attachment3` - Optional: Screenshots oder Logdateien (bis zu 3; weitere können später über die **Dateien hinzufügen**-Schaltfläche des Eintrags ergänzt werden)\n\n**Ablauf:**\n1. Ein Formular öffnet sich für Titel, Beschreibung, Schritte zur Reproduktion und Umgebung (DEV/PROD/beide)\n2. Nach dem Absenden erscheint eine Vorschau mit den Schaltflächen Bearbeiten / Anhänge hinzufügen / Absenden / Verwerfen\n3. Absenden postet den Fehler mit einer globalen `#NNNN`-ID in den Tracker-Kanal und öffnet einen Diskussions-Thread\n\n**Beispiel:**\n`/bug`"
       },
       "feature": {
-        "short": "Ein Feature für QapBot vorschlagen",
+        "short": "Ein Feature für ClashControl vorschlagen",
         "title": "💡 Feature-Befehl",
         "detailed": "Öffnet ein Formular, um ein Feature vorzuschlagen. Funktioniert in jedem Server, in dem der Bot ist, sowie in DMs.\n\n**Verwendung:**\n`/feature [attachment1:<Datei>] [attachment2:<Datei>] [attachment3:<Datei>]`\n\n**Parameter:**\n• `attachment1`/`attachment2`/`attachment3` - Optional: Screenshots oder Mockups (bis zu 3; weitere können später über die **Dateien hinzufügen**-Schaltfläche des Eintrags ergänzt werden)\n\n**Ablauf:**\n1. Ein Formular öffnet sich für Titel, Beschreibung und Warum ist das nützlich?\n2. Nach dem Absenden erscheint eine Vorschau mit den Schaltflächen Bearbeiten / Anhänge hinzufügen / Absenden / Verwerfen\n3. Absenden postet den Vorschlag mit einer globalen `#NNNN`-ID in den Tracker-Kanal und öffnet einen Diskussions-Thread\n\n**Beispiel:**\n`/feature`"
       }

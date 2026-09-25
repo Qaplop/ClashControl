@@ -2,7 +2,7 @@
   "_meta": {
     "language": "English",
     "language_code": "en",
-    "translator": "QapBot Development Team",
+    "translator": "ClashControl Development Team",
     "last_updated": "2025-12-31"
   },
   "common": {
@@ -217,7 +217,7 @@
       "fallback": "**ClashControl** — your clan's command center for Clash of Clans.\n\n➕ Add it to your server: {install_url}\n👤 Already on your server? Start with {registration} (link your accounts), {cwl_preferences} and {help}.\n💬 Questions? Join our support channel: {support_url}"
     },
     "help": {
-      "list_title": "QapBot Commands",
+      "list_title": "ClashControl Commands",
       "list_description": "Use `/help command:CommandName` for detailed help about a specific command.",
       "dm_server_only_legend": "{marker} = only works inside a server. Shown here so you can see everything I can do; run it on a server.",
       "server_only_detail_note": "{marker} This command only works inside a server, not in this DM.",
@@ -325,12 +325,12 @@
         "detailed": "Display help information about bot commands.\n\n**Usage:**\n`/help [command:<command_name>]`\n\n**Parameters:**\n• `command` - Optional: Specific command to get detailed help for\n\n**Without parameters:**\nShows list of all available commands organized by category with short descriptions.\n\n**With command parameter:**\nShows detailed help for the specified command including usage examples and parameter descriptions.\n\n**Examples:**\n`/help` - Show all commands\n`/help command:subscribe` - Detailed help for subscribe command\n`/help command:leaderboard` - Detailed help for leaderboard command"
       },
       "bug": {
-        "short": "Report a bug to the QapBot maintainer",
+        "short": "Report a bug to the ClashControl maintainer",
         "title": "🐞 Bug Command",
         "detailed": "Open a modal to report a bug. Works in any server the bot is in, and in DMs.\n\n**Usage:**\n`/bug [attachment1:<file>] [attachment2:<file>] [attachment3:<file>]`\n\n**Parameters:**\n• `attachment1`/`attachment2`/`attachment3` - Optional: screenshots or log files (up to 3; more can be added afterwards via the item's **Add files** button)\n\n**Flow:**\n1. A modal opens for Title, Description, Steps to reproduce, and Environment (DEV/PROD/both)\n2. Submitting shows a draft preview with Edit / Add attachments / Submit / Discard buttons\n3. Submit posts the bug into the tracker channel with a global `#NNNN` id and opens a discussion thread\n\n**Example:**\n`/bug`"
       },
       "feature": {
-        "short": "Request a feature for QapBot",
+        "short": "Request a feature for ClashControl",
         "title": "💡 Feature Command",
         "detailed": "Open a modal to request a feature. Works in any server the bot is in, and in DMs.\n\n**Usage:**\n`/feature [attachment1:<file>] [attachment2:<file>] [attachment3:<file>]`\n\n**Parameters:**\n• `attachment1`/`attachment2`/`attachment3` - Optional: screenshots or mockups (up to 3; more can be added afterwards via the item's **Add files** button)\n\n**Flow:**\n1. A modal opens for Title, Description, and Why is this useful?\n2. Submitting shows a draft preview with Edit / Add attachments / Submit / Discard buttons\n3. Submit posts the request into the tracker channel with a global `#NNNN` id and opens a discussion thread\n\n**Example:**\n`/feature`"
       }

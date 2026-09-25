@@ -991,7 +991,7 @@ async def highlightme(interaction: discord.Interaction):
 # Registered conditionally (CONFIG.tracker_enabled) in QapBot.py's _setup_hook() — see plan §3.1.
 # ---------------------------------------------------------------------------
 
-@app_commands.command(name="bug", description=dev_mode + "Report a bug to the QapBot maintainer.")
+@app_commands.command(name="bug", description=dev_mode + "Report a bug to the ClashControl maintainer.")
 @app_commands.describe(
     attachment1="Optional screenshot/log file",
     attachment2="Optional screenshot/log file",
@@ -1016,7 +1016,7 @@ async def bug(
     await start_tracker_item(interaction, "bug", attachment1, attachment2, attachment3)
 
 
-@app_commands.command(name="feature", description=dev_mode + "Request a feature for QapBot.")
+@app_commands.command(name="feature", description=dev_mode + "Request a feature for ClashControl.")
 @app_commands.describe(
     attachment1="Optional screenshot/mockup file",
     attachment2="Optional screenshot/mockup file",
@@ -3841,7 +3841,7 @@ async def status(interaction: discord.Interaction, force_refresh: bool = False):
         coc_api_section = "API Calls: None yet\n"
     
     msg = (
-        f"**QapBot Status**\n"
+        f"**ClashControl Status**\n"
         # build + src answer "which edit is actually running here?" without log access.
         f"Version: {QBcore.BOT_VERSION} (build {QBcore.BOT_BUILD}, src {QBcore.source_fingerprint()})\n"
         f"Mode: {mode}\n"

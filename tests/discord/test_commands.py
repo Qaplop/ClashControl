@@ -284,7 +284,7 @@ async def test_status_calls_send_and_track(monkeypatch: pytest.MonkeyPatch, mock
     await QBdiscordcmds.status.callback(mock_interaction)  # type: ignore[arg-type]
 
     assert captured["command_name"] == "status"
-    assert "QapBot Status" in (captured["content"] or "")
+    assert "ClashControl Status" in (captured["content"] or "")
 
 
 @pytest.mark.discord

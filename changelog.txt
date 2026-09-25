@@ -1,6 +1,27 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-25 (13)  Build 110.
+- Changed (rename to ClashControl, phase 2 of 8: user-visible text only): every place a user
+  or server admin sees the bot's name now says ClashControl instead of QapBot:
+  - /help list title "ClashControl Commands" and the /bug + /feature help lines (all 5
+    languages), plus the translator metadata.
+  - /bug and /feature slash-command descriptions (changes on the next command sync).
+  - /status header, the CoC API key alert DM, /admin's log summary and memory profile headers,
+    the "Clans per War League" chart title, the health-check User-Agent.
+  - Discord audit-log reasons of all role create/delete/assign/remove calls
+    (guild_role_manager.py), e.g. "ClashControl role sync".
+  - Activity privacy.html and terms.html: "ClashControl (formerly QapBot; Discord application
+    "ClashControl", bot account currently still shown as "Qaps-CoC-Bot")", last updated
+    25 September 2026. The bot account part goes once Discord support renames the PROD bot
+    user (stuck at "Qaps-CoC-Bot" after verification started before the rename).
+  Deliberately unchanged for now: log lines ("QapBot started" is what /admin's log scanner
+  matches in older logs, phase 6), docs/comments (phase 4), package/file/folder names
+  (phases 5-7).
+  Files: QBdiscordcmds.py, QapBot.py, QBcore.py, qapbot/QBdiscocmdshelper_admin_command.py,
+  qapbot/chart_clans_per_league.py, qapbot/guild_role_manager.py, qapbot/translations/*.json,
+  activity/client/public/privacy.html + terms.html (+ 3 tests).
+
 2026-09-25 (12)
 - Changed (tracker #0125 follow-up): /cwl preferences' season block header "Clan" is now
   "CWL Clan" (all 5 languages), so it isn't confused with block I's new "Current clan" column.

@@ -191,7 +191,7 @@ def _render_chart(
     total_untracked = total_all - total_tracked
     now_label      = datetime.now().strftime("%Y-%m-%d %H:%M")
     ax.set_title(  # type: ignore[misc]
-        f"Clans per War League in QapBot DB  ({now_label})"
+        f"Clans per War League in ClashControl DB  ({now_label})"
         f"  —  {total_all:,} total ({total_tracked:,} actively tracked, {total_untracked:,} passively tracked)",
         fontsize=13, color="#e0e0e0", pad=14,
     )

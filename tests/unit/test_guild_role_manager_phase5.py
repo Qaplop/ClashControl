@@ -332,7 +332,7 @@ class TestAssignRole:
         role = _make_role(1)
         member = _make_member(roles=[])
         assert await assign_role_to_member(member, role) is True
-        member.add_roles.assert_awaited_once_with(role, reason="QapBot role sync")
+        member.add_roles.assert_awaited_once_with(role, reason="ClashControl role sync")
 
     @pytest.mark.asyncio
     async def test_skips_when_present(self):

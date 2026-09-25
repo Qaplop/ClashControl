@@ -217,7 +217,7 @@
       "fallback": "**ClashControl** — arx imperii gentis tuae in Clash of Clans.\n\n➕ Adde eum servitori tuo: {install_url}\n👤 Iam in servitore tuo est? Incipe cum {registration} (rationes tuas iunge), {cwl_preferences} et {help}.\n💬 Quaestiones? Veni in canalem auxilii nostrum: {support_url}"
     },
     "help": {
-      "list_title": "Mandata QapBot",
+      "list_title": "Mandata ClashControl",
       "list_description": "Utere `/help command:NomenMandati` ad auxilium detaliatum de mandato specifico obtinendum.",
       "dm_server_only_legend": "{marker} = tantum intra servitorem functionat. Hic ostenditur ut omnia quae facere possim videas; in servitore age.",
       "server_only_detail_note": "{marker} Hoc mandatum tantum intra servitorem functionat, non in hoc nuntio privato.",
@@ -325,12 +325,12 @@
         "detailed": "Ostende informationem auxilii de mandatis automati.\n\n**Usus:**\n`/help [command:<nomen_mandati>]`\n\n**Parametri:**\n• `command` - Optionale: Mandatum specificum ad auxilium detaliatum obtinendum\n\n**Sine parametris:**\nOstendit indicem omnium mandatorum praesto secundum categoriam ordinatorum cum descriptionibus brevibus.\n\n**Cum parametro command:**\nOstendit auxilium detaliatum pro mandato specificato, inclusis exemplis usus et descriptionibus parametrorum.\n\n**Exempla:**\n`/help` - Ostende omnia mandata\n`/help command:subscribe` - Auxilium detaliatum pro mandato subscribe\n`/help command:leaderboard` - Auxilium detaliatum pro mandato leaderboard"
       },
       "bug": {
-        "short": "Renuntia errorem sustentatori QapBot",
+        "short": "Renuntia errorem sustentatori ClashControl",
         "title": "🐞 Mandatum Bug",
         "detailed": "Aperi formam ad errorem renuntiandum. Functionat in omni servitore ubi automatum est, et in nuntiis privatis.\n\n**Usus:**\n`/bug [attachment1:<fasciculus>] [attachment2:<fasciculus>] [attachment3:<fasciculus>]`\n\n**Parametri:**\n• `attachment1`/`attachment2`/`attachment3` - Optionale: imagines vel fasciculi diarii (usque ad 3; plures postea addi possunt per bullam **Addere fasciculos** elementi)\n\n**Cursus:**\n1. Forma aperitur pro Titulo, Descriptione, Gradibus ad reproducendum, et Ambitu (DEV/PROD/ambo)\n2. Missio praevisionem exemplaris ostendit cum bullis Muta / Adde adiuncta / Mitte / Reice\n3. Missio errorem in canali notationis publicat cum indicio globali `#NNNN` et filum disputationis aperit\n\n**Exemplum:**\n`/bug`"
       },
       "feature": {
-        "short": "Pete munus pro QapBot",
+        "short": "Pete munus pro ClashControl",
         "title": "💡 Mandatum Feature",
         "detailed": "Aperi formam ad munus petendum. Functionat in omni servitore ubi automatum est, et in nuntiis privatis.\n\n**Usus:**\n`/feature [attachment1:<fasciculus>] [attachment2:<fasciculus>] [attachment3:<fasciculus>]`\n\n**Parametri:**\n• `attachment1`/`attachment2`/`attachment3` - Optionale: imagines vel exempla (usque ad 3; plures postea addi possunt per bullam **Addere fasciculos** elementi)\n\n**Cursus:**\n1. Forma aperitur pro Titulo, Descriptione, et Cur hoc utile est?\n2. Missio praevisionem exemplaris ostendit cum bullis Muta / Adde adiuncta / Mitte / Reice\n3. Missio petitionem in canali notationis publicat cum indicio globali `#NNNN` et filum disputationis aperit\n\n**Exemplum:**\n`/feature`"
       }

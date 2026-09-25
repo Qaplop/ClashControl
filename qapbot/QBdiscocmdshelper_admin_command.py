@@ -458,7 +458,7 @@ def format_log_summary(
     bot_version_from_log = scan_result.get('bot_version_from_log')
     version_str = bot_version or bot_version_from_log
     
-    lines = ["**=== QapBot Log Summary ===**\n"]
+    lines = ["**=== ClashControl Log Summary ===**\n"]
     
     if version_str:
         lines.append(f"**Bot version:** {version_str}")
@@ -1740,7 +1740,7 @@ def save_memtrace_snapshot(cache: Any) -> str:
     report_path = os.path.join(log_dir, f"memprofile_{timestamp}.txt")
 
     lines: list[str] = []
-    lines.append(f"QapBot Memory Profile — {_dt.now().isoformat()}")
+    lines.append(f"ClashControl Memory Profile — {_dt.now().isoformat()}")
     lines.append("=" * 70)
     nframes = tracemalloc.get_traceback_limit()
     lines.append(f"tracemalloc nframe={nframes}  |  RSS={rss_mb:.1f} MB  VMS={vms_mb:.1f} MB  |  uptime={uptime_str}")

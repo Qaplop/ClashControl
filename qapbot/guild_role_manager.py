@@ -147,7 +147,7 @@ def _get_config(guild_id: str) -> Dict[str, Any]:
 async def get_or_create_discord_role(
     guild: discord.Guild,
     role_name: str,
-    reason: str = "QapBot role management",
+    reason: str = "ClashControl role management",
     color: Optional[discord.Color] = None,
 ) -> Optional[discord.Role]:
     """
@@ -193,7 +193,7 @@ async def get_or_create_discord_role(
         return None
 
 
-async def delete_discord_role_safe(guild: discord.Guild, role_id: int, reason: str = "QapBot role management") -> bool:
+async def delete_discord_role_safe(guild: discord.Guild, role_id: int, reason: str = "ClashControl role management") -> bool:
     """
     Delete a Discord role by ID, handling NotFound and Forbidden gracefully.
 
@@ -268,7 +268,7 @@ async def create_coc_ingame_roles(
         role = await get_or_create_discord_role(
             guild,
             display_name,
-            reason=f"QapBot CoC in-game roles (coc_role_{coc_role_key})",
+            reason=f"ClashControl CoC in-game roles (coc_role_{coc_role_key})",
             color=discord.Color.blue(),
         )
         if role:
@@ -366,7 +366,7 @@ async def create_clan_role(
     role = await get_or_create_discord_role(
         guild,
         role_name,
-        reason=f"QapBot per-clan role for {clan_tag}",
+        reason=f"ClashControl per-clan role for {clan_tag}",
         color=discord.Color.green(),
     )
     if role is None:
@@ -410,7 +410,7 @@ async def delete_clan_role_from_guild(
     guild: discord.Guild,
     guild_id: str,
     clan_tag: str,
-    reason: str = "QapBot: clan removed from guild",
+    reason: str = "ClashControl: clan removed from guild",
 ) -> bool:
     """
     Delete the per-clan Discord role for a specific clan and clean up config.
@@ -525,7 +525,7 @@ def _get_highest_coc_role_for_user(user_id: str, guild_clans: Optional[Set[str]]
     return best_role
 
 
-async def assign_role_to_member(member: discord.Member, role: discord.Role, reason: str = "QapBot role sync") -> bool:
+async def assign_role_to_member(member: discord.Member, role: discord.Role, reason: str = "ClashControl role sync") -> bool:
     """
     Add a Discord role to a guild member if not already present.
 
@@ -551,7 +551,7 @@ async def assign_role_to_member(member: discord.Member, role: discord.Role, reas
         return False
 
 
-async def remove_role_from_member(member: discord.Member, role: discord.Role, reason: str = "QapBot role sync") -> bool:
+async def remove_role_from_member(member: discord.Member, role: discord.Role, reason: str = "ClashControl role sync") -> bool:
     """
     Remove a Discord role from a guild member if present.
 
@@ -622,7 +622,7 @@ async def sync_cwl_coordinator_role(guild: discord.Guild) -> Tuple[int, int]:
 
     added = 0
     removed = 0
-    reason = "QapBot CWL coordinator role sync (tracker #0086/#0092)"
+    reason = "ClashControl CWL coordinator role sync (tracker #0086/#0092)"
 
     for role_id, target_ids in targets_by_role.items():
         role = guild.get_role(role_id)
@@ -844,9 +844,9 @@ async def _sync_roles_for_user_impl(
             if not role:
                 continue
             if coc_role_key == highest_coc_role:
-                await assign_role_to_member(member, role, reason="QapBot CoC role sync")
+                await assign_role_to_member(member, role, reason="ClashControl CoC role sync")
             else:
-                await remove_role_from_member(member, role, reason="QapBot CoC role sync")
+                await remove_role_from_member(member, role, reason="ClashControl CoC role sync")
 
     # --- Clan role sync ---
     if clan_role_enabled:
@@ -860,9 +860,9 @@ async def _sync_roles_for_user_impl(
             if not role:
                 continue
             if clan_tag in user_clan_tags:
-                await assign_role_to_member(member, role, reason="QapBot clan role sync")
+                await assign_role_to_member(member, role, reason="ClashControl clan role sync")
             else:
-                await remove_role_from_member(member, role, reason="QapBot clan role sync")
+                await remove_role_from_member(member, role, reason="ClashControl clan role sync")
 
     # --- Member role sync (assign-only, never revoked by the bot) ---
     # Only assigns the role when the user doesn't have it yet.
@@ -903,11 +903,11 @@ async def _sync_roles_for_user_impl(
                                 _eligible = True
                                 break
                     if _eligible:
-                        await assign_role_to_member(member, _member_disc_role, reason="QapBot member role sync")
+                        await assign_role_to_member(member, _member_disc_role, reason="ClashControl member role sync")
                         _has_member_role = True
                 # Remove newbie role whenever member role is present
                 if _has_member_role and _newbie_disc_role and _newbie_disc_role in member.roles:
-                    await remove_role_from_member(member, _newbie_disc_role, reason="QapBot member role sync (newbie role removed)")
+                    await remove_role_from_member(member, _newbie_disc_role, reason="ClashControl member role sync (newbie role removed)")
 
     return True
 
@@ -1281,7 +1281,7 @@ async def delete_all_coc_ingame_roles(guild: discord.Guild, guild_id: str) -> No
     for config_key in COC_ROLE_CONFIG_KEY.values():
         role_id_str = config.get(config_key)
         if role_id_str:
-            success = await delete_discord_role_safe(guild, int(role_id_str), reason="QapBot: CoC role feature disabled")
+            success = await delete_discord_role_safe(guild, int(role_id_str), reason="ClashControl: CoC role feature disabled")
             if success:
                 config[config_key] = None
             else:
@@ -1306,7 +1306,7 @@ async def delete_all_clan_roles(guild: discord.Guild, guild_id: str) -> None:
     for clan_tag, role_id_str in clan_roles.items():
         success = True
         if role_id_str:
-            success = await delete_discord_role_safe(guild, int(role_id_str), reason="QapBot: clan role feature disabled")
+            success = await delete_discord_role_safe(guild, int(role_id_str), reason="ClashControl: clan role feature disabled")
         if success:
             config.get("clan_roles", {}).pop(clan_tag, None)
             try:

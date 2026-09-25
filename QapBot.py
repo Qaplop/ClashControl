@@ -665,7 +665,7 @@ async def _validate_coc_api_keys() -> None:
         if CONFIG.server_admin:
             dm_sent = await CACHE.send_user_dm(
                 CONFIG.server_admin,
-                f"⚠️ **QapBot CoC API key alert ({mode_str})**\n"
+                f"⚠️ **ClashControl CoC API key alert ({mode_str})**\n"
                 f"{len(bad_key_positions)}/{len(keys)} CoC API key(s) failed validation at "
                 f"startup (position(s) {positions_1idx}).\n"
                 f"A matching fraction of CWL/war requests will silently fail until this is fixed.\n"
@@ -3793,7 +3793,7 @@ async def _wait_for_discord_connection(token: str, max_wait_hours: int = 4) -> N
                 async with session.get(
                     "https://discord.com/api/v10/gateway",
                     timeout=aiohttp.ClientTimeout(total=10),
-                    headers={"User-Agent": "QapBot-HealthCheck/1.0"},
+                    headers={"User-Agent": "ClashControl-HealthCheck/1.0"},
                 ) as resp:
                     if resp.status < 500:
                         if attempt > 0:

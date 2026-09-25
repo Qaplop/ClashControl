@@ -169,7 +169,7 @@ async def test_live_status_handler_posts_message_and_can_be_fetched(
 
             assert fake_cache._last_message_ids, "status() did not record any message IDs"
             msg = await channel.fetch_message(fake_cache._last_message_ids[-1])  # type: ignore[attr-defined]
-            assert "QapBot Status" in msg.content
+            assert "ClashControl Status" in msg.content
 
             verdict = await maybe_wait_for_dev_review(
                 channel=channel,

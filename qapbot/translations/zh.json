@@ -217,7 +217,7 @@
       "fallback": "**ClashControl** — 你的 Clash of Clans 部落指挥中心。\n\n➕ 添加到你的服务器：{install_url}\n👤 已经在你的服务器上？从 {registration}（绑定账号）、{cwl_preferences} 和 {help} 开始。\n💬 有问题？加入我们的支持频道：{support_url}"
     },
     "help": {
-      "list_title": "QapBot 命令",
+      "list_title": "ClashControl 命令",
       "list_description": "使用 `/help command:命令名称` 获取某个具体命令的详细帮助。",
       "dm_server_only_legend": "{marker} = 仅在服务器内可用。此处显示是为了让你了解我的全部功能；请在服务器中使用。",
       "server_only_detail_note": "{marker} 此命令仅在服务器内可用，无法在此私信中使用。",
@@ -325,12 +325,12 @@
         "detailed": "显示有关机器人命令的帮助信息。\n\n**用法：**\n`/help [command:<命令名称>]`\n\n**参数：**\n• `command` - 可选：要获取详细帮助的特定命令\n\n**不带参数时：**\n显示按类别整理的所有可用命令列表及简要说明。\n\n**带 command 参数时：**\n显示指定命令的详细帮助，包括用法示例和参数说明。\n\n**示例：**\n`/help` - 显示所有命令\n`/help command:subscribe` - subscribe 命令的详细帮助\n`/help command:leaderboard` - leaderboard 命令的详细帮助"
       },
       "bug": {
-        "short": "向 QapBot 维护者报告一个错误",
+        "short": "向 ClashControl 维护者报告一个错误",
         "title": "🐞 Bug 命令",
         "detailed": "打开一个表单以报告错误。适用于机器人所在的任何服务器，以及私信。\n\n**用法：**\n`/bug [attachment1:<文件>] [attachment2:<文件>] [attachment3:<文件>]`\n\n**参数：**\n• `attachment1`/`attachment2`/`attachment3` - 可选：截图或日志文件（最多 3 个；之后可通过该条目的**添加文件**按钮继续添加）\n\n**流程：**\n1. 弹出一个表单，用于填写标题、描述、复现步骤和环境（DEV/PROD/两者）\n2. 提交后会显示草稿预览，附带 编辑 / 添加附件 / 提交 / 丢弃 按钮\n3. 提交后会将错误发布到跟踪频道，附带全局 `#NNNN` 编号，并打开一个讨论线程\n\n**示例：**\n`/bug`"
       },
       "feature": {
-        "short": "为 QapBot 请求一个新功能",
+        "short": "为 ClashControl 请求一个新功能",
         "title": "💡 Feature 命令",
         "detailed": "打开一个表单以请求新功能。适用于机器人所在的任何服务器，以及私信。\n\n**用法：**\n`/feature [attachment1:<文件>] [attachment2:<文件>] [attachment3:<文件>]`\n\n**参数：**\n• `attachment1`/`attachment2`/`attachment3` - 可选：截图或效果图（最多 3 个；之后可通过该条目的**添加文件**按钮继续添加）\n\n**流程：**\n1. 弹出一个表单，用于填写标题、描述以及“这为什么有用？”\n2. 提交后会显示草稿预览，附带 编辑 / 添加附件 / 提交 / 丢弃 按钮\n3. 提交后会将请求发布到跟踪频道，附带全局 `#NNNN` 编号，并打开一个讨论线程\n\n**示例：**\n`/feature`"
       }

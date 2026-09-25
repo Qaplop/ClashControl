@@ -6357,6 +6357,78 @@ async def test_player_prefs_status_no_event_returns_409(db, bridge_config, clien
     assert body["error"] == "no_longer_valid"
 
 
+async def _seed_cross_guild_invite(db, monkeypatch):
+    """Tracker #0125/#0137: guild 980 (where the Hub is opened) has no CWL event; guild 981
+    invited the user's account #X1 into its signup_open 2026-10 event. #X2 is linked but not
+    invited anywhere."""
+    import QBcore
+    from qapbot.cache_manager import CACHE
+
+    await _seed_guild_and_clans(db, "980", {})
+    await _seed_guild_and_clans(db, "981", {"#CLANB": "Bravo"})
+    CACHE.db_manager = db
+    CACHE.clan_name_cache = {"#CLANB": {"name": "Bravo", "war_league": "Gold League I"}}
+    CACHE.server_config["981"] = {"member_clans": ["#CLANB"], "member_families": []}
+    CACHE.subscriptions = {}
+    CACHE.clan_families = {}
+
+    event_id = db.create_cwl_event_sync("981", "2026-10", "admin1")
+    db.set_cwl_event_clans_sync(event_id, [{"clan_tag": "#CLANB", "participating": True}])
+    db.update_cwl_event_status_sync(event_id, "signup_open")
+    await _link_player_prefs_account(db, "90", "#X1", player_name="Xavier", clan_tag="#CLANB")
+    await _link_player_prefs_account(db, "90", "#X2", player_name="Yara")
+    db.upsert_cwl_signup_sync(event_id, "#X1", "Xavier", "90", None, "template_confirm", "pending")
+
+    bot = MagicMock()
+    guild_b = MagicMock()
+    guild_b.name = "Server Bravo"
+    bot.get_guild.side_effect = lambda gid: guild_b if gid == 981 else None
+    monkeypatch.setattr(QBcore, "bot", bot)
+    return event_id
+
+
+@pytest.mark.discord
+@pytest.mark.asyncio
+async def test_player_prefs_get_shows_season_of_another_servers_invitation(db, bridge_config, client, monkeypatch):
+    """Tracker #0137: the season shows even though the opening server has none; tracker #0125:
+    each row names its inviting server(s), and block I carries the current clan."""
+    await _seed_cross_guild_invite(db, monkeypatch)
+
+    resp = await client.get(
+        "/api/cwl/player-prefs",
+        params={"guild_id": "980", "discord_user_id": "90"},
+        headers={"X-Bridge-Secret": "test-secret"},
+    )
+    body = await resp.json()
+    assert body["season"] == "2026-10"
+    assert body["event_status"] is None  # the opening server has no event of its own
+    rows = {r["player_tag"]: r for r in body["season_rows"]}
+    assert rows["#X1"]["signup_status"] == "pending"
+    assert rows["#X1"]["event_status"] == "signup_open"
+    assert rows["#X1"]["invited_by"] == [{"guild_id": "981", "guild_name": "Server Bravo"}]
+    assert rows["#X2"]["signup_status"] is None
+    assert rows["#X2"]["invited_by"] == []
+    accounts = {a["player_tag"]: a for a in body["accounts"]}
+    assert accounts["#X1"]["current_clan_name"] == "Bravo"
+    assert accounts["#X2"]["current_clan_tag"] is None
+
+
+@pytest.mark.discord
+@pytest.mark.asyncio
+async def test_player_prefs_status_acts_on_the_inviting_servers_event(db, bridge_config, client, monkeypatch):
+    """Tracker #0125/#0137: a status click from a server without an event answers the invitation
+    of the server that actually sent it."""
+    event_id = await _seed_cross_guild_invite(db, monkeypatch)
+
+    resp = await client.post(
+        "/api/cwl/player-prefs/status",
+        json={"guild_id": "980", "discord_user_id": "90", "player_tag": "#X1", "action": "confirm"},
+        headers={"X-Bridge-Secret": "test-secret"},
+    )
+    assert resp.status == 200
+    assert db.get_cwl_signup_sync(event_id, "#X1")["status"] == "confirmed"
+
+
 # ---------------------------------------------------------------------------
 # Tracker #0114 — the Bench status across the bridge's write endpoints
 # ---------------------------------------------------------------------------

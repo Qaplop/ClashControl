@@ -238,6 +238,9 @@ export type SetStatusResult = {
 export type PlayerPrefsAccount = {
   player_tag: string
   player_name: string | null
+  /** Tracker #0125: the clan the account plays in right now — null when it isn't in one. */
+  current_clan_tag?: string | null
+  current_clan_name?: string | null
   verified: boolean
   /** user_players.cwl_default_preferred_league_rank — null = no preference. */
   preferred_league_rank: string | null
@@ -250,14 +253,20 @@ export type PlayerPrefsAccount = {
   send_dm_anyway: boolean
 }
 
-/** One account's row in block II ("this season"). Every field is null when the account has no
- * cwl_signups row for the current event yet (still shown — "no row" reads as Unassigned/no
- * status, not omitted from the table). */
+/** One account's row in block II ("this season"). Every field is null when no server has
+ * invited the account this season yet (still shown — as "Not invited yet", not omitted from the
+ * table). */
 export type PlayerPrefsSeasonRow = {
   player_tag: string
   player_name: string | null
   /** Same status vocabulary as EnrollmentPlayer.signup_status, including 'auto_confirmed'. */
   signup_status: 'pending' | 'confirmed' | 'declined' | 'auto_confirmed' | 'passive' | 'auto_passive' | 'withdrawn' | null
+  /** Tracker #0125: phase of the event this row's buttons act on (the first inviting server's)
+   * — null when the account isn't invited this season. */
+  event_status?: string | null
+  /** Tracker #0125/#0137: every server that invited this account this season, the one the Hub
+   * was opened on first. Empty when the account isn't invited. */
+  invited_by?: { guild_id: string; guild_name: string }[]
   assigned_clan_tag: string | null
   assigned_clan_name: string | null
   assigned_clan_tier: string | null

@@ -1,6 +1,19 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-25 (11)  Build 109.
+- Fixed (tracker #0137): /cwl preferences said "no CWL season set up" on a server that hadn't
+  started its season, even while another server had already invited the user's accounts. The
+  "this season" block now takes the newest season across the opening server's event and every
+  invitation of the user's accounts on any server; status clicks act on the inviting server's
+  event (answers still propagate to the others).
+- Added (tracker #0125): block I shows each account's current clan after its name; block II has
+  an "Invited by" column (server name(s)) and shows "Not invited yet" instead of disabled buttons.
+  The per-row buttons follow their own event's phase (servers can differ).
+  Files: qapbot/web_bridge.py, qapbot/db_manager.py (find_cwl_invitations_for_players_sync),
+  activity/client/src/playerPrefs.ts + types.ts, translations (5 languages),
+  qapbot/docs/CWL_ROSTER_PLANNING_PLAN.md. Needs an Activity client deploy. 3563 tests pass.
+
 2026-09-25 (10)  Build 108.
 - Fixed: a user's "auto" language (not manually chosen) only ever became German or English.
   update_user_metadata() re-derives it from the Discord locale on interactions, but mapped

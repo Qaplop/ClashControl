@@ -6645,6 +6645,40 @@ class WarHistoryDB:
                 )
                 return []
 
+    def find_cwl_invitations_for_players_sync(self, player_tags: List[str]) -> List[Dict[str, Any]]:
+        """Every non-cancelled cwl_signups row (any guild, any season) for these player_tags,
+        joined with its event — the cross-guild invitation list behind the Player CWL Hub's
+        "this season" block (tracker #0125/#0137): a member sees their season and the inviting
+        server(s) whichever server they opened the Hub from.
+
+        Returns dicts with event_id, guild_id, cwl_season, event_status, player_tag, status."""
+        import sqlite3
+
+        if not self.db_path:
+            raise RuntimeError("Database not initialized. Call initialize() first.")
+        if not player_tags:
+            return []
+
+        with self._sync_conn() as conn:
+            try:
+                placeholders = ",".join("?" for _ in player_tags)
+                rows = conn.execute(
+                    f"""
+                    SELECT cwl_signups.event_id AS event_id, cwl_events.guild_id AS guild_id,
+                           cwl_events.cwl_season AS cwl_season, cwl_events.status AS event_status,
+                           cwl_signups.player_tag AS player_tag, cwl_signups.status AS status
+                    FROM cwl_signups
+                    JOIN cwl_events ON cwl_events.id = cwl_signups.event_id
+                    WHERE cwl_signups.player_tag IN ({placeholders})
+                      AND cwl_events.status != 'cancelled'
+                    """,
+                    player_tags,
+                ).fetchall()
+                return [dict(row) for row in rows]
+            except sqlite3.Error as e:
+                logging.error(f"[DB-QUERY-SYNC] find_cwl_invitations_for_players_sync failed: {e}")
+                return []
+
     def find_cwl_shared_clan_ids_for_player_and_season_sync(self, player_tag: str, cwl_season: str) -> List[int]:
         """Every shared_clan_id (any guild) whose cwl_shared_clan_players roster already contains
         this player for this season — the other half of propagate_cwl_player_response()'s

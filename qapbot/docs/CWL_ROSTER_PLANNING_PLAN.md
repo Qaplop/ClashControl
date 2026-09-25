@@ -416,6 +416,14 @@ server picker if several match), records it in `CACHE.pending_cwl_dm_guild`, and
 which has no `discordSdk.guildId` there, fetches it via `GET /api/cwl/dm-guild`
 (`plans/implemented/tracker-0128-cwl-preferences-in-dm.md`).
 
+The Hub's "this season" block is **not** bound to the server it was opened on (tracker
+#0125/#0137): `_resolve_player_prefs_season_sync()` (`web_bridge.py`) takes the newest season among
+that server's current event and every non-cancelled `cwl_signups` invitation of the user's accounts
+on any server (`find_cwl_invitations_for_players_sync()`). Each row lists its inviting server(s),
+the opening server first; the status buttons act on the first one's event (the answer then
+propagates to the others as usual). An account nobody invited shows "Not invited yet". Block I also
+shows each account's current clan.
+
 ### 6.1 Extended sign-up — the "Ersatzbank"/Bench status (tracker #0114)
 
 `guild_config.cwl_signup_mode` is `'standard'` (confirm / opt out, the default for every guild) or

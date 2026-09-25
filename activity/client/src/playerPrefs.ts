@@ -176,7 +176,8 @@ function renderBlockOne(
 
   const thead = document.createElement('thead')
   const headRow = document.createElement('tr')
-  for (const key of ['col_account', 'col_league', 'col_participation', 'col_dm_anyway']) {
+  // Tracker #0125: the account's current clan, right after its name.
+  for (const key of ['col_account', 'col_current_clan', 'col_league', 'col_participation', 'col_dm_anyway']) {
     const th = document.createElement('th')
     th.textContent = t(key)
     const tooltipKey = COLUMN_TOOLTIPS[key]
@@ -198,6 +199,7 @@ function renderBlockOne(
   const applyLabelCell = document.createElement('td')
   applyLabelCell.textContent = t('apply_to_all')
   applyRow.appendChild(applyLabelCell)
+  applyRow.appendChild(document.createElement('td')) // no clan for the bulk row
 
   const applyLeagueCell = document.createElement('td')
   const applyLeagueSelect = buildLeagueSelect(null, t)
@@ -266,6 +268,12 @@ function renderBlockOne(
     const nameCell = document.createElement('td')
     nameCell.textContent = accountLabel(account.player_tag, account.player_name)
     row.appendChild(nameCell)
+
+    const clanCell = document.createElement('td')
+    clanCell.textContent = account.current_clan_tag
+      ? (account.current_clan_name ?? account.current_clan_tag)
+      : t('no_clan')
+    row.appendChild(clanCell)
 
     const leagueCell = document.createElement('td')
     const leagueSelect = buildLeagueSelect(account.preferred_league_rank, t)
@@ -368,15 +376,17 @@ function renderBlockTwo(
   tzNote.textContent = t('tz_note')
   block.appendChild(tzNote)
 
-  const enrollmentOpen = payload.event_status === 'signup_open'
+  // Tracker #0125/#0137: accounts can be invited by different servers, each with its own event
+  // phase — every row carries the phase of the event its buttons act on.
   // Phase 0b (2026-09-22, plans/tracker-0114-cwl-bench-signup-status.md): after enrollment closes
   // the server still accepts an answer from an account that never gave one — the roster-update DM
   // of a late-added player asks for exactly that. Mirror that rule here instead of hiding every
   // button, or the Hub would contradict the DM the same player just received. A settled answer
   // stays final once the rosters went out.
-  const answersStillAccepted =
-    enrollmentOpen ||
-    (payload.event_status === 'announced' || payload.event_status === 'war')
+  const rowActionable = (r: PlayerPrefsSeasonRow): boolean =>
+    r.signup_status !== null &&
+    (r.event_status === 'signup_open' ||
+      ((r.event_status === 'announced' || r.event_status === 'war') && r.signup_status === 'pending'))
 
   const scroll = document.createElement('div')
   scroll.className = 'table-scroll'
@@ -384,10 +394,11 @@ function renderBlockTwo(
 
   const thead = document.createElement('thead')
   const headRow = document.createElement('tr')
-  for (const key of ['col_account', 'col_status', 'col_clan', 'col_tier', 'col_start']) {
+  for (const key of ['col_account', 'col_invited_by', 'col_status', 'col_clan', 'col_tier', 'col_start']) {
     const th = document.createElement('th')
     th.textContent = t(key)
     if (key === 'col_status') th.title = t('col_status_tooltip')
+    if (key === 'col_invited_by') th.title = t('col_invited_by_tooltip')
     headRow.appendChild(th)
   }
   thead.appendChild(headRow)
@@ -401,9 +412,8 @@ function renderBlockTwo(
   const accountNames = new Map(payload.accounts.map((a) => [a.player_tag, a.player_name]))
 
   for (const row of payload.season_rows) {
-    const rowActionable = enrollmentOpen || (answersStillAccepted && row.signup_status === 'pending')
     tbody.appendChild(buildSeasonRow(
-      row, accountNames.get(row.player_tag) ?? null, t, rowActionable, onStatusChange, rerender,
+      row, accountNames.get(row.player_tag) ?? null, t, rowActionable(row), onStatusChange, rerender,
       blockStatus, payload.bench_enabled === true,
     ))
   }
@@ -412,13 +422,14 @@ function renderBlockTwo(
   scroll.appendChild(table)
   block.appendChild(scroll)
 
-  if (!enrollmentOpen) {
+  // Only about invited accounts — an uninvited one already says "Not invited yet" in its row.
+  const invitedRows = payload.season_rows.filter((r) => r.signup_status !== null)
+  if (invitedRows.length > 0 && !invitedRows.some((r) => r.event_status === 'signup_open')) {
     const note = document.createElement('div')
     note.className = 'block-status'
     // A player who can still answer (pending, rosters already out) gets the softer note — the
     // blanket "enrollment is closed" would read as "your buttons do nothing", which is now wrong.
-    const anyActionable =
-      answersStillAccepted && payload.season_rows.some((r) => r.signup_status === 'pending')
+    const anyActionable = invitedRows.some(rowActionable)
     note.textContent = anyActionable ? t('enrollment_closed_pending_still_answerable') : t('enrollment_not_open')
     block.appendChild(note)
   }
@@ -431,7 +442,7 @@ function buildSeasonRow(
   row: PlayerPrefsSeasonRow,
   accountName: string | null,
   t: Translator,
-  enrollmentOpen: boolean,
+  actionable: boolean,
   onStatusChange: (playerTag: string, action: PlayerPrefsStatusAction) => Promise<PlayerPrefsPayload>,
   rerender: (fresh: PlayerPrefsPayload) => void,
   blockStatus: HTMLElement,
@@ -443,9 +454,23 @@ function buildSeasonRow(
   nameCell.textContent = accountLabel(row.player_tag, accountName ?? row.player_name)
   tr.appendChild(nameCell)
 
+  // Tracker #0125: the server(s) that invited this account this season.
+  const invitedByCell = document.createElement('td')
+  const invitedBy = row.invited_by ?? []
+  invitedByCell.textContent = invitedBy.length > 0 ? invitedBy.map((g) => g.guild_name).join(', ') : '—'
+  tr.appendChild(invitedByCell)
+
   const statusCell = document.createElement('td')
   const statusInner = document.createElement('div')
   statusInner.className = 'status-cell-inner'
+
+  // null = no server has invited this account this season (tracker #0054). Tracker #0125: say so
+  // in plain text instead of a row of disabled buttons that only explained it on hover.
+  if (row.signup_status === null) {
+    const notInvited = document.createElement('span')
+    notInvited.textContent = t('not_invited_yet')
+    statusInner.appendChild(notInvited)
+  }
 
   if (isVisibleStatus(row.signup_status)) {
     const icon = document.createElement('img')
@@ -464,12 +489,9 @@ function buildSeasonRow(
     statusInner.appendChild(label)
   }
 
-  if (enrollmentOpen) {
+  // actionable is never true for an uninvited row (see rowActionable in renderBlockTwo).
+  if (actionable) {
     const currentStatus = row.signup_status
-    // null = no cwl_signups row for this event yet, i.e. the account was never invited
-    // (tracker #0054, live bug report) — both buttons stay disabled until an invite creates
-    // a row to confirm/decline against.
-    const notInvited = currentStatus === null
 
     // Tracker #0124: every status button carries its status's icon (the same one the status
     // cell shows), not just Bench — one shared builder so they can't drift apart again.
@@ -489,11 +511,9 @@ function buildSeasonRow(
     // report): it was seeded automatically by a standing opt-in preference, not a genuine click,
     // so the member can still turn it into a real confirmation — which the tooltip below explains
     // is preferable, since it gives the clan leader more clarity than an automatic one.
-    imInButton.disabled = notInvited || currentStatus === 'confirmed'
+    imInButton.disabled = currentStatus === 'confirmed'
     if (currentStatus === 'auto_confirmed') {
       imInButton.title = t('confirm_tooltip_auto_confirmed')
-    } else if (notInvited) {
-      imInButton.title = t('status_action_tooltip_not_invited')
     } else if (currentStatus === 'confirmed') {
       imInButton.title = t('confirm_tooltip_already_confirmed')
     } else {
@@ -501,10 +521,8 @@ function buildSeasonRow(
     }
 
     const imOutButton = makeStatusActionButton(STATUS_ICON.declined, t('button_im_out'))
-    imOutButton.disabled = notInvited || currentStatus === 'declined'
-    if (notInvited) {
-      imOutButton.title = t('status_action_tooltip_not_invited')
-    } else if (currentStatus === 'declined') {
+    imOutButton.disabled = currentStatus === 'declined'
+    if (currentStatus === 'declined') {
       imOutButton.title = t('optout_tooltip_already_declined')
     } else {
       imOutButton.title = t('optout_tooltip_default')
@@ -544,10 +562,8 @@ function buildSeasonRow(
       // Tracker #0117: the blue bench icon, same as the status cell and the board — the label
       // itself no longer carries the 🪑 emoji.
       const benchButton = makeStatusActionButton(STATUS_ICON.passive, t('button_bench'))
-      benchButton.disabled = notInvited || currentStatus === 'passive'
-      if (notInvited) {
-        benchButton.title = t('status_action_tooltip_not_invited')
-      } else if (currentStatus === 'passive') {
+      benchButton.disabled = currentStatus === 'passive'
+      if (currentStatus === 'passive') {
         benchButton.title = t('bench_tooltip_already_bench')
       } else if (currentStatus === 'auto_passive') {
         benchButton.title = t('bench_tooltip_auto_bench')

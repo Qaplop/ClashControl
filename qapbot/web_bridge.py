@@ -1587,6 +1587,60 @@ async def handle_get_i18n(request: web.Request) -> web.Response:
     return web.json_response({"lang": language, "strings": strings})
 
 
+def _guild_display_name(guild_id: Any) -> str:
+    """The guild's name from the gateway cache, else its id — in-memory only, safe in a thread."""
+    import QBcore
+
+    bot = getattr(QBcore, "bot", None)
+    try:
+        guild = bot.get_guild(int(guild_id)) if bot is not None else None
+    except (TypeError, ValueError):
+        guild = None
+    name = getattr(guild, "name", None)
+    return name if isinstance(name, str) and name else str(guild_id)
+
+
+def _resolve_player_prefs_season_sync(
+    guild_id: int, player_tags: List[str],
+) -> Tuple[Optional[str], Optional[Dict[str, Any]], Dict[str, List[Dict[str, Any]]]]:
+    """Which season the Player CWL Hub's block II shows, and who invited each account to it
+    (tracker #0125/#0137).
+
+    A member's accounts can be invited by any server, not only the one the Hub was opened from,
+    so the season no longer comes from that server alone: it is the newest season among the
+    opening guild's current event (get_current_cwl_event_sync, as before) and every non-cancelled
+    invitation of these accounts on any server. Before this, opening the Hub on a server that
+    hadn't started its season said "no season set up" even while another server had already
+    invited the same accounts.
+
+    Returns (season, own_event, invites_by_tag). season is None when there is nothing to show.
+    invites_by_tag maps a player_tag to its invitations in that season, the opening guild's
+    first, then by guild name — the first entry is the one a status click acts on.
+
+    Plain synchronous function (Pitfall 26) — always called inside a to_thread() hop."""
+    from qapbot.QBdiscocmdshelper_cwl import get_current_cwl_event_sync
+
+    db = CACHE.db_manager
+    own_event = get_current_cwl_event_sync(guild_id)
+    invitations = db.find_cwl_invitations_for_players_sync(player_tags) if db is not None else []
+
+    seasons = {i["cwl_season"] for i in invitations}
+    if own_event is not None:
+        seasons.add(own_event["cwl_season"])
+    if not seasons:
+        return None, own_event, {}
+    season = max(seasons)  # "YYYY-MM" sorts chronologically
+
+    own_guild = str(guild_id)
+    invites_by_tag: Dict[str, List[Dict[str, Any]]] = {}
+    for invite in invitations:
+        if invite["cwl_season"] == season:
+            invites_by_tag.setdefault(invite["player_tag"], []).append(invite)
+    for invites in invites_by_tag.values():
+        invites.sort(key=lambda i: (str(i["guild_id"]) != own_guild, _guild_display_name(i["guild_id"]).lower()))
+    return season, own_event, invites_by_tag
+
+
 def _build_player_prefs_payload_sync(guild_id: int, discord_user_id: int) -> Dict[str, Any]:
     """Build the GET/POST response for the Player CWL Settings Hub's Activity screen
     (plans/cwl-personal-hub.md Phase 5c) — the ONLY function that resolves which accounts a
@@ -1596,17 +1650,15 @@ def _build_player_prefs_payload_sync(guild_id: int, discord_user_id: int) -> Dic
     client-supplied.
 
     Block I ("accounts") is season-independent and always populated when the caller has any
-    linked accounts at all. Block II ("season_rows") additionally needs the guild's CURRENT CWL
-    event — resolved via get_current_cwl_event_sync(), the same "which event is relevant to this
-    member right now" resolver the plan's Phase 5c spec calls for, deliberately NOT the admin's
+    linked accounts at all. Block II ("season_rows") needs a season: since tracker #0125/#0137
+    that is resolved across every server that invited these accounts, not just this guild
+    (_resolve_player_prefs_season_sync) — still deliberately NOT the admin's
     cwl_selected_season UI-selection state. Both season/event_status and season_rows are
-    None/[] when the guild has no CWL event at all; block I still renders (preferences are
-    season-independent).
+    None/[] when neither this guild nor any invitation has a season; block I still renders
+    (preferences are season-independent).
 
     Plain synchronous function (Pitfall 26, COPILOT_PITFALLS_COOKBOOK.md) — callers wrap the
     whole thing in one asyncio.to_thread() hop."""
-    from qapbot.QBdiscocmdshelper_cwl import get_current_cwl_event_sync
-
     db = CACHE.db_manager
     if db is None:
         return {
@@ -1645,30 +1697,58 @@ def _build_player_prefs_payload_sync(guild_id: int, discord_user_id: int) -> Dic
         accounts.append({
             "player_tag": p["player_tag"],
             "player_name": p["player_name"],
+            # Tracker #0125: the clan the account plays in right now (user_players, kept current
+            # by the member poll) — None when it isn't in a clan.
+            "current_clan_tag": p["clan_tag"],
+            "current_clan_name": CACHE.get_clan_name(p["clan_tag"], p["clan_tag"]) if p["clan_tag"] else None,
             "verified": bool(p["verified"]),
             "preferred_league_rank": p["preferred_league_rank"],
             "mode": mode,
             "send_dm_anyway": bool(p["cwl_optout_send_dm_anyway"]),
         })
 
-    event = get_current_cwl_event_sync(guild_id)
-    if event is None:
+    season, own_event, invites_by_tag = _resolve_player_prefs_season_sync(
+        guild_id, [p["player_tag"] for p in players]
+    )
+    if season is None:
         return {
             "season": None, "event_status": None, "accounts": accounts, "season_rows": [],
             "bench_enabled": bench_enabled,
         }
 
-    signups_by_tag = {s["player_tag"]: s for s in db.get_cwl_signups_for_event_sync(event["id"])}
-    assignments_by_tag = {a["player_tag"]: a for a in db.get_cwl_assignments_sync(event["id"])}
-    clans_by_tag = {c["clan_tag"]: c for c in db.get_cwl_event_clans_sync(event["id"])}
+    # Per-event lookups, loaded once per event the rows below actually touch.
+    assignments_cache: Dict[int, Dict[str, Dict[str, Any]]] = {}
+    clans_cache: Dict[int, Dict[str, Dict[str, Any]]] = {}
+
+    def _assignments(event_id: int) -> Dict[str, Dict[str, Any]]:
+        if event_id not in assignments_cache:
+            assignments_cache[event_id] = {a["player_tag"]: a for a in db.get_cwl_assignments_sync(event_id)}
+        return assignments_cache[event_id]
+
+    def _clans(event_id: int) -> Dict[str, Dict[str, Any]]:
+        if event_id not in clans_cache:
+            clans_cache[event_id] = {c["clan_tag"]: c for c in db.get_cwl_event_clans_sync(event_id)}
+        return clans_cache[event_id]
 
     season_rows: List[Dict[str, Any]] = []
     for p in players:
         tag = p["player_tag"]
-        signup = signups_by_tag.get(tag)
-        assignment = assignments_by_tag.get(tag)
-        assigned_clan_tag = assignment["assigned_clan_tag"] if assignment else None
-        clan_row = clans_by_tag.get(assigned_clan_tag) if assigned_clan_tag else None
+        invites = invites_by_tag.get(tag, [])
+        primary = invites[0] if invites else None
+        # The placement can live in any inviting guild's event: the first one (own guild first)
+        # that has placed this account wins.
+        assignment = None
+        assignment_event_id: Optional[int] = None
+        for invite in invites:
+            assignment = _assignments(invite["event_id"]).get(tag)
+            if assignment and assignment.get("assigned_clan_tag"):
+                assignment_event_id = invite["event_id"]
+                break
+        assigned_clan_tag = assignment["assigned_clan_tag"] if assignment_event_id is not None else None
+        clan_row = (
+            _clans(assignment_event_id).get(assigned_clan_tag)
+            if assignment_event_id is not None and assigned_clan_tag else None
+        )
         # Same tier resolution _build_enrollment_payload_sync's own _tier_for uses: the live
         # CoC-API-derived war league wins when known, falling back to the admin-set
         # target_league_rank only when it isn't.
@@ -1680,7 +1760,16 @@ def _build_player_prefs_payload_sync(guild_id: int, discord_user_id: int) -> Dic
         season_rows.append({
             "player_tag": tag,
             "player_name": p["player_name"],
-            "signup_status": signup["status"] if signup else None,
+            # Responses propagate to every inviting guild's copy (propagate_cwl_player_response),
+            # so the primary invitation's status is THE status.
+            "signup_status": primary["status"] if primary else None,
+            # Tracker #0125: which server(s) invited this account; the row's buttons act on the
+            # primary one's event, so its phase decides whether they are offered.
+            "event_status": primary["event_status"] if primary else None,
+            "invited_by": [
+                {"guild_id": str(invite["guild_id"]), "guild_name": _guild_display_name(invite["guild_id"])}
+                for invite in invites
+            ],
             "assigned_clan_tag": assigned_clan_tag,
             "assigned_clan_name": (
                 CACHE.get_clan_name(assigned_clan_tag, assigned_clan_tag) if assigned_clan_tag else None
@@ -1690,8 +1779,10 @@ def _build_player_prefs_payload_sync(guild_id: int, discord_user_id: int) -> Dic
         })
 
     return {
-        "season": event["cwl_season"],
-        "event_status": event["status"],
+        "season": season,
+        # The opening guild's own event phase for this season (None when it has none) — only a
+        # fallback now; each season row carries the phase of the event its buttons act on.
+        "event_status": own_event["status"] if own_event and own_event["cwl_season"] == season else None,
         "accounts": accounts,
         "season_rows": season_rows,
         # Tracker #0114: drives the Hub's Bench button and "always bench" option.
@@ -1848,10 +1939,24 @@ async def handle_post_cwl_player_prefs_status(request: web.Request) -> web.Respo
         if not cwl_bench_enabled_for(str(discord_user_id), guild_id):
             return web.json_response({"error": "bench is not enabled for you"}, status=400)
 
-    from qapbot.QBdiscocmdshelper_cwl import get_current_cwl_event_sync
     from qapbot.ui_cwl_roster import _apply_cwl_signup_response, rerender_cwl_dm_after_response  # pyright: ignore[reportPrivateUsage]  # deliberately shared, see comment above
 
-    event = await asyncio.to_thread(get_current_cwl_event_sync, guild_id)
+    def _resolve_target_event_sync() -> Optional[Dict[str, Any]]:
+        # Tracker #0125/#0137: the account may have been invited by another server than the one
+        # the Hub runs on. Resolve exactly like the GET payload does (same account set, so the
+        # same season), then act on the event the row's buttons were rendered for. Ownership is
+        # still checked by _apply_cwl_signup_response, never here.
+        db_ = CACHE.db_manager
+        tags = {player_tag}
+        if db_ is not None:
+            tags |= {p["player_tag"] for p in db_.get_all_players_for_discord_ids_sync([str(discord_user_id)])}
+        _season, own_event, invites_by_tag = _resolve_player_prefs_season_sync(guild_id, sorted(tags))
+        invites = invites_by_tag.get(player_tag)
+        if invites and db_ is not None:
+            return db_.get_cwl_event_by_id_sync(invites[0]["event_id"])
+        return own_event
+
+    event = await asyncio.to_thread(_resolve_target_event_sync)
     if event is None:
         return web.json_response({"error": "no_longer_valid"}, status=409)
 

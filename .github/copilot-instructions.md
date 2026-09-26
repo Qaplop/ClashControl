@@ -245,7 +245,7 @@ was at risk and PROD was down until restored.
 
 **Do instead:**
 
-- Analyse the PROD copy that is routinely synced to DEV at `c:\python\QapBot\data\` — that is
+- Analyse the PROD copy that is routinely synced to DEV at `c:\python\ClashControl\data\` — that is
   what it is for, and it is what "check the PROD log/db" normally means.
 - If genuinely fresh PROD data is needed: run `sqlite3` **locally on the NAS** (SSH), or copy
   the `.db` file to local disk **as a plain file copy** and open the copy. A file copy is safe;
@@ -292,9 +292,9 @@ corruption. On a 24GB+ file over SMB this can run for minutes. Use narrow, targe
 whole-file verification is genuinely needed, run it against a **copied** local file, never
 against PROD's live one under an open exclusive lock.
 
-📖 Where: `\NAS_DS218\satashare\QapBot\data\` (PROD — normal remote SQLite connections
+📖 Where: `\NAS_DS218\satashare\ClashControl\data\` (PROD — normal remote SQLite connections
 off-limits; exclusive-mode connections only when PROD is confirmed stopped, kept short);
-`c:\python\QapBot\data\` (synced PROD copy, always safe). See Pitfall 62 and Pitfall 63.
+`c:\python\ClashControl\data\` (synced PROD copy, always safe). See Pitfall 62 and Pitfall 63.
 
 ---
 

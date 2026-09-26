@@ -184,8 +184,8 @@ def main() -> None:
         "--archive-dir",
         nargs="+",
         default=[
-            r"G:\Bots\QapBot\archive",
-            r"G:\Bots\QapBot\archive_old",
+            r"G:\Bots\ClashControl\archive",
+            r"G:\Bots\ClashControl\archive_old",
         ],
         help="Directories to scan (default: PROD archive + archive_old)",
     )

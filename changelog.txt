@@ -1,6 +1,21 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-26 (1)  Build 113.
+- Changed (rename to ClashControl, phase 7 follow-up: folders renamed by the project owner to
+  C:\python\ClashControl, G:\Bots\ClashControl (= /volume1/Share/Bots/ClashControl) and
+  \\NAS_DS218\satashare\ClashControl (= /volumeSATA/satashare/ClashControl)):
+  - .mcp.json: tracker MCP command/cwd -> c:/python/ClashControl (the server failed to start
+    from the old venv path).
+  - Playbook + pitfalls cookbook: current DB locations and the Defender exclusion path point
+    to the new folders (the SMB incident text keeps the path it happened on).
+  - clashcontrol/scripts/scan_archive_states.py: G:\Bots\ClashControl\archive(_old).
+  Local-only (gitignored, not in this commit): the .bat scripts' NAS/G:/DEV paths, the DEV
+  .env PROD_DATA_DIR/PROD_BOT_ROOT/PROD_SSD_UNC, .claude/settings.local.json, and the venv
+  (activate scripts + console launchers regenerated with identical package versions).
+  Backup destinations C:\temp\Python_Backups\QapBot_* intentionally unchanged (existing
+  backups live there and RestoreDevFromBackup reads them).
+
 2026-09-25 (15)  Build 112.
 - Changed (rename to ClashControl, phase 5 of 8: code names, no behavior change):
   - Package folder qapbot/ -> clashcontrol/ (every `qapbot.*` import, `qapbot/` path and

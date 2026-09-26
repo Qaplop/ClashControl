@@ -293,7 +293,7 @@ Single-scan pattern in `load_all_temp_war_stats()` (clashcontrol/cache_manager.p
 Secondary hardening (host machine — run once in elevated PowerShell):
 ```powershell
 # Add Defender exclusions to prevent future filesystem callback storms
-Add-MpPreference -ExclusionPath "C:\python\QapBot\data"
+Add-MpPreference -ExclusionPath "C:\python\ClashControl\data"
 Add-MpPreference -ExclusionPath "C:\python"
 Add-MpPreference -ExclusionProcess "python.exe"
 ```

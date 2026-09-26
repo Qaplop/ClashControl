@@ -12,7 +12,7 @@ matching columns by POSITION, not name — so any row actually read from `histor
 old enough to have been archived) came back with scrambled `max_attacks`/`missed_attacks`/
 `defensive_stars` values whenever `history.<table>`'s physical column order differs from
 `main.<table>`'s, which real production data confirmed it does (verified against DEV's real
-`data/qapbot_history.db`).
+`data/clashcontrol_history.db`).
 
 The fix (`WarHistoryDB._explicit_column_list_sync`) mirrors the write-side one: every affected
 query now names its columns explicitly on both sides of the `UNION ALL`, immune to physical
@@ -32,7 +32,7 @@ from clashcontrol.db_manager import WarHistoryDB
 
 @pytest.fixture
 async def db(tmp_path):
-    db_path = tmp_path / "qapbot_test.db"
+    db_path = tmp_path / "clashcontrol_test.db"
     manager = WarHistoryDB()
     await manager.initialize(str(db_path))
     try:
@@ -43,7 +43,7 @@ async def db(tmp_path):
 
 async def _rebuild_history_war_attacks_with_real_drift_order(db: WarHistoryDB) -> None:
     """Recreates `history.war_attacks` with the EXACT column order found on DEV's real
-    `data/qapbot_history.db` (2026-08-16) — `map_position` moved next to `th_level`, and
+    `data/clashcontrol_history.db` (2026-08-16) — `map_position` moved next to `th_level`, and
     `max_attacks`/`missed_attacks`/`defensive_stars`/`created_at` moved to the very end, after
     `defender_th`/`defender_map_position`/`duration`/`is_fresh`/`times_defended`/
     `best_def_destruction` — versus `main.war_attacks`'s own order (see the CREATE TABLE at

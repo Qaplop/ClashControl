@@ -16,7 +16,7 @@ from clashcontrol.db_manager import CLAN_TAG_REFERENCING_TABLES, WarHistoryDB
 
 @pytest.fixture
 async def db(tmp_path):
-    db_path = tmp_path / "qapbot_test.db"
+    db_path = tmp_path / "clashcontrol_test.db"
     manager = WarHistoryDB()
     await manager.initialize(str(db_path))
     try:

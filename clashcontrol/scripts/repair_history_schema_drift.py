@@ -562,9 +562,9 @@ async def _run(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--db", default=CONFIG.db_path, help="Path to the hot qapbot.db (default: CONFIG.db_path)")
+    parser.add_argument("--db", default=CONFIG.db_path, help="Path to the hot clashcontrol.db (default: CONFIG.db_path)")
     parser.add_argument("--history-db", default=getattr(CONFIG, "history_db_path", None),
-                         help="Path to qapbot_history.db (default: CONFIG.history_db_path)")
+                         help="Path to clashcontrol_history.db (default: CONFIG.history_db_path)")
     mode_group = parser.add_mutually_exclusive_group()
     mode_group.add_argument("--build", action="store_true",
                              help="Actually build *_repaired tables for real (writes data — the only stage "

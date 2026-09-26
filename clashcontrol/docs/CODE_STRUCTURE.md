@@ -473,7 +473,7 @@ all rebuild/button-handler paths so the reference is never lost.
 - Automatic connection recovery: `_ensure_connection()` / `_reconnect()`
 - Explicit BEGIN/ROLLBACK transactions on 6 compound write methods
 - Hot/history DB split: `war_attacks`, `war_summary`, `cwl_league_groups`, `cwl_league_rounds`
-  are mirrored into a second attached database (`data/qapbot_history.db`, schema alias
+  are mirrored into a second attached database (`data/clashcontrol_history.db`, schema alias
   `history`) via `ATTACH DATABASE`; the other tables stay hot-only
 - Tables: war_attacks, war_summary, clans, clan_families, clan_family_members, users,
   user_players, user_buddies, guild_config, guild_member_families, guild_member_clans,
@@ -1337,9 +1337,9 @@ kept here only for functions not narrated elsewhere.
 
 ## Data & Cache Files
 
-- data/qapbot.db - SQLite database (WAL mode) - PRIMARY data store for all persistent data
+- data/clashcontrol.db - SQLite database (WAL mode) - PRIMARY data store for all persistent data
   * War history, user accounts, subscriptions, clan families, server config, notification state, leaderboard messages, clan name cache, CWL round tracking
-  * data/qapbot_history.db is ATTACHed to the same connection as schema `history`; the 4
+  * data/clashcontrol_history.db is ATTACHed to the same connection as schema `history`; the 4
     time-series tables (war_attacks, war_summary, cwl_league_groups, cwl_league_rounds) are
     mirrored there as part of the hot/history DB split
   * All tables (22): war_attacks, war_summary, clans, clan_families, clan_family_members, users, user_players, user_buddies, guild_config, guild_member_families, guild_member_clans, guild_welcome_families, guild_welcome_clans, guild_clan_roles, subscriptions, notification_state, channel_notification_state, leaderboard_messages, cwl_league_groups, cwl_league_rounds, player_name_index, bot_metadata
@@ -1361,4 +1361,4 @@ kept here only for functions not narrated elsewhere.
 
 ---
 
-This updated structure reflects the database-only, write-through, cache-centric architecture after the migration from JSON/CSV to SQLite. All persistent data is stored in `data/qapbot.db`, with in-memory caches providing fast access. Business logic never directly accesses the database — all operations go through CACHE methods which handle write-through persistence.
+This updated structure reflects the database-only, write-through, cache-centric architecture after the migration from JSON/CSV to SQLite. All persistent data is stored in `data/clashcontrol.db`, with in-memory caches providing fast access. Business logic never directly accesses the database — all operations go through CACHE methods which handle write-through persistence.

@@ -71,7 +71,7 @@ class TestLoadConfigProd:
             assert cfg.notification_hours_before_end == 4
             assert cfg.notification_batch_delay == 2
             assert cfg.notification_max_retries == 1
-            assert cfg.db_path == os.path.join("data", "qapbot.db")
+            assert cfg.db_path == os.path.join("data", "clashcontrol.db")
             assert cfg.no_coc_api is False
 
 

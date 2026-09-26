@@ -227,8 +227,8 @@ requirement is separate, unconditional, and always applies first — read this r
 below in that light, not as a standing green light for exclusive-mode access whenever PROD
 happens to be stopped.**
 
-`data/qapbot.db` runs in **WAL mode**. WAL coordinates readers and writers through a
-shared-memory index (`qapbot.db-shm`) plus byte-range file locks. Those primitives **do not work
+`data/clashcontrol.db` runs in **WAL mode**. WAL coordinates readers and writers through a
+shared-memory index (`clashcontrol.db-shm`) plus byte-range file locks. Those primitives **do not work
 across SMB/CIFS** — SQLite's own documentation states WAL "does not work over a network
 filesystem". A client on the Windows box and the bot process on the NAS therefore hold
 *incoherent* views of the same WAL index.
@@ -252,7 +252,7 @@ was at risk and PROD was down until restored.
   opening the DB over the share is not.
 - Never accept "read-only" as a sufficient safety argument for a WAL database on a network
   share. The safe boundary is *where the SQLite process runs*, not what it intends to do.
-- The same applies to `qapbot_history.db` and to any tooling (DB browsers, scripts, IDE
+- The same applies to `clashcontrol_history.db` and to any tooling (DB browsers, scripts, IDE
   plugins) pointed at a NAS path.
 
 **Refinement (2026-09-05, same day, after root-causing the incident more precisely): the actual

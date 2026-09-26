@@ -36,7 +36,7 @@ IMPORTANT:
 Usage:
     python clashcontrol/scripts/run_db_maintenance_now.py                # prompts for confirmation
     python clashcontrol/scripts/run_db_maintenance_now.py --yes          # skip confirmation
-    python clashcontrol/scripts/run_db_maintenance_now.py --db /path/to/qapbot.db --history-db /path/to/qapbot_history.db --yes
+    python clashcontrol/scripts/run_db_maintenance_now.py --db /path/to/clashcontrol.db --history-db /path/to/clashcontrol_history.db --yes
 """
 import argparse
 import asyncio
@@ -90,9 +90,9 @@ async def _run(db_path: str, history_db_path: str) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--db", default=CONFIG.db_path, help="Path to the hot qapbot.db (default: CONFIG.db_path)")
+    parser.add_argument("--db", default=CONFIG.db_path, help="Path to the hot clashcontrol.db (default: CONFIG.db_path)")
     parser.add_argument("--history-db", default=getattr(CONFIG, "history_db_path", None),
-                         help="Path to qapbot_history.db (default: CONFIG.history_db_path)")
+                         help="Path to clashcontrol_history.db (default: CONFIG.history_db_path)")
     parser.add_argument("--log-file", default=os.path.join(CONFIG.data_dir, "logs", "db_maintenance_now.log"),
                          help="Also write progress to this file, not just stdout (default: "
                               "<data_dir>/logs/db_maintenance_now.log). Pass an empty string to disable.")

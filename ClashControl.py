@@ -559,7 +559,15 @@ async def initialize_database() -> None:
     logging.info("💾 Initializing database (includes any pending first-run schema migrations)...")
     QBcore.db_maintenance_mode = True
     try:
-        from clashcontrol.db_manager import WarHistoryDB
+        from clashcontrol.db_manager import WarHistoryDB, find_unrenamed_legacy_db
+        legacy_db = find_unrenamed_legacy_db(CONFIG.db_path, CONFIG.history_db_path)
+        if legacy_db:
+            logging.critical(
+                f"[DB] {legacy_db} exists but {CONFIG.db_path} / {CONFIG.history_db_path} does not. "
+                "Rename qapbot*.db (with its -wal/-shm) to clashcontrol*.db while the bot is "
+                "stopped. Refusing to start on a new, empty database."
+            )
+            raise RuntimeError(f"un-renamed legacy database found: {legacy_db}")
         db_manager = WarHistoryDB()
         await asyncio.wait_for(
             db_manager.initialize(CONFIG.db_path, CONFIG.history_db_path),

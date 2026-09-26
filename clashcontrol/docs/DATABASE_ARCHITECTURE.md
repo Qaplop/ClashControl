@@ -1,7 +1,7 @@
 # Database Architecture (SQLite)
 
 **Status**: Production - Database-only mode (no feature flags)  
-**Database**: `data/qapbot.db` (hot, SQLite with WAL mode) + `data/qapbot_history.db` (history, ATTACHed as schema `history`)  
+**Database**: `data/clashcontrol.db` (hot, SQLite with WAL mode) + `data/clashcontrol_history.db` (history, ATTACHed as schema `history`)  
 **Last Updated**: 2026-07-26
 
 ---
@@ -73,8 +73,8 @@ for HDD seek reduction and are what caused the 2026-09-07 incident.
 ## Hot/History DB Split
 
 `WarHistoryDB.initialize()` always `ATTACH`es a second SQLite file as schema
-`history` (default path derived from the hot path, e.g. `data/qapbot.db` →
-`data/qapbot_history.db`; overridable via `history_db_path`). The `history`
+`history` (default path derived from the hot path, e.g. `data/clashcontrol.db` →
+`data/clashcontrol_history.db`; overridable via `history_db_path`). The `history`
 schema gets its own WAL/synchronous pragmas (`PRAGMA history.journal_mode=WAL`,
 `PRAGMA history.synchronous=NORMAL`) since ATTACHing does not retroactively
 apply the main connection's pragmas.
@@ -253,7 +253,7 @@ any war old enough to have been archived) came back with `max_attacks`/`missed_a
 `defensive_stars`/`map_position`/etc. silently misaligned, for exactly the same reason as the
 write-path bug: `history`'s physical column order differs from `main`'s.
 
-Confirmed against DEV's real `data/qapbot_history.db`: a raw diagnostic `SELECT * FROM
+Confirmed against DEV's real `data/clashcontrol_history.db`: a raw diagnostic `SELECT * FROM
 main.war_attacks UNION ALL SELECT * FROM history.war_attacks` for a real player showed
 `max_attacks` holding an opponent tag string for her older (archived) attacks — while a plain
 named-column `SELECT max_attacks, ... FROM history.war_attacks` against the same rows showed
@@ -815,7 +815,7 @@ cache_manager.py (business logic)
     ↓
 db_manager.py (database operations)
     ↓
-SQLite database (data/qapbot.db)
+SQLite database (data/clashcontrol.db)
 ```
 
 ### Cache Manager Responsibilities
@@ -840,15 +840,15 @@ SQLite database (data/qapbot.db)
 ### Backup Strategy
 ```bash
 # Daily automated backup via nightly VACUUM INTO (prod server-machine — runs automatically)
-# DB lives at: ${PROD_DATA_DIR}/data/qapbot.db  (eSATA SSD)
+# DB lives at: ${PROD_DATA_DIR}/data/clashcontrol.db  (eSATA SSD)
 # Since the hot/history DB split, back up BOTH files:
-#   ${PROD_DATA_DIR}/data/qapbot.db          (hot: current + previous month)
-#   ${PROD_DATA_DIR}/data/qapbot_history.db  (history: everything older)
+#   ${PROD_DATA_DIR}/data/clashcontrol.db          (hot: current + previous month)
+#   ${PROD_DATA_DIR}/data/clashcontrol_history.db  (history: everything older)
 
 # Manual backup before a risky change (run on server-machine shell)
-cp ${PROD_DATA_DIR}/data/qapbot.db \
+cp ${PROD_DATA_DIR}/data/clashcontrol.db \
   ${PROD_BOT_ROOT}/backups/qapbot_$(date +%Y%m%d_%H%M%S).db
-cp ${PROD_DATA_DIR}/data/qapbot_history.db \
+cp ${PROD_DATA_DIR}/data/clashcontrol_history.db \
   ${PROD_BOT_ROOT}/backups/qapbot_history_$(date +%Y%m%d_%H%M%S).db
 ```
 
@@ -857,13 +857,13 @@ cp ${PROD_DATA_DIR}/data/qapbot_history.db \
 
 ```powershell
 # Dev: manual backup
-Copy-Item "data\qapbot.db" "data\qapbot_backup_$(Get-Date -Format 'yyyyMMdd_HHmmss').db"
+Copy-Item "data\clashcontrol.db" "data\qapbot_backup_$(Get-Date -Format 'yyyyMMdd_HHmmss').db"
 ```
 
 ### Database Integrity Check
 ```powershell
 # Verify database health
-sqlite3 "data\qapbot.db" "PRAGMA integrity_check;"
+sqlite3 "data\clashcontrol.db" "PRAGMA integrity_check;"
 
 # Should return: ok
 ```
@@ -872,11 +872,11 @@ sqlite3 "data\qapbot.db" "PRAGMA integrity_check;"
 ```powershell
 # 1. Stop bot
 # 2. Check integrity
-sqlite3 "data\qapbot.db" "PRAGMA integrity_check;"
+sqlite3 "data\clashcontrol.db" "PRAGMA integrity_check;"
 
 # 3. If corrupted, restore from backup
-Remove-Item "data\qapbot.db" -Force
-Copy-Item "data\qapbot_backup_YYYYMMDD_HHMMSS.db" "data\qapbot.db"
+Remove-Item "data\clashcontrol.db" -Force
+Copy-Item "data\qapbot_backup_YYYYMMDD_HHMMSS.db" "data\clashcontrol.db"
 
 # 4. Restart bot
 ```
@@ -900,13 +900,13 @@ this doc (kept current via the "update docs in the same change" rule — see Car
 single code change to hang an update on. The previous version of this section (~98K attack
 rows, ~500 KB maindata) was many months stale before this refresh. Don't treat the numbers
 below as current without re-checking if it's been a while — re-verify directly against
-`data/qapbot.db` + `data/qapbot_history.db` (see query pattern in git history / ask for a
+`data/clashcontrol.db` + `data/clashcontrol_history.db` (see query pattern in git history / ask for a
 re-check) rather than trusting them long-term.
 
-- **Hot DB** (`data/qapbot.db`): ~21.9 GB — `war_attacks` 65.1 M rows, `war_summary` 3.0 M rows,
+- **Hot DB** (`data/clashcontrol.db`): ~21.9 GB — `war_attacks` 65.1 M rows, `war_summary` 3.0 M rows,
   `clans` ~399 K rows, `player_name_index` ~6.2 M rows, `cwl_league_groups` ~524 K rows,
   `cwl_league_rounds` ~1.83 M rows
-- **History DB** (`data/qapbot_history.db`): ~16.4 GB — `war_attacks` 48.3 M rows, `war_summary`
+- **History DB** (`data/clashcontrol_history.db`): ~16.4 GB — `war_attacks` 48.3 M rows, `war_summary`
   2.36 M rows, `cwl_league_groups` ~262 K rows, `cwl_league_rounds` ~440 K rows
 - **Combined**: ~38.3 GB total, ~113.4 M `war_attacks` rows, ~5.34 M `war_summary` rows
 - **Maindata** (`users`/`user_players`/config tables): tiny by comparison — low hundreds of rows
@@ -1341,8 +1341,8 @@ re-check) rather than trusting them long-term.
   `wal_checkpoint(PASSIVE)` only in the `finally` block at the very end. For a run that finishes in
   minutes this is fine; for the first run against an 8M+-row backlog it took ~4h45m
   (02:00:29→06:44:54) and never checkpointed once in that window — both WAL files grew unbounded
-  the entire time until the volume hit 0 bytes free (`qapbot.db-wal` reached 287.9 GB,
-  `qapbot_history.db-wal` 103.8 GB, on a 457 GB volume otherwise holding only ~48 GB of hot+history
+  the entire time until the volume hit 0 bytes free (`clashcontrol.db-wal` reached 287.9 GB,
+  `clashcontrol_history.db-wal` 103.8 GB, on a 457 GB volume otherwise holding only ~48 GB of hot+history
   DB + archive data). The migration errored with `database or disk is full`; the `finally` block's
   own recovery checkpoint then *also* failed for the same reason (`Could not restore
   autocheckpoint/checkpoint: database or disk is full`); `db_maintenance_mode` was still cleared
@@ -1662,7 +1662,7 @@ re-check) rather than trusting them long-term.
   so the startup hydration block re-loaded that fresh 17:16 UTC value from `bot_metadata`. At the
   03:00 UTC check that night, only ~9h46m had elapsed since 17:16 UTC — under the 20h threshold —
   so `_maint_due` was `False` and the automatic run silently never fired. Confirmed by directly
-  reading `data/qapbot.db`'s `bot_metadata` table (`last_db_maintenance` = `2026-08-08T17:16:11Z`)
+  reading `data/clashcontrol.db`'s `bot_metadata` table (`last_db_maintenance` = `2026-08-08T17:16:11Z`)
   and cross-referencing the commit timeline (a maintenance-code commit at 18:42 CEST, final same-day
   redeploy at 19:46 CEST).
   This is a latent design gap, not new breakage: any manual/test maintenance run after roughly
@@ -2081,7 +2081,7 @@ Verified it fails at 0.001 (nightly-VACUUM regression) and at 0.5 (never compact
 ## Troubleshooting
 
 ### Bot won't start: "Database not initialized"
-- Check database file exists: `Test-Path "data\qapbot.db"`
+- Check database file exists: `Test-Path "data\clashcontrol.db"`
 - Check file permissions (read/write)
 - Review startup logs for specific error
 
@@ -2102,7 +2102,7 @@ Verified it fails at 0.001 (nightly-VACUUM regression) and at 0.5 (never compact
 - Restart terminal/IDE if needed
 
 ### Slow queries
-- Run: `sqlite3 "data\qapbot.db" "PRAGMA optimize;"`
+- Run: `sqlite3 "data\clashcontrol.db" "PRAGMA optimize;"`
 - Check indexes exist: `.schema` in sqlite3
 - Review query patterns in logs
 

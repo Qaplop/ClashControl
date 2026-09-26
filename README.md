@@ -261,8 +261,8 @@ QapBot/
 ├── activity/              # CWL Clan-Config Discord Activity — Cloudflare Pages/Workers
 │                          # frontend+backend; see clashcontrol/docs/CWL_CLAN_CONFIG_ACTIVITY_PLAN.md
 └── data/
-    ├── qapbot.db          # SQLite database (hot: current + previous calendar month, WAL mode)
-    ├── qapbot_history.db  # SQLite database (history: everything older, ATTACHed as schema 'history')
+    ├── clashcontrol.db          # SQLite database (hot: current + previous calendar month, WAL mode)
+    ├── clashcontrol_history.db  # SQLite database (history: everything older, ATTACHed as schema 'history')
     ├── temp/              # Active war data (JSON format)
     ├── archive/           # Completed war data (JSON format)
     ├── logs/              # Rotating bot logs (daily)
@@ -284,11 +284,11 @@ QapBot/
 To keep the live database small and nightly maintenance (VACUUM) fast, war/CWL data is
 split across two SQLite files:
 
-- **`data/qapbot.db`** (hot) — always holds the current calendar month + the immediately
+- **`data/clashcontrol.db`** (hot) — always holds the current calendar month + the immediately
   preceding calendar month, in full, for `war_attacks`, `war_summary`, `cwl_league_groups`
   and `cwl_league_rounds`. All other tables (clans, users, subscriptions, guild config,
   `player_name_index`, etc.) live here permanently.
-- **`data/qapbot_history.db`** (history) — everything older than the hot window, for the
+- **`data/clashcontrol_history.db`** (history) — everything older than the hot window, for the
   same 4 time-series tables.
 
 The history DB is `ATTACH`ed as schema `history` on every database connection (both the
@@ -340,8 +340,8 @@ migration job moves data older than the retention window from hot to history —
 | `NOTIFICATION_BATCH_DELAY` | Seconds delay between notification batches | No | 2 |
 | `NOTIFICATION_MAX_RETRIES` | Maximum retry attempts for failed notifications | No | 1 |
 | `PROD_DATA_DIR` | Base directory for `data/`, `archive/`, and `archive_old/` — set this on prod to point to the external SSD. **Ignored in DEV mode even if set.** | No | *(bot root)* |
-| `DB_PATH` | Path to the hot SQLite database file (current + previous calendar month of war data) | No | `data/qapbot.db` |
-| `HISTORY_DB_PATH` | Path to the history SQLite database file (ATTACHed as schema `history`; everything older than `DB_PATH`'s retention window) | No | `data/qapbot_history.db` |
+| `DB_PATH` | Path to the hot SQLite database file (current + previous calendar month of war data) | No | `data/clashcontrol.db` |
+| `HISTORY_DB_PATH` | Path to the history SQLite database file (ATTACHed as schema `history`; everything older than `DB_PATH`'s retention window) | No | `data/clashcontrol_history.db` |
 | `VACUUM_FREELIST_FRACTION` | Fraction of the hot DB that must be free-list before nightly maintenance runs VACUUM (`VACUUM_MIN_FREELIST_PAGES` is the absolute floor for small DBs). Was a flat 500 pages / 8 MB, which was right while the migration deleted a month of rows once a month — but the rolling nightly migration frees ~1.1 GB **every** night, so a flat trigger turned an occasional VACUUM into a nightly ~7.5 min EXCLUSIVE lock and hard Discord block, plus a full rewrite of a 24-40 GB file. It would reclaim nothing: deletes and inserts balance in steady state and SQLite reuses free pages, so the free list is churn, not waste. `0` restores the old always-VACUUM behaviour. | No | `0.15` |
 | `VACUUM_MIN_FREELIST_PAGES` | Absolute floor for the trigger above, so a small/fresh DB (where 15% is a handful of pages) does not VACUUM on every run. | No | `500` |
 | `HISTORY_RETENTION_DAYS` | Rolling hot-DB retention. The nightly migration walks the cutoff toward `today - N`, moving roughly one day of aged-out rows per night instead of a whole month landing on the 1st. The effective cutoff is `min(today - N, first day of the previous calendar month)` — the floor guarantees the documented "current + previous calendar month" contract on every date (its oldest retained row can be 61 days old), which is what makes any value here safe. **75 is load-bearing, not arbitrary**: CWL runs days 1-10 and produces ~2x the normal war volume, so this value decides which days of the month carry the heavy migration. 71-78 is the only band that both advances smoothly (below 61 the floor binds and the cutoff jumps up to 12 days at once, on the 1st) and never migrates CWL-dated rows during a CWL season. See `clashcontrol/docs/DATABASE_ARCHITECTURE.md` 2026-09-01 (c) before changing it. | No | `75` |
@@ -412,15 +412,15 @@ ClashControl supports multiple languages through JSON translation files:
 
 ### Cache System
 - **Single-Source-of-Truth**: CACHE object in `cache_manager.py` manages all runtime data
-- **Write-Through Persistence**: All cache mutations immediately persisted to SQLite (`data/qapbot.db`, plus `data/qapbot_history.db` for older war/CWL data)
+- **Write-Through Persistence**: All cache mutations immediately persisted to SQLite (`data/clashcontrol.db`, plus `data/clashcontrol_history.db` for older war/CWL data)
 - CoC API caching (`CoCClanCache`) with stale-while-revalidate strategy (soft TTL 280s, hard TTL 600s)
 - All persistent data stored in SQLite database (WAL mode for reliability)
 - Consistency checks on startup with validation
 - **Database-Only Architecture**: No JSON files used for primary data storage (only temp war files remain as JSON)
 
 ### File Structure
-- **SQLite Database (hot)**: `data/qapbot.db` - Primary data store (current + previous calendar month of war/CWL data, plus users, subscriptions, config, etc.)
-- **SQLite Database (history)**: `data/qapbot_history.db` - Older war/CWL data (`war_attacks`, `war_summary`, `cwl_league_groups`, `cwl_league_rounds`), migrated from the hot DB once a month
+- **SQLite Database (hot)**: `data/clashcontrol.db` - Primary data store (current + previous calendar month of war/CWL data, plus users, subscriptions, config, etc.)
+- **SQLite Database (history)**: `data/clashcontrol_history.db` - Older war/CWL data (`war_attacks`, `war_summary`, `cwl_league_groups`, `cwl_league_rounds`), migrated from the hot DB once a month
 - **Active Wars**: `data/temp/{CLAN1_TAG}_{CLAN2_TAG}_war_data.json`
 - **Archived Wars**: `archive/{CLAN1_TAG}_{CLAN2_TAG}_war_data.json` (moved after war ends)
 - **Legacy Files**: `data/maindata/*.json` - Kept for reference (DB is source of truth)
@@ -527,7 +527,7 @@ See [changelog.txt](changelog.txt) for detailed changelog and version history.
 
 **Cache/Data issues:**
 - Use `/admin CHECK_DATA` to validate data consistency
-- Check database integrity: `sqlite3 data/qapbot.db "PRAGMA integrity_check;"` (and likewise for `data/qapbot_history.db`)
+- Check database integrity: `sqlite3 data/clashcontrol.db "PRAGMA integrity_check;"` (and likewise for `data/clashcontrol_history.db`)
 - Review logs for backup/restore messages
 - Restart bot to reload cache from database
 

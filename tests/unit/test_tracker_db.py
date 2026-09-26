@@ -10,7 +10,7 @@ from clashcontrol.db_manager import WarHistoryDB
 
 @pytest.fixture
 async def db(tmp_path):
-    db_path = tmp_path / "qapbot_test.db"
+    db_path = tmp_path / "clashcontrol_test.db"
     manager = WarHistoryDB()
     await manager.initialize(str(db_path))
     try:
@@ -22,7 +22,7 @@ async def db(tmp_path):
 @pytest.mark.asyncio
 async def test_reinitialize_is_idempotent(tmp_path):
     """Re-running initialize() against the same DB file must not raise (Cardinal Rule 12)."""
-    db_path = tmp_path / "qapbot_test.db"
+    db_path = tmp_path / "clashcontrol_test.db"
     manager = WarHistoryDB()
     await manager.initialize(str(db_path))
     await manager.close()

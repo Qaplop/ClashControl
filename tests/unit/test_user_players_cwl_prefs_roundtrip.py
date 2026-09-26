@@ -18,7 +18,7 @@ from clashcontrol.db_manager import USER_PLAYER_CWL_PREF_COLUMNS, WarHistoryDB
 @pytest.fixture
 async def db(tmp_path):
     manager = WarHistoryDB()
-    await manager.initialize(str(tmp_path / "qapbot_test.db"))
+    await manager.initialize(str(tmp_path / "clashcontrol_test.db"))
     try:
         yield manager
     finally:

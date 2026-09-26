@@ -684,7 +684,7 @@ def check_database_consistency(db_path: str, data_dir: str, include_integrity: b
     Uses CACHE.db_manager for all database operations (no direct sqlite3).
 
     Args:
-        db_path: Path to SQLite database (e.g., "data/qapbot.db")
+        db_path: Path to SQLite database (e.g., "data/clashcontrol.db")
         data_dir: Path to data directory for archive comparison
         include_integrity: If True, run PRAGMA integrity_check (adds ~11s on a 584MB DB).
                            Defaults to False for the interactive /admin Check Data command.

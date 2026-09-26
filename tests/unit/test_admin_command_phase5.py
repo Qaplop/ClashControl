@@ -32,7 +32,7 @@ class TestCheckDatabaseConsistency:
         cache = MagicMock()
         cache.db_manager = None
         monkeypatch.setattr("clashcontrol.cache_manager.CACHE", cache)
-        result = self._fn()("data/qapbot.db", "data")
+        result = self._fn()("data/clashcontrol.db", "data")
         assert result["integrity_ok"] is False
         assert "not initialized" in result["integrity_errors"][0]
 

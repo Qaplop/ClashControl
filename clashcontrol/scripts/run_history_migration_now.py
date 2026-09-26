@@ -66,7 +66,7 @@ path regardless of --fast.
 Usage:
     python clashcontrol/scripts/run_history_migration_now.py                # prompts for confirmation
     python clashcontrol/scripts/run_history_migration_now.py --yes          # skip confirmation
-    python clashcontrol/scripts/run_history_migration_now.py --db /path/to/qapbot.db --history-db /path/to/qapbot_history.db --yes
+    python clashcontrol/scripts/run_history_migration_now.py --db /path/to/clashcontrol.db --history-db /path/to/clashcontrol_history.db --yes
     python clashcontrol/scripts/run_history_migration_now.py --row-budget 500000 --yes
     python clashcontrol/scripts/run_history_migration_now.py --time-budget-minutes 30 --batch-size 20000 --yes
     python clashcontrol/scripts/run_history_migration_now.py --fast --yes   # bot MUST be stopped
@@ -163,9 +163,9 @@ async def _run(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--db", default=CONFIG.db_path, help="Path to the hot qapbot.db (default: CONFIG.db_path)")
+    parser.add_argument("--db", default=CONFIG.db_path, help="Path to the hot clashcontrol.db (default: CONFIG.db_path)")
     parser.add_argument("--history-db", default=getattr(CONFIG, "history_db_path", None),
-                         help="Path to qapbot_history.db (default: CONFIG.history_db_path)")
+                         help="Path to clashcontrol_history.db (default: CONFIG.history_db_path)")
     parser.add_argument("--batch-size", type=int, default=5000,
                          help="Rows per batch/transaction (default: 5000). Larger values reduce "
                               "commit overhead (faster) at the cost of more WAL accumulated per batch — "

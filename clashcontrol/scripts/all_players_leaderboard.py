@@ -39,7 +39,7 @@ Usage:
     
 Requirements:
     - Valid DISCORD_TOKEN_DEV in .env file
-    - War history database (data/qapbot.db)
+    - War history database (data/clashcontrol.db)
     - Discord bot with MESSAGE_CONTENT intent enabled
 
 Output:

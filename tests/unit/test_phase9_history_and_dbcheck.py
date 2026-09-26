@@ -175,7 +175,7 @@ def test_check_database_consistency_db_manager_missing(monkeypatch: pytest.Monke
 
     monkeypatch.setattr(cm, "CACHE", SimpleNamespace(db_manager=None))
 
-    out = check_database_consistency(str(tmp_path / "qapbot.db"), str(tmp_path))
+    out = check_database_consistency(str(tmp_path / "clashcontrol.db"), str(tmp_path))
 
     assert out["integrity_ok"] is False
     assert out["integrity_errors"] == ["Database manager not initialized"]
@@ -197,7 +197,7 @@ def test_check_database_consistency_missing_db_file(monkeypatch: pytest.MonkeyPa
 def test_check_database_consistency_query_exception(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     import clashcontrol.cache_manager as cm
 
-    db_file = tmp_path / "qapbot.db"
+    db_file = tmp_path / "clashcontrol.db"
     db_file.write_text("", encoding="utf-8")
 
     monkeypatch.setattr(cm, "CACHE", SimpleNamespace(db_manager=_FakeDbManager(raise_on_integrity=True)))
@@ -242,7 +242,7 @@ def test_check_database_consistency_success_paths(monkeypatch: pytest.MonkeyPatc
         encoding="utf-8",
     )
 
-    db_file = tmp_path / "qapbot.db"
+    db_file = tmp_path / "clashcontrol.db"
     db_file.write_text("", encoding="utf-8")
 
     monkeypatch.setattr(cm, "CACHE", SimpleNamespace(

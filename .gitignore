@@ -233,6 +233,8 @@ clashcontrol/scripts/*.jpg
 cwl_reconstruct_*.tsv
 qapbot.db*
 qapbot_history.db*
+clashcontrol.db*
+clashcontrol_history.db*
 orphan_analysis.txt
 missing_cwl_war_tags.txt
 *.zip

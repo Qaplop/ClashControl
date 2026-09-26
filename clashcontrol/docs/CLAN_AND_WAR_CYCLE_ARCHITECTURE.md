@@ -397,7 +397,7 @@ are dominated by the intentional inter-cycle `Sleeping for Ns` pauses — filter
 (`FROM: ... Sleeping for`) to see real in-cycle stalls.
 
 **Root causes found (confirmed via data/logs/qapbot.log 2026-07-11)**:
-1. **Nightly full VACUUM took 2688s (44.8 min)** on the 33 GB `data/qapbot.db` (freed 2.4 GB).
+1. **Nightly full VACUUM took 2688s (44.8 min)** on the 33 GB `data/clashcontrol.db` (freed 2.4 GB).
    `nightly_db_maintenance()` in [clashcontrol/db_manager.py](../db_manager.py#L5717) triggers VACUUM
    whenever `freelist_count > 500 pages` (~2-8 MB) — a fixed threshold that does NOT scale with
    DB size, so as the DB grows, nightly VACUUM duration grows too (self-reinforcing). Runs daily
@@ -433,9 +433,9 @@ are dominated by the intentional inter-cycle `Sleeping for Ns` pauses — filter
 
 ## Hot/History DB Redesign (IMPLEMENTED 2026-07-11)
 
-**Goal**: stop `data/qapbot.db` from growing unboundedly (33 GB and counting), which was the root
-cause of the ever-slower nightly VACUUM described above. The DB is now split into `data/qapbot.db`
-(hot: current + previous calendar month of war data) and `data/qapbot_history.db` (everything
+**Goal**: stop `data/clashcontrol.db` from growing unboundedly (33 GB and counting), which was the root
+cause of the ever-slower nightly VACUUM described above. The DB is now split into `data/clashcontrol.db`
+(hot: current + previous calendar month of war data) and `data/clashcontrol_history.db` (everything
 older). See `changelog.txt` (2026-07-11 entry) for the full file-by-file list of changes.
 
 ### Mechanism: `ATTACH DATABASE`
@@ -443,7 +443,7 @@ older). See `changelog.txt` (2026-07-11 entry) for the full file-by-file list of
 `WarHistoryDB` uses **two connection types**: one async `aiosqlite` connection, and an
 `_SyncConnectionPool` of 8 plain `sqlite3` connections used by all `*_sync` methods
 (`clashcontrol/db_manager.py`). Rather than querying two separate connections and merging in Python,
-`qapbot_history.db` is ATTACHed as schema `history` on **every** connection (the async one, all 8
+`clashcontrol_history.db` is ATTACHed as schema `history` on **every** connection (the async one, all 8
 pooled sync connections, and the bare-connection fallback used by tests/pre-initialize callers)
 right after it's opened, in `WarHistoryDB.initialize()`:
 - Queries already bounded to "current/recent" data needed **zero changes**.
@@ -538,7 +538,7 @@ fix the script reported 0 archive rows for that season; after the fix it correct
 war_summary rows, round/league breakdowns, and max-rounds distribution.
 
 **Group 5 — operational tooling — ✅ DONE**: `BackupProd.bat` and `RestoreDevFromBackup.bat` now
-lock-check `qapbot_history.db` alongside `qapbot.db`. `RestoreProdFromBackup.bat` needed no code
+lock-check `clashcontrol_history.db` alongside `clashcontrol.db`. `RestoreProdFromBackup.bat` needed no code
 changes — both DB files live in the same `data/` directory and are already backed up/restored as
 a unit. The `/admin` "Check Data" command was
 already hot/history-aware for free (it goes through the now-fixed Group 2 functions); "Import Data"

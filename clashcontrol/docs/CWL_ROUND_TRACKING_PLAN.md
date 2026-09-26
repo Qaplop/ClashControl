@@ -416,7 +416,7 @@ is no longer permanently stuck requiring a manual `repromote_mid_season_clans.py
 - [x] `war_summary.round_number`: NULL for all May 2026 rows — direct consequence of empty `cwl_league_rounds`. Expected. Confirmed populated (100% coverage on CWL rows) from June 2026 onward.
 - [x] Prod data recovery confirmed: 2026-05-08 rows went from 18,652 → 20,785 after running `recover_missing_wars_20260509.py` and one bot cycle. ✅
 - [x] No binding errors, crashes, or data divergence after fix deployment. ✅
-- [x] Run `analyze_cwl_rounds.py` against prod data for June 2026 season; verify round numbers are correct — confirmed: `cwl_league_rounds`/`cwl_league_groups` are populated for 2026-06 and 2026-07, and `war_summary.round_number` coverage is 100% for CWL wars in both seasons (verified directly against `data/qapbot.db`)
+- [x] Run `analyze_cwl_rounds.py` against prod data for June 2026 season; verify round numbers are correct — confirmed: `cwl_league_rounds`/`cwl_league_groups` are populated for 2026-06 and 2026-07, and `war_summary.round_number` coverage is 100% for CWL wars in both seasons (verified directly against `data/clashcontrol.db`)
 - [x] Monitor June 2026 CWL — confirm Layer 1 captures groups at season start and Layer 2 fills gaps — confirmed via the same DB check above; no gap remained for June or July 2026
 
 ### Phase: Post-approval cleanup (after one season confirmed working)

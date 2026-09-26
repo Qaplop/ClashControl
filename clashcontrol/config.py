@@ -141,8 +141,8 @@ class BotConfig:
     investigate_dir: str = "investigate"   # Always relative to project root (HDD), not SSD
 
     # Database settings
-    db_path: str = "data/qapbot.db"        # SQLite database file path (hot: current + previous calendar month)
-    history_db_path: str = "data/qapbot_history.db"  # SQLite history database (ATTACHed as schema 'history'; everything older than db_path's window)
+    db_path: str = "data/clashcontrol.db"        # SQLite database file path (hot: current + previous calendar month)
+    history_db_path: str = "data/clashcontrol_history.db"  # SQLite history database (ATTACHed as schema 'history'; everything older than db_path's window)
     # Fraction of the hot DB that must be free-list before nightly maintenance runs VACUUM,
     # with vacuum_min_freelist_pages as an absolute floor for small/fresh DBs.
     #
@@ -549,8 +549,8 @@ def load_config() -> BotConfig:
     investigate_dir = "investigate"  # Always relative to project root (HDD), not SSD
 
     # Database configuration
-    db_path = os.getenv("DB_PATH", os.path.join(data_dir, "qapbot.db"))
-    history_db_path = os.getenv("HISTORY_DB_PATH", os.path.join(data_dir, "qapbot_history.db"))
+    db_path = os.getenv("DB_PATH", os.path.join(data_dir, "clashcontrol.db"))
+    history_db_path = os.getenv("HISTORY_DB_PATH", os.path.join(data_dir, "clashcontrol_history.db"))
     try:
         vacuum_freelist_fraction = float(os.getenv("VACUUM_FREELIST_FRACTION", "0.15"))
     except ValueError:

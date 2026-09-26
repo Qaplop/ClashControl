@@ -24,7 +24,7 @@ async def db(tmp_path):  # type: ignore[no-untyped-def]
     from clashcontrol.db_manager import WarHistoryDB
 
     manager = WarHistoryDB()
-    await manager.initialize(str(tmp_path / "qapbot_test.db"))
+    await manager.initialize(str(tmp_path / "clashcontrol_test.db"))
     try:
         yield manager
     finally:

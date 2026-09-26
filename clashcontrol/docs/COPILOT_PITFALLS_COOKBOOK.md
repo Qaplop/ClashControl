@@ -1300,8 +1300,8 @@ Two general lessons beyond CWL:
 2. **Diagnose with the live DB, not the code.** Two queries settled "did our recent fixes break
    this?" instantly:
    ```
-   sqlite3 -readonly data/qapbot.db "SELECT clan_tag, has_active_subscriptions FROM clans WHERE clan_tag IN (...)"
-   sqlite3 -readonly data/qapbot.db "SELECT current_clan_tag, COUNT(*) FROM user_players GROUP BY 1"
+   sqlite3 -readonly data/clashcontrol.db "SELECT clan_tag, has_active_subscriptions FROM clans WHERE clan_tag IN (...)"
+   sqlite3 -readonly data/clashcontrol.db "SELECT current_clan_tag, COUNT(*) FROM user_players GROUP BY 1"
    ```
    `0`/`0 rows` for the broken clan vs `1`/`47 rows` for the working one named the root cause
    directly, where reading the seed code had produced several plausible-but-wrong theories.
@@ -2838,7 +2838,7 @@ mistake that led to the audit which found this.
 `mode=ro`, which feels safe because nothing is being written. The production process then dies,
 and the next start reports `database disk image is malformed`.
 
-**What happened (2026-09-05):** PROD's `qapbot.db` (25 GB, WAL mode, 1.74 GB WAL) was queried
+**What happened (2026-09-05):** PROD's `clashcontrol.db` (25 GB, WAL mode, 1.74 GB WAL) was queried
 read-only over `\NAS_DS218\satashare\...` while the bot was live on the NAS, to diff DEV against
 PROD. WAL coordinates readers and writers through a shared-memory index (`-shm`) and byte-range
 locks; **neither works across SMB** — SQLite's docs say plainly that WAL "does not work over a
@@ -2891,7 +2891,7 @@ the same permission-vs-mechanism distinction from the other direction.
 keys — every structural signal is clean — and yet specific rows contain wrong or missing data
 that nothing in the recovery process flagged.
 
-**What happened (2026-09-05):** recovering PROD's corrupted `qapbot.db` via `.recover
+**What happened (2026-09-05):** recovering PROD's corrupted `clashcontrol.db` via `.recover
 --ignore-freelist`, the result passed every structural check described above. It was declared
 fully recovered on that basis. It was not. Two separate, silent failures existed in the `clans`
 table alone:

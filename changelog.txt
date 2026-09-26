@@ -1,6 +1,21 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-26 (2)  Build 114.
+- Changed (rename to ClashControl, phase 6 part: DB file names): default DB files are now
+  data/clashcontrol.db and data/clashcontrol_history.db (config.py dataclass defaults and the
+  PROD_DATA_DIR-derived paths; DB_PATH/HISTORY_DB_PATH env overrides unchanged). PROD files
+  were renamed by the project owner; DEV files renamed 2026-09-26 with the bot stopped (WAL
+  empty; quick_check ok). Docs, script help texts, test temp DB names, .gitignore (old
+  patterns kept) and the local BackupProd/RestoreDevFromBackup .bat scripts follow.
+- Added: startup guard find_unrenamed_legacy_db() (db_manager.py), checked in
+  initialize_database() before the DB is opened: if clashcontrol*.db is missing but
+  qapbot*.db sits in the same folder, the bot logs CRITICAL and refuses to start instead of
+  letting SQLite create an empty DB and running without its data (e.g. an old backup restored
+  to DEV, or a rename that missed a file).
+  Files: clashcontrol/config.py, clashcontrol/db_manager.py, ClashControl.py, QBcore.py,
+  docs, tests (+ tests/unit/test_db_legacy_name_guard.py).
+
 2026-09-26 (1)  Build 113.
 - Changed (rename to ClashControl, phase 7 follow-up: folders renamed by the project owner to
   C:\python\ClashControl, G:\Bots\ClashControl (= /volume1/Share/Bots/ClashControl) and

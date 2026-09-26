@@ -18,7 +18,7 @@ Architecture:
 
 Example Usage:
     db = WarHistoryDB()
-    await db.initialize("data/qapbot.db")
+    await db.initialize("data/clashcontrol.db")
     await db.add_war_records(clan_tag, records)
     history = await db.get_clan_history(clan_tag, month=1, year=2026)
 
@@ -61,10 +61,27 @@ else:
 def derive_history_db_path(db_path: str) -> str:
     """Derive the default history DB path from the hot DB path.
 
-    E.g. ``data/qapbot.db`` -> ``data/qapbot_history.db``.
+    E.g. ``data/clashcontrol.db`` -> ``data/clashcontrol_history.db``.
     """
     base, ext = os.path.splitext(db_path)
     return f"{base}_history{ext or '.db'}"
+
+
+# The DB files were renamed with the bot (QapBot -> ClashControl, 2026-09-26).
+LEGACY_DB_BASENAMES = {"clashcontrol.db": "qapbot.db", "clashcontrol_history.db": "qapbot_history.db"}
+
+
+def find_unrenamed_legacy_db(db_path: str, history_db_path: str) -> Optional[str]:
+    """The pre-rename file (e.g. ``data/qapbot.db``) when the configured DB is missing but that
+    file sits in the same folder, else None. SQLite would silently create an empty DB at the
+    new path and the bot would run without its data, so startup refuses instead."""
+    for path in (db_path, history_db_path):
+        legacy_name = LEGACY_DB_BASENAMES.get(os.path.basename(path))
+        if legacy_name and not os.path.exists(path):
+            legacy_path = os.path.join(os.path.dirname(path), legacy_name)
+            if os.path.exists(legacy_path):
+                return legacy_path
+    return None
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -336,7 +353,7 @@ def attach_history_db(conn: Any, db_path: str, history_db_path: Optional[str] = 
         db_path: Path to the hot DB this connection is attached to — used to
             derive the default history path if ``history_db_path`` is not given.
         history_db_path: Explicit history DB path. If omitted, derived from
-            ``db_path`` (e.g. ``data/qapbot.db`` -> ``data/qapbot_history.db``).
+            ``db_path`` (e.g. ``data/clashcontrol.db`` -> ``data/clashcontrol_history.db``).
         read_only: True if ``conn`` was opened read-only (e.g. a diagnostic
             script using ``sqlite3.connect('file:...?mode=ro', uri=True)``).
             ATTACH inherits the read/write mode of the main connection, so a
@@ -1342,7 +1359,7 @@ class WarHistoryDB:
     def _derive_history_db_path(db_path: str) -> str:
         """Derive the default history DB path from the hot DB path.
 
-        E.g. ``data/qapbot.db`` → ``data/qapbot_history.db``. Used when callers
+        E.g. ``data/clashcontrol.db`` → ``data/clashcontrol_history.db``. Used when callers
         (e.g. tests) construct :class:`WarHistoryDB` and call ``initialize()``
         with a single path, keeping the hot/history split transparent to
         pre-existing callers.
@@ -1365,9 +1382,9 @@ class WarHistoryDB:
         and is migrated there once a month by ``nightly_db_maintenance()``.
         
         Args:
-            db_path: Path to SQLite database file (e.g., "data/qapbot.db")
+            db_path: Path to SQLite database file (e.g., "data/clashcontrol.db")
             history_db_path: Path to the history SQLite database file. If not
-                given, derived from ``db_path`` (e.g. "data/qapbot_history.db").
+                given, derived from ``db_path`` (e.g. "data/clashcontrol_history.db").
         
         Raises:
             RuntimeError: If already initialized

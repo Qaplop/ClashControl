@@ -15,7 +15,7 @@ So this plan replaces that one screen with a **Discord Activity**: a real web ap
 
 **MVP scope, confirmed with the project owner:** only the participating-clans table (checkbox / tag / tier / roster size / start time, ~12-30 rows). The 50-*player* roster/sign-up/assignment screens from later phases are explicitly **out of scope** for this plan — that's a separate, bigger problem for a later round, not what triggered this.
 
-Two prior research threads (Microsoft Enterprise Copilot chat log, and a separate research-agent report — both supplied by the project owner) independently converged on the same architecture: Cloudflare Pages (frontend) + Cloudflare Workers (backend, Hono, OAuth2 token exchange) + the official `@discord/embedded-app-sdk`. This plan reuses that conclusion and adapts it to QapBot's actual constraints (SQLite data living on the bot's own host, not in a hosted DB Cloudflare can reach directly).
+Two prior research threads (Microsoft Enterprise Copilot chat log, and a separate research-agent report — both supplied by the project owner) independently converged on the same architecture: Cloudflare Pages (frontend) + Cloudflare Workers (backend, Hono, OAuth2 token exchange) + the official `@discord/embedded-app-sdk`. This plan reuses that conclusion and adapts it to ClashControl's actual constraints (SQLite data living on the bot's own host, not in a hosted DB Cloudflare can reach directly).
 
 ---
 
@@ -85,8 +85,8 @@ Three deployable things, one new local process is *not* one of them — the brid
 1. Activity launches inside a guild context — the Embedded App SDK exposes `discordSdk.guildId` directly, no need to derive it from anything else.
 2. Frontend does the standard OAuth2 `authorize` → Worker exchanges `code` for an `access_token` (Client Secret never touches the frontend) → frontend calls `discordSdk.commands.authenticate()`.
 3. Worker calls `GET /users/@me/guilds` with that token, finds the entry matching `discordSdk.guildId`, and reads its `permissions` field. If the `ADMINISTRATOR` bit isn't set, the Worker still forwards the request to the bridge (see next point) rather than rejecting outright — the bot-side check is authoritative.
-4. Every bridge API call carries `{discord_user_id, guild_id}` (verified by the Worker's own OAuth check) plus the shared bridge secret. **QapBot's bridge API re-derives admin status itself**, reusing `check_admin_permissions()`'s exact logic (guild `administrator` permission **or** the configured single super-admin override) — this is what correctly covers the super-admin edge case without duplicating that logic in JavaScript, and means the Worker is never the sole authority on "is this person allowed."
-5. Shared bridge secret: a random token, stored as a Cloudflare Worker secret (`wrangler secret put BRIDGE_SECRET`) and in QapBot's `.env` (gitignored, never committed — per the project's existing secrets-handling rule). Rotate by regenerating and updating both sides.
+4. Every bridge API call carries `{discord_user_id, guild_id}` (verified by the Worker's own OAuth check) plus the shared bridge secret. **ClashControl's bridge API re-derives admin status itself**, reusing `check_admin_permissions()`'s exact logic (guild `administrator` permission **or** the configured single super-admin override) — this is what correctly covers the super-admin edge case without duplicating that logic in JavaScript, and means the Worker is never the sole authority on "is this person allowed."
+5. Shared bridge secret: a random token, stored as a Cloudflare Worker secret (`wrangler secret put BRIDGE_SECRET`) and in ClashControl's `.env` (gitignored, never committed — per the project's existing secrets-handling rule). Rotate by regenerating and updating both sides.
 
 ---
 
@@ -119,7 +119,7 @@ Per the "set up both from day one" decision, this is done twice — once for the
 
 For each application:
 1. Enable **Activities → Settings**.
-2. Set **URL Mapping**: root → `<project>-<env>.pages.dev`, `/api` → `<project>-<env>.workers.dev`.
+2. Set **URL Mapping**: root → `<project>-<env>.pages.dev`, `/api` → `<project>-<env>.workers.dev` (since 2026-09-26: the Worker's Custom Domain `api-dev.clashcontrol.uk` / `api.clashcontrol.uk` — see `activity/README.md` "Current hostnames and tunnels").
 3. Note the **OAuth2 Client ID** and generate a **Client Secret** (goes into that environment's Worker secrets, never the repo).
 4. Add `identify guilds` to the OAuth2 scopes used by the Activity's `authorize()` call.
 
@@ -196,7 +196,7 @@ permanent fix, not a one-off: every future global sync on either app (DEV or PRO
 Activities-enabled) would otherwise hit this. 3 new tests in `tests/discord/test_discord_health.py`
 — 1636 total tests pass.
 
-**Named tunnel + auto-start, including a real boot-time bug**: bought `qapbot.uk` via
+**Named tunnel + auto-start, including a real boot-time bug** (names below are as of Phase D; since 2026-09-26 it's `clashcontrol.uk`, tunnels `clashcontrol-dev-bridge`/`clashcontrol-prod-bridge` — see `activity/README.md` "Current hostnames and tunnels"): bought `qapbot.uk` via
 Cloudflare Registrar (DEV keeps its quick tunnel since a human restarts it by hand; PROD needed
 a stable hostname since nobody's watching for a changed URL after an unattended reboot).
 `cloudflared tunnel create`/`route dns` set up `bridge-prod.qapbot.uk` → `qapbot-prod-bridge` →
@@ -336,7 +336,7 @@ Each phase gets its own changelog entry and commit, per the project's establishe
 
 - **Table visual styling**: left as a neutral admin-tool look — never revisited, no issue raised. Still open if you want to match Discord's dark theme colors, but non-blocking.
 - **Bridge shared-secret**: resolved as a single static token (`WEB_BRIDGE_SECRET`/`_DEV`, `wrangler secret put BRIDGE_SECRET`) — shipped this way in Phase B and carried through Phase D unchanged, no short-lived signed-token scheme was needed at this scale.
-- **DEV/PROD tunnel sharing**: resolved as fully separate tunnels — DEV keeps Cloudflare's free quick tunnel (a human restarts it by hand), PROD got a named tunnel (`bridge-prod.qapbot.uk`, Phase D) since it needs a stable hostname that survives unattended reboots.
+- **DEV/PROD tunnel sharing**: resolved as fully separate tunnels — DEV kept Cloudflare's free quick tunnel (a human restarts it by hand), PROD got a named tunnel (`bridge-prod.qapbot.uk`, Phase D) since it needs a stable hostname that survives unattended reboots. Since 2026-09-26 both are named tunnels on `clashcontrol.uk` (`bridge-dev.` / `bridge-prod.`).
 
 ---
 

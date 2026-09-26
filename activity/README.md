@@ -32,7 +32,8 @@ them rather than carrying that forward).
    - This step needs a deployed URL first (chicken-and-egg) — see "First deploy" below, then
      come back here.
    - Developer Portal → your application → **Activities → Settings** → enable.
-   - **URL Mapping**: root (`/`) → your `*.pages.dev` URL, `/api` → your `*.workers.dev` URL.
+   - **URL Mapping**: root (`/`) → your `*.pages.dev` URL, `/api` → the Worker's own hostname
+     (`api-dev.clashcontrol.uk` / `api.clashcontrol.uk`, see "Current hostnames and tunnels" below).
    - Note the **OAuth2 Client ID** (not secret, goes in `wrangler.toml`) and generate a
      **Client Secret** (real secret — goes in Wrangler secrets, never a file in this repo).
 
@@ -40,7 +41,7 @@ them rather than carrying that forward).
 
 ```
 cd activity/server
-npm run deploy:dev          # first deploy — gives you the *.workers.dev URL
+npm run deploy:dev          # first deploy — creates the Worker on its wrangler.toml route (+ workers.dev)
 wrangler secret put CLIENT_SECRET --env dev   # paste the Client Secret from the Developer Portal
 
 cd ../client
@@ -129,10 +130,63 @@ validated, use a `cloudflared` tunnel to your Vite dev server and point a *secon
 skeleton deployed and working — `npm run dev` in each project is enough to catch build errors
 before deploying.
 
+## Current hostnames and tunnels (since 2026-09-26)
+
+| Piece | DEV | PROD |
+|---|---|---|
+| Pages (`/` URL Mapping, legal pages) | `cwl-clan-config-dev.pages.dev` | `cwl-clan-config-prod.pages.dev` |
+| Worker (`/api` URL Mapping) | `api-dev.clashcontrol.uk` | `api.clashcontrol.uk` |
+| Worker fallback (workers.dev, kept enabled) | `cwl-clan-config-server-dev.clashcontrol.workers.dev` | `cwl-clan-config-server-prod.clashcontrol.workers.dev` |
+| Bridge hostname (Worker secret `BRIDGE_URL`) | `https://bridge-dev.clashcontrol.uk` | `https://bridge-prod.clashcontrol.uk` |
+| Named tunnel | `clashcontrol-dev-bridge` (Windows, `%USERPROFILE%\.cloudflared\config.yml`, started by hand) | `clashcontrol-prod-bridge` (NAS, `/root/.cloudflared/config.yml`, supervisor below) |
+| Bot bridge port (`.env`) | `WEB_BRIDGE_PORT_DEV=8788` | `WEB_BRIDGE_PORT=8789` |
+
+The Worker hostnames are Custom Domains declared as `routes` in `server/wrangler.toml` (wrangler
+creates DNS + certificate on deploy). The tracker MCP server reaches PROD's bridge via
+`TRACKER_BRIDGE_URL=https://bridge-prod.clashcontrol.uk` in `.env`.
+
+DEV tunnel, run from the project root (the DEV bot must be running for `/api/health` to answer --
+a Cloudflare `502` means the tunnel is up but nothing listens on the port, `1033` means no tunnel
+connector is running at all):
+```powershell
+cloudflared tunnel --config "$env:USERPROFILE\.cloudflared\config.yml" run clashcontrol-dev-bridge
+curl.exe -sS https://bridge-dev.clashcontrol.uk/api/health
+```
+
+### Moving to a different domain (runbook from the qapbot.uk -> clashcontrol.uk switch)
+
+Named tunnels can't be renamed, so a domain move means new tunnels running side by side with the
+old ones until the new path is verified:
+
+1. `cloudflared tunnel create <new-name>` (Windows for DEV; on the NAS as root with `HOME=/root`
+   for PROD) -> note the Tunnel ID.
+2. **Create the DNS record by hand** in the dashboard (new zone -> DNS -> Add record: `CNAME`,
+   name `bridge-dev`/`bridge-prod`, target `<tunnel-id>.cfargotunnel.com`, **Proxied**). Do *not*
+   use `cloudflared tunnel route dns` here: it creates the record in the zone `cert.pem` was issued
+   for at `tunnel login` time, so a hostname in a different zone silently ends up as
+   `bridge-prod.newdomain.tld.olddomain.tld`.
+3. Back up `config.yml`, point it at the new Tunnel ID / credentials JSON / hostname, and use
+   `http://127.0.0.1:<port>` rather than `localhost` (cloudflared tries IPv6 `[::1]` first; the
+   bridge only binds IPv4 `127.0.0.1`).
+4. Run the new tunnel in the foreground next to the old one, check `/api/health` on the new
+   hostname, then `wrangler secret put BRIDGE_URL --env <dev|prod>` (no trailing slash) and test
+   the Activity.
+5. PROD: change the tunnel name in `/volume1/@cloudflared/cloudflared-supervisor.sh`, then
+   `kill $(cat /volume1/@cloudflared/supervisor.pid)` and start the supervisor again
+   (`nohup bash /volume1/@cloudflared/cloudflared-supervisor.sh >/dev/null 2>&1 &`).
+6. Worker hostnames: change `routes` in `server/wrangler.toml`, keep `workers_dev = true` (with
+   `routes` present wrangler otherwise disables workers.dev on deploy and cuts off a URL Mapping
+   that still points there), deploy, then switch the `/api` URL Mapping in the Developer Portal.
+   A brand-new hostname can be `NXDOMAIN` in the *local* resolver cache for a while if it was
+   queried before it existed -- check with `Resolve-DnsName <host> -Server 1.1.1.1` before
+   assuming the deploy failed.
+7. Update `TRACKER_BRIDGE_URL` in `.env`, then clean up: `cloudflared tunnel cleanup <old>` +
+   `cloudflared tunnel delete <old>`, delete the old zone's DNS records.
+
 ## PROD rollout — NAS bridge & named tunnel (Phase D)
 
-Unlike DEV (bot runs on the dev Windows machine, `cloudflared`'s free **quick tunnel** is fine
-since a dev restarts it by hand anyway), PROD runs unattended on the NAS
+DEV originally used `cloudflared`'s free **quick tunnel** (a dev restarts it by hand anyway) and
+has used a named tunnel too since 2026-09-26 (see above). PROD runs unattended on the NAS
 (`PROD_BOT_ROOT`/`PROD_SSD_UNC` in `.env`). A quick tunnel mints a brand-new random
 `*.trycloudflare.com` URL on every restart with no notification — after any NAS reboot the
 bridge silently goes dark until someone notices the Activity is broken and manually re-runs
@@ -144,6 +198,7 @@ restarts, at the cost of needing one domain in the same Cloudflare account.
    Cloudflare dashboard → **Domain Registration → Register a Domain** → search → buy (sold at
    cost, no markup; nameservers auto-configured, no manual DNS delegation step). Any cheap TLD
    is fine — nothing here is user-facing, only the Worker's `BRIDGE_URL` config ever uses it.
+   (Currently `clashcontrol.uk`; `qapbot.uk` until 2026-09-26.)
 2. **Generate the bridge secret** (skip if `.env`'s `WEB_BRIDGE_SECRET` — PROD, no `_DEV` suffix
    — is already filled in): a random token, e.g. `openssl rand -base64 32`. Put the same value
    in two places and nowhere else:
@@ -156,27 +211,29 @@ restarts, at the cost of needing one domain in the same Cloudflare account.
 4. **Authenticate and create the named tunnel** (one-time, run on the NAS):
    ```
    cloudflared tunnel login                              # opens a browser auth against your Cloudflare account
-   cloudflared tunnel create qapbot-prod-bridge           # writes a credentials JSON, prints a Tunnel ID
-   cloudflared tunnel route dns qapbot-prod-bridge bridge.<your-domain>   # auto-creates the DNS record
+   cloudflared tunnel create clashcontrol-prod-bridge     # writes a credentials JSON, prints a Tunnel ID
+   cloudflared tunnel route dns clashcontrol-prod-bridge bridge-prod.clashcontrol.uk   # creates the DNS record
+   # ^ only if `tunnel login` was done against clashcontrol.uk -- the current cert.pem on both
+   #   machines is still from the qapbot.uk login, so create the CNAME by hand (runbook above).
    ```
 5. **Config file** (e.g. `~/.cloudflared/config.yml` on the NAS):
    ```yaml
-   tunnel: qapbot-prod-bridge
+   tunnel: clashcontrol-prod-bridge
    credentials-file: /root/.cloudflared/<tunnel-id>.json
    ingress:
-     - hostname: bridge.<your-domain>
-       service: http://localhost:8789   # WEB_BRIDGE_PORT from .env
+     - hostname: bridge-prod.clashcontrol.uk
+       service: http://127.0.0.1:8789   # WEB_BRIDGE_PORT from .env (not localhost: see runbook above)
      - service: http_status:404
    ```
-6. **Test it**: `cloudflared tunnel run qapbot-prod-bridge` (with the PROD bot already running
-   and its bridge listening on `127.0.0.1:8789`), confirm `https://bridge.<your-domain>/api/health`
+6. **Test it**: `cloudflared tunnel run clashcontrol-prod-bridge` (with the PROD bot already running
+   and its bridge listening on `127.0.0.1:8789`), confirm `https://bridge-prod.clashcontrol.uk/api/health`
    responds, then stop it and set up auto-start — on Synology DSM,
    **Control Panel → Task Scheduler → Create → Triggered Task → User-defined script**, trigger
    **Boot-up**, user **root** (must be root — a non-root user can't read `/root/.cloudflared/`'s
    credentials at all, confirmed the hard way). Run command:
    ```sh
    sleep 15
-   HOME=/root /usr/local/bin/cloudflared tunnel --config /root/.cloudflared/config.yml run qapbot-prod-bridge >> /var/log/cloudflared-prod-bridge.log 2>&1
+   HOME=/root /usr/local/bin/cloudflared tunnel --config /root/.cloudflared/config.yml run clashcontrol-prod-bridge >> /var/log/cloudflared-prod-bridge.log 2>&1
    ```
    The `sleep 15` and explicit `HOME`/`--config` aren't optional — DSM's Boot-up trigger can fire
    before the network is fully up, and `cloudflared`'s default `~/.cloudflared/` lookup isn't
@@ -211,7 +268,7 @@ restarts, at the cost of needing one domain in the same Cloudflare account.
    [ -L /usr/local/bin/cloudflared ] || ln -sf /volume1/@cloudflared/bin/cloudflared /usr/local/bin/cloudflared
    [ -L /root/.cloudflared ] || ln -sf /volume1/@cloudflared/dotcloudflared /root/.cloudflared
    sleep 15
-   HOME=/root /usr/local/bin/cloudflared tunnel --config /root/.cloudflared/config.yml run qapbot-prod-bridge >> /var/log/cloudflared-prod-bridge.log 2>&1
+   HOME=/root /usr/local/bin/cloudflared tunnel --config /root/.cloudflared/config.yml run clashcontrol-prod-bridge >> /var/log/cloudflared-prod-bridge.log 2>&1
    ```
    **Resolved by a real reboot test (2026-08-10)**: this migration added a new boot-time
    dependency the original script didn't have — `/volume1` must actually be mounted before these
@@ -232,7 +289,7 @@ restarts, at the cost of needing one domain in the same Cloudflare account.
    [ -L /usr/local/bin/cloudflared ] || ln -sf /volume1/@cloudflared/bin/cloudflared /usr/local/bin/cloudflared
    [ -L /root/.cloudflared ] || ln -sf /volume1/@cloudflared/dotcloudflared /root/.cloudflared
    sleep 15
-   HOME=/root /usr/local/bin/cloudflared tunnel --config /root/.cloudflared/config.yml run qapbot-prod-bridge >> /var/log/cloudflared-prod-bridge.log 2>&1
+   HOME=/root /usr/local/bin/cloudflared tunnel --config /root/.cloudflared/config.yml run clashcontrol-prod-bridge >> /var/log/cloudflared-prod-bridge.log 2>&1
    ```
    Entware's own boot task has the identical theoretical gap (no wait for `/volume1` before its
    `ln -sf`) but has never hit it in practice — its script only *restores a pointer*, it doesn't
@@ -253,7 +310,7 @@ restarts, at the cost of needing one domain in the same Cloudflare account.
    ```
    ```sh
    #!/bin/bash
-   # Supervises the qapbot-prod-bridge cloudflared tunnel: restarts it on ANY exit
+   # Supervises the clashcontrol-prod-bridge cloudflared tunnel: restarts it on ANY exit
    # (crash, OOM, or a routine "cloudflared has been updated" self-shutdown -- autoupdate
    # is deliberately left ON) so a silent exit no longer means ~26h of downtime like
    # 2026-08-14. Boot-up-triggered by DSM Task Scheduler; this loop is what actually keeps
@@ -280,7 +337,7 @@ restarts, at the cost of needing one domain in the same Cloudflare account.
 
    while [ "$STOP" -eq 0 ]; do
      echo "$(date -Iseconds) INF supervisor starting cloudflared" >> "$LOG"
-     HOME=/root /usr/local/bin/cloudflared tunnel --config /root/.cloudflared/config.yml run qapbot-prod-bridge >> "$LOG" 2>&1 &
+     HOME=/root /usr/local/bin/cloudflared tunnel --config /root/.cloudflared/config.yml run clashcontrol-prod-bridge >> "$LOG" 2>&1 &
      CF_PID=$!
      wait "$CF_PID"
      if [ "$STOP" -eq 0 ]; then
@@ -311,7 +368,7 @@ restarts, at the cost of needing one domain in the same Cloudflare account.
    reconnected within seconds; a full NAS reboot afterward also came back up clean through the
    same Boot-up trigger, now pointing at the supervisor.
 9. **Wire the Worker to it**: `cd activity/server && npx wrangler secret put BRIDGE_URL --env prod`
-   → `https://bridge.<your-domain>`.
+   → `https://bridge-prod.clashcontrol.uk` (no trailing slash).
 10. **Smoke test**: launch the Activity from a real PROD guild, confirm the clan-config table
     loads real data and Save round-trips through the whole chain.
 

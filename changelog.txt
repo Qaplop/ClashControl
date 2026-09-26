@@ -1,6 +1,17 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-26 (12)
+- Fixed: during maintenance mode (DB closed for safe file access) every sync DB call fell into
+  _sync_conn()'s pool-less fallback and silently reopened clashcontrol.db + history DB (WAL,
+  new -wal/-shm files) -- e.g. from any Activity/bridge request. The fallback now refuses while
+  QBcore.maintenance_mode is set, like the async _ensure_connection(). The web bridge answers
+  every endpoint but /api/health with 503 {"error": "maintenance"} (was a plain-text 500 per
+  handler), and the tracker MCP client turns that -- and any non-JSON error -- into a readable
+  message instead of "unexpected mimetype". Playbook pitfall 43. Build 121.
+  Files: clashcontrol/db_manager.py, clashcontrol/web_bridge.py,
+  clashcontrol/mcp/tracker_bridge_client.py, .github/copilot-instructions.md, tests. 3580 tests pass.
+
 2026-09-26 (11)
 - Fixed: clans.updated_at was only ever set on INSERT, so it always equalled the creation time.
   Every clan write now stamps it: save_clan()'s upsert and bulk_update_clan_subscription_statuses /

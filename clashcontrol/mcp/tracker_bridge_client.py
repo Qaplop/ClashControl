@@ -13,6 +13,21 @@ class TrackerBridgeError(RuntimeError):
     """Raised for any non-200 bridge response — message is the bridge's own `error` field."""
 
 
+async def _read_body(resp: aiohttp.ClientResponse) -> Dict[str, Any]:
+    """The JSON body — or, for a non-JSON error page (aiohttp's plain-text 500, a proxy
+    error), its text as the `error`, so the real cause reaches the caller instead of an
+    'unexpected mimetype' decode error. 503 `maintenance` gets its own message."""
+    try:
+        body = await resp.json(content_type=None)
+    except (aiohttp.ContentTypeError, ValueError):
+        body = None
+    if not isinstance(body, dict):
+        body = {"error": (await resp.text())[:300] or f"HTTP {resp.status}"}
+    if resp.status == 503 and body.get("error") == "maintenance":
+        body["error"] = "the bot is in maintenance mode (database closed) — try again after /admin Maintenance End"
+    return body
+
+
 class TrackerBridgeClient:
     def __init__(self, base_url: str, secret: str, admin_label: str):
         self.base_url = base_url.rstrip("/")
@@ -25,7 +40,7 @@ class TrackerBridgeClient:
     async def _get(self, path: str, params: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
         async with aiohttp.ClientSession() as session:
             async with session.get(f"{self.base_url}{path}", params=params, headers=self._headers()) as resp:
-                body = await resp.json()
+                body = await _read_body(resp)
                 if resp.status != 200:
                     raise TrackerBridgeError(body.get("error", f"HTTP {resp.status}"))
                 return body
@@ -33,7 +48,7 @@ class TrackerBridgeClient:
     async def _post(self, path: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         async with aiohttp.ClientSession() as session:
             async with session.post(f"{self.base_url}{path}", json=payload, headers=self._headers()) as resp:
-                body = await resp.json()
+                body = await _read_body(resp)
                 if resp.status != 200:
                     raise TrackerBridgeError(body.get("error", f"HTTP {resp.status}"))
                 return body

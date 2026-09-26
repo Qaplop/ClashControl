@@ -84,6 +84,22 @@ async def _access_log_middleware(request: web.Request, handler: Any) -> web.Stre
     return response
 
 
+@web.middleware
+async def _maintenance_middleware(request: web.Request, handler: Any) -> web.StreamResponse:
+    """While the bot is in maintenance mode (/admin Maintenance Start) the database is closed on
+    purpose, so every data endpoint would fail. Answer them all with one clear 503 JSON error
+    instead of each handler crashing into aiohttp's plain-text 500 (which the tracker MCP
+    client couldn't even decode). /api/health stays up — the process is alive."""
+    import QBcore
+
+    if getattr(QBcore, "maintenance_mode", False) and request.path != "/api/health":
+        return web.json_response(
+            {"error": "maintenance", "message": "ClashControl is in maintenance mode — try again once it has ended."},
+            status=503,
+        )
+    return await handler(request)
+
+
 def _check_secret(request: web.Request) -> bool:
     """Authenticate a bridge request against the shared ``X-Bridge-Secret``.
 
@@ -3839,7 +3855,7 @@ async def handle_post_tracker_testcase_move_done(request: web.Request) -> web.Re
 
 
 def create_app() -> web.Application:
-    app = web.Application(middlewares=[_access_log_middleware])
+    app = web.Application(middlewares=[_access_log_middleware, _maintenance_middleware])
     app.router.add_get("/api/health", handle_health)
     app.router.add_get("/api/i18n", handle_get_i18n)
     app.router.add_get("/api/cwl/player-prefs", handle_get_cwl_player_prefs)

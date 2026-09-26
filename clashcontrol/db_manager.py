@@ -782,7 +782,20 @@ class WarHistoryDB:
             yield batch_conn
             return
         if getattr(self, '_pool', None) is None:
-            # Fallback for tests or pre-initialize usage
+            # Fallback for tests or pre-initialize usage.
+            # NOT during maintenance: close() drops the pool, so without this guard every sync
+            # read (a bridge/Activity request, a bot-admin command) silently reopened
+            # clashcontrol.db + the history DB and set WAL mode — recreating -wal/-shm files
+            # while data/ is being copied, which is exactly what maintenance mode exists to
+            # prevent (2026-09-26). Same rule as _ensure_connection()'s async path.
+            _in_maintenance = False
+            try:
+                import QBcore as _qbcore
+                _in_maintenance = bool(getattr(_qbcore, "maintenance_mode", False))
+            except ImportError:
+                pass
+            if _in_maintenance:
+                raise RuntimeError("[DB-MAINT] Database closed for maintenance — refusing sync fallback connection")
             import sqlite3
             conn = sqlite3.connect(self.db_path)  # type: ignore[arg-type]
             conn.row_factory = sqlite3.Row

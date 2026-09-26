@@ -1,6 +1,15 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-26 (15)
+- Added: /admin Execute Nightly Maintenance takes an optional skip_db_maintenance:True -- runs the
+  data steps (archive move, migration if due, CWL purge, DM-ref purge, clan created_at backfill)
+  and GC, but skips Steps 1-3 (WAL checkpoint, REINDEX/VACUUM, ANALYZE) and the Step 4 stats
+  refresh. Also carried through the deferred (cycle running) path. The scheduled 03:00 run never
+  skips (structural test). /admin help + README; /admin help now also lists DM User (#0119).
+  Build 124. Files: ClashControl.py, QBcore.py, QBdiscordcmds.py, clashcontrol/translations/*.json,
+  README.md, tests. 3583 tests pass.
+
 2026-09-26 (14)
 - Fixed: nightly maintenance Steps 0.7 (purge_stale_cwl_dm_refs_sync) and 0.8 (clan created_at
   backfill) failed with "database is locked" (PROD 17:17:05 / 17:17:22). Cause: Step 0.6

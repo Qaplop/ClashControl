@@ -116,8 +116,31 @@ def test_routine_takes_no_per_caller_budget_override() -> None:
     apart before. A behavioural test cannot catch that — the signature is the contract."""
     import inspect
 
-    params = set(inspect.signature(ClashControl.run_nightly_maintenance_routine).parameters)
-    assert params == {"db_mgr", "run_migration"}, (
-        f"unexpected parameters {sorted(params)} — /admin and the scheduled nightly run "
-        f"must stay byte-for-byte the same call"
+    sig = inspect.signature(ClashControl.run_nightly_maintenance_routine)
+    # skip_db_maintenance (2026-09-26, project owner's request) is the one deliberate, opt-in
+    # difference: /admin may skip the DB-MAINT steps. It defaults to False, so a caller that
+    # doesn't pass it gets the identical routine — budgets still may not be per-caller.
+    assert set(sig.parameters) == {"db_mgr", "run_migration", "skip_db_maintenance"}, (
+        f"unexpected parameters {sorted(sig.parameters)} — /admin and the scheduled nightly run "
+        f"must stay the same call (only the opt-in skip_db_maintenance may differ)"
     )
+    assert sig.parameters["skip_db_maintenance"].default is False
+
+
+def test_scheduled_nightly_run_never_skips_db_maintenance() -> None:
+    """The 03:00 UTC scheduler call must not pass skip_db_maintenance — only /admin may."""
+    import ast
+    import inspect
+
+    tree = ast.parse(inspect.getsource(ClashControl))
+    calls = [
+        n for n in ast.walk(tree)
+        if isinstance(n, ast.Call) and getattr(n.func, "id", None) == "run_nightly_maintenance_routine"
+    ]
+    scheduled = [c for c in calls if not any(k.arg == "skip_db_maintenance" for k in c.keywords)]
+    assert scheduled, "the scheduled nightly call site must call the routine without skip_db_maintenance"
+    for c in calls:
+        for k in c.keywords:
+            if k.arg == "skip_db_maintenance":
+                # Only the deferred /admin path may pass it, and only from the stored /admin flag.
+                assert isinstance(k.value, ast.Name) and k.value.id == "_opt_skip_db"

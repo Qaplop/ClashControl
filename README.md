@@ -226,7 +226,8 @@ action. There is no separate `/clans`, `/list_families`, `/list_players`, `/list
   - **BACKFILL_CWL_GROUPS** - Fetch league groups for clans with <7 rounds (bot admin)
   - **WAR_PREDICT** - Predict outcome between two clans (bot admin)
   - **START_UPDATE_CYCLE** - Skip the sleep phase and start the next update cycle immediately (bot admin)
-  - **OPTIMIZE_DB** - Run archive move + DB ANALYZE/REINDEX/VACUUM now (bot admin)
+  - **OPTIMIZE_DB** - Run archive move + DB ANALYZE/REINDEX/VACUUM now (bot admin);
+    `skip_db_maintenance:True` runs only the data steps and skips the long REINDEX/VACUUM/ANALYZE part
   - **MEMORY_PROFILE** - Dump memory allocation stats to the log file (bot admin)
   - **MAINTENANCE_START** - Suspend updates and close the DB for safe external access (bot admin)
   - **MAINTENANCE_END** - Restart the bot and resume normal operation (bot admin)

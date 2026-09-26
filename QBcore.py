@@ -87,7 +87,7 @@ BOT_VERSION: str = "1.3.39"
 # .github/copilot-instructions.md.  BOT_VERSION answers "which release is this?";
 # BOT_BUILD answers "which edit of it is actually running?", which is the question that
 # matters when reading the server-machine's log after a file-copy deploy.
-BOT_BUILD: int = 123
+BOT_BUILD: int = 124
 
 
 def source_fingerprint() -> str:
@@ -728,6 +728,10 @@ periodic_main() checks this flag immediately after the cycle finishes and, if se
 runs nightly_db_maintenance() exactly as the nightly scheduler does.
 Cleared by periodic_main() after the task is launched.
 """
+
+optimize_db_pending_skip_db: bool = False
+"""The deferred /admin Execute Nightly Maintenance run's skip_db_maintenance option — carried
+alongside optimize_db_pending, cleared together with it."""
 
 optimize_db_pending_interaction: Any = None
 """

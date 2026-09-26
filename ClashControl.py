@@ -2595,7 +2595,7 @@ async def _warm_global_db_stats_cache(force_refresh: bool = False) -> None:
         logging.warning(f"[DB-STATS-WARM] Failed to warm global DB statistics cache: {_exc}")
 
 
-async def run_nightly_maintenance_routine(db_mgr: Any, run_migration: bool) -> str:
+async def run_nightly_maintenance_routine(db_mgr: Any, run_migration: bool, skip_db_maintenance: bool = False) -> str:
     """
     Full nightly maintenance routine: Step 0 (archive file move) + Step 0.5
     (optional monthly hot->history migration) + Steps 1-3 (WAL checkpoint,
@@ -2619,6 +2619,11 @@ async def run_nightly_maintenance_routine(db_mgr: Any, run_migration: bool) -> s
         run_migration: Whether Step 0.5 (run_history_migration) should run this
             call. Both callers derive it the same way, from
             is_history_migration_due().
+        skip_db_maintenance: /admin only (2026-09-26) — skip Steps 1-3 (WAL checkpoint,
+            REINDEX/VACUUM, ANALYZE) and the Step 4 statistics refresh that exists to reflect
+            them, for a quick run of the data steps (0-0.8). The scheduled 03:00 run never
+            skips. Steps 1-3 are also what persists the "last DB maintenance" timestamp, so a
+            skipped run correctly doesn't count as one.
 
     Returns:
         The nightly_db_maintenance() result string (for display to the caller).
@@ -2670,13 +2675,17 @@ async def run_nightly_maintenance_routine(db_mgr: Any, run_migration: bool) -> s
             await asyncio.to_thread(db_mgr.backfill_clan_created_at_from_first_war_sync)
         except Exception as _created_exc:
             logging.error(f"[CLAN-CREATED-AT] Failed, continuing with maintenance: {_created_exc}", exc_info=True)
-        # Steps 1-3: WAL checkpoint → REINDEX/VACUUM → ANALYZE (blocks
-        # Discord commands internally via db_maintenance_mode).
-        _result = await db_mgr.nightly_db_maintenance()
-        # Step 4: refresh the /status global-DB-statistics cache now that
-        # maintenance is fully done, so it reflects post-VACUUM/ANALYZE state
-        # and stays warm for the full 25h TTL until the next nightly run.
-        await _warm_global_db_stats_cache(force_refresh=True)
+        if skip_db_maintenance:
+            _result = "[DB-MAINT] Skipped on request (skip_db_maintenance) — no WAL checkpoint, REINDEX/VACUUM or ANALYZE"
+            logging.info(_result)
+        else:
+            # Steps 1-3: WAL checkpoint → REINDEX/VACUUM → ANALYZE (blocks
+            # Discord commands internally via db_maintenance_mode).
+            _result = await db_mgr.nightly_db_maintenance()
+            # Step 4: refresh the /status global-DB-statistics cache now that
+            # maintenance is fully done, so it reflects post-VACUUM/ANALYZE state
+            # and stays warm for the full 25h TTL until the next nightly run.
+            await _warm_global_db_stats_cache(force_refresh=True)
 
         # Step 5: nightly full GC sweep — a BACKSTOP since 2026-09-08, no longer the only
         # reclaim path. Automatic collection is enabled again (see the [GC-POLICY] block near
@@ -3241,6 +3250,7 @@ async def periodic_main() -> None:
                     _cancel_opt_interaction = QBcore.optimize_db_pending_interaction
                     QBcore.optimize_db_pending = False
                     QBcore.optimize_db_pending_interaction = None
+                    QBcore.optimize_db_pending_skip_db = False
                     if _cancel_opt_interaction is not None:
                         try:
                             await _cancel_opt_interaction.edit_original_response(
@@ -3260,8 +3270,10 @@ async def periodic_main() -> None:
             _optimize_launched = False
             if QBcore.optimize_db_pending and CACHE.db_manager is not None:
                 _opt_interaction = QBcore.optimize_db_pending_interaction
+                _opt_skip_db = QBcore.optimize_db_pending_skip_db
                 QBcore.optimize_db_pending = False
                 QBcore.optimize_db_pending_interaction = None
+                QBcore.optimize_db_pending_skip_db = False
                 _opt_db_mgr = CACHE.db_manager
                 _optimize_launched = True
                 logging.info("[DB-OPTIMIZE] Deferred run: cycle finished — starting nightly maintenance now.")
@@ -3270,7 +3282,9 @@ async def periodic_main() -> None:
                     QBcore.db_maintenance_idle_event.clear()
                     try:
                         _run_migration_opt = await is_history_migration_due()
-                        _result = await run_nightly_maintenance_routine(_opt_db_mgr, _run_migration_opt)
+                        _result = await run_nightly_maintenance_routine(
+                            _opt_db_mgr, _run_migration_opt, skip_db_maintenance=_opt_skip_db
+                        )
                         if _opt_interaction is not None:
                             try:
                                 await _opt_interaction.edit_original_response(

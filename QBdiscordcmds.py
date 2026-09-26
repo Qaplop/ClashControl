@@ -1274,7 +1274,8 @@ async def do_maintenance_shutdown() -> None:
 
 @app_commands.command(name="admin", description=dev_mode+"Administrative diagnostic actions and utilities")
 @app_commands.describe(
-    action="Select the administrative action to perform"
+    action="Select the administrative action to perform",
+    skip_db_maintenance="(Execute Nightly Maintenance only) True = skip the long REINDEX/VACUUM/ANALYZE part",
 )
 @app_commands.choices(action=[
     app_commands.Choice(name="Cleanup Messages - Clean up this discord server (admin)", value="CLEANUP_MESSAGES"),
@@ -1316,7 +1317,8 @@ async def do_maintenance_shutdown() -> None:
 # guild-admins-only get the existing "you need admin permissions" rejection rather than a picker.
 async def admin(
     interaction: discord.Interaction,
-    action: str
+    action: str,
+    skip_db_maintenance: Optional[bool] = None,
 ):
     """
     Administrative actions command with multiple subactions.
@@ -1324,7 +1326,7 @@ async def admin(
     Actions include diagnostic tools and administrative utilities.
     """
     action_norm = action.upper()
-    _log_cmd(interaction, "admin", action=action)
+    _log_cmd(interaction, "admin", action=action, skip_db_maintenance=skip_db_maintenance)
 
     # Handle MAINTENANCE_START action (bot admin only)
     if action_norm == "MAINTENANCE_START":
@@ -2694,6 +2696,7 @@ async def admin(
                 return
             QBcore.optimize_db_pending = True
             QBcore.optimize_db_pending_interaction = interaction
+            QBcore.optimize_db_pending_skip_db = bool(skip_db_maintenance)
             await interaction.followup.send(
                 "⏳ An update cycle is currently in progress.\n\nNightly maintenance (archive move + DB optimization) has been queued and will run automatically once the current cycle finishes.",
                 ephemeral=True
@@ -2703,7 +2706,10 @@ async def admin(
         # Bot is idle — run immediately (identical routine to the scheduled
         # 03:00 UTC nightly task: archive move + migration-if-due + DB maintenance)
         # (interaction already deferred at top of block)
-        logging.info(f"[DB-OPTIMIZE] Manual nightly maintenance run triggered by {interaction.user} ({interaction.user.id})")
+        logging.info(
+            f"[DB-OPTIMIZE] Manual nightly maintenance run triggered by {interaction.user} ({interaction.user.id})"
+            + (" — skipping DB maintenance (REINDEX/VACUUM/ANALYZE)" if skip_db_maintenance else "")
+        )
         _db_mgr = CACHE.db_manager
 
         async def _run_optimize_and_reply() -> None:
@@ -2712,7 +2718,9 @@ async def admin(
                 # Deliberately identical to the scheduled 03:00 UTC run — same due-check,
                 # same budgets, same steps. /admin is "do tonight's maintenance now".
                 _run_migration_opt = await is_history_migration_due()
-                result = await run_nightly_maintenance_routine(_db_mgr, _run_migration_opt)
+                result = await run_nightly_maintenance_routine(
+                    _db_mgr, _run_migration_opt, skip_db_maintenance=bool(skip_db_maintenance)
+                )
                 try:
                     await interaction.followup.send(
                         f"✅ **Nightly maintenance complete.**\n```\n{result}\n```",

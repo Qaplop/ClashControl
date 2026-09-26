@@ -330,7 +330,7 @@
         "detailed": "Aperi formam ad errorem renuntiandum. Functionat in omni servitore ubi automatum est, et in nuntiis privatis.\n\n**Usus:**\n`/bug [attachment1:<fasciculus>] [attachment2:<fasciculus>] [attachment3:<fasciculus>]`\n\n**Parametri:**\n• `attachment1`/`attachment2`/`attachment3` - Optionale: imagines vel fasciculi diarii (usque ad 3; plures postea addi possunt per bullam **Addere fasciculos** elementi)\n\n**Cursus:**\n1. Forma aperitur pro Titulo, Descriptione, Gradibus ad reproducendum, et Ambitu (DEV/PROD/ambo)\n2. Missio praevisionem exemplaris ostendit cum bullis Muta / Adde adiuncta / Mitte / Reice\n3. Missio errorem in canali notationis publicat cum indicio globali `#NNNN` et filum disputationis aperit\n\n**Exemplum:**\n`/bug`"
       },
       "feature": {
-        "short": "Pete munus pro ClashControl",
+        "short": "Pete munus pro ClashControl (etiam linguas alias)",
         "title": "💡 Mandatum Feature",
         "detailed": "Aperi formam ad munus petendum. Functionat in omni servitore ubi automatum est, et in nuntiis privatis.\n\n**Usus:**\n`/feature [attachment1:<fasciculus>] [attachment2:<fasciculus>] [attachment3:<fasciculus>]`\n\n**Parametri:**\n• `attachment1`/`attachment2`/`attachment3` - Optionale: imagines vel exempla (usque ad 3; plures postea addi possunt per bullam **Addere fasciculos** elementi)\n\n**Cursus:**\n1. Forma aperitur pro Titulo, Descriptione, et Cur hoc utile est?\n2. Missio praevisionem exemplaris ostendit cum bullis Muta / Adde adiuncta / Mitte / Reice\n3. Missio petitionem in canali notationis publicat cum indicio globali `#NNNN` et filum disputationis aperit\n\n**Exemplum:**\n`/feature`"
       }

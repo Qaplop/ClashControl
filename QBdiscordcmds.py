@@ -1083,7 +1083,7 @@ def _get_help_command_names() -> List[str]:
         "registration", "cwl preferences",
         "subscribe", "unsubscribe", "subscriptions", "leaderboard", "highlightme", "analyse cwl_league_group",
         "analyse cwl_opponent", "clan management", "admin", "list", "whois", "link clan", "link player",
-        "about", "ping", "status", "help"
+        "help", "about", "status", "ping"
     ]
     if CONFIG.tracker_enabled:
         names += ["bug", "feature"]
@@ -1176,7 +1176,7 @@ async def help(interaction: discord.Interaction, command: Optional[str] = None):
         t('commands.help.category_leaderboards', user_id=user_id, guild_id=guild_id): ["subscribe", "unsubscribe", "subscriptions", "leaderboard", "highlightme"],
         t('commands.help.category_clan_player_info', user_id=user_id, guild_id=guild_id): ["analyse cwl_league_group", "analyse cwl_opponent", "whois", "link clan", "link player"],
         t('commands.help.category_administration', user_id=user_id, guild_id=guild_id): ["clan management", "admin", "list"],
-        t('commands.help.category_bot_info', user_id=user_id, guild_id=guild_id): ["about", "ping", "status", "help"],
+        t('commands.help.category_bot_info', user_id=user_id, guild_id=guild_id): ["help", "about", "status", "ping"],
     }
     if CONFIG.tracker_enabled:
         categories[t('commands.help.category_tracker', user_id=user_id, guild_id=guild_id)] = ["bug", "feature"]

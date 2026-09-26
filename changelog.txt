@@ -1,6 +1,12 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-26 (8)
+- Changed (tracker #0138, #0139): /help's Bot Info block now lists /help, /about, /status, /ping
+  (also the autocomplete order and README), and /feature's short text mentions that it is also
+  the way to ask for additional languages (all 5 translations). Build 117.
+  Files: QBdiscordcmds.py, clashcontrol/translations/*.json, README.md. 3564 tests pass.
+
 2026-09-26 (7)
 - Docs (domain switch qapbot.uk -> clashcontrol.uk, Phase 4.5; switch completed and verified):
   activity/README.md gets a "Current hostnames and tunnels" table (Pages, Worker custom domains

@@ -195,14 +195,14 @@ action. There is no separate `/clans`, `/list_families`, `/list_players`, `/list
   verification, my accounts), always ephemeral; in the bot DM for a server you share with the
   bot (server picker if several)
 - `/cwl preferences` - Open your personal CWL settings (Activity); also works in the bot DM
+- `/help` - Show help information
 - `/about` - Open ClashControl's landing page (what it does, add it to a server, first commands)
   as a Discord Activity; also works in the bot DM
 - `/status` - Show bot status: uptime, memory usage, cache statistics
 - `/ping` - Check bot latency
-- `/help` - Show help information
 - `/bug` - Report a bug (opens a modal); works in any server the bot serves and in DMs. Only
   registered in PROD mode — see `BUG_FEATURE_TRACKER_PLAN.md`.
-- `/feature` - Request a feature (opens a modal); same availability as `/bug`.
+- `/feature` - Request a feature, incl. additional languages (opens a modal); same availability as `/bug`.
 
 ### Admin Commands
 - `/admin` - Administrative diagnostic actions and utilities; pick an `action` (permission scope

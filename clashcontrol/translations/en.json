@@ -330,7 +330,7 @@
         "detailed": "Open a modal to report a bug. Works in any server the bot is in, and in DMs.\n\n**Usage:**\n`/bug [attachment1:<file>] [attachment2:<file>] [attachment3:<file>]`\n\n**Parameters:**\n• `attachment1`/`attachment2`/`attachment3` - Optional: screenshots or log files (up to 3; more can be added afterwards via the item's **Add files** button)\n\n**Flow:**\n1. A modal opens for Title, Description, Steps to reproduce, and Environment (DEV/PROD/both)\n2. Submitting shows a draft preview with Edit / Add attachments / Submit / Discard buttons\n3. Submit posts the bug into the tracker channel with a global `#NNNN` id and opens a discussion thread\n\n**Example:**\n`/bug`"
       },
       "feature": {
-        "short": "Request a feature for ClashControl",
+        "short": "Request a feature for ClashControl (incl. additional languages)",
         "title": "💡 Feature Command",
         "detailed": "Open a modal to request a feature. Works in any server the bot is in, and in DMs.\n\n**Usage:**\n`/feature [attachment1:<file>] [attachment2:<file>] [attachment3:<file>]`\n\n**Parameters:**\n• `attachment1`/`attachment2`/`attachment3` - Optional: screenshots or mockups (up to 3; more can be added afterwards via the item's **Add files** button)\n\n**Flow:**\n1. A modal opens for Title, Description, and Why is this useful?\n2. Submitting shows a draft preview with Edit / Add attachments / Submit / Discard buttons\n3. Submit posts the request into the tracker channel with a global `#NNNN` id and opens a discussion thread\n\n**Example:**\n`/feature`"
       }

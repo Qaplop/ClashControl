@@ -11,7 +11,7 @@ from aiohttp.test_utils import TestClient, TestServer
 os.environ.setdefault("DISCORD_TOKEN", "test-token")
 
 import QBcore  # noqa: E402
-from clashcontrol.db_manager import WarHistoryDB  # noqa: E402
+from clashcontrol.db_manager import DatabaseMaintenanceError, WarHistoryDB  # noqa: E402
 
 
 @pytest.mark.asyncio
@@ -22,7 +22,7 @@ async def test_sync_fallback_refuses_to_reopen_db_during_maintenance(tmp_path, m
     assert db._pool is None
 
     monkeypatch.setattr(QBcore, "maintenance_mode", True)
-    with pytest.raises(RuntimeError, match="maintenance"):
+    with pytest.raises(DatabaseMaintenanceError):
         with db._sync_conn():
             pass
 
@@ -44,6 +44,28 @@ async def test_bridge_answers_503_json_during_maintenance(monkeypatch):
 
         health = await client.get("/api/health")
         assert health.status == 200
+
+
+@pytest.mark.asyncio
+async def test_bridge_turns_a_mid_request_maintenance_error_into_503(monkeypatch, caplog):
+    """Maintenance started after the middleware's flag check: the handler's DB call raises
+    DatabaseMaintenanceError — the answer is the same 503, logged as one INFO line, no traceback."""
+    from clashcontrol.web_bridge import create_app
+
+    async def _handler(request):
+        raise DatabaseMaintenanceError("[DB-MAINT] Database closed for maintenance — aborting auto-reconnect")
+
+    monkeypatch.setattr(QBcore, "maintenance_mode", False)
+    app = create_app()
+    app.router.add_get("/api/_test_maint_race", _handler)
+    caplog.set_level("INFO")
+    async with TestClient(TestServer(app)) as client:
+        resp = await client.get("/api/_test_maint_race")
+        assert resp.status == 503
+        assert (await resp.json())["error"] == "maintenance"
+    refused = [r for r in caplog.records if "refused" in r.getMessage()]
+    assert refused and refused[0].levelname == "INFO" and refused[0].exc_info is None
+    assert not [r for r in caplog.records if r.levelname == "ERROR"]
 
 
 @pytest.mark.asyncio

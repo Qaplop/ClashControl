@@ -1,6 +1,15 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-26 (13)
+- Fixed: a bridge request during maintenance mode logged a full traceback ("Error handling
+  request" -> RuntimeError [DB-MAINT] from get_tracker_item; PROD log 17:02:29). The DB now
+  raises DatabaseMaintenanceError (RuntimeError subclass) for "closed for maintenance", and
+  _maintenance_middleware also catches it from a handler that was already running when
+  maintenance started -> 503 {"error": "maintenance"} plus one INFO line "[WEB-BRIDGE] ... refused
+  -- ... (503)", no traceback. The tracker MCP tells the calling agent the bot is in maintenance.
+  Build 122. Files: clashcontrol/db_manager.py, clashcontrol/web_bridge.py, tests. 3581 tests pass.
+
 2026-09-26 (12)
 - Fixed: during maintenance mode (DB closed for safe file access) every sync DB call fell into
   _sync_conn()'s pool-less fallback and silently reopened clashcontrol.db + history DB (WAL,

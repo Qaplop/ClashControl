@@ -526,6 +526,13 @@ def db_memory_pragmas(schema: str = "") -> list[str]:
     ]
 
 
+class DatabaseMaintenanceError(RuntimeError):
+    """The database is closed for maintenance mode (/admin Maintenance Start) and must stay closed
+    so data/ can be copied safely. A RuntimeError subclass, so existing ``except RuntimeError``
+    handlers keep working; callers that want to answer "in maintenance" (the web bridge's
+    _maintenance_middleware) catch this class specifically."""
+
+
 class _SyncConnectionPool:
     """Bounded pool of ``sqlite3`` connections for threaded DB access.
 
@@ -795,7 +802,7 @@ class WarHistoryDB:
             except ImportError:
                 pass
             if _in_maintenance:
-                raise RuntimeError("[DB-MAINT] Database closed for maintenance — refusing sync fallback connection")
+                raise DatabaseMaintenanceError("[DB-MAINT] Database closed for maintenance — refusing sync fallback connection")
             import sqlite3
             conn = sqlite3.connect(self.db_path)  # type: ignore[arg-type]
             conn.row_factory = sqlite3.Row
@@ -1519,7 +1526,7 @@ class WarHistoryDB:
             except ImportError:
                 pass
             if _in_maintenance:
-                raise RuntimeError(
+                raise DatabaseMaintenanceError(
                     "[DB-MAINT] Database closed for maintenance — aborting auto-reconnect"
                 )
             logging.warning("[DB-RECONNECT] Connection is None, attempting reconnect...")

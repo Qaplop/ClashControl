@@ -89,15 +89,28 @@ async def _maintenance_middleware(request: web.Request, handler: Any) -> web.Str
     """While the bot is in maintenance mode (/admin Maintenance Start) the database is closed on
     purpose, so every data endpoint would fail. Answer them all with one clear 503 JSON error
     instead of each handler crashing into aiohttp's plain-text 500 (which the tracker MCP
-    client couldn't even decode). /api/health stays up — the process is alive."""
-    import QBcore
+    client couldn't even decode). /api/health stays up — the process is alive.
 
-    if getattr(QBcore, "maintenance_mode", False) and request.path != "/api/health":
+    Also catches DatabaseMaintenanceError from a handler that was already running when
+    maintenance started (the flag was still False at the check above), so that race ends in the
+    same 503 instead of a traceback. One INFO line per refused request, no traceback: this is
+    the expected answer during maintenance, not an error."""
+    import QBcore
+    from clashcontrol.db_manager import DatabaseMaintenanceError
+
+    def _refuse(reason: str) -> web.Response:
+        logging.info(f"[WEB-BRIDGE] {request.method} {request.path} refused — {reason} (503)")
         return web.json_response(
             {"error": "maintenance", "message": "ClashControl is in maintenance mode — try again once it has ended."},
             status=503,
         )
-    return await handler(request)
+
+    if getattr(QBcore, "maintenance_mode", False) and request.path != "/api/health":
+        return _refuse("bot is in maintenance mode, database closed")
+    try:
+        return await handler(request)
+    except DatabaseMaintenanceError:
+        return _refuse("maintenance started while the request was running, database closed")
 
 
 def _check_secret(request: web.Request) -> bool:

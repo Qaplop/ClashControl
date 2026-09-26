@@ -186,8 +186,9 @@ action. There is no separate `/clans`, `/list_families`, `/list_players`, `/list
   - **FAMILIES** - All clan families and their member clans
   - **PLAYERS** - All players for a given clan or family (`clan`/`family` parameter)
   - **TRACKED_CLANS** - Chart of tracked clans per war league
-- `/whois` - Show a Discord user's linked CoC accounts, or a player's war history (by tag/name
-  substring); also available as two right-click context-menu entries ("whois" on a user, and on
+- `/whois` - Show a Discord user's linked CoC accounts, a player's war history (by tag/name
+  substring), or a tracked clan's stored data (`clan:` — record, war counts, leagues, member
+  servers, plus a dropdown with every leaderboard mode for the current month); also available as two right-click context-menu entries ("whois" on a user, and on
   a message)
 - `/link clan` / `/link player` - Post an in-game link (`Name: https://link.clashofclans.com/...`)
   to a clan or player profile; pick by tag or name substring like `/analyse` and `/whois`
@@ -195,6 +196,8 @@ action. There is no separate `/clans`, `/list_families`, `/list_players`, `/list
   verification, my accounts), always ephemeral; in the bot DM for a server you share with the
   bot (server picker if several)
 - `/cwl preferences` - Open your personal CWL settings (Activity); also works in the bot DM
+- `/dm me` - Get a greeting DM (what ClashControl does, first commands, hint to `/help`) to
+  start a private conversation with the bot; also works in the bot DM
 - `/help` - Show help information
 - `/about` - Open ClashControl's landing page (what it does, add it to a server, first commands)
   as a Discord Activity; also works in the bot DM
@@ -213,6 +216,7 @@ action. There is no separate `/clans`, `/list_families`, `/list_players`, `/list
   - **CHECK_DATA** - Validate data consistency (bot admin)
   - **LIST_ALL_SUBSCRIPTIONS** - View all channel subscriptions (bot admin)
   - **TEST_NOTIFY** - Test war notifications for a clan (bot admin)
+  - **DM_USER** - Send the `/dm me` greeting DM to a member picked from the server (admin; server only)
   - **REMOVE_CLAN** - Remove a clan from tracking (admin)
   - **LIST_CLANS** - List all tracked clans with names and tags (admin)
   - **IMPORT_DATA** - Import player accounts from a ClashPerk embed (bot admin)

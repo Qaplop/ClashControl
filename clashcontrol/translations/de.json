@@ -206,7 +206,39 @@
       "chart_option_reliability": "Saisonverlauf Zuverlässigkeit",
       "chart_option_reliability_desc": "CK/CWL - monatliche Angriffsquote",
       "chart_option_activity": "Saisonverlauf Aktivität",
-      "chart_option_activity_desc": "CK/CWL - monatliche Aktivität (Angriffe vs. Maximum)"
+      "chart_option_activity_desc": "CK/CWL - monatliche Aktivität (Angriffe vs. Maximum)",
+      "clan_heading": "Clan",
+      "clan_section_clan": "🏰 Clan",
+      "clan_members": "Mitglieder",
+      "clan_level": "Clanlevel",
+      "clan_cwl_league": "CWL-Liga",
+      "clan_capital_league": "Hauptstadtliga",
+      "clan_win_streak": "Kriegs-Siegesserie",
+      "clan_warlog": "Kriegsprotokoll",
+      "clan_public": "öffentlich",
+      "clan_private": "privat",
+      "clan_section_wars": "⚔️ Von ClashControl gespeicherte Kriege",
+      "clan_wars_total": "Kriege: **{total}** gesamt ({cw} CW / {cwl} CWL)",
+      "clan_record_cw": "CW-Bilanz: **{wins}** Siege, **{losses}** Niederlagen, **{draws}** Unentschieden",
+      "clan_record_cwl": "CWL-Bilanz: **{wins}** Siege, **{losses}** Niederlagen, **{draws}** Unentschieden ({seasons} Saisons)",
+      "clan_war_range": "Erster Krieg: {first} · Letzter Krieg: {last}",
+      "clan_section_tracking": "📡 Tracking",
+      "clan_tracked_since": "Getrackt seit",
+      "clan_war_tracking": "Kriegs-Tracking",
+      "clan_status_active": "aktiv",
+      "clan_status_paused": "pausiert",
+      "clan_status_deleted": "Clan in Clash of Clans gelöscht",
+      "clan_last_war_update": "Letztes Kriegs-Update",
+      "clan_last_api_check": "Letzte API-Abfrage",
+      "clan_subscriptions": "Leaderboard-Abos",
+      "clan_families": "Clan-Familien",
+      "clan_member_servers": "Mitgliedsclan auf",
+      "clan_member_servers_none": "keinem Server",
+      "clan_footer": "Wähle unten ein Leaderboard (aktueller Monat, alle Mitglieder) — oder wechsle zurück zu dieser Übersicht.",
+      "clan_option_overview": "Clan-Übersicht",
+      "clan_select_placeholder": "Leaderboard für diesen Clan anzeigen...",
+      "clan_mode_failed": "⚠️ Das Leaderboard `{mode}` konnte für diesen Clan nicht erstellt werden.",
+      "clan_not_tracked": "❌ `{clan}` ist kein Clan, den ClashControl trackt — daher gibt es keine gespeicherten Daten. Wähle einen Clan aus den Vorschlägen oder nutze den Tag eines getrackten Clans."
     },
     "link": {
       "clan_not_found": "Clan `{tag}` wurde in Clash of Clans nicht gefunden.",
@@ -274,6 +306,11 @@
         "title": "🛡️ CWL-Präferenzen-Befehl",
         "detailed": "Öffnet deinen persönlichen CWL-Präferenzen-Bildschirm — lege fest, ob du immer, nie oder von Saison zu Saison neu entscheiden willst, ob du bei CWL teilnimmst, plus eine bevorzugte Liga-Stufe. Gilt für jedes deiner verknüpften Clash-Konten einzeln und für jeden Server, der dich einlädt, nicht nur für diesen.\n\n**Verwendung:**\n`/cwl preferences`\n\n**Hinweise:**\n• Funktioniert auch, wenn dieser Server keine Player-CWL-Settings-Hub-Nachricht eingerichtet hat — dieser Befehl ist immer verfügbar\n• Eine dauerhafte Wahl kann trotzdem für eine einzelne Saison überschrieben werden, entweder hier oder direkt aus der Einladungs-DM dieser Saison\n• Funktioniert auch in deiner DM mit dem Bot: Gehören deine Accounts zu mehreren Servern, wählst du zuerst den Server aus"
       },
+      "dm me": {
+        "short": "Begrüßungs-DM von ClashControl mit kurzer Einführung erhalten",
+        "title": "👋 DM-Me-Befehl",
+        "detailed": "Schickt dir eine Privatnachricht von ClashControl: eine kurze Begrüßung, was der Bot kann und die ersten Befehle zum Ausprobieren — praktisch, um eine private Unterhaltung mit dem Bot zu beginnen.\n\n**Verwendung:**\n`/dm me`\n\n**Hinweise:**\n• Funktioniert in einem Server und in deiner DM mit dem Bot\n• Kommt nichts an, erlaube Direktnachrichten von Servermitgliedern in den Privatsphäre-Einstellungen des Servers\n• Server-Admins können dieselbe Begrüßung mit `/admin` → DM User an ein Mitglied schicken"
+      },
       "admin": {
         "short": "Administrative Aktionen und Werkzeuge",
         "title": "⚙️ Admin-Befehl",
@@ -285,9 +322,9 @@
         "detailed": "Liste verschiedene Daten auf: Discord-Konten mit registrierten Spielern, Clan-Familien oder alle Spieler in einem Clan/Familie.\n\n**Verwendung:**\n`/list action:<Accounts|Families|Players|Tracked Clans|Managed CWLs> [clan:<clan>] [family:<family>] [season:<saison>] [discord_user:<@user>]`\n\n**Aktionen:**\n\n**Accounts** - Liste aller Discord-Benutzerkonten und ihrer registrierten Spieler\n• Zeigt Verifizierungsstatus\n• Zeigt Hauptkonten an\n• Inklusive Rathausstufen\n• `discord_user`-Parameter (optional): nur die Konten dieses einen Discord-Benutzers anzeigen statt aller\n\n**Families** - Liste aller Clan-Familien und ihrer Mitglieds-Clans\n• Zeigt Familienstruktur\n• Listet alle Clans in jeder Familie auf\n\n**Players** - Liste aller Spieler in einem Clan oder Familie\n• `clan`-Parameter: Clan-Tag oder -Name angeben\n• `family`-Parameter: Familien-Tag angeben\n• Zeigt Spielernamen, Tags und RH-Stufen\n• Zeigt Discord-Verknüpfungsstatus\n\n**Verfolgte Clans** - Balkendiagramm aller verfolgten Clans nach Kriegsliga gruppiert\n• Wird als Bild in den Kanal gepostet\n\n**Managed CWLs** (Bot-Admin) - Liste aller Server mit einer verwalteten CWL für eine Saison\n• `season`-Parameter: CWL-Saison als JJJJ-MM — ohne Angabe wird die nächste bevorstehende Saison verwendet\n\n**Beispiele:**\n`/list action:Accounts`\n`/list action:Accounts discord_user:@SomeUser`\n`/list action:Families`\n`/list action:Players clan:#L2J0C0PY`\n`/list action:Players family:#FAMILY123`\n`/list action:Tracked Clans`\n`/list action:Managed CWLs season:2026-09`"
       },
       "whois": {
-        "short": "CoC-Konten für einen Discord-Nutzer oder Kriegsverlauf für einen Spieler",
+        "short": "CoC-Konten für einen Discord-Nutzer, Kriegsverlauf für einen Spieler oder Daten eines Clans",
         "title": "🔍 Whois-Befehl",
-        "detailed": "Schlage die Clash-of-Clans-Konten eines Discord-Nutzers nach, oder zeige einen umfassenden Kriegsleistungsbericht für einen beliebigen CoC-Spieler an.\n\n**Verwendung:**\n`/whois user:<@Nutzer>` — registrierte CoC-Konten eines Discord-Nutzers\n`/whois player:<#TAG>` — Kriegsverlaufsbericht für einen spezifischen Spieler-Tag\n`/whois player:<Name>` — Suche nach Spielernamen (Groß-/Kleinschreibung egal, Teilstring); bei mehreren Treffern Auswahl per Liste\n\n**Kontextmenü:**\nRechtsklick auf Nutzer → Apps → **whois**\nRechtsklick auf Nachricht → Apps → **whois** (schaut den Autor der Nachricht nach)\n\n**Nutzer-Suche (angezeigte Informationen):**\n• Alle registrierten CoC-Spielerkonten (sortiert nach Rathausstufe)\n• Rathausstufe mit Symbol\n• Heldenstufen (Barbarenkönig, Bogenschkönigin, Großer Schamane, Königliche Meisterschütze, Minion-Prinz)\n• Clanrolle und Clanname\n• Verifizierungsstatus (✅ verifiziert / nicht verifiziert)\n• Hauptkonto-Kennzeichnung\n\n**Spielerbericht (angezeigte Informationen):**\n• Letzter bekannter Clan (Name und Tag)\n• Gesamte Kriege (KK / KKL), Sieg-/Niederlage-Bilanz\n• Genutzte vs. verpasste Angriffe, Zuverlässigkeit %\n• Durchschnittliche Sterne pro Angriff, ø Zerstörung %\n• Vollständige Sternverteilung (0★ / 1★ / 2★ / 3★)\n• Aktueller Trend (letzte 10 KK-Kriege vs. gesamt)\n• KKL-Zusammenfassung (Saisons, Kriege, ø Sterne)\n• Zeitleiste der letzten 10 Kriege\n\n**Beispiele:**\n`/whois user:@Nutzer` - CoC-Konten eines bestimmten Nutzers nachschlagen\n`/whois player:#ABC123` - Kriegsverlaufsbericht für einen CoC-Spieler-Tag\n`/whois player:Max` - Alle Spieler mit dem Namen Max suchen und auswählen"
+        "detailed": "Schlage die Clash-of-Clans-Konten eines Discord-Nutzers nach, oder zeige einen umfassenden Kriegsleistungsbericht für einen beliebigen CoC-Spieler an.\n\n**Verwendung:**\n`/whois user:<@Nutzer>` — registrierte CoC-Konten eines Discord-Nutzers\n`/whois player:<#TAG>` — Kriegsverlaufsbericht für einen spezifischen Spieler-Tag\n`/whois player:<Name>` — Suche nach Spielernamen (Groß-/Kleinschreibung egal, Teilstring); bei mehreren Treffern Auswahl per Liste\n\n**Kontextmenü:**\nRechtsklick auf Nutzer → Apps → **whois**\nRechtsklick auf Nachricht → Apps → **whois** (schaut den Autor der Nachricht nach)\n\n**Nutzer-Suche (angezeigte Informationen):**\n• Alle registrierten CoC-Spielerkonten (sortiert nach Rathausstufe)\n• Rathausstufe mit Symbol\n• Heldenstufen (Barbarenkönig, Bogenschkönigin, Großer Schamane, Königliche Meisterschütze, Minion-Prinz)\n• Clanrolle und Clanname\n• Verifizierungsstatus (✅ verifiziert / nicht verifiziert)\n• Hauptkonto-Kennzeichnung\n\n**Spielerbericht (angezeigte Informationen):**\n• Letzter bekannter Clan (Name und Tag)\n• Gesamte Kriege (KK / KKL), Sieg-/Niederlage-Bilanz\n• Genutzte vs. verpasste Angriffe, Zuverlässigkeit %\n• Durchschnittliche Sterne pro Angriff, ø Zerstörung %\n• Vollständige Sternverteilung (0★ / 1★ / 2★ / 3★)\n• Aktueller Trend (letzte 10 KK-Kriege vs. gesamt)\n• KKL-Zusammenfassung (Saisons, Kriege, ø Sterne)\n• Zeitleiste der letzten 10 Kriege\n\n**Clanbericht (`/whois clan:<Clan>`, nur getrackte Clans):**\n• Mitglieder, Clanlevel, CWL- und Hauptstadtliga, Kriegsprotokoll\n• Von ClashControl gespeicherte Kriege (CW / CWL) mit Bilanz und CWL-Saisons\n• Getrackt seit, Kriegs-Tracking-Status, Abos, Clan-Familien und die Server, auf denen er Mitgliedsclan ist\n• Auswahlliste: jeder Leaderboard-Modus für diesen Clan (aktueller Monat) oder zurück zur Übersicht\n\n**Beispiele:**\n`/whois user:@Nutzer` - CoC-Konten eines bestimmten Nutzers nachschlagen\n`/whois player:#ABC123` - Kriegsverlaufsbericht für einen CoC-Spieler-Tag\n`/whois player:Max` - Alle Spieler mit dem Namen Max suchen und auswählen\n`/whois clan:#2PP` - Gespeicherte Daten und Leaderboards eines getrackten Clans"
       },
       "link clan": {
         "short": "Spiel-Link zum Profil eines Clans posten",
@@ -422,7 +459,18 @@
       "fallback_tracker_hint": "🐞 Melde Fehler mit {bug} oder wenn du einen Verbesserungsvorschlag hast, schlage ihn mit {feature} vor, direkt hier im Chat.",
       "guild_picker_prompt": "Du bist mit Accounts auf mehreren Servern verknüpft. Für welchen Server soll das gelten?",
       "guild_picker_placeholder": "Server auswählen...",
-      "guild_picker_selected": "✅ Alles klar — weiter mit diesem Server."
+      "guild_picker_selected": "✅ Alles klar — weiter mit diesem Server.",
+      "greeting_title": "👋 Hallo {name}, willkommen bei ClashControl!",
+      "features_title": "✨ Was ClashControl kann",
+      "help_hint": "Du willst alles sehen? {help} listet jeden Befehl auf, {about} öffnet die komplette Vorstellungsseite. Die meisten Befehle funktionieren direkt hier in dieser DM.",
+      "me_sent": "✅ Ich habe dir eine DM geschickt — schau mal rein: {link}",
+      "me_failed": "❌ Ich konnte dir keine DM schicken. Bitte erlaube Direktnachrichten von Servermitgliedern (Servermenü → Privatsphäre-Einstellungen) und versuche es noch einmal.",
+      "admin_pick_prompt": "👋 **DM an Nutzer**\nWähle ein Mitglied, das die ClashControl-Begrüßungs-DM bekommen soll (dieselbe Nachricht wie bei {dm_me}):",
+      "admin_pick_placeholder": "Mitglied auswählen",
+      "admin_sending": "⏳ Begrüßungs-DM wird gesendet…",
+      "admin_sent": "✅ Begrüßungs-DM an {user} gesendet.",
+      "admin_failed": "❌ Die Begrüßungs-DM an {user} konnte nicht zugestellt werden — Direktnachrichten vom Bot sind dort nicht erlaubt.",
+      "admin_is_bot": "❌ {user} ist ein Bot. Bitte wähle eine Person."
     }
   },
   "notifications": {},

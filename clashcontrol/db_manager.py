@@ -9079,6 +9079,80 @@ class WarHistoryDB:
                 logging.error(f"[DB-QUERY-SYNC] get_player_monthly_star_dist_sync failed: {e}")
                 return []
 
+    def get_clan_whois_stats_sync(self, clan_tag: str) -> Dict[str, Any]:
+        """
+        Everything /whois clan (tracker #0120) shows from the database for one clan.
+
+        The ``clans`` row is read with explicit columns. War aggregates come from
+        ``main.war_summary`` and ``history.war_summary`` separately — each aggregated on its own
+        with named columns and summed here, never combined through a ``SELECT *`` (Cardinal Rule 1).
+
+        Args:
+            clan_tag: Clan tag including the leading ``#``.
+
+        Returns:
+            ``{"clan": {...} or None, "cw": {...}, "cwl": {...}, "first_war": str, "last_war": str,
+            "cwl_seasons": int}`` where ``cw``/``cwl`` hold ``wars``, ``wins``, ``losses``,
+            ``draws``. Empty aggregates are zeros / empty strings.
+        """
+        if not self.db_path:
+            raise RuntimeError("Database not initialized. Call initialize() first.")
+
+        def _empty() -> Dict[str, int]:
+            return {"wars": 0, "wins": 0, "losses": 0, "draws": 0}
+
+        result: Dict[str, Any] = {
+            "clan": None, "cw": _empty(), "cwl": _empty(),
+            "first_war": "", "last_war": "", "cwl_seasons": 0,
+        }
+        seasons: Set[str] = set()
+        with self._sync_conn() as conn:
+            clan_row = conn.execute(
+                """
+                SELECT clan_tag, name, has_active_subscriptions, last_war_update, warlog_is_public,
+                       last_checked_via_api, war_league, track_war_updates, is_deleted,
+                       created_at, updated_at
+                FROM main.clans WHERE clan_tag = ?
+                """,
+                (clan_tag,),
+            ).fetchone()
+            if clan_row is not None:
+                result["clan"] = {k: clan_row[k] for k in clan_row.keys()}
+
+            for schema in ("main", "history"):
+                for row in conn.execute(
+                    f"""
+                    SELECT is_cwl,
+                           COUNT(*)                                        AS wars,
+                           SUM(CASE WHEN result = 'win'  THEN 1 ELSE 0 END) AS wins,
+                           SUM(CASE WHEN result = 'loss' THEN 1 ELSE 0 END) AS losses,
+                           SUM(CASE WHEN result = 'draw' THEN 1 ELSE 0 END) AS draws,
+                           MIN(date)                                       AS first_war,
+                           MAX(date)                                       AS last_war
+                    FROM {schema}.war_summary
+                    WHERE clan_tag = ?
+                    GROUP BY is_cwl
+                    """,
+                    (clan_tag,),
+                ).fetchall():
+                    bucket = result["cwl" if row["is_cwl"] else "cw"]
+                    for key in ("wars", "wins", "losses", "draws"):
+                        bucket[key] += int(row[key] or 0)
+                    if row["first_war"] and (not result["first_war"] or row["first_war"] < result["first_war"]):
+                        result["first_war"] = row["first_war"]
+                    if row["last_war"] and row["last_war"] > result["last_war"]:
+                        result["last_war"] = row["last_war"]
+                for row in conn.execute(
+                    f"""
+                    SELECT DISTINCT cwl_season FROM {schema}.war_summary
+                    WHERE clan_tag = ? AND is_cwl = 1 AND cwl_season != ''
+                    """,
+                    (clan_tag,),
+                ).fetchall():
+                    seasons.add(row["cwl_season"])
+        result["cwl_seasons"] = len(seasons)
+        return result
+
     def get_cwl_max_rounds_sync(
         self,
         season_clan_pairs: List[Tuple[str, str]],

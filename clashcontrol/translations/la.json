@@ -206,7 +206,39 @@
       "chart_option_reliability": "Inclinatio Temporis Anni — Fidelitas",
       "chart_option_reliability_desc": "CW/CWL – rate usus impetuum mensis",
       "chart_option_activity": "Inclinatio Temporis Anni — Industria",
-      "chart_option_activity_desc": "CW/CWL – industria mensis (impetus contra maximum mensis)"
+      "chart_option_activity_desc": "CW/CWL – industria mensis (impetus contra maximum mensis)",
+      "clan_heading": "Gens",
+      "clan_section_clan": "🏰 Gens",
+      "clan_members": "Sodales",
+      "clan_level": "Gradus gentis",
+      "clan_cwl_league": "Foedus CWL",
+      "clan_capital_league": "Foedus capitis",
+      "clan_win_streak": "Series victoriarum belli",
+      "clan_warlog": "Acta belli",
+      "clan_public": "publica",
+      "clan_private": "privata",
+      "clan_section_wars": "⚔️ Bella a ClashControl servata",
+      "clan_wars_total": "Bella: **{total}** omnino ({cw} CW / {cwl} CWL)",
+      "clan_record_cw": "Tabula CW: **{wins}** victoriae, **{losses}** clades, **{draws}** pares",
+      "clan_record_cwl": "Tabula CWL: **{wins}** victoriae, **{losses}** clades, **{draws}** pares ({seasons} tempora)",
+      "clan_war_range": "Primum bellum: {first} · Ultimum bellum: {last}",
+      "clan_section_tracking": "📡 Observatio",
+      "clan_tracked_since": "Observata ex",
+      "clan_war_tracking": "Observatio belli",
+      "clan_status_active": "activa",
+      "clan_status_paused": "intermissa",
+      "clan_status_deleted": "gens in Clash of Clans deleta",
+      "clan_last_war_update": "Ultima renovatio belli",
+      "clan_last_api_check": "Ultima inquisitio API",
+      "clan_subscriptions": "Subscriptiones tabularum",
+      "clan_families": "Familiae gentium",
+      "clan_member_servers": "Gens sodalis in",
+      "clan_member_servers_none": "nullo servitore",
+      "clan_footer": "Elige tabulam infra (mensis currens, omnes sodales) — vel ad hanc summam redi.",
+      "clan_option_overview": "Summa gentis",
+      "clan_select_placeholder": "Tabulam huius gentis ostende...",
+      "clan_mode_failed": "⚠️ Tabula `{mode}` pro hac gente creari non potuit.",
+      "clan_not_tracked": "❌ `{clan}` non est gens quam ClashControl observat, itaque nulla data servata sunt. Elige gentem ex propositis vel nota gentis observatae utere."
     },
     "link": {
       "clan_not_found": "Gens `{tag}` in Clash of Clans inveniri non potuit.",
@@ -274,6 +306,11 @@
         "title": "🛡️ Mandatum CWL Preferences",
         "detailed": "Aperi visum tuum personalem praeferentiarum CWL — constitue an semper CWL ludere velis, numquam ludere, vel omni tempore de novo decernere, plus gradum ligae praeferatum. Applicatur singillatim ad omnem rationem tuam Clash iunctam, et ad omnem servitorem qui te invitat, non tantum ad hunc.\n\n**Usus:**\n`/cwl preferences`\n\n**Notae:**\n• Functionat etiam si hic servitor nuntium suum Centri Optionum CWL Lusoris nondum constituit — hoc mandatum semper praesto est\n• Electio permanens adhuc pro quovis tempore singulo abrogari potest, aut hic aut ex nuntio privato invitationis illius temporis\n• Etiam in nuntio privato cum bot functionat: si rationes tuae ad plures servitores pertinent, primum servitorem eligis"
       },
+      "dm me": {
+        "short": "Nuntium salutationis a ClashControl cum brevi introductione accipe",
+        "title": "👋 Mandatum DM Me",
+        "detailed": "Nuntium privatum a ClashControl tibi mittit: brevem salutationem, quid automatum faciat et prima mandata temptanda — utile ad colloquium privatum cum automato incipiendum.\n\n**Usus:**\n`/dm me`\n\n**Notae:**\n• Functionat in servitore et in nuntio privato cum automato\n• Si nihil advenit, permitte nuntios directos a sodalibus in optionibus secreti servitoris\n• Administratores servitoris eandem salutationem sodali mittere possunt per `/admin` → DM User"
+      },
       "admin": {
         "short": "Actiones administrativae et instrumenta",
         "title": "⚙️ Mandatum Admin",
@@ -285,9 +322,9 @@
         "detailed": "Indica varia data: rationes Discord cum lusoribus inscriptis, familias gentium, vel omnes lusores in gente/familia.\n\n**Usus:**\n`/list action:<Accounts|Families|Players|Tracked Clans|Managed CWLs> [clan:<gens>] [family:<familia>] [season:<tempus>] [discord_user:<@usor>]`\n\n**Actiones:**\n\n**Accounts** - Indica omnes rationes usoris Discord et lusores eorum inscriptos\n• Ostendit statum verificationis\n• Ostendit rationes primarias\n• Includit gradus Curiae\n• Parametrum `discord_user` (optionale): tantum rationes huius unius usoris Discord ostende potius quam omnium\n\n**Families** - Indica omnes familias gentium et gentes sodales earum\n• Ostendit structuram familiae\n• Indicat omnes gentes in quaque familia\n\n**Players** - Indica omnes lusores in gente vel familia\n• Parametrum `clan`: Specifica notam vel nomen gentis\n• Parametrum `family`: Specifica notam familiae\n• Ostendit nomina lusorum, notas, et gradus Curiae\n• Ostendit statum iunctionis Discord\n\n**Tracked Clans** - Tabula columnarum omnium gentium notatarum secundum ligam belli ordinatarum\n• Ut imago in canali publicatur\n\n**Managed CWLs** (Administrator Automati) - Indica omnem servitorem cum CWL moderata pro tempore\n• Parametrum `season`: Tempus CWL ut YYYY-MM — si omittitur, proximum tempus venturum praedefinitur\n\n**Exempla:**\n`/list action:Accounts`\n`/list action:Accounts discord_user:@AliquisUsor`\n`/list action:Families`\n`/list action:Players clan:#L2J0C0PY`\n`/list action:Players family:#FAMILY123`\n`/list action:Tracked Clans`\n`/list action:Managed CWLs season:2026-09`"
       },
       "whois": {
-        "short": "Quaere rationes CoC pro usore Discord, vel historiam belli pro lusore",
+        "short": "Quaere rationes CoC pro usore Discord, historiam belli pro lusore, vel data gentis",
         "title": "🔍 Mandatum Whois",
-        "detailed": "Quaere rationes Clash of Clans inscriptas usori Discord, vel ostende renuntiationem plenam effectus belli pro quovis lusore CoC.\n\n**Usus:**\n`/whois user:<@usor>` — rationes CoC inscriptae pro usore Discord\n`/whois player:<#NOTA>` — renuntiatio historiae belli pro nota lusoris specifica\n`/whois player:<nomen>` — quaere secundum nomen lusoris (subchorda litteris indifferens); elige ex indice si plures congruunt\n\n**Index Contextus:**\nDextro clicu in quemvis usorem → Applicationes → **whois**\nDextro clicu in quodvis nuntium → Applicationes → **whois** (auctorem nuntii quaerit)\n\n**Quaesitio usoris (Informatio Ostensa):**\n• Omnes rationes lusoris CoC inscriptae (secundum gradum Curiae ordinatae)\n• Gradus Curiae cum icone\n• Gradus heroum (Rex Barbarus, Regina Sagittaria, Custos Magnus, Campio Regalis, Princeps Minionum)\n• Ordo et nomen gentis\n• Status verificationis (✅ verificatus / non verificatus)\n• Indicium rationis primariae\n\n**Renuntiatio lusoris (Informatio Ostensa):**\n• Ultima gens nota (nomen et nota)\n• Bella tota (CW / CWL), tabula victoriarum/cladium\n• Impetus usi contra omissos, fidelitas %\n• Stellae medianae per impetum, destructio mediana %\n• Distributio plena stellarum (0★ / 1★ / 2★ / 3★)\n• Inclinatio recens (decem ultima bella CW contra totum)\n• Summarium CWL (tempora, bella, stellae medianae)\n• Linea temporis decem bellorum ultimorum\n\n**Exempla:**\n`/whois user:@AliquisUsor` - Quaere rationes CoC alicuius usoris specifici\n`/whois player:#ABC123` - Renuntiatio historiae belli pro nota lusoris CoC\n`/whois player:Ioannes` - Quaere omnes lusores nomine Ioannes et unum elige"
+        "detailed": "Quaere rationes Clash of Clans inscriptas usori Discord, vel ostende renuntiationem plenam effectus belli pro quovis lusore CoC.\n\n**Usus:**\n`/whois user:<@usor>` — rationes CoC inscriptae pro usore Discord\n`/whois player:<#NOTA>` — renuntiatio historiae belli pro nota lusoris specifica\n`/whois player:<nomen>` — quaere secundum nomen lusoris (subchorda litteris indifferens); elige ex indice si plures congruunt\n\n**Index Contextus:**\nDextro clicu in quemvis usorem → Applicationes → **whois**\nDextro clicu in quodvis nuntium → Applicationes → **whois** (auctorem nuntii quaerit)\n\n**Quaesitio usoris (Informatio Ostensa):**\n• Omnes rationes lusoris CoC inscriptae (secundum gradum Curiae ordinatae)\n• Gradus Curiae cum icone\n• Gradus heroum (Rex Barbarus, Regina Sagittaria, Custos Magnus, Campio Regalis, Princeps Minionum)\n• Ordo et nomen gentis\n• Status verificationis (✅ verificatus / non verificatus)\n• Indicium rationis primariae\n\n**Renuntiatio lusoris (Informatio Ostensa):**\n• Ultima gens nota (nomen et nota)\n• Bella tota (CW / CWL), tabula victoriarum/cladium\n• Impetus usi contra omissos, fidelitas %\n• Stellae medianae per impetum, destructio mediana %\n• Distributio plena stellarum (0★ / 1★ / 2★ / 3★)\n• Inclinatio recens (decem ultima bella CW contra totum)\n• Summarium CWL (tempora, bella, stellae medianae)\n• Linea temporis decem bellorum ultimorum\n\n**Renuntiatio gentis (`/whois clan:<gens>`, solae gentes observatae):**\n• Sodales, gradus gentis, foedus CWL et capitis, acta belli\n• Bella a ClashControl servata (CW / CWL) cum tabula et temporibus CWL\n• Observata ex, status observationis belli, subscriptiones, familiae gentium et servitores ubi gens sodalis est\n• Index: quivis modus tabulae pro hac gente (mensis currens), vel ad summam redi\n\n**Exempla:**\n`/whois user:@AliquisUsor` - Quaere rationes CoC alicuius usoris specifici\n`/whois player:#ABC123` - Renuntiatio historiae belli pro nota lusoris CoC\n`/whois player:Ioannes` - Quaere omnes lusores nomine Ioannes et unum elige\n`/whois clan:#2PP` - Data servata et tabulae gentis observatae"
       },
       "link clan": {
         "short": "Publica nexum intra ludum ad profilum gentis",
@@ -422,7 +459,18 @@
       "fallback_tracker_hint": "🐞 Vitia per {bug} nuntia, aut si emendationem proponere vis, eam per {feature} propone, hic in colloquio.",
       "guild_picker_prompt": "In pluribus quam uno servitore rationibus iunctus es. Cui servitori hoc applicari debet?",
       "guild_picker_placeholder": "Elige servitorem...",
-      "guild_picker_selected": "✅ Intellexi — cum illo servitore continuamus."
+      "guild_picker_selected": "✅ Intellexi — cum illo servitore continuamus.",
+      "greeting_title": "👋 Salve {name}, bene venisti ad ClashControl!",
+      "features_title": "✨ Quid ClashControl faciat",
+      "help_hint": "Omnia videre vis? {help} omnia mandata enumerat, {about} paginam introductionis plenam aperit. Pleraque mandata hic in hoc nuntio privato uti potes.",
+      "me_sent": "✅ Nuntium privatum tibi misi — inspice: {link}",
+      "me_failed": "❌ Nuntium privatum tibi mittere non potui. Permitte nuntios directos a sodalibus servitoris (index servitoris → Optiones secreti) et iterum conare.",
+      "admin_pick_prompt": "👋 **Nuntius ad usorem**\nElige sodalem cui nuntium salutationis ClashControl mittas (idem nuntius quem {dm_me} mittit):",
+      "admin_pick_placeholder": "Elige sodalem",
+      "admin_sending": "⏳ Nuntius salutationis mittitur…",
+      "admin_sent": "✅ Nuntius salutationis ad {user} missus est.",
+      "admin_failed": "❌ Nuntius salutationis ad {user} mitti non potuit — nuntios directos ab automato non accipit.",
+      "admin_is_bot": "❌ {user} automatum est. Elige hominem."
     }
   },
   "notifications": {},

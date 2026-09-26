@@ -234,6 +234,7 @@ _GUARDED_HANDLERS = {
         "UnlinkAllConfirmView": ["_on_confirm", "_on_cancel"],
     },
     "clashcontrol/ui_tracker.py": {"BotSetupView": ["_on_save"]},
+    "QBdiscordcmds.py": {"DmUserView": ["on_pick"]},  # /admin DM User (tracker #0119)
     "clashcontrol/ui_notifications.py": {
         "NotificationSettingsView": ["_on_apply"],
         "WarNotificationPromptView": ["activate_button", "skip_button"],

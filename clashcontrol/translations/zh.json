@@ -206,7 +206,39 @@
       "chart_option_reliability": "赛季趋势 — 可靠性",
       "chart_option_reliability_desc": "普通部落战/部落战联赛 – 每月攻击使用率",
       "chart_option_activity": "赛季趋势 — 活跃度",
-      "chart_option_activity_desc": "普通部落战/部落战联赛 – 每月活跃度（攻击次数 对比 月度上限）"
+      "chart_option_activity_desc": "普通部落战/部落战联赛 – 每月活跃度（攻击次数 对比 月度上限）",
+      "clan_heading": "部落",
+      "clan_section_clan": "🏰 部落",
+      "clan_members": "成员",
+      "clan_level": "部落等级",
+      "clan_cwl_league": "部落战联赛联赛",
+      "clan_capital_league": "都城联赛",
+      "clan_win_streak": "部落战连胜",
+      "clan_warlog": "战争日志",
+      "clan_public": "公开",
+      "clan_private": "私密",
+      "clan_section_wars": "⚔️ ClashControl 保存的战争",
+      "clan_wars_total": "战争：共 **{total}** 场（{cw} 场普通部落战 / {cwl} 场部落战联赛）",
+      "clan_record_cw": "普通部落战战绩：**{wins}** 胜，**{losses}** 负，**{draws}** 平",
+      "clan_record_cwl": "部落战联赛战绩：**{wins}** 胜，**{losses}** 负，**{draws}** 平（{seasons} 个赛季）",
+      "clan_war_range": "首场战争：{first} · 最近一场战争：{last}",
+      "clan_section_tracking": "📡 追踪",
+      "clan_tracked_since": "追踪开始于",
+      "clan_war_tracking": "战争追踪",
+      "clan_status_active": "进行中",
+      "clan_status_paused": "已暂停",
+      "clan_status_deleted": "该部落已在部落冲突中被删除",
+      "clan_last_war_update": "最近一次战争更新",
+      "clan_last_api_check": "最近一次 API 查询",
+      "clan_subscriptions": "排行榜订阅",
+      "clan_families": "部落家族",
+      "clan_member_servers": "作为成员部落所在的服务器",
+      "clan_member_servers_none": "无",
+      "clan_footer": "在下方选择一个排行榜（本月，全部成员）——或切换回此概览。",
+      "clan_option_overview": "部落概览",
+      "clan_select_placeholder": "显示该部落的排行榜...",
+      "clan_mode_failed": "⚠️ 无法为该部落生成 `{mode}` 排行榜。",
+      "clan_not_tracked": "❌ `{clan}` 不是 ClashControl 追踪的部落，因此没有保存的数据。请从建议中选择一个部落，或使用已追踪部落的标签。"
     },
     "link": {
       "clan_not_found": "在部落冲突中找不到部落 `{tag}`。",
@@ -274,6 +306,11 @@
         "title": "🛡️ CWL Preferences 命令",
         "detailed": "打开你的个人部落战联赛偏好界面——设置你是想始终参加部落战联赛、从不参加，还是每个赛季重新决定，以及一个偏好联赛等级。此设置会单独应用于你绑定的每一个部落冲突账号，并适用于邀请你的每一个服务器，不仅限于本服务器。\n\n**用法：**\n`/cwl preferences`\n\n**说明：**\n• 即使本服务器尚未设置其玩家部落战联赛设置中心消息，此命令也始终可用\n• 常设选择仍可针对任意单个赛季被覆盖，无论是在此处还是在该赛季自己的邀请私信中\n• 也可以在与机器人的私信中使用：如果你的账号属于多个服务器，需要先选择服务器"
       },
+      "dm me": {
+        "short": "接收 ClashControl 的欢迎私信和简短介绍",
+        "title": "👋 DM Me 命令",
+        "detailed": "ClashControl 会给你发送一条私信：简短的问候、机器人的功能介绍以及可以先试试的命令——方便你与机器人开始私聊。\n\n**用法：**\n`/dm me`\n\n**说明：**\n• 可在服务器中以及与机器人的私信中使用\n• 如果没有收到，请在服务器的隐私设置中允许来自服务器成员的私信\n• 服务器管理员可以通过 `/admin` → DM User 向某位成员发送同样的欢迎消息"
+      },
       "admin": {
         "short": "管理操作与实用工具",
         "title": "⚙️ Admin 命令",
@@ -285,9 +322,9 @@
         "detailed": "列出各类数据：拥有已注册玩家的 Discord 账号、部落家族，或某个部落/家族中的所有玩家。\n\n**用法：**\n`/list action:<Accounts|Families|Players|Tracked Clans|Managed CWLs> [clan:<部落>] [family:<家族>] [season:<赛季>] [discord_user:<@用户>]`\n\n**操作：**\n\n**Accounts** - 列出所有 Discord 用户账号及其已注册玩家\n• 显示验证状态\n• 显示主账号\n• 包含大本营等级\n• `discord_user` 参数（可选）：仅显示该特定 Discord 用户的账号，而非所有人\n\n**Families** - 列出所有部落家族及其成员部落\n• 显示家族结构\n• 列出每个家族中的所有部落\n\n**Players** - 列出某个部落或家族中的所有玩家\n• `clan` 参数：指定部落标签或名称\n• `family` 参数：指定家族标签\n• 显示玩家名称、标签和大本营等级\n• 显示 Discord 绑定状态\n\n**Tracked Clans** - 按战争联赛分组的所有已跟踪部落的柱状图\n• 以图片形式发布到频道\n\n**Managed CWLs**（机器人管理员）- 列出每个为某赛季设置了受管理部落战联赛的服务器\n• `season` 参数：以 YYYY-MM 格式表示的部落战联赛赛季 — 省略时默认为下一个即将到来的赛季\n\n**示例：**\n`/list action:Accounts`\n`/list action:Accounts discord_user:@某用户`\n`/list action:Families`\n`/list action:Players clan:#L2J0C0PY`\n`/list action:Players family:#FAMILY123`\n`/list action:Tracked Clans`\n`/list action:Managed CWLs season:2026-09`"
       },
       "whois": {
-        "short": "查询 Discord 用户的部落冲突账号，或某位玩家的战争历史",
+        "short": "查询 Discord 用户的部落冲突账号、某位玩家的战争历史或某个部落的数据",
         "title": "🔍 Whois 命令",
-        "detailed": "查询某个 Discord 用户已注册的部落冲突账号，或显示任意部落冲突玩家的完整战争表现报告。\n\n**用法：**\n`/whois user:<@用户>` — 某个 Discord 用户已注册的部落冲突账号\n`/whois player:<#标签>` — 特定玩家标签的战争历史报告\n`/whois player:<名称>` — 按玩家名称搜索（不区分大小写的子字符串）；如有多个匹配则从列表中选择\n\n**右键菜单：**\n右键点击任意用户 → 应用 → **whois**\n右键点击任意消息 → 应用 → **whois**（查询消息作者）\n\n**用户查询（显示的信息）：**\n• 所有已注册的部落冲突玩家账号（按大本营等级排序）\n• 带图标的大本营等级\n• 英雄等级（野蛮人国王、弓箭手皇后、大法师、皇家champion、地精王子）\n• 部落身份组和部落名称\n• 验证状态（✅ 已验证 / 未验证）\n• 主账号标记\n\n**玩家报告（显示的信息）：**\n• 最后已知的部落（名称和标签）\n• 总战争数（普通部落战 / 部落战联赛）、胜负记录\n• 已用攻击次数与错过次数、可靠性百分比\n• 每次攻击平均星数、平均摧毁率\n• 完整星数分布（0★ / 1★ / 2★ / 3★）\n• 近期趋势（最近 10 场普通部落战对比总体）\n• 部落战联赛概况（赛季数、战争数、平均星数）\n• 最近 10 场战争的时间线\n\n**示例：**\n`/whois user:@某用户` - 查询某个特定用户的部落冲突账号\n`/whois player:#ABC123` - 某个部落冲突玩家标签的战争历史报告\n`/whois player:John` - 搜索所有名为 John 的玩家并选择一个"
+        "detailed": "查询某个 Discord 用户已注册的部落冲突账号，或显示任意部落冲突玩家的完整战争表现报告。\n\n**用法：**\n`/whois user:<@用户>` — 某个 Discord 用户已注册的部落冲突账号\n`/whois player:<#标签>` — 特定玩家标签的战争历史报告\n`/whois player:<名称>` — 按玩家名称搜索（不区分大小写的子字符串）；如有多个匹配则从列表中选择\n\n**右键菜单：**\n右键点击任意用户 → 应用 → **whois**\n右键点击任意消息 → 应用 → **whois**（查询消息作者）\n\n**用户查询（显示的信息）：**\n• 所有已注册的部落冲突玩家账号（按大本营等级排序）\n• 带图标的大本营等级\n• 英雄等级（野蛮人国王、弓箭手皇后、大法师、皇家champion、地精王子）\n• 部落身份组和部落名称\n• 验证状态（✅ 已验证 / 未验证）\n• 主账号标记\n\n**玩家报告（显示的信息）：**\n• 最后已知的部落（名称和标签）\n• 总战争数（普通部落战 / 部落战联赛）、胜负记录\n• 已用攻击次数与错过次数、可靠性百分比\n• 每次攻击平均星数、平均摧毁率\n• 完整星数分布（0★ / 1★ / 2★ / 3★）\n• 近期趋势（最近 10 场普通部落战对比总体）\n• 部落战联赛概况（赛季数、战争数、平均星数）\n• 最近 10 场战争的时间线\n\n**部落报告（`/whois clan:<部落>`，仅限已追踪的部落）：**\n• 成员、部落等级、部落战联赛和都城联赛、战争日志\n• ClashControl 保存的战争（普通部落战 / 部落战联赛），含战绩和联赛赛季\n• 追踪开始时间、战争追踪状态、订阅、部落家族以及作为成员部落所在的服务器\n• 下拉菜单：该部落的任意排行榜模式（本月），或返回概览\n\n**示例：**\n`/whois user:@某用户` - 查询某个特定用户的部落冲突账号\n`/whois player:#ABC123` - 某个部落冲突玩家标签的战争历史报告\n`/whois player:John` - 搜索所有名为 John 的玩家并选择一个\n`/whois clan:#2PP` - 某个已追踪部落的保存数据和排行榜"
       },
       "link clan": {
         "short": "发布某个部落资料的游戏内链接",
@@ -422,7 +459,18 @@
       "fallback_tracker_hint": "🐞 使用 {bug} 报告错误；如果你有改进建议，请使用 {feature} 提出，直接在此聊天中即可。",
       "guild_picker_prompt": "你在多个服务器中都绑定了账号。这应作用于哪个服务器？",
       "guild_picker_placeholder": "选择一个服务器...",
-      "guild_picker_selected": "✅ 好的——将继续使用该服务器。"
+      "guild_picker_selected": "✅ 好的——将继续使用该服务器。",
+      "greeting_title": "👋 你好 {name}，欢迎使用 ClashControl！",
+      "features_title": "✨ ClashControl 能做什么",
+      "help_hint": "想了解全部功能？{help} 会列出所有命令，{about} 会打开完整的介绍页面。大多数命令都可以直接在这个私信中使用。",
+      "me_sent": "✅ 我已经给你发了一条私信——去看看吧：{link}",
+      "me_failed": "❌ 我无法给你发送私信。请允许来自服务器成员的私信（服务器菜单 → 隐私设置），然后再试一次。",
+      "admin_pick_prompt": "👋 **私信用户**\n选择一位成员，向其发送 ClashControl 欢迎私信（与 {dm_me} 发送的消息相同）：",
+      "admin_pick_placeholder": "选择一位成员",
+      "admin_sending": "⏳ 正在发送欢迎私信…",
+      "admin_sent": "✅ 已向 {user} 发送欢迎私信。",
+      "admin_failed": "❌ 无法向 {user} 发送欢迎私信——对方不接受来自机器人的私信。",
+      "admin_is_bot": "❌ {user} 是一个机器人。请选择一个真人。"
     }
   },
   "notifications": {},

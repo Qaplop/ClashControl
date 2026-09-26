@@ -206,7 +206,39 @@
       "chart_option_reliability": "Season Trend Reliability",
       "chart_option_reliability_desc": "CW/CWL \u2013 monthly attack usage rate",
       "chart_option_activity": "Season Trend Activity",
-      "chart_option_activity_desc": "CW/CWL \u2013 monthly activity (attacks vs. monthly max)"
+      "chart_option_activity_desc": "CW/CWL \u2013 monthly activity (attacks vs. monthly max)",
+      "clan_heading": "Clan",
+      "clan_section_clan": "🏰 Clan",
+      "clan_members": "Members",
+      "clan_level": "Clan level",
+      "clan_cwl_league": "CWL league",
+      "clan_capital_league": "Capital league",
+      "clan_win_streak": "War win streak",
+      "clan_warlog": "War log",
+      "clan_public": "public",
+      "clan_private": "private",
+      "clan_section_wars": "⚔️ Wars stored by ClashControl",
+      "clan_wars_total": "Wars: **{total}** total ({cw} CW / {cwl} CWL)",
+      "clan_record_cw": "CW record: **{wins}** Won, **{losses}** Lost, **{draws}** Draw",
+      "clan_record_cwl": "CWL record: **{wins}** Won, **{losses}** Lost, **{draws}** Draw ({seasons} seasons)",
+      "clan_war_range": "First war: {first} · Last war: {last}",
+      "clan_section_tracking": "📡 Tracking",
+      "clan_tracked_since": "Tracked since",
+      "clan_war_tracking": "War tracking",
+      "clan_status_active": "active",
+      "clan_status_paused": "paused",
+      "clan_status_deleted": "clan deleted in Clash of Clans",
+      "clan_last_war_update": "Last war update",
+      "clan_last_api_check": "Last API check",
+      "clan_subscriptions": "Leaderboard subscriptions",
+      "clan_families": "Clan families",
+      "clan_member_servers": "Member clan on",
+      "clan_member_servers_none": "no server",
+      "clan_footer": "Pick a leaderboard below (current month, all members) — or switch back to this overview.",
+      "clan_option_overview": "Clan overview",
+      "clan_select_placeholder": "Show a leaderboard for this clan...",
+      "clan_mode_failed": "⚠️ The `{mode}` leaderboard could not be created for this clan.",
+      "clan_not_tracked": "❌ `{clan}` is not a clan ClashControl tracks, so there is no stored data for it. Pick a clan from the suggestions or use the tag of a tracked clan."
     },
     "link": {
       "clan_not_found": "Clan `{tag}` could not be found in Clash of Clans.",
@@ -274,6 +306,11 @@
         "title": "🛡️ CWL Preferences Command",
         "detailed": "Opens your personal CWL preferences screen — set whether you want to always play CWL, never play, or decide fresh each season, plus a preferred league tier. Applies to every one of your linked Clash accounts individually, and to every server that invites you, not just this one.\n\n**Usage:**\n`/cwl preferences`\n\n**Notes:**\n• Works even if this server hasn't set up its Player CWL Settings Hub message — this command is always available\n• A standing choice can still be overridden for any single season, either here or from that season's own invitation DM\n• Also works in your DM with the bot: if your accounts belong to several servers, you first pick the server"
       },
+      "dm me": {
+        "short": "Get a greeting DM from ClashControl with a quick intro",
+        "title": "👋 DM Me Command",
+        "detailed": "Sends you a private message from ClashControl: a short greeting, what the bot does and the first commands to try — handy to start a private conversation with the bot.\n\n**Usage:**\n`/dm me`\n\n**Notes:**\n• Works in a server and in your DM with the bot\n• If nothing arrives, allow direct messages from server members in the server's Privacy Settings\n• Server admins can send the same greeting to a member with `/admin` → DM User"
+      },
       "admin": {
         "short": "Administrative actions and utilities",
         "title": "⚙️ Admin Command",
@@ -285,9 +322,9 @@
         "detailed": "List various data: Discord accounts with registered players, clan families, or all players in a clan/family.\n\n**Usage:**\n`/list action:<Accounts|Families|Players|Tracked Clans|Managed CWLs> [clan:<clan>] [family:<family>] [season:<season>] [discord_user:<@user>]`\n\n**Actions:**\n\n**Accounts** - List all Discord user accounts and their registered players\n• Shows verification status\n• Displays primary accounts\n• Includes Town Hall levels\n• `discord_user` parameter (optional): show only this one Discord user's accounts instead of everyone\n\n**Families** - List all clan families and their member clans\n• Shows family structure\n• Lists all clans in each family\n\n**Players** - List all players in a clan or family\n• `clan` parameter: Specify clan tag or name\n• `family` parameter: Specify family tag\n• Shows player names, tags, and TH levels\n• Displays Discord link status\n\n**Tracked Clans** - Bar chart of all tracked clans grouped by war league\n• Posted as an image to the channel\n\n**Managed CWLs** (Bot Admin) - List every guild with a managed CWL for a season\n• `season` parameter: CWL season as YYYY-MM — defaults to the next upcoming season if omitted\n\n**Examples:**\n`/list action:Accounts`\n`/list action:Accounts discord_user:@SomeUser`\n`/list action:Families`\n`/list action:Players clan:#L2J0C0PY`\n`/list action:Players family:#FAMILY123`\n`/list action:Tracked Clans`\n`/list action:Managed CWLs season:2026-09`"
       },
       "whois": {
-        "short": "Look up CoC accounts for a Discord user, or war history for a player",
+        "short": "Look up CoC accounts for a Discord user, war history for a player, or a clan's data",
         "title": "🔍 Whois Command",
-        "detailed": "Look up the Clash of Clans accounts registered to a Discord user, or show a full war performance report for any CoC player.\n\n**Usage:**\n`/whois user:<@user>` — registered CoC accounts for a Discord user\n`/whois player:<#TAG>` — war history report for a specific player tag\n`/whois player:<name>` — search by player name (case-insensitive substring); select from a list if multiple match\n\n**Context Menu:**\nRight-click any user → Apps → **whois**\nRight-click any message → Apps → **whois** (looks up the message author)\n\n**User lookup (Information Displayed):**\n• All registered CoC player accounts (sorted by Town Hall level)\n• Town Hall level with icon\n• Hero levels (Barbarian King, Archer Queen, Grand Warden, Royal Champion, Minion Prince)\n• Clan role and clan name\n• Verification status (✅ verified / unverified)\n• Primary account indicator\n\n**Player report (Information Displayed):**\n• Last known clan (name and tag)\n• Total wars (CW / CWL), win/loss record\n• Attacks used vs. missed, reliability %\n• Average stars per attack, avg destruction %\n• Full star distribution (0★ / 1★ / 2★ / 3★)\n• Recent trend (last 10 CW wars vs. overall)\n• CWL summary (seasons, wars, avg stars)\n• Timeline of the last 10 wars\n\n**Examples:**\n`/whois user:@SomeUser` - Look up a specific user's CoC accounts\n`/whois player:#ABC123` - War history report for a CoC player tag\n`/whois player:John` - Search for all players named John and pick one"
+        "detailed": "Look up the Clash of Clans accounts registered to a Discord user, or show a full war performance report for any CoC player.\n\n**Usage:**\n`/whois user:<@user>` — registered CoC accounts for a Discord user\n`/whois player:<#TAG>` — war history report for a specific player tag\n`/whois player:<name>` — search by player name (case-insensitive substring); select from a list if multiple match\n\n**Context Menu:**\nRight-click any user → Apps → **whois**\nRight-click any message → Apps → **whois** (looks up the message author)\n\n**User lookup (Information Displayed):**\n• All registered CoC player accounts (sorted by Town Hall level)\n• Town Hall level with icon\n• Hero levels (Barbarian King, Archer Queen, Grand Warden, Royal Champion, Minion Prince)\n• Clan role and clan name\n• Verification status (✅ verified / unverified)\n• Primary account indicator\n\n**Player report (Information Displayed):**\n• Last known clan (name and tag)\n• Total wars (CW / CWL), win/loss record\n• Attacks used vs. missed, reliability %\n• Average stars per attack, avg destruction %\n• Full star distribution (0★ / 1★ / 2★ / 3★)\n• Recent trend (last 10 CW wars vs. overall)\n• CWL summary (seasons, wars, avg stars)\n• Timeline of the last 10 wars\n\n**Clan report (`/whois clan:<clan>`, tracked clans only):**\n• Members, clan level, CWL and capital league, war log\n• Wars stored by ClashControl (CW / CWL) with records and CWL seasons\n• Tracked since, war tracking status, subscriptions, clan families and the servers it is a member clan on\n• Dropdown: any leaderboard mode for this clan (current month), or back to the overview\n\n**Examples:**\n`/whois user:@SomeUser` - Look up a specific user's CoC accounts\n`/whois player:#ABC123` - War history report for a CoC player tag\n`/whois player:John` - Search for all players named John and pick one\n`/whois clan:#2PP` - Stored data and leaderboards for a tracked clan"
       },
       "link clan": {
         "short": "Post an in-game link to a clan's profile",
@@ -422,7 +459,18 @@
       "fallback_tracker_hint": "🐞 Report bugs with {bug}, or if you have an idea for an improvement, suggest it with {feature}, right here in the chat.",
       "guild_picker_prompt": "You're linked to accounts in more than one server. Which server should this apply to?",
       "guild_picker_placeholder": "Select a server...",
-      "guild_picker_selected": "✅ Got it — continuing with that server."
+      "guild_picker_selected": "✅ Got it — continuing with that server.",
+      "greeting_title": "👋 Hi {name}, welcome to ClashControl!",
+      "features_title": "✨ What ClashControl does",
+      "help_hint": "Want to see everything? {help} lists every command, {about} opens the full intro page. You can use most commands right here in this DM.",
+      "me_sent": "✅ I've sent you a DM — have a look: {link}",
+      "me_failed": "❌ I couldn't send you a DM. Please allow direct messages from server members (server menu → Privacy Settings) and try again.",
+      "admin_pick_prompt": "👋 **DM User**\nPick a member to send the ClashControl greeting DM to (the same message {dm_me} sends):",
+      "admin_pick_placeholder": "Select a member",
+      "admin_sending": "⏳ Sending the greeting DM…",
+      "admin_sent": "✅ Greeting DM sent to {user}.",
+      "admin_failed": "❌ Couldn't send the greeting DM to {user} — they don't accept direct messages from the bot.",
+      "admin_is_bot": "❌ {user} is a bot. Please pick a person."
     }
   },
   "notifications": {},

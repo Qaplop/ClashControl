@@ -1,0 +1,163 @@
+"""Tracker #0119 (/dm me, /admin DM User — greeting DM) and #0120 (/whois clan)."""
+from __future__ import annotations
+
+import os
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
+
+os.environ.setdefault("DISCORD_TOKEN", "test-token")
+
+import QBdiscordcmds  # noqa: E402
+from clashcontrol.db_manager import WarHistoryDB  # noqa: E402
+
+
+# ---------------------------------------------------------------------------
+# #0119 — /dm me and the greeting DM
+# ---------------------------------------------------------------------------
+
+def test_dm_group_registered_and_dm_invokable():
+    assert {c.name for c in QBdiscordcmds.dm_group.commands} == {"me"}
+    assert QBdiscordcmds.dm_me.guild_only is False
+    assert "dm me" in QBdiscordcmds._get_help_command_names()
+    assert QBdiscordcmds._get_help_command_dm_status()["dm me"] is False
+
+
+def test_greeting_embed_resolves_every_text():
+    from clashcontrol.greeting_dm import build_greeting_dm_embed
+
+    embed = build_greeting_dm_embed("1", None, "Qap")
+    texts = [embed.title or "", embed.description or "", embed.footer.text or ""]
+    texts += [f.name for f in embed.fields] + [f.value for f in embed.fields]
+    joined = "\n".join(texts)
+    assert "Qap" in (embed.title or "")
+    # A missing key comes back as the raw dotted key — none may leak into the DM.
+    assert "commands.dm." not in joined and "activity.landing." not in joined
+    assert "/help" in joined or "</help:" in joined
+    assert len(embed) <= 6000
+
+
+@pytest.mark.asyncio
+async def test_dm_me_confirms_with_jump_link(mock_interaction, monkeypatch):
+    sent = MagicMock()
+    sent.jump_url = "https://discord.com/channels/@me/1/2"
+    send = AsyncMock(return_value=("sent", sent))
+    monkeypatch.setattr("clashcontrol.greeting_dm.send_greeting_dm", send)
+
+    await QBdiscordcmds.dm_me.callback(mock_interaction)  # type: ignore[arg-type]
+
+    send.assert_awaited_once()
+    call = mock_interaction.followup.send.await_args
+    assert sent.jump_url in call.args[0]
+    assert call.kwargs.get("ephemeral") is True
+
+
+@pytest.mark.asyncio
+async def test_dm_me_explains_blocked_dms(mock_interaction, monkeypatch):
+    monkeypatch.setattr("clashcontrol.greeting_dm.send_greeting_dm", AsyncMock(return_value=("blocked", None)))
+
+    await QBdiscordcmds.dm_me.callback(mock_interaction)  # type: ignore[arg-type]
+
+    text = mock_interaction.followup.send.await_args.args[0]
+    assert text.startswith("❌")
+
+
+@pytest.mark.asyncio
+async def test_admin_dm_user_is_server_only(mock_interaction):
+    mock_interaction.guild = None
+    mock_interaction.guild_id = None
+
+    await QBdiscordcmds.admin.callback(mock_interaction, action="DM_USER")  # type: ignore[arg-type]
+
+    call = mock_interaction.followup.send.await_args
+    assert "view" not in call.kwargs
+    assert call.kwargs.get("ephemeral") is True
+
+
+# ---------------------------------------------------------------------------
+# #0120 — /whois clan
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+async def db(tmp_path):
+    manager = WarHistoryDB()
+    await manager.initialize(str(tmp_path / "whois_clan.db"))
+    try:
+        yield manager
+    finally:
+        await manager.close()
+
+
+def _insert_war(conn, schema: str, war_id: str, is_cwl: int, result: str, date: str, season: str = "") -> None:
+    conn.execute(
+        f"INSERT INTO {schema}.war_summary (war_id, clan_tag, opponent_tag, is_cwl, cwl_season, result, date)"
+        " VALUES (?, '#CLAN', '#OPP', ?, ?, ?, ?)",
+        (war_id, is_cwl, season, result, date),
+    )
+
+
+@pytest.mark.asyncio
+async def test_clan_whois_stats_sum_main_and_history(db):
+    with db._sync_conn() as conn:
+        conn.execute("INSERT INTO main.clans (clan_tag, name, war_league) VALUES ('#CLAN', 'Clan', 'Crystal League I')")
+        _insert_war(conn, "main", "w1", 0, "win", "2026-09-01")
+        _insert_war(conn, "main", "w2", 1, "loss", "2026-09-05", "2026-09")
+        _insert_war(conn, "history", "w0", 0, "draw", "2025-01-10")
+        _insert_war(conn, "history", "w00", 1, "win", "2025-02-03", "2025-02")
+        conn.commit()
+
+    stats = db.get_clan_whois_stats_sync("#CLAN")
+
+    assert stats["clan"]["name"] == "Clan" and stats["clan"]["war_league"] == "Crystal League I"
+    assert stats["cw"] == {"wars": 2, "wins": 1, "losses": 0, "draws": 1}
+    assert stats["cwl"] == {"wars": 2, "wins": 1, "losses": 1, "draws": 0}
+    assert stats["first_war"] == "2025-01-10" and stats["last_war"] == "2026-09-05"
+    assert stats["cwl_seasons"] == 2
+
+
+@pytest.mark.asyncio
+async def test_clan_whois_stats_unknown_clan(db):
+    stats = db.get_clan_whois_stats_sync("#NOPE")
+    assert stats["clan"] is None and stats["cw"]["wars"] == 0 and stats["first_war"] == ""
+
+
+def test_leaderboard_text_keeps_plain_sections_outside_code():
+    from QBhelperfunctions import _PLAIN_SENTINEL_START, _PLAIN_SENTINEL_END
+
+    text = f"header\n{_PLAIN_SENTINEL_START}<:emoji:1> roster{_PLAIN_SENTINEL_END}table row"
+    embeds = QBdiscordcmds._whois_leaderboard_text_to_embeds(text)
+    desc = embeds[0].description or ""
+    assert "```ansi\nheader\n```" in desc
+    assert "\n<:emoji:1> roster\n" in desc
+    assert "```ansi\ntable row\n```" in desc
+    assert "\x00" not in desc
+
+
+def test_leaderboard_text_stays_inside_one_message_budget():
+    text = "\n".join(f"{i:04d} " + "x" * 60 for i in range(400))  # ~26k chars
+    embeds = QBdiscordcmds._whois_leaderboard_text_to_embeds(text)
+    assert sum(len(e) for e in embeds) <= 6000
+    assert all(len(e.description or "") <= 4096 for e in embeds)
+    assert (embeds[-1].description or "").endswith("…")
+
+
+def test_clan_view_offers_overview_and_every_mode():
+    from clashcontrol.formatting import MODE_REGISTRY
+
+    view = QBdiscordcmds._WhoisClanView("#CLAN", MagicMock(), "1", None, set())
+    values = [o.value for o in view.select.options]
+    assert values[0] == QBdiscordcmds._WHOIS_CLAN_OVERVIEW
+    assert values[1:] == list(MODE_REGISTRY.keys())
+    assert len(values) <= 25
+
+
+@pytest.mark.asyncio
+async def test_whois_clan_untracked_is_refused(mock_interaction, monkeypatch):
+    monkeypatch.setattr(QBdiscordcmds.CACHE, "clan_name_cache", {})
+
+    await QBdiscordcmds.whois_slash.callback(mock_interaction, clan="#2PP")  # type: ignore[arg-type]
+
+    call = mock_interaction.followup.send.await_args
+    assert call.kwargs.get("ephemeral") is True
+    assert "#2PP" in call.args[0]
+    mock_interaction.edit_original_response.assert_not_awaited()

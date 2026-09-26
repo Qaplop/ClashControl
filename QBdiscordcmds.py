@@ -1056,6 +1056,7 @@ def _get_help_command_dm_status() -> Dict[str, bool]:
         "analyse cwl_opponent": analyse_cwlopponent.guild_only,
         "clan management": clan_management.guild_only,
         "cwl preferences": cwl_preferences.guild_only,
+        "dm me": dm_me.guild_only,
         "admin": admin.guild_only,
         "list": list.guild_only,
         "whois": whois_slash.guild_only,
@@ -1080,7 +1081,7 @@ def _get_help_command_names() -> List[str]:
     """Every command /help knows about, in listing order — shared by help() and its
     autocomplete so the two can't disagree. bug/feature only exist where the tracker is on."""
     names = [
-        "registration", "cwl preferences",
+        "registration", "cwl preferences", "dm me",
         "subscribe", "unsubscribe", "subscriptions", "leaderboard", "highlightme", "analyse cwl_league_group",
         "analyse cwl_opponent", "clan management", "admin", "list", "whois", "link clan", "link player",
         "help", "about", "status", "ping"
@@ -1172,7 +1173,7 @@ async def help(interaction: discord.Interaction, command: Optional[str] = None):
     # Organize commands by category (reorganized per user request)
     categories = {
         # Top-most (2026-09-24, qaplop): what every player sets up first — before any other block.
-        t('commands.help.category_player_setup', user_id=user_id, guild_id=guild_id): ["registration", "cwl preferences"],
+        t('commands.help.category_player_setup', user_id=user_id, guild_id=guild_id): ["registration", "cwl preferences", "dm me"],
         t('commands.help.category_leaderboards', user_id=user_id, guild_id=guild_id): ["subscribe", "unsubscribe", "subscriptions", "leaderboard", "highlightme"],
         t('commands.help.category_clan_player_info', user_id=user_id, guild_id=guild_id): ["analyse cwl_league_group", "analyse cwl_opponent", "whois", "link clan", "link player"],
         t('commands.help.category_administration', user_id=user_id, guild_id=guild_id): ["clan management", "admin", "list"],
@@ -1283,6 +1284,7 @@ async def do_maintenance_shutdown() -> None:
     app_commands.Choice(name="List All Subscriptions - View all subscriptions (bot admin)", value="LIST_ALL_SUBSCRIPTIONS"),
     app_commands.Choice(name="Test Notify - Test war notifications for a clan (bot admin)", value="TEST_NOTIFY"),
     app_commands.Choice(name="Manage Testers - Add/remove users who receive live-testing DMs (bot admin)", value="MANAGE_TESTERS"),
+    app_commands.Choice(name="DM User - Send the ClashControl greeting DM to a member (admin)", value="DM_USER"),
     app_commands.Choice(name="Bot Setup - Configure tracker channels (bot admin)", value="BOT_SETUP"),
     app_commands.Choice(name="Remove Clan - Remove a clan from tracking (admin)", value="REMOVE_CLAN"),
     app_commands.Choice(name="List all tracked Clans - List all tracked clans with names and tags (admin)", value="LIST_CLANS"),
@@ -2247,6 +2249,61 @@ async def admin(
             logging.error(f"LIST_ALL_SUBSCRIPTIONS failed: {e}")
         return
     
+    # Handle DM_USER action (tracker #0119) — a server admin sends the /dm me greeting to a member.
+    # Guild-only for the same reason as TEST_NOTIFY below: discord.ui.UserSelect needs a guild.
+    if action_norm == "DM_USER":
+        if not await _safe_defer(interaction, thinking=True, ephemeral=True):
+            return
+        admin_user_id = str(interaction.user.id)
+        if interaction.guild is None:
+            await interaction.followup.send(t('commands.errors.dms_only_error', guild_id=None, user_id=admin_user_id), ephemeral=True)
+            return
+        if not await check_admin_permissions(interaction, SERVER_ADMIN):
+            await interaction.followup.send(t('commands.errors.admin_required', guild_id=interaction.guild.id), ephemeral=True)
+            return
+        from clashcontrol.ui_common import claim_action, lock_buttons
+
+        dm_guild_id = interaction.guild.id
+
+        class DmUserView(discord.ui.View):
+            """One ephemeral message: member picker → result text in place (Cardinal Rule 7)."""
+
+            def __init__(self) -> None:
+                super().__init__(timeout=600)
+                self.user_select: discord.ui.UserSelect = discord.ui.UserSelect(  # type: ignore[var-annotated]
+                    placeholder=t('commands.dm.admin_pick_placeholder', guild_id=dm_guild_id, user_id=admin_user_id)[:150],
+                    min_values=1,
+                    max_values=1,
+                )
+                self.user_select.callback = self.on_pick  # type: ignore[method-assign]
+                self.add_item(self.user_select)  # type: ignore[arg-type]
+
+            async def on_pick(self, select_interaction: discord.Interaction) -> None:
+                if not await claim_action(self, select_interaction):
+                    return
+                target = self.user_select.values[0]  # type: ignore[attr-defined]
+                await lock_buttons(self, select_interaction, content=t(
+                    'commands.dm.admin_sending', guild_id=dm_guild_id, user_id=admin_user_id))
+                if getattr(target, "bot", False):
+                    result = t('commands.dm.admin_is_bot', guild_id=dm_guild_id, user_id=admin_user_id,
+                               user=target.mention)
+                else:
+                    from clashcontrol.greeting_dm import send_greeting_dm
+                    outcome, _sent = await send_greeting_dm(str(target.id), dm_guild_id, target.display_name)
+                    key = 'commands.dm.admin_sent' if outcome == "sent" else 'commands.dm.admin_failed'
+                    result = t(key, guild_id=dm_guild_id, user_id=admin_user_id, user=target.mention)
+                    logging.info(f"ADMIN ACTION: {select_interaction.user} sent greeting DM to {target} ({target.id}): {outcome}")
+                self.stop()
+                await select_interaction.edit_original_response(content=result, view=None)
+
+        await interaction.followup.send(
+            t('commands.dm.admin_pick_prompt', guild_id=dm_guild_id, user_id=admin_user_id,
+              dm_me=command_mention("dm me")),
+            view=DmUserView(),
+            ephemeral=True,
+        )
+        return
+
     # Handle TEST_NOTIFY action — stays guild-only: the user picker below is a
     # discord.ui.UserSelect, a guild-scoped component (populated from a guild's member list;
     # has no DM equivalent), unlike the rest of /admin.
@@ -3923,6 +3980,36 @@ async def about(interaction: discord.Interaction) -> None:
     _log_cmd_done(interaction, "about")
 
 
+# =============================================================================
+# /dm command group (tracker #0119)
+# =============================================================================
+
+dm_group = app_commands.Group(name="dm", description=dev_mode+"Start a private conversation with ClashControl.")
+
+
+@dm_group.command(name="me", description=dev_mode+"Get a greeting DM: what ClashControl does and how to get started.")
+# Works in a server and in the DM (no guild dependency beyond the language fallback).
+@app_commands.checks.cooldown(1, 30.0, key=lambda i: i.user.id)
+async def dm_me(interaction: discord.Interaction) -> None:
+    """Send the caller the greeting DM (clashcontrol/greeting_dm.py) and confirm ephemerally,
+    with a jump link to the DM, or explain that their DM settings block it."""
+    if not await _safe_defer(interaction, thinking=True, ephemeral=True):
+        return
+    _log_cmd(interaction, "dm me")
+    from clashcontrol.greeting_dm import send_greeting_dm
+
+    user_id = str(interaction.user.id)
+    guild_id = interaction.guild_id
+    outcome, sent = await send_greeting_dm(user_id, guild_id, interaction.user.display_name)
+    if outcome == "sent":
+        reply = t('commands.dm.me_sent', user_id=user_id, guild_id=guild_id,
+                  link=sent.jump_url if sent else "")
+    else:
+        reply = t('commands.dm.me_failed', user_id=user_id, guild_id=guild_id)
+    await interaction.followup.send(reply, ephemeral=True)
+    _log_cmd_done(interaction, "dm me")
+
+
 @app_commands.command(name="ping", description=dev_mode+"Show bot latency and responsiveness.")
 # DM-invokable (Phase 0b, CWL_ROSTER_PLANNING_PLAN.md) — display-only guild_id, no functional guild dependency.
 @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.channel_id))
@@ -5171,6 +5258,362 @@ async def _whois_player_select_callback(interaction: discord.Interaction, select
     _log_cmd_done(interaction, "whois")
 
 
+# ============================================================================
+# /whois clan (tracker #0120)
+# ============================================================================
+
+# Select value for "back to the clan overview" — no MODE_REGISTRY key can collide with it.
+_WHOIS_CLAN_OVERVIEW = "__overview__"
+# Discord caps the embeds of ONE message at 6000 characters in total.
+_WHOIS_CLAN_EMBED_BUDGET = 5800
+
+
+def _whois_discord_time(value: Any, style: str = "D") -> Optional[str]:
+    """Render a DB timestamp (ISO / 'YYYY-MM-DD HH:MM:SS', UTC) as a Discord <t:...> tag, which
+    every viewer sees in their own locale and timezone. None when the value doesn't parse."""
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return f"<t:{int(parsed.timestamp())}:{style}>"
+
+
+def _whois_clan_guild_names(clan_tag: str) -> List[str]:
+    """Names of the servers that have this clan as a member clan — member_clans AND every
+    member_family's clans (Pitfall 18). Servers the bot can't see any more are skipped."""
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_guild_member_clan_tags
+    names: List[str] = []
+    for gid in builtins.list(CACHE.server_config.keys()):
+        try:
+            if clan_tag not in resolve_guild_member_clan_tags(int(gid)):
+                continue
+            guild = QBcore.bot.get_guild(int(gid))
+        except (TypeError, ValueError):
+            continue
+        if guild is not None:
+            names.append(guild.name)
+    return sorted(names, key=str.lower)
+
+
+def _whois_clan_subscription_count(clan_tag: str) -> int:
+    """Channel subscriptions that post this clan — directly or through one of its families."""
+    family_ids = {fid for fid, fam in CACHE.clan_families.items() if clan_tag in fam.get("clans", [])}
+    count = 0
+    for subs in CACHE.get_all_subscriptions_flat().values():
+        for sub in subs:
+            if sub.get("clan_tag") == clan_tag or sub.get("clan_tag") in family_ids:
+                count += 1
+    return count
+
+
+async def _build_whois_clan_embed(clan_tag: str, user_id: str, guild_id: Optional[int]) -> discord.Embed:
+    """The /whois clan overview: the clans-table record, war counts from the DB, live details
+    from the CoC clan cache (members, level, leagues) and where the bot uses the clan."""
+    def tr(key: str, **kwargs: Any) -> str:
+        return t(f'commands.whois.{key}', user_id=user_id, guild_id=guild_id, **kwargs)
+
+    stats: Dict[str, Any] = await asyncio.to_thread(
+        CACHE.db_manager.get_clan_whois_stats_sync, clan_tag  # type: ignore[union-attr]
+    )
+    clan_row: Dict[str, Any] = stats.get("clan") or {}
+    try:
+        clan_obj = await CACHE.coc_clan_cache.get_clan(clan_tag)
+    except Exception as exc:  # live details are optional — the DB part stands on its own
+        logging.info(f"[WHOIS-CLAN] live clan lookup failed for {clan_tag}: {exc}")
+        clan_obj = None
+
+    name = getattr(clan_obj, "name", None) or clan_row.get("name") or clan_tag
+    embed = discord.Embed(
+        description=f"## {tr('clan_heading')}: [{discord.utils.escape_markdown(name)}]"
+                    f"({coc_clan_profile_url(clan_tag.lstrip('#'))})  ({clan_tag})",
+        color=discord.Color.blue(),
+    )
+    badge = getattr(clan_obj, "badge", None)
+    if badge is not None and getattr(badge, "url", None):
+        embed.set_thumbnail(url=badge.url)
+
+    # ── Clan (live CoC data, falling back to the stored record) ──
+    war_league = getattr(getattr(clan_obj, "war_league", None), "name", None) or clan_row.get("war_league")
+    capital_league = getattr(getattr(clan_obj, "capital_league", None), "name", None)
+    member_count = getattr(clan_obj, "member_count", None)
+    lines = []
+    if member_count is not None:
+        lines.append(f"{tr('clan_members')}: **{member_count}/50**")
+    if getattr(clan_obj, "level", None):
+        lines.append(f"{tr('clan_level')}: **{clan_obj.level}**")  # type: ignore[union-attr]
+    lines.append(f"{tr('clan_cwl_league')}: **{war_league or '—'}**")
+    if capital_league:
+        lines.append(f"{tr('clan_capital_league')}: **{capital_league}**")
+    if clan_obj is not None:
+        lines.append(f"{tr('clan_win_streak')}: **{getattr(clan_obj, 'war_win_streak', 0) or 0}**")
+    warlog_public = getattr(clan_obj, "public_war_log", None)
+    if warlog_public is None and clan_row:
+        warlog_public = bool(clan_row.get("warlog_is_public"))
+    if warlog_public is not None:
+        lines.append(f"{tr('clan_warlog')}: **{tr('clan_public') if warlog_public else tr('clan_private')}**")
+    embed.add_field(name=tr('clan_section_clan'), value="\n".join(lines)[:1024], inline=False)
+
+    # ── Wars stored in the DB ──
+    cw, cwl = stats["cw"], stats["cwl"]
+    wars_lines = [
+        tr('clan_wars_total', total=cw["wars"] + cwl["wars"], cw=cw["wars"], cwl=cwl["wars"]),
+        tr('clan_record_cw', wins=cw["wins"], losses=cw["losses"], draws=cw["draws"]),
+        tr('clan_record_cwl', wins=cwl["wins"], losses=cwl["losses"], draws=cwl["draws"],
+           seasons=stats["cwl_seasons"]),
+    ]
+    if stats["first_war"]:
+        wars_lines.append(tr('clan_war_range', first=str(stats["first_war"])[:10], last=str(stats["last_war"])[:10]))
+    embed.add_field(name=tr('clan_section_wars'), value="\n".join(wars_lines)[:1024], inline=False)
+
+    # ── Tracking (the clans-table record) ──
+    track_lines: List[str] = []
+    if clan_row:
+        since = _whois_discord_time(clan_row.get("created_at")) or "—"
+        track_lines.append(f"{tr('clan_tracked_since')}: {since}")
+        if clan_row.get("is_deleted"):
+            status = tr('clan_status_deleted')
+        elif clan_row.get("track_war_updates"):
+            status = tr('clan_status_active')
+        else:
+            status = tr('clan_status_paused')
+        track_lines.append(f"{tr('clan_war_tracking')}: **{status}**")
+        last_update = _whois_discord_time(clan_row.get("last_war_update"), "R")
+        if last_update:
+            track_lines.append(f"{tr('clan_last_war_update')}: {last_update}")
+        last_check = _whois_discord_time(clan_row.get("last_checked_via_api"), "R")
+        if last_check:
+            track_lines.append(f"{tr('clan_last_api_check')}: {last_check}")
+    track_lines.append(f"{tr('clan_subscriptions')}: **{_whois_clan_subscription_count(clan_tag)}**")
+    families = sorted(
+        str(fam.get("name") or fid) for fid, fam in CACHE.clan_families.items() if clan_tag in fam.get("clans", [])
+    )
+    if families:
+        track_lines.append(f"{tr('clan_families')}: {', '.join(families)}")
+    guild_names = _whois_clan_guild_names(clan_tag)
+    track_lines.append(
+        f"{tr('clan_member_servers')}: {', '.join(guild_names) if guild_names else tr('clan_member_servers_none')}"
+    )
+    embed.add_field(name=tr('clan_section_tracking'), value="\n".join(track_lines)[:1024], inline=False)
+    embed.set_footer(text=tr('clan_footer'))
+    return embed
+
+
+def _whois_leaderboard_text_to_embeds(text: str, title: Optional[str] = None) -> List[discord.Embed]:
+    """Pack /leaderboard text into embeds: plain-text sentinel sections (custom emoji) stay plain,
+    everything else goes into ```ansi blocks (the ANSI codes are the caller's own highlight).
+    Stays inside one message's 6000-character embed budget; the rest is cut with a hint."""
+    import re
+    from QBhelperfunctions import _PLAIN_SENTINEL_START, _PLAIN_SENTINEL_END  # type: ignore[attr-defined]
+
+    blocks: List[str] = []
+
+    def add_code(code: str) -> None:
+        code = code.strip("\n")
+        if not code:
+            return
+        chunk = ""
+        for line in code.split("\n"):
+            if chunk and len(chunk) + len(line) + 1 > 3800:
+                blocks.append(f"```ansi\n{chunk}\n```")
+                chunk = ""
+            chunk = f"{chunk}\n{line}" if chunk else line
+        if chunk:
+            blocks.append(f"```ansi\n{chunk}\n```")
+
+    pattern = re.compile(re.escape(_PLAIN_SENTINEL_START) + r'(.*?)' + re.escape(_PLAIN_SENTINEL_END), re.DOTALL)
+    parts = pattern.split(text)  # [code, plain, code, plain, ..., code]
+    for i, part in enumerate(parts):
+        if i % 2:
+            if part.strip("\n"):
+                blocks.append(part.strip("\n")[:3900])
+        else:
+            add_code(part)
+
+    embeds: List[discord.Embed] = []
+    used = len(title or "")
+    current = ""
+    truncated = False
+    for block in blocks:
+        if used + len(current) + len(block) + 2 > _WHOIS_CLAN_EMBED_BUDGET:
+            truncated = True
+            break
+        if current and len(current) + len(block) + 1 > 4000:
+            embeds.append(discord.Embed(description=current, color=discord.Color.blue()))
+            used += len(current)
+            current = ""
+        current = f"{current}\n{block}" if current else block
+    if truncated:
+        current = f"{current}\n…"
+    if current:
+        embeds.append(discord.Embed(description=current, color=discord.Color.blue()))
+    if not embeds:
+        embeds.append(discord.Embed(description="—", color=discord.Color.blue()))
+    if title:
+        embeds[0].title = title[:256]
+    return embeds[:10]
+
+
+async def _render_whois_clan_mode(
+    clan_tag: str, mode: str, highlight_player_ids: Set[str], user_id: str, guild_id: Optional[int]
+) -> Tuple[List[discord.Embed], List[discord.File]]:
+    """One /leaderboard mode for one clan with /leaderboard's defaults (current month, scope
+    "all"; raid modes: latest weekend; cwlgroup: latest season) — as embeds (+ image file) for
+    the /whois clan message instead of channel posts. Live modes are refreshed first, as in
+    /leaderboard."""
+    from clashcontrol.formatting import RAID_MODES  # type: ignore[attr-defined]
+
+    if mode == "currentwar":
+        if not await update_clan_war_info_and_stats(clan_tag):
+            logging.warning(f"[WHOIS-CLAN] war refresh failed for {clan_tag}")
+    elif mode == "currentraid":
+        from clashcontrol.constants import is_capital_raid_window
+        if is_capital_raid_window():
+            try:
+                await update_capital_raid_for_clan(clan_tag)
+            except Exception as exc:
+                logging.warning(f"[WHOIS-CLAN] currentraid refresh failed for {clan_tag}: {exc}")
+
+    if mode == "cwlinfo":
+        return (await generate_cwlinfo_embeds(clan_tag))[:10], []
+    if mode == "cwlinfo_comp":
+        embeds, _debug = await generate_cwlinfo_comp_embeds(clan_tag)
+        return embeds[:10], []
+    if mode == "cwlgroup":
+        season = await CACHE.db_manager.get_latest_cwl_season_for_clan(clan_tag) if CACHE.db_manager else None  # type: ignore[union-attr]
+        standings = await update_cwl_group_stats(clan_tag, season) if season else None
+        if not standings:
+            return [discord.Embed(
+                description=t('commands.errors.cwlgroup_no_data', user_id=user_id, guild_id=guild_id,
+                              clan_name=CACHE.get_clan_name(clan_tag, clan_tag), tag=clan_tag, season=season or "—"),
+                color=discord.Color.orange(),
+            )], []
+        img_bytes = await asyncio.to_thread(generate_cwl_group_image, standings, season, clan_tag)
+        embed = discord.Embed(color=discord.Color.blue())
+        embed.set_image(url="attachment://cwlgroup.png")
+        return [embed], [discord.File(io.BytesIO(img_bytes), filename="cwlgroup.png")]
+
+    now = datetime.now(timezone.utc)
+    period_month: Optional[int] = None if mode in RAID_MODES and mode != "raid" else now.month
+    text = await asyncio.to_thread(
+        generate_leaderboard_text, clan_tag, month=period_month, year=now.year,
+        mode=mode, scope="all", highlight_player_ids=highlight_player_ids,
+    )
+    return _whois_leaderboard_text_to_embeds(text), []
+
+
+class _WhoisClanView(discord.ui.View):
+    """The /whois clan dropdown: "Overview" plus every /leaderboard mode. Each pick edits the ONE
+    ephemeral message in place (Cardinal Rule 7).
+
+    Pitfall 41: an ephemeral message can only be edited through the token of an interaction that
+    responded on it, and each token dies 15 minutes after its interaction. Every pick answers on
+    the message (a fresh token), and the timeout (10 min, restarted on every pick) stays below
+    that, so on_timeout can still remove the dropdown through the last pick's token.
+    """
+
+    def __init__(self, clan_tag: str, overview: discord.Embed, user_id: str, guild_id: Optional[int],
+                 highlight_player_ids: Set[str]) -> None:
+        super().__init__(timeout=600)
+        from clashcontrol.formatting import MODE_REGISTRY  # type: ignore[attr-defined]
+        self.clan_tag = clan_tag
+        self.overview = overview
+        self.user_id = user_id
+        self.guild_id = guild_id
+        self.highlight_player_ids = highlight_player_ids
+        self.last_interaction: Optional[discord.Interaction] = None
+        self._busy = False
+
+        options = [discord.SelectOption(
+            label=t('commands.whois.clan_option_overview', user_id=user_id, guild_id=guild_id)[:100],
+            value=_WHOIS_CLAN_OVERVIEW, emoji="🏰", default=True,
+        )]
+        for mode, spec in MODE_REGISTRY.items():
+            options.append(discord.SelectOption(
+                label=mode[:100], value=mode, description=str(spec.get("description", ""))[:100] or None,
+            ))
+        self.select: discord.ui.Select[discord.ui.View] = discord.ui.Select(
+            placeholder=t('commands.whois.clan_select_placeholder', user_id=user_id, guild_id=guild_id)[:150],
+            options=options[:25],
+        )
+        self.select.callback = self._on_select
+        self.add_item(self.select)
+
+    async def _on_select(self, interaction: discord.Interaction) -> None:
+        # Re-entrancy guard (Pitfall 41 / 49): a rapid second pick would race the first edit.
+        if self._busy:
+            try:
+                await interaction.response.defer()
+            except discord.HTTPException:
+                pass
+            return
+        self._busy = True
+        try:
+            mode = interaction.data["values"][0]  # type: ignore[index]
+            for opt in self.select.options:
+                opt.default = (opt.value == mode)
+            if not await _safe_defer(interaction):
+                return
+            self.last_interaction = interaction
+            if mode == _WHOIS_CLAN_OVERVIEW:
+                embeds, files = [self.overview], []
+            else:
+                try:
+                    embeds, files = await _render_whois_clan_mode(
+                        self.clan_tag, mode, self.highlight_player_ids, self.user_id, self.guild_id)
+                except Exception as exc:
+                    logging.warning(f"[WHOIS-CLAN] rendering {mode} for {self.clan_tag} failed: {exc}", exc_info=True)
+                    embeds, files = [discord.Embed(
+                        description=t('commands.whois.clan_mode_failed', user_id=self.user_id,
+                                      guild_id=self.guild_id, mode=mode),
+                        color=discord.Color.red(),
+                    )], []
+            await interaction.edit_original_response(content=None, embeds=embeds, attachments=files, view=self)
+        finally:
+            self._busy = False
+
+    async def on_timeout(self) -> None:
+        if self.last_interaction is None:
+            return
+        try:
+            await self.last_interaction.edit_original_response(view=None)
+        except discord.HTTPException:
+            pass
+
+
+async def _whois_clan_logic(interaction: discord.Interaction, clan: str) -> None:
+    """/whois clan: resolve the clan like /link clan and show the overview with its dropdown.
+    Only tracked clans — an untracked one has nothing stored, and a lookup must never start
+    tracking a clan as a side effect. interaction.response must already be deferred."""
+    user_id = str(interaction.user.id)
+    guild_id = interaction.guild_id
+    _count, resolved = _get_clan_tag(clan) if clan and clan.strip() else (0, None)
+    if not resolved:
+        normalized = normalize_clan_tag(clan or "")
+        if normalized and normalized in CACHE.clan_name_cache:
+            resolved = normalized
+    if not resolved or resolved not in CACHE.clan_name_cache:
+        await interaction.followup.send(
+            t('commands.whois.clan_not_tracked', user_id=user_id, guild_id=guild_id, clan=clan), ephemeral=True
+        )
+        return
+
+    highlight_player_ids: Set[str] = set()
+    user_entry = CACHE.user_accounts.get(user_id)
+    if user_entry:
+        for p in user_entry.get('players', []):
+            if isinstance(p, dict) and p.get('player_tag'):
+                highlight_player_ids.add(p['player_tag'])
+
+    overview = await _build_whois_clan_embed(resolved, user_id, guild_id)
+    view = _WhoisClanView(resolved, overview, user_id, guild_id, highlight_player_ids)
+    view.last_interaction = interaction
+    await interaction.edit_original_response(embed=overview, view=view)
+
+
 def _build_guild_player_name_matches(guild_id: Optional[int], needle_lower: str) -> List[Dict[str, str]]:
     """Guild-first half of /whois's two-step name search (2026-08-18,
     PLAYER_NAME_INDEX_RETIREMENT_PLAN.md Steps 1-3) — an always-complete, uncapped substring
@@ -5279,10 +5722,11 @@ async def _search_player_name_matches(
     return all_matches[:25], len(all_matches)
 
 
-@app_commands.command(name="whois", description=dev_mode+"Show CoC accounts for a Discord user, or war history for a player.")
+@app_commands.command(name="whois", description=dev_mode+"Show CoC accounts for a Discord user, war history for a player, or a clan's data.")
 @app_commands.describe(
     user="The Discord user to look up",
     player="Player tag (e.g. #ABC123) or name substring to search",
+    clan="Tracked clan tag or name: stored data, war counts and its leaderboards",
 )
 # DM-invokable (Phase 0b follow-up, CWL_ROSTER_PLANNING_PLAN.md) — correction against the original
 # draft: _whois_logic()'s guild dependency was cosmetic-only (see whois/whois_message, above), and
@@ -5295,12 +5739,17 @@ async def whois_slash(
     interaction: discord.Interaction,
     user: Optional[discord.User] = None,
     player: Optional[str] = None,
+    clan: Optional[str] = None,
 ) -> None:
-    """Slash command: /whois — look up a Discord user's CoC accounts, or a player's war history."""
+    """Slash command: /whois — look up a Discord user's CoC accounts, a player's war history, or
+    a tracked clan's stored data and leaderboards (tracker #0120)."""
     if not await _safe_defer(interaction, thinking=True, ephemeral=True):
         return
-    _log_cmd(interaction, "whois", user=str(user) if user else None, player=player)
-    if player:
+    _log_cmd(interaction, "whois", user=str(user) if user else None, player=player, clan=clan)
+    if clan:
+        await _whois_clan_logic(interaction, clan)
+        _log_cmd_done(interaction, "whois")
+    elif player:
         player_stripped = player.strip()
         if player_stripped.startswith('#'):
             # Explicit tag — pass directly
@@ -5361,6 +5810,12 @@ async def whois_slash(
             t('commands.whois.player_report_no_args', guild_id=interaction.guild_id),
             ephemeral=True,
         )
+
+
+@whois_slash.autocomplete('clan')
+async def whois_clan_autocomplete(interaction: discord.Interaction, current: str):
+    """Same suggestions as /link clan: the guild's clans first (in a DM, the caller's guilds')."""
+    return await link_clan_autocomplete(interaction, current)
 
 
 # =============================================================================

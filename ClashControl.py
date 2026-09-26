@@ -3626,6 +3626,7 @@ async def _setup_hook():
         QBdiscordcmds.clan_group,
         QBdiscordcmds.analyse_group,
         QBdiscordcmds.cwl_group,
+        QBdiscordcmds.dm_group,
         QBdiscordcmds.link_group,
     ]
     

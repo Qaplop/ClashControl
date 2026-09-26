@@ -1,6 +1,19 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-26 (9)
+- Added (tracker #0119): /dm me sends the caller a greeting DM (what ClashControl does, first
+  commands, hint to /help, texts shared with the Activity landing page); /admin DM User lets a
+  server admin send the same greeting to a member via the user picker (server only).
+  New clashcontrol/greeting_dm.py; /dm group registered in ClashControl.py; /help + README.
+- Added (tracker #0120): /whois clan:<clan> for tracked clans -- clans-table record, tracked
+  since, CWL/capital league, members, CW/CWL war counts and records (main + history summed,
+  explicit columns), member servers, families, subscriptions; a dropdown switches the same
+  ephemeral message between the overview and every /leaderboard mode (current month).
+  New WarHistoryDB.get_clan_whois_stats_sync(). Translations in all 5 languages. Build 118.
+  Files: QBdiscordcmds.py, ClashControl.py, clashcontrol/greeting_dm.py, clashcontrol/db_manager.py,
+  clashcontrol/translations/*.json, README.md, tests. 3575 tests pass.
+
 2026-09-26 (8)
 - Changed (tracker #0138, #0139): /help's Bot Info block now lists /help, /about, /status, /ping
   (also the autocomplete order and README), and /feature's short text mentions that it is also

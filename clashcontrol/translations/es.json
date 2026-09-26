@@ -206,7 +206,39 @@
       "chart_option_reliability": "Tendencia de Temporada – Fiabilidad",
       "chart_option_reliability_desc": "GC/LGC – tasa de uso de ataques mensual",
       "chart_option_activity": "Tendencia de Temporada – Actividad",
-      "chart_option_activity_desc": "GC/LGC – actividad mensual (ataques vs. máximo mensual)"
+      "chart_option_activity_desc": "GC/LGC – actividad mensual (ataques vs. máximo mensual)",
+      "clan_heading": "Clan",
+      "clan_section_clan": "🏰 Clan",
+      "clan_members": "Miembros",
+      "clan_level": "Nivel del clan",
+      "clan_cwl_league": "Liga de LGC",
+      "clan_capital_league": "Liga de la capital",
+      "clan_win_streak": "Racha de victorias en guerra",
+      "clan_warlog": "Registro de guerras",
+      "clan_public": "público",
+      "clan_private": "privado",
+      "clan_section_wars": "⚔️ Guerras guardadas por ClashControl",
+      "clan_wars_total": "Guerras: **{total}** en total ({cw} GC / {cwl} LGC)",
+      "clan_record_cw": "Récord GC: **{wins}** victorias, **{losses}** derrotas, **{draws}** empates",
+      "clan_record_cwl": "Récord LGC: **{wins}** victorias, **{losses}** derrotas, **{draws}** empates ({seasons} temporadas)",
+      "clan_war_range": "Primera guerra: {first} · Última guerra: {last}",
+      "clan_section_tracking": "📡 Seguimiento",
+      "clan_tracked_since": "Seguido desde",
+      "clan_war_tracking": "Seguimiento de guerras",
+      "clan_status_active": "activo",
+      "clan_status_paused": "en pausa",
+      "clan_status_deleted": "clan eliminado en Clash of Clans",
+      "clan_last_war_update": "Última actualización de guerra",
+      "clan_last_api_check": "Última consulta a la API",
+      "clan_subscriptions": "Suscripciones de clasificaciones",
+      "clan_families": "Familias de clanes",
+      "clan_member_servers": "Clan miembro en",
+      "clan_member_servers_none": "ningún servidor",
+      "clan_footer": "Elige una clasificación abajo (mes actual, todos los miembros) o vuelve a este resumen.",
+      "clan_option_overview": "Resumen del clan",
+      "clan_select_placeholder": "Mostrar una clasificación de este clan...",
+      "clan_mode_failed": "⚠️ No se pudo crear la clasificación `{mode}` para este clan.",
+      "clan_not_tracked": "❌ `{clan}` no es un clan que ClashControl siga, así que no hay datos guardados. Elige un clan de las sugerencias o usa el tag de un clan seguido."
     },
     "link": {
       "clan_not_found": "No se pudo encontrar el clan `{tag}` en Clash of Clans.",
@@ -274,6 +306,11 @@
         "title": "🛡️ Comando CWL Preferences",
         "detailed": "Abre tu pantalla personal de preferencias de LGC — decide si quieres jugar siempre la LGC, no jugarla nunca, o decidir de nuevo cada temporada, además de un nivel de liga preferido. Se aplica individualmente a cada una de tus cuentas de Clash vinculadas, y a todos los servidores que te inviten, no solo a este.\n\n**Uso:**\n`/cwl preferences`\n\n**Notas:**\n• Funciona incluso si este servidor no ha configurado su mensaje del Centro de Ajustes de LGC para Jugadores — este comando siempre está disponible\n• Una elección permanente todavía se puede anular para cualquier temporada concreta, ya sea aquí o desde el MD de invitación de esa temporada\n• También funciona en tu MD con el bot: si tus cuentas pertenecen a varios servidores, primero eliges el servidor"
       },
+      "dm me": {
+        "short": "Recibir un MD de bienvenida de ClashControl con una breve introducción",
+        "title": "👋 Comando DM Me",
+        "detailed": "Te envía un mensaje privado de ClashControl: un breve saludo, qué hace el bot y los primeros comandos para probar — útil para iniciar una conversación privada con el bot.\n\n**Uso:**\n`/dm me`\n\n**Notas:**\n• Funciona en un servidor y en tu MD con el bot\n• Si no llega nada, permite los mensajes directos de miembros del servidor en los Ajustes de privacidad del servidor\n• Los administradores del servidor pueden enviar el mismo saludo a un miembro con `/admin` → DM User"
+      },
       "admin": {
         "short": "Acciones administrativas y utilidades",
         "title": "⚙️ Comando Admin",
@@ -285,9 +322,9 @@
         "detailed": "Lista varios datos: cuentas de Discord con jugadores registrados, familias de clanes, o todos los jugadores de un clan/familia.\n\n**Uso:**\n`/list action:<Accounts|Families|Players|Tracked Clans|Managed CWLs> [clan:<clan>] [family:<familia>] [season:<temporada>] [discord_user:<@usuario>]`\n\n**Acciones:**\n\n**Accounts** - Lista todas las cuentas de usuario de Discord y sus jugadores registrados\n• Muestra el estado de verificación\n• Muestra las cuentas principales\n• Incluye niveles de Ayuntamiento\n• Parámetro `discord_user` (opcional): mostrar solo las cuentas de ese usuario de Discord en vez de todos\n\n**Families** - Lista todas las familias de clanes y sus clanes miembros\n• Muestra la estructura de la familia\n• Lista todos los clanes de cada familia\n\n**Players** - Lista todos los jugadores de un clan o familia\n• Parámetro `clan`: Especifica el tag o nombre del clan\n• Parámetro `family`: Especifica el tag de la familia\n• Muestra nombres de jugador, tags y niveles de Ayuntamiento\n• Muestra el estado de vinculación con Discord\n\n**Tracked Clans** - Gráfico de barras de todos los clanes seguidos agrupados por liga de guerra\n• Se publica como imagen en el canal\n\n**Managed CWLs** (Admin del Bot) - Lista cada servidor con una LGC gestionada para una temporada\n• Parámetro `season`: Temporada LGC como YYYY-MM — por defecto la próxima temporada si se omite\n\n**Ejemplos:**\n`/list action:Accounts`\n`/list action:Accounts discord_user:@AlgúnUsuario`\n`/list action:Families`\n`/list action:Players clan:#L2J0C0PY`\n`/list action:Players family:#FAMILY123`\n`/list action:Tracked Clans`\n`/list action:Managed CWLs season:2026-09`"
       },
       "whois": {
-        "short": "Buscar cuentas de CoC de un usuario de Discord, o el historial de guerra de un jugador",
+        "short": "Buscar cuentas de CoC de un usuario de Discord, el historial de guerra de un jugador o los datos de un clan",
         "title": "🔍 Comando Whois",
-        "detailed": "Busca las cuentas de Clash of Clans registradas de un usuario de Discord, o muestra un informe completo de rendimiento en guerra de cualquier jugador de CoC.\n\n**Uso:**\n`/whois user:<@usuario>` — cuentas de CoC registradas de un usuario de Discord\n`/whois player:<#TAG>` — informe de historial de guerra de un tag de jugador específico\n`/whois player:<nombre>` — buscar por nombre de jugador (subcadena sin distinguir mayúsculas); seleccionar de una lista si hay varias coincidencias\n\n**Menú Contextual:**\nClic derecho en cualquier usuario → Aplicaciones → **whois**\nClic derecho en cualquier mensaje → Aplicaciones → **whois** (busca al autor del mensaje)\n\n**Búsqueda de usuario (Información Mostrada):**\n• Todas las cuentas de jugador de CoC registradas (ordenadas por nivel de Ayuntamiento)\n• Nivel de Ayuntamiento con icono\n• Niveles de héroes (Rey Bárbaro, Reina Arquera, Gran Centinela, Campeón Real, Príncipe Esbirro)\n• Rol y nombre del clan\n• Estado de verificación (✅ verificado / sin verificar)\n• Indicador de cuenta principal\n\n**Informe de jugador (Información Mostrada):**\n• Último clan conocido (nombre y tag)\n• Guerras totales (GC / LGC), récord de victorias/derrotas\n• Ataques usados frente a perdidos, fiabilidad %\n• Estrellas medias por ataque, destrucción media %\n• Distribución completa de estrellas (0★ / 1★ / 2★ / 3★)\n• Tendencia reciente (últimas 10 guerras GC frente al total)\n• Resumen de LGC (temporadas, guerras, estrellas medias)\n• Línea temporal de las últimas 10 guerras\n\n**Ejemplos:**\n`/whois user:@AlgúnUsuario` - Buscar las cuentas de CoC de un usuario específico\n`/whois player:#ABC123` - Informe de historial de guerra para un tag de jugador de CoC\n`/whois player:Juan` - Buscar todos los jugadores llamados Juan y elegir uno"
+        "detailed": "Busca las cuentas de Clash of Clans registradas de un usuario de Discord, o muestra un informe completo de rendimiento en guerra de cualquier jugador de CoC.\n\n**Uso:**\n`/whois user:<@usuario>` — cuentas de CoC registradas de un usuario de Discord\n`/whois player:<#TAG>` — informe de historial de guerra de un tag de jugador específico\n`/whois player:<nombre>` — buscar por nombre de jugador (subcadena sin distinguir mayúsculas); seleccionar de una lista si hay varias coincidencias\n\n**Menú Contextual:**\nClic derecho en cualquier usuario → Aplicaciones → **whois**\nClic derecho en cualquier mensaje → Aplicaciones → **whois** (busca al autor del mensaje)\n\n**Búsqueda de usuario (Información Mostrada):**\n• Todas las cuentas de jugador de CoC registradas (ordenadas por nivel de Ayuntamiento)\n• Nivel de Ayuntamiento con icono\n• Niveles de héroes (Rey Bárbaro, Reina Arquera, Gran Centinela, Campeón Real, Príncipe Esbirro)\n• Rol y nombre del clan\n• Estado de verificación (✅ verificado / sin verificar)\n• Indicador de cuenta principal\n\n**Informe de jugador (Información Mostrada):**\n• Último clan conocido (nombre y tag)\n• Guerras totales (GC / LGC), récord de victorias/derrotas\n• Ataques usados frente a perdidos, fiabilidad %\n• Estrellas medias por ataque, destrucción media %\n• Distribución completa de estrellas (0★ / 1★ / 2★ / 3★)\n• Tendencia reciente (últimas 10 guerras GC frente al total)\n• Resumen de LGC (temporadas, guerras, estrellas medias)\n• Línea temporal de las últimas 10 guerras\n\n**Informe de clan (`/whois clan:<clan>`, solo clanes seguidos):**\n• Miembros, nivel del clan, liga de LGC y de la capital, registro de guerras\n• Guerras guardadas por ClashControl (GC / LGC) con récord y temporadas de LGC\n• Seguido desde, estado del seguimiento de guerras, suscripciones, familias de clanes y los servidores donde es clan miembro\n• Menú desplegable: cualquier modo de clasificación para este clan (mes actual) o volver al resumen\n\n**Ejemplos:**\n`/whois user:@AlgúnUsuario` - Buscar las cuentas de CoC de un usuario específico\n`/whois player:#ABC123` - Informe de historial de guerra para un tag de jugador de CoC\n`/whois player:Juan` - Buscar todos los jugadores llamados Juan y elegir uno\n`/whois clan:#2PP` - Datos guardados y clasificaciones de un clan seguido"
       },
       "link clan": {
         "short": "Publicar un enlace en el juego al perfil de un clan",
@@ -422,7 +459,18 @@
       "fallback_tracker_hint": "🐞 Informa de errores con {bug} o, si tienes una sugerencia de mejora, propónla con {feature}, aquí mismo en el chat.",
       "guild_picker_prompt": "Estás vinculado a cuentas en más de un servidor. ¿A qué servidor debería aplicarse esto?",
       "guild_picker_placeholder": "Selecciona un servidor...",
-      "guild_picker_selected": "✅ Entendido — continuando con ese servidor."
+      "guild_picker_selected": "✅ Entendido — continuando con ese servidor.",
+      "greeting_title": "👋 ¡Hola {name}, bienvenido a ClashControl!",
+      "features_title": "✨ Qué hace ClashControl",
+      "help_hint": "¿Quieres verlo todo? {help} muestra todos los comandos y {about} abre la página de presentación completa. Puedes usar la mayoría de los comandos aquí mismo, en este MD.",
+      "me_sent": "✅ Te he enviado un MD — échale un vistazo: {link}",
+      "me_failed": "❌ No he podido enviarte un MD. Permite los mensajes directos de miembros del servidor (menú del servidor → Ajustes de privacidad) e inténtalo de nuevo.",
+      "admin_pick_prompt": "👋 **MD a usuario**\nElige un miembro al que enviar el MD de bienvenida de ClashControl (el mismo mensaje que envía {dm_me}):",
+      "admin_pick_placeholder": "Selecciona un miembro",
+      "admin_sending": "⏳ Enviando el MD de bienvenida…",
+      "admin_sent": "✅ MD de bienvenida enviado a {user}.",
+      "admin_failed": "❌ No se pudo enviar el MD de bienvenida a {user}: no acepta mensajes directos del bot.",
+      "admin_is_bot": "❌ {user} es un bot. Elige a una persona."
     }
   },
   "notifications": {},

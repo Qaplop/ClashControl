@@ -121,6 +121,27 @@ async def test_clan_whois_stats_unknown_clan(db):
     assert stats["clan"] is None and stats["cw"]["wars"] == 0 and stats["first_war"] == ""
 
 
+@pytest.mark.asyncio
+async def test_created_at_pulled_back_to_first_war(db):
+    """Nightly step 0.8: created_at moves back to the first war (main or history, same-day
+    comparisons included), never forward, and a second run changes nothing."""
+    with db._sync_conn() as conn:
+        conn.execute("INSERT INTO main.clans (clan_tag, name, created_at) VALUES ('#CLAN', 'Clan', '2026-02-17 19:14:54')")
+        conn.execute("INSERT INTO main.clans (clan_tag, name, created_at) VALUES ('#SAME', 'Same', '2026-03-01 19:00:00')")
+        conn.execute("INSERT INTO main.clans (clan_tag, name, created_at) VALUES ('#OLD', 'Old', '2025-01-01 00:00:00')")
+        _insert_war(conn, "history", "w0", 0, "win", "2025-11-20T20:18")
+        _insert_war(conn, "main", "w1", 0, "win", "2026-09-01T10:00")
+        conn.execute("INSERT INTO main.war_summary (war_id, clan_tag, opponent_tag, date) VALUES ('s1', '#SAME', '#X', '2026-03-01T08:30')")
+        conn.execute("INSERT INTO main.war_summary (war_id, clan_tag, opponent_tag, date) VALUES ('o1', '#OLD', '#X', '2025-12-01T08:30')")
+        conn.commit()
+
+    assert db.backfill_clan_created_at_from_first_war_sync() == 2
+    assert db.backfill_clan_created_at_from_first_war_sync() == 0
+    with db._sync_conn() as conn:
+        got = {r["clan_tag"]: r["created_at"] for r in conn.execute("SELECT clan_tag, created_at FROM clans")}
+    assert got == {"#CLAN": "2025-11-20 20:18:00", "#SAME": "2026-03-01 08:30:00", "#OLD": "2025-01-01 00:00:00"}
+
+
 def test_leaderboard_text_keeps_plain_sections_outside_code():
     from QBhelperfunctions import _PLAIN_SENTINEL_START, _PLAIN_SENTINEL_END
 

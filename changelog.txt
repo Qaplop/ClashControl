@@ -1,6 +1,15 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-26 (10)
+- Fixed (found testing tracker #0120): clans.created_at (/whois clan "Tracked since") was later
+  than the clan's own stored wars -- every clan from before the JSON->SQLite switch carries that
+  switch's timestamp (2026-02-17), and clans are often stored after the war that brought them in
+  started. New nightly maintenance Step 0.8 backfill_clan_created_at_from_first_war_sync() pulls
+  created_at back to the first war in main+history war_summary (idempotent, ~1 s via covering
+  index; dry run on the PROD copy: 148,788 of 478,186 clans). Build 119.
+  Files: clashcontrol/db_manager.py, ClashControl.py, tests. 3576 tests pass.
+
 2026-09-26 (9)
 - Added (tracker #0119): /dm me sends the caller a greeting DM (what ClashControl does, first
   commands, hint to /help, texts shared with the Activity landing page); /admin DM User lets a

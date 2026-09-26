@@ -2212,7 +2212,7 @@ class WarHistoryDB:
                 war_league TEXT,
                 track_war_updates BOOLEAN NOT NULL DEFAULT 1,
                 is_deleted BOOLEAN NOT NULL DEFAULT 0,
-                created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                created_at TEXT NOT NULL DEFAULT (datetime('now')),  -- "Tracked since"; pulled back to the first stored war nightly (backfill_clan_created_at_from_first_war_sync)
                 updated_at TEXT NOT NULL DEFAULT (datetime('now'))
             )
         """)
@@ -6506,6 +6506,64 @@ class WarHistoryDB:
                 return cursor.rowcount or 0
             except sqlite3.Error as e:
                 logging.error(f"[DB-WRITE-SYNC] clear_cwl_dm_message_ref_sync failed for {message_id}: {e}")
+                conn.rollback()
+                return 0
+
+    def backfill_clan_created_at_from_first_war_sync(self) -> int:
+        """Nightly housekeeping: pull ``clans.created_at`` back to the clan's first recorded war.
+
+        ``created_at`` is what /whois clan shows as "Tracked since", but it can be later than
+        data the bot demonstrably holds for that clan (found 2026-09-26, /whois clan testing):
+          - every clan tracked before the JSON → SQLite switch carries the switch's timestamp
+            (2026-02-17 19:14:54 on PROD), although its war history goes back to 2025-11;
+          - a clan is often first stored a few days AFTER the war that brings it in started
+            (a CWL group's earlier rounds, a war already running when the clan was discovered),
+            or it was removed and re-added, which starts a fresh row.
+        "Tracked since" means "earliest data we have", so the earlier of the two wins. Idempotent
+        and self-healing: only rows whose first war (main + history ``war_summary``) is earlier
+        are touched, so after the first run it only ever adjusts newly added clans.
+
+        Cost: one ``GROUP BY clan_tag`` per schema over the covering index idx_ws_clan_date
+        (~0.7 s for ~8M wars on the 2026-09 PROD copy) plus the few UPDATEs that are needed.
+
+        Returns:
+            How many clans were corrected (0 on failure — never raises).
+        """
+        import sqlite3
+
+        if not self.db_path:
+            raise RuntimeError("Database not initialized. Call initialize() first.")
+
+        with self._sync_conn() as conn:
+            try:
+                # war_summary.date is "YYYY-MM-DDTHH:MM", clans.created_at is SQLite's
+                # "YYYY-MM-DD HH:MM:SS" — normalized so a plain string comparison orders them
+                # ('T' sorts after ' ', which would otherwise lose same-day comparisons).
+                first_war: Dict[str, str] = {}
+                for schema in ("main", "history"):
+                    for row in conn.execute(
+                        f"SELECT clan_tag, MIN(date) AS first_date FROM {schema}.war_summary GROUP BY clan_tag"
+                    ):
+                        if not row["first_date"]:
+                            continue
+                        stamp = str(row["first_date"])[:16].replace("T", " ") + ":00"
+                        known = first_war.get(row["clan_tag"])
+                        if known is None or stamp < known:
+                            first_war[row["clan_tag"]] = stamp
+                with self._sync_write_lock:
+                    before = conn.total_changes
+                    conn.executemany(
+                        "UPDATE clans SET created_at = ? WHERE clan_tag = ? AND created_at > ?",
+                        [(stamp, tag, stamp) for tag, stamp in first_war.items()],
+                    )
+                    corrected = conn.total_changes - before
+                    if self._should_commit():
+                        conn.commit()
+                if corrected:
+                    logging.info(f"[CLAN-CREATED-AT] Moved created_at back to the first recorded war for {corrected} clan(s)")
+                return corrected
+            except sqlite3.Error as e:
+                logging.error(f"[DB-WRITE-SYNC] backfill_clan_created_at_from_first_war_sync failed: {e}")
                 conn.rollback()
                 return 0
 

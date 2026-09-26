@@ -2663,6 +2663,13 @@ async def run_nightly_maintenance_routine(db_mgr: Any, run_migration: bool) -> s
             await asyncio.to_thread(db_mgr.purge_stale_cwl_dm_refs_sync)
         except Exception as _refs_exc:
             logging.error(f"[CWL-DM-REFS] Failed, continuing with maintenance: {_refs_exc}", exc_info=True)
+        # Step 0.8: "Tracked since" (clans.created_at) never later than the clan's first stored
+        # war — fixes the JSON→SQLite switch timestamp and clans stored after their first war
+        # started (2026-09-26, /whois clan). ~1 s, idempotent; same never-abort rule.
+        try:
+            await asyncio.to_thread(db_mgr.backfill_clan_created_at_from_first_war_sync)
+        except Exception as _created_exc:
+            logging.error(f"[CLAN-CREATED-AT] Failed, continuing with maintenance: {_created_exc}", exc_info=True)
         # Steps 1-3: WAL checkpoint → REINDEX/VACUUM → ANALYZE (blocks
         # Discord commands internally via db_maintenance_mode).
         _result = await db_mgr.nightly_db_maintenance()

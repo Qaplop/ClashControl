@@ -66,9 +66,30 @@ def parse_log_line(line: str) -> Tuple[Optional[datetime], str]:
     return None, line  # type: ignore[return-value]
 
 
+LOG_BASENAME = "clashcontrol.log"
+# Before the rename (2026-09-26) the bot logged to qapbot.log. Those files are kept as they are;
+# the rotation handler only prunes its own clashcontrol.log.* backups, never these.
+LEGACY_LOG_BASENAME = "qapbot.log"
+
+
+def log_files_newest_first(log_dir: str) -> List[str]:
+    """clashcontrol.log* newest first (the live file, then its dated rotations), followed by the
+    pre-rename qapbot.log* in the same order -- every one of those is older than any
+    clashcontrol.log file."""
+    names = os.listdir(log_dir)
+    ordered: List[str] = []
+    for base in (LOG_BASENAME, LEGACY_LOG_BASENAME):
+        ordered += sorted(
+            (f for f in names if f == base or f.startswith(base + ".")),
+            key=lambda f, base=base: "9999-99-99" if f == base else f[len(base) + 1:],
+            reverse=True,
+        )
+    return ordered
+
+
 def scan_logs(log_dir: str) -> Dict[str, Any]:
     """
-    Scan all qapbot.log* files in the specified directory.
+    Scan the two newest log files (see log_files_newest_first()) in the specified directory.
     
     Args:
         log_dir: Path to logs directory
@@ -150,15 +171,10 @@ def scan_logs(log_dir: str) -> Dict[str, Any]:
             'bot_version_from_log': None,
         }
     
-    # Only scan the two most-recent files (today's qapbot.log + yesterday's rotation).
+    # Only scan the two most-recent files (today's clashcontrol.log + yesterday's rotation).
     # Reading older files causes the command to hang for long-running bots because the
     # startup marker that terminates the scan is buried deep in old rotations.
-    _all_log_files = [f for f in os.listdir(log_dir) if f.startswith("qapbot.log")]
-    log_files = sorted(
-        _all_log_files,
-        key=lambda f: "9999-99-99" if f == "qapbot.log" else f[len("qapbot.log."):],
-        reverse=True,
-    )[:2]
+    log_files = log_files_newest_first(log_dir)[:2]
 
     if not log_files:
         return {
@@ -247,7 +263,7 @@ def scan_logs(log_dir: str) -> Dict[str, Any]:
                     
                     # Stop at the most recent bot start — everything accumulated so far
                     # is from after this startup (we are reading bottom-to-top).
-                    if "[INFO] QapBot started" in l:
+                    if "[INFO] ClashControl started" in l or "[INFO] QapBot started" in l:
                         if dt:
                             bot_start_date = dt
                             first_date = dt
@@ -349,10 +365,10 @@ def _fmt_duration(seconds: float) -> str:
 def find_last_nightly_maintenance_duration(log_dir: str) -> Optional[Tuple[datetime, float]]:
     """
     Find the most recently completed nightly-maintenance run by scanning
-    qapbot.log* rotations newest-first, independent of this process's own
+    clashcontrol.log* (then pre-rename qapbot.log*) rotations newest-first, independent of this process's own
     startup marker.
 
-    Unlike scan_logs() (which resets its counters at the last "QapBot started"
+    Unlike scan_logs() (which resets its counters at the last "ClashControl started"
     line, so only reflects the current process), nightly maintenance runs at
     most once/night — the last completed run may well predate this process's
     start (e.g. right after a restart, before 03:00 UTC comes around again).
@@ -361,17 +377,11 @@ def find_last_nightly_maintenance_duration(log_dir: str) -> Optional[Tuple[datet
 
     Returns:
         (timestamp, duration_seconds) of the most recent match, or None if no
-        qapbot.log* files exist or none contain a "[NIGHTLY-MAINTENANCE] END" line.
+        log files exist or none contain a "[NIGHTLY-MAINTENANCE] END" line.
     """
     if not os.path.exists(log_dir):
         return None
-    all_log_files = [f for f in os.listdir(log_dir) if f.startswith("qapbot.log")]
-    log_files = sorted(
-        all_log_files,
-        key=lambda f: "9999-99-99" if f == "qapbot.log" else f[len("qapbot.log."):],
-        reverse=True,
-    )
-    for fname in log_files:
+    for fname in log_files_newest_first(log_dir):
         fpath = os.path.join(log_dir, fname)
         try:
             with open(fpath, encoding="utf-8", errors="ignore") as f:

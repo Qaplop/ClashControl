@@ -19,10 +19,10 @@ os.makedirs(TEMP_DIR, exist_ok=True)
 os.makedirs(LOGS_DIR, exist_ok=True)
 
 # Load log level from environment variable with fallback to INFO
-log_level_str = os.getenv("QAPBOT_LOG_LEVEL", "INFO").upper()
+log_level_str = os.getenv("CLASHCONTROL_LOG_LEVEL", "INFO").upper()
 LOG_LEVEL = getattr(logging, log_level_str, logging.INFO)
 log_formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')
-log_file = os.path.join(LOGS_DIR, "qapbot.log")
+log_file = os.path.join(LOGS_DIR, "clashcontrol.log")
 try:
     file_handler = TimedRotatingFileHandler(log_file, when="midnight", backupCount=13, encoding="utf-8", delay=True)
     file_handler.setFormatter(log_formatter)
@@ -5277,7 +5277,7 @@ if __name__ == "__main__":
         Token selection is automatic based on DISCORD_GUILD_ID environment variable.
     """
     # Log startup info once at program entry
-    logging.info("QapBot started.")
+    logging.info("ClashControl started.")
     # build + source fingerprint identify exactly which edit is running, which BOT_VERSION
     # alone cannot after a file-copy deploy.  See QBcore.source_fingerprint().
     logging.info(
@@ -5317,7 +5317,7 @@ if __name__ == "__main__":
     # Use token from CONFIG (auto-selected based on DEV/PROD mode)
     token = CONFIG.discord_token
     mode_str = "DEV" if CONFIG.is_dev_mode else "PROD"
-    logging.info(f"Starting QapBot in {mode_str} mode...")
+    logging.info(f"Starting ClashControl in {mode_str} mode...")
     
     # In PROD mode, clear DEV guild commands before starting
     if not CONFIG.is_dev_mode:

@@ -210,6 +210,7 @@ marimo/_lsp/
 __marimo__/
 QapBot - Kopie.py
 qapbot.log.*
+clashcontrol.log.*
 subscriptions.json
 *.csv
 *.backup

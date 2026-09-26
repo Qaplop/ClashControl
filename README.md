@@ -139,7 +139,7 @@ A powerful, modular Discord bot designed for Clash of Clans clan management, fea
    
    # Bot Configuration
    SERVER_ADMIN=your_discord_user_id
-   QAPBOT_LOG_LEVEL=INFO  # Options: DEBUG, INFO, WARNING, ERROR
+   CLASHCONTROL_LOG_LEVEL=INFO  # Options: DEBUG, INFO, WARNING, ERROR
    SLEEP_INTERVAL=300  # Main loop interval in seconds
    
    # Notification Settings
@@ -334,7 +334,7 @@ migration job moves data older than the retention window from hot to history —
 | `COC_API_EMAIL_DEV` | Clash of Clans API email (development) | Yes | - |
 | `COC_API_PASSWORD_DEV` | Clash of Clans API password (development) | Yes | - |
 | `SERVER_ADMIN` | Numeric Discord user ID of the bot administrator (username accepted as deprecated fallback) | Yes | - |
-| `QAPBOT_LOG_LEVEL` | Logging level (DEBUG, INFO, WARNING, ERROR) | No | INFO |
+| `CLASHCONTROL_LOG_LEVEL` | Logging level (DEBUG, INFO, WARNING, ERROR) | No | INFO |
 | `SLEEP_INTERVAL` | Main loop interval in seconds | No | 300 |
 | `NOTIFICATION_HOURS_BEFORE_END` | Hours before war end to send reminders | No | 4 |
 | `NOTIFICATION_BATCH_DELAY` | Seconds delay between notification batches | No | 2 |
@@ -379,7 +379,7 @@ migration job moves data older than the retention window from hot to history —
 - **Platform**: Any standard Linux/Windows machine (e.g., physical or virtual, Ubuntu)
 - **Python Version**: 3.14 or higher (tested with 3.14.5)
 - **Mode**: Set environment to use global commands
-- **Logs**: `data/logs/qapbot.log` in your installation directory
+- **Logs**: `data/logs/clashcontrol.log` in your installation directory
 - **CWL Clan-Config Activity bridge** (optional): if `WEB_BRIDGE_PORT`/`WEB_BRIDGE_SECRET` are
   set, a `cloudflared` **named tunnel** (stable hostname, survives restarts — unlike the free
   quick tunnel DEV uses, which is fine there since a human restarts it by hand) must be running
@@ -522,7 +522,7 @@ See [changelog.txt](changelog.txt) for detailed changelog and version history.
 **Leaderboard not updating:**
 - Check clan is subscribed: `/subscriptions`
 - Verify clan is in active war state
-- Check logs for API errors: `data/logs/qapbot.log`
+- Check logs for API errors: `data/logs/clashcontrol.log`
 - Ensure CoC API credentials are valid
 
 **Cache/Data issues:**
@@ -545,7 +545,7 @@ Use `/admin CHECK_LOGS` to scan recent logs for:
 - API failures
 
 ### Getting Help
-- Check logs: `data/logs/qapbot.log` in your installation directory
+- Check logs: `data/logs/clashcontrol.log` in your installation directory
 - Review backlog: [backlog.txt](backlog.txt) for known issues
 - Open GitHub issue with:
   - Error messages from logs

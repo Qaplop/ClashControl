@@ -254,11 +254,11 @@ class TestScanLogsDeep:
     def test_multiple_rotated_logs(self, tmp_path):
         log_dir = tmp_path / "logs"
         log_dir.mkdir()
-        (log_dir / "qapbot.log").write_text(
+        (log_dir / "clashcontrol.log").write_text(
             "2025-01-01 12:00:00,000 [ERROR] Main error\n"
             "2025-01-01 12:01:00,000 [WARNING] Some warning\n"
         )
-        (log_dir / "qapbot.log.2025-01-01").write_text(
+        (log_dir / "clashcontrol.log.2025-01-01").write_text(
             "2025-01-01 11:00:00,000 [ERROR] Old error\n"
         )
         result = self._fn()(str(log_dir))
@@ -268,7 +268,7 @@ class TestScanLogsDeep:
     def test_empty_log_file(self, tmp_path):
         log_dir = tmp_path / "logs"
         log_dir.mkdir()
-        (log_dir / "qapbot.log").write_text("")
+        (log_dir / "clashcontrol.log").write_text("")
         result = self._fn()(str(log_dir))
         assert result["errors"] == []
         assert result["warnings"] == []
@@ -276,7 +276,7 @@ class TestScanLogsDeep:
     def test_error_lines_collected(self, tmp_path):
         log_dir = tmp_path / "logs"
         log_dir.mkdir()
-        (log_dir / "qapbot.log").write_text(
+        (log_dir / "clashcontrol.log").write_text(
             "2025-01-01 12:00:00,000 [ERROR] Fatal error occurred\n"
         )
         result = self._fn()(str(log_dir))
@@ -291,7 +291,7 @@ class TestScanLogsDeep:
             "2025-01-01 12:02:00,000 [WARNING] Watch out\n",
             "2025-01-01 12:03:00,000 [ERROR] Something broke\n",
         ]
-        (log_dir / "qapbot.log").write_text("".join(lines))
+        (log_dir / "clashcontrol.log").write_text("".join(lines))
         result = self._fn()(str(log_dir))
         assert len(result["errors"]) == 1
         assert len(result["warnings"]) == 1

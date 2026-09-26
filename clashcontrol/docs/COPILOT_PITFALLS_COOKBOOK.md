@@ -456,7 +456,7 @@ faster. Lesson on top of the lesson: `asyncio.to_thread()` fixes the *event-loop
 problem, but moving slow work off the loop doesn't make it fast — if a per-row operation inside
 a `to_thread()`-wrapped loop can instead be one bulk SQL query, prefer the query.
 
-Diagnostic tool: `clashcontrol/scripts/log_time_gaps.py --log data/logs/qapbot.log --top N` finds the
+Diagnostic tool: `clashcontrol/scripts/log_time_gaps.py --log data/logs/clashcontrol.log --top N` finds the
 biggest gaps between consecutive timestamped log lines — the fastest way to find blocking/slow
 segments in the update cycle. On Windows, pipe through
 `$env:PYTHONIOENCODING="utf-8"; ... | Out-File -Encoding utf8` (emoji in log lines crash the
@@ -1559,7 +1559,7 @@ role or current clan changed), so a shared `added_at` across a user's whole acco
 - The real link/unlink audit trail is the **log**, not the DB:
   `USER ACTION: <user> skipped verification for player <name> (<tag>)`, the `/link` and unlink
   paths' own log lines, and `[USER-ACCOUNTS-UPDATE] <tag>: newly tracked from clan <clan>`.
-  Grep the rotated `data/logs/qapbot.log*` for the player tag.
+  Grep the rotated `data/logs/clashcontrol.log* (older: qapbot.log*)` for the player tag.
 - Watch the timezone when correlating the two: log lines are **local** (UTC+2 on PROD) while
   `added_at` / `datetime('now')` are **UTC**. A DB timestamp of `2026-08-21 22:41:49` is
   `00:41:49` on 2026-08-22 in the log — a different file once the log has rotated.

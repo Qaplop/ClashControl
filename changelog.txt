@@ -1,6 +1,24 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-26 (3)  Build 115.
+- Changed (rename to ClashControl, phase 6 rest: logging):
+  - Env var QAPBOT_LOG_LEVEL -> CLASHCONTROL_LOG_LEVEL (renamed in .env by the project owner;
+    unset still means INFO). README and .env.example follow.
+  - Log file data/logs/qapbot.log -> data/logs/clashcontrol.log; the midnight rotation
+    (TimedRotatingFileHandler) therefore writes clashcontrol.log.YYYY-MM-DD. Existing
+    qapbot.log* files are left untouched and are NOT pruned by the rotation (it only counts
+    its own clashcontrol.log.* backups) -- delete them by hand whenever they're no longer needed.
+  - Startup lines "QapBot started." / "Starting QapBot in ... mode" -> "ClashControl ...".
+  - /admin log summary and the /status + Check Logs nightly-maintenance fallback read the logs
+    via the new log_files_newest_first(): clashcontrol.log* newest first, then the old
+    qapbot.log*, so the last nightly run still shows right after the switch; the start marker
+    matches both names.
+  - log_time_gaps.py default path, pitfalls-cookbook how-tos and .gitignore (old pattern kept).
+  Files: ClashControl.py, clashcontrol/QBdiscocmdshelper_admin_command.py,
+  clashcontrol/scripts/log_time_gaps.py, QBcore.py, README.md, .env.example, .gitignore,
+  docs (+ tests/unit/test_admin_helper_phase5.py, test_admin_command_phase5.py).
+
 2026-09-26 (2)  Build 114.
 - Changed (rename to ClashControl, phase 6 part: DB file names): default DB files are now
   data/clashcontrol.db and data/clashcontrol_history.db (config.py dataclass defaults and the

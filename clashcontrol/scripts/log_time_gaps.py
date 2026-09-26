@@ -33,8 +33,8 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Find biggest time gaps in a ClashControl log file.")
     parser.add_argument(
         "--log",
-        default="data/logs/qapbot.log",
-        help="Path to the log file (default: data/logs/qapbot.log)",
+        default="data/logs/clashcontrol.log",
+        help="Path to the log file (default: data/logs/clashcontrol.log)",
     )
     parser.add_argument(
         "--top",

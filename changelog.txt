@@ -1,6 +1,12 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-26 (4)
+- Changed: requirements.txt pinned to the versions now installed on DEV after the project
+  owner's package upgrade: matplotlib 3.11.1 -> 3.11.2, tzdata 2026.3 -> 2026.4, wcwidth
+  0.8.2 -> 0.9.1 (all others unchanged). pip check clean; 3571 tests pass. PROD needs
+  `pip install -r requirements.txt` in its venv to match.
+
 2026-09-26 (3)  Build 115.
 - Changed (rename to ClashControl, phase 6 rest: logging):
   - Env var QAPBOT_LOG_LEVEL -> CLASHCONTROL_LOG_LEVEL (renamed in .env by the project owner;

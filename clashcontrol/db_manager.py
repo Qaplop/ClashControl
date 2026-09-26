@@ -2213,7 +2213,7 @@ class WarHistoryDB:
                 track_war_updates BOOLEAN NOT NULL DEFAULT 1,
                 is_deleted BOOLEAN NOT NULL DEFAULT 0,
                 created_at TEXT NOT NULL DEFAULT (datetime('now')),  -- "Tracked since"; pulled back to the first stored war nightly (backfill_clan_created_at_from_first_war_sync)
-                updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+                updated_at TEXT NOT NULL DEFAULT (datetime('now'))  -- set by every clan write (save_clan upsert + bulk_update_clan_*), 2026-09-26
             )
         """)
         await self._conn.execute(
@@ -9832,7 +9832,8 @@ class WarHistoryDB:
                 last_checked_via_api = excluded.last_checked_via_api,
                 war_league = COALESCE(excluded.war_league, war_league),
                 track_war_updates = COALESCE(excluded.track_war_updates, track_war_updates, 1),
-                is_deleted = COALESCE(excluded.is_deleted, is_deleted, 0)
+                is_deleted = COALESCE(excluded.is_deleted, is_deleted, 0),
+                updated_at = datetime('now')
         """, (clan_tag, name, 1 if has_active_subscriptions else 0, last_war_update,
               1 if warlog_is_public else 0, last_checked_via_api, war_league, _track_val, _is_deleted_val))
         await self._conn.commit()
@@ -9866,7 +9867,7 @@ class WarHistoryDB:
         await self._write_lock.acquire()
         try:
             await self._conn.executemany(
-                "UPDATE clans SET has_active_subscriptions = ? WHERE clan_tag = ?",
+                "UPDATE clans SET has_active_subscriptions = ?, updated_at = datetime('now') WHERE clan_tag = ?",
                 rows,
             )
             await self._conn.commit()
@@ -9890,7 +9891,7 @@ class WarHistoryDB:
         await self._write_lock.acquire()
         try:
             await self._conn.executemany(
-                "UPDATE clans SET track_war_updates = 1 WHERE clan_tag = ?",
+                "UPDATE clans SET track_war_updates = 1, updated_at = datetime('now') WHERE clan_tag = ?",
                 rows,
             )
             await self._conn.commit()
@@ -9917,7 +9918,7 @@ class WarHistoryDB:
             try:
                 _t0 = _time.monotonic()
                 await self._conn.executemany(
-                    "UPDATE clans SET last_war_update = ? WHERE clan_tag = ?",
+                    "UPDATE clans SET last_war_update = ?, updated_at = datetime('now') WHERE clan_tag = ?",
                     updates,
                 )
                 await self._conn.commit()

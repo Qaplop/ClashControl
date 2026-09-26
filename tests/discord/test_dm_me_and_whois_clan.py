@@ -142,6 +142,35 @@ async def test_created_at_pulled_back_to_first_war(db):
     assert got == {"#CLAN": "2025-11-20 20:18:00", "#SAME": "2026-03-01 08:30:00", "#OLD": "2025-01-01 00:00:00"}
 
 
+@pytest.mark.asyncio
+async def test_every_clan_write_stamps_updated_at(db):
+    """save_clan's upsert and all three bulk updates refresh updated_at; created_at stays."""
+    old = "2026-01-01 00:00:00"
+
+    def _reset() -> None:
+        with db._sync_conn() as conn:
+            conn.execute("UPDATE clans SET updated_at = ?, created_at = ?", (old, old))
+            conn.commit()
+
+    def _row() -> dict:
+        with db._sync_conn() as conn:
+            r = conn.execute("SELECT created_at, updated_at FROM clans WHERE clan_tag = '#CLAN'").fetchone()
+            return {"created_at": r["created_at"], "updated_at": r["updated_at"]}
+
+    await db.save_clan("#CLAN", "Clan")
+    for write in (
+        lambda: db.save_clan("#CLAN", "Clan renamed"),
+        lambda: db.bulk_update_clan_subscription_statuses([(True, "#CLAN")]),
+        lambda: db.bulk_update_clan_track_war_updates(["#CLAN"]),
+        lambda: db.bulk_update_clan_timestamps([("2026-09-26T10:00:00+00:00", "#CLAN")]),
+    ):
+        _reset()
+        await write()
+        row = _row()
+        assert row["created_at"] == old
+        assert row["updated_at"] > old
+
+
 def test_leaderboard_text_keeps_plain_sections_outside_code():
     from QBhelperfunctions import _PLAIN_SENTINEL_START, _PLAIN_SENTINEL_END
 

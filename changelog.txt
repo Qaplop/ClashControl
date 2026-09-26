@@ -1,6 +1,13 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-26 (11)
+- Fixed: clans.updated_at was only ever set on INSERT, so it always equalled the creation time.
+  Every clan write now stamps it: save_clan()'s upsert and bulk_update_clan_subscription_statuses /
+  _track_war_updates / _timestamps (those bulk paths only receive changed rows). The nightly
+  created_at correction deliberately leaves it alone. Build 120.
+  Files: clashcontrol/db_manager.py, tests. 3577 tests pass.
+
 2026-09-26 (10)
 - Fixed (found testing tracker #0120): clans.created_at (/whois clan "Tracked since") was later
   than the clan's own stored wars -- every clan from before the JSON->SQLite switch carries that

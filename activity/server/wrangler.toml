@@ -15,10 +15,20 @@ compatibility_date = "2026-08-01"
 # exchanges the code in-iframe) — Discord's /oauth2/token endpoint just requires it to be
 # present and registered, per standard OAuth2 authorization_code grant rules.
 
+# routes: each Worker is served on its own clashcontrol.uk hostname (Custom Domain — wrangler
+# creates the DNS record + certificate on deploy). The Developer Portal's Activity URL Mapping
+# `/api` points at that hostname. workers_dev = true is required alongside: as soon as `routes`
+# is set, wrangler turns the workers.dev URL OFF unless told otherwise, which would cut off a
+# portal mapping that still points there. Keeping both makes the mapping switch downtime-free.
+
 [env.dev]
 name = "cwl-clan-config-server-dev"
 vars = { CLIENT_ID = "1442060461783781479", REDIRECT_URI = "https://cwl-clan-config-dev.pages.dev/" }
+routes = [{ pattern = "api-dev.clashcontrol.uk", custom_domain = true }]
+workers_dev = true
 
 [env.prod]
 name = "cwl-clan-config-server-prod"
 vars = { CLIENT_ID = "1394733938961944787", REDIRECT_URI = "https://cwl-clan-config-prod.pages.dev/" }
+routes = [{ pattern = "api.clashcontrol.uk", custom_domain = true }]
+workers_dev = true

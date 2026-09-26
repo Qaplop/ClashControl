@@ -1,6 +1,16 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-26 (6)
+- Changed (domain switch qapbot.uk -> clashcontrol.uk, Phase 3.1): the Activity Workers get
+  Custom Domains in activity/server/wrangler.toml -- api-dev.clashcontrol.uk (env.dev) and
+  api.clashcontrol.uk (env.prod). workers_dev = true is set explicitly: with `routes` present
+  wrangler otherwise disables the workers.dev URL on deploy, which briefly (~1 min) cut off
+  DEV's portal mapping on the first deploy. DEV deployed; both hostnames answer identically.
+  Earlier the same day (manual, outside the repo): new tunnels clashcontrol-dev-bridge /
+  clashcontrol-prod-bridge on bridge-dev/bridge-prod.clashcontrol.uk, Worker BRIDGE_URL
+  secrets and TRACKER_BRIDGE_URL switched; old qapbot-*-bridge tunnels stopped.
+
 2026-09-26 (5)  Build 116.
 - Removed (rename to ClashControl, final cleanup; project owner: backwards compatibility no
   longer needed, all installs are renamed):

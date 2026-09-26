@@ -90,3 +90,23 @@ async def test_tracker_client_reports_maintenance_and_plain_text_errors():
 
     body = await _read_body(_Resp(500, ValueError("not json"), "500 Internal Server Error"))  # type: ignore[arg-type]
     assert body["error"] == "500 Internal Server Error"
+
+
+@pytest.mark.asyncio
+async def test_cwl_purge_with_nothing_to_delete_leaves_no_open_write_transaction(tmp_path):
+    """Nightly Step 0.6 used to commit only when it deleted something — a 0-row DELETE still
+    opens a write transaction, which then blocked Step 0.7/0.8's sync writes ("database is
+    locked" after the 5 s busy_timeout, PROD 2026-09-26 17:17)."""
+    db = WarHistoryDB()
+    await db.initialize(str(tmp_path / "purge.db"))
+    try:
+        result = await db.purge_expired_cwl_events()
+        assert not any(result.values())
+        assert db._conn.in_transaction is False
+        assert db.purge_stale_cwl_dm_refs_sync() == 0  # returned 0 via the "locked" error path before
+        assert db.backfill_clan_created_at_from_first_war_sync() == 0
+        with db._sync_conn() as conn:  # a real sync write must not hit the lock
+            conn.execute("INSERT INTO clans (clan_tag, name) VALUES ('#LOCK', 'x')")
+            conn.commit()
+    finally:
+        await db.close()

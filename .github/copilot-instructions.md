@@ -406,6 +406,8 @@ All pitfalls: short snippets + details in ../clashcontrol/docs/COPILOT_PITFALLS_
 
 43) Maintenance mode (`/admin Maintenance Start`) closes the DB on purpose so `data/` can be copied — **nothing may reopen it**. `_ensure_connection()` (async) and `_sync_conn()`'s pool-less fallback both raise `DatabaseMaintenanceError` (a `RuntimeError` subclass) while `QBcore.maintenance_mode` is set; any new way of opening the DB must check it too. Until 2026-09-26 the sync fallback silently reopened `clashcontrol.db` + history (and recreated `-wal`/`-shm`) on any bridge/Activity request during maintenance. The web bridge answers every endpoint except `/api/health` with `503 {"error": "maintenance"}` (`_maintenance_middleware`), so the tracker MCP is unavailable during maintenance by design.
 
+44) On the async connection (`self._conn`), **every** DML statement opens a write transaction — a `DELETE`/`UPDATE` that matches 0 rows included (default isolation level). Always end it: `commit()` unconditionally (plus `rollback()` on error), never `if rows_changed: commit()`. A transaction left open holds the DB write lock, and every sync writer after it (`_sync_conn()`, separate connections) waits out `busy_timeout` and fails with "database is locked". Confirmed 2026-09-26: nightly Step 0.6 `purge_expired_cwl_events()` did exactly this and broke Steps 0.7/0.8 on every run where it had nothing to purge.
+
 ---
 
 ## Implementation Workflow

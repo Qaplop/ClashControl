@@ -1,6 +1,14 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-26 (14)
+- Fixed: nightly maintenance Steps 0.7 (purge_stale_cwl_dm_refs_sync) and 0.8 (clan created_at
+  backfill) failed with "database is locked" (PROD 17:17:05 / 17:17:22). Cause: Step 0.6
+  purge_expired_cwl_events() committed only when it deleted something, but its 0-row DELETEs
+  still open a write transaction on the async connection -- left open, it held the write lock
+  against every later sync writer. Now always commits (rollback on error) under _write_lock.
+  Playbook pitfall 44. Build 123. Files: clashcontrol/db_manager.py, tests. 3582 tests pass.
+
 2026-09-26 (13)
 - Fixed: a bridge request during maintenance mode logged a full traceback ("Error handling
   request" -> RuntimeError [DB-MAINT] from get_tracker_item; PROD log 17:02:29). The DB now

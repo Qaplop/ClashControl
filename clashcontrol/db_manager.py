@@ -5064,50 +5064,62 @@ class WarHistoryDB:
         if self._conn is None:
             return result
 
-        cursor = await self._conn.execute(
-            "SELECT guild_id, cwl_retention_months FROM guild_config "
-            "WHERE cwl_retention_months IS NOT NULL AND cwl_retention_months > 0"
-        )
-        guilds = await cursor.fetchall()
-
-        for row in guilds:
-            months = int(row["cwl_retention_months"])
-            cutoff = self._cwl_retention_cutoff_season(months)
-            deleted = await self._conn.execute(
-                "DELETE FROM cwl_events WHERE guild_id = ? AND cwl_season < ?",
-                (row["guild_id"], cutoff),
+        # ALWAYS end the transaction (2026-09-26): Python's sqlite3 opens a write transaction for
+        # every DELETE, even one that matches 0 rows. Committing only "if anything was deleted"
+        # left it open on a normal night, holding the write lock — so every sync writer after
+        # this step (Step 0.7 purge_stale_cwl_dm_refs_sync, Step 0.8 clan created_at backfill)
+        # waited out its 5 s busy_timeout and failed with "database is locked".
+        await self._write_lock.acquire()
+        try:
+            cursor = await self._conn.execute(
+                "SELECT guild_id, cwl_retention_months FROM guild_config "
+                "WHERE cwl_retention_months IS NOT NULL AND cwl_retention_months > 0"
             )
-            if deleted.rowcount and deleted.rowcount > 0:
-                result["events"] += deleted.rowcount
-                result["guilds"] += 1
-                logging.info(
-                    f"[CWL-PURGE] guild {row['guild_id']}: removed {deleted.rowcount} season(s) "
-                    f"older than {cutoff} (retention {months} months)"
+            guilds = await cursor.fetchall()
+
+            for row in guilds:
+                months = int(row["cwl_retention_months"])
+                cutoff = self._cwl_retention_cutoff_season(months)
+                deleted = await self._conn.execute(
+                    "DELETE FROM cwl_events WHERE guild_id = ? AND cwl_season < ?",
+                    (row["guild_id"], cutoff),
                 )
+                if deleted.rowcount and deleted.rowcount > 0:
+                    result["events"] += deleted.rowcount
+                    result["guilds"] += 1
+                    logging.info(
+                        f"[CWL-PURGE] guild {row['guild_id']}: removed {deleted.rowcount} season(s) "
+                        f"older than {cutoff} (retention {months} months)"
+                    )
 
-        # Orphan sweep for the two cross-guild, season-keyed tables — see the docstring above for
-        # why these can't be scoped per guild. Runs unconditionally rather than only when something
-        # was purged just now, so rows orphaned by an ordinary "Delete Season" are cleaned up too.
-        for table, key in (
-            ("cwl_locked_clan_members", "locked_members"),
-            ("cwl_player_season_status", "player_season_status"),
-            # Cascades to cwl_shared_clan_players (and any cwl_shared_clan_guilds left over).
-            ("cwl_shared_clans", "shared_clans"),
-        ):
-            orphaned = await self._conn.execute(
-                f"DELETE FROM {table} WHERE cwl_season NOT IN (SELECT cwl_season FROM cwl_events)"
-            )
-            if orphaned.rowcount and orphaned.rowcount > 0:
-                result[key] = orphaned.rowcount
+            # Orphan sweep for the two cross-guild, season-keyed tables — see the docstring above for
+            # why these can't be scoped per guild. Runs unconditionally rather than only when something
+            # was purged just now, so rows orphaned by an ordinary "Delete Season" are cleaned up too.
+            for table, key in (
+                ("cwl_locked_clan_members", "locked_members"),
+                ("cwl_player_season_status", "player_season_status"),
+                # Cascades to cwl_shared_clan_players (and any cwl_shared_clan_guilds left over).
+                ("cwl_shared_clans", "shared_clans"),
+            ):
+                orphaned = await self._conn.execute(
+                    f"DELETE FROM {table} WHERE cwl_season NOT IN (SELECT cwl_season FROM cwl_events)"
+                )
+                if orphaned.rowcount and orphaned.rowcount > 0:
+                    result[key] = orphaned.rowcount
 
-        if any(result[k] for k in ("events", "locked_members", "player_season_status", "shared_clans")):
             await self._conn.commit()
-            logging.info(
-                f"[CWL-PURGE] Done — events={result['events']} across {result['guilds']} guild(s), "
-                f"locked_members={result['locked_members']}, "
-                f"player_season_status={result['player_season_status']}, "
-                f"shared_clans={result['shared_clans']}"
-            )
+            if any(result[k] for k in ("events", "locked_members", "player_season_status", "shared_clans")):
+                logging.info(
+                    f"[CWL-PURGE] Done — events={result['events']} across {result['guilds']} guild(s), "
+                    f"locked_members={result['locked_members']}, "
+                    f"player_season_status={result['player_season_status']}, "
+                    f"shared_clans={result['shared_clans']}"
+                )
+        except BaseException:
+            await self._conn.rollback()
+            raise
+        finally:
+            self._write_lock.release()
         return result
 
     def get_cwl_player_season_status_dm_refs_for_event_sync(self, event_id: int) -> List[Dict[str, Any]]:

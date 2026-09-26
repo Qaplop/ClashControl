@@ -559,15 +559,7 @@ async def initialize_database() -> None:
     logging.info("💾 Initializing database (includes any pending first-run schema migrations)...")
     QBcore.db_maintenance_mode = True
     try:
-        from clashcontrol.db_manager import WarHistoryDB, find_unrenamed_legacy_db
-        legacy_db = find_unrenamed_legacy_db(CONFIG.db_path, CONFIG.history_db_path)
-        if legacy_db:
-            logging.critical(
-                f"[DB] {legacy_db} exists but {CONFIG.db_path} / {CONFIG.history_db_path} does not. "
-                "Rename qapbot*.db (with its -wal/-shm) to clashcontrol*.db while the bot is "
-                "stopped. Refusing to start on a new, empty database."
-            )
-            raise RuntimeError(f"un-renamed legacy database found: {legacy_db}")
+        from clashcontrol.db_manager import WarHistoryDB
         db_manager = WarHistoryDB()
         await asyncio.wait_for(
             db_manager.initialize(CONFIG.db_path, CONFIG.history_db_path),
@@ -3364,7 +3356,7 @@ async def periodic_main() -> None:
                 # A STOPGAP for an unexplained ~1 GB/hour heap climb. A restart is the only
                 # mechanism proven to reclaim it, and this reuses the bot's existing, tested
                 # restart path rather than inventing one: maintenance_mode -> close everything
-                # with a FULL DB checkpoint -> exit 42 -> start_qapbot.sh's loop restarts us.
+                # with a FULL DB checkpoint -> exit 42 -> start_clashcontrol.sh's loop restarts us.
                 #
                 # Placed HERE deliberately: the cycle has fully finished, _post_cycle_cleanup()
                 # has already run its gen(1) collect + malloc_trim (so _rss_mb is retained

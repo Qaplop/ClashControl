@@ -208,8 +208,6 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
-QapBot - Kopie.py
-qapbot.log.*
 clashcontrol.log.*
 subscriptions.json
 *.csv
@@ -232,8 +230,6 @@ archive_old/
 clashcontrol/scripts/*.txt
 clashcontrol/scripts/*.jpg
 cwl_reconstruct_*.tsv
-qapbot.db*
-qapbot_history.db*
 clashcontrol.db*
 clashcontrol_history.db*
 orphan_analysis.txt

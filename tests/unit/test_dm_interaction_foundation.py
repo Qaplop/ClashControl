@@ -292,7 +292,7 @@ async def test_check_admin_permissions_dm_resolved_guild_not_cached_falls_throug
 # ---------------------------------------------------------------------------
 
 @pytest.fixture()
-def qapbot_module():
+def clashcontrol_module():
     import ClashControl  # noqa: E402  (module-level code is side-effect-light; see test_periodic_main_control.py)
     return ClashControl
 
@@ -309,22 +309,22 @@ def _make_message(*, guild, is_bot: bool, content: str = "hello"):
 
 
 @pytest.fixture()
-def fake_bot(qapbot_module, monkeypatch):
+def fake_bot(clashcontrol_module, monkeypatch):
     """Replaces the whole QBcore.bot object (not just an attribute on whatever
     it currently is) so this test is independent of other tests' bot-state
     mutations — QBcore is a shared module-level singleton across the session."""
     bot = MagicMock()
     bot.process_commands = AsyncMock()
-    monkeypatch.setattr(qapbot_module.QBcore, "bot", bot)
+    monkeypatch.setattr(clashcontrol_module.QBcore, "bot", bot)
     return bot
 
 
 @pytest.mark.discord
 @pytest.mark.asyncio
-async def test_on_message_dm_free_text_sends_fallback_reply(qapbot_module, fake_bot):
+async def test_on_message_dm_free_text_sends_fallback_reply(clashcontrol_module, fake_bot):
     message = _make_message(guild=None, is_bot=False)
 
-    await qapbot_module.on_message(message)
+    await clashcontrol_module.on_message(message)
 
     message.channel.send.assert_awaited_once()
     sent_text = message.channel.send.await_args.args[0]
@@ -336,16 +336,16 @@ async def test_on_message_dm_free_text_sends_fallback_reply(qapbot_module, fake_
 @pytest.mark.asyncio
 @pytest.mark.parametrize("tracker_enabled", [True, False])
 async def test_on_message_dm_fallback_tracker_hint_only_when_tracker_enabled(
-    qapbot_module, fake_bot, monkeypatch, tracker_enabled
+    clashcontrol_module, fake_bot, monkeypatch, tracker_enabled
 ):
     """Tracker #0122: the /bug + /feature hint is appended only where those commands exist."""
     # CONFIG is a frozen dataclass — swap in a modified copy instead of setting the field.
     monkeypatch.setattr(
-        qapbot_module, "CONFIG", dataclasses.replace(qapbot_module.CONFIG, tracker_enabled=tracker_enabled)
+        clashcontrol_module, "CONFIG", dataclasses.replace(clashcontrol_module.CONFIG, tracker_enabled=tracker_enabled)
     )
     message = _make_message(guild=None, is_bot=False)
 
-    await qapbot_module.on_message(message)
+    await clashcontrol_module.on_message(message)
 
     sent_text = message.channel.send.await_args.args[0]
     assert ("/bug" in sent_text and "/feature" in sent_text) is tracker_enabled
@@ -353,10 +353,10 @@ async def test_on_message_dm_fallback_tracker_hint_only_when_tracker_enabled(
 
 @pytest.mark.discord
 @pytest.mark.asyncio
-async def test_on_message_ignores_bots_own_messages(qapbot_module, fake_bot):
+async def test_on_message_ignores_bots_own_messages(clashcontrol_module, fake_bot):
     message = _make_message(guild=None, is_bot=True)
 
-    await qapbot_module.on_message(message)
+    await clashcontrol_module.on_message(message)
 
     message.channel.send.assert_not_awaited()
     fake_bot.process_commands.assert_awaited_once_with(message)
@@ -364,11 +364,11 @@ async def test_on_message_ignores_bots_own_messages(qapbot_module, fake_bot):
 
 @pytest.mark.discord
 @pytest.mark.asyncio
-async def test_on_message_guild_message_skips_dm_reply(qapbot_module, fake_bot):
+async def test_on_message_guild_message_skips_dm_reply(clashcontrol_module, fake_bot):
     guild = MagicMock()
     message = _make_message(guild=guild, is_bot=False)
 
-    await qapbot_module.on_message(message)
+    await clashcontrol_module.on_message(message)
 
     message.channel.send.assert_not_awaited()
     fake_bot.process_commands.assert_awaited_once_with(message)
@@ -376,17 +376,17 @@ async def test_on_message_guild_message_skips_dm_reply(qapbot_module, fake_bot):
 
 @pytest.mark.discord
 @pytest.mark.asyncio
-async def test_on_message_dm_tracker_hint_mentions_are_clickable(qapbot_module, fake_bot, monkeypatch):
+async def test_on_message_dm_tracker_hint_mentions_are_clickable(clashcontrol_module, fake_bot, monkeypatch):
     """Tracker #0127: /bug and /feature in the free-text reply are clickable command mentions."""
     from clashcontrol.cache_manager import CACHE
 
     monkeypatch.setattr(
-        qapbot_module, "CONFIG", dataclasses.replace(qapbot_module.CONFIG, tracker_enabled=True)
+        clashcontrol_module, "CONFIG", dataclasses.replace(clashcontrol_module.CONFIG, tracker_enabled=True)
     )
     monkeypatch.setattr(CACHE, "app_command_ids", {"bug": "101", "feature": "202"})
     message = _make_message(guild=None, is_bot=False)
 
-    await qapbot_module.on_message(message)
+    await clashcontrol_module.on_message(message)
 
     sent_text = message.channel.send.await_args.args[0]
     assert "</bug:101>" in sent_text and "</feature:202>" in sent_text

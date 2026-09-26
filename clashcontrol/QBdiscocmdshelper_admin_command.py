@@ -67,24 +67,15 @@ def parse_log_line(line: str) -> Tuple[Optional[datetime], str]:
 
 
 LOG_BASENAME = "clashcontrol.log"
-# Before the rename (2026-09-26) the bot logged to qapbot.log. Those files are kept as they are;
-# the rotation handler only prunes its own clashcontrol.log.* backups, never these.
-LEGACY_LOG_BASENAME = "qapbot.log"
 
 
 def log_files_newest_first(log_dir: str) -> List[str]:
-    """clashcontrol.log* newest first (the live file, then its dated rotations), followed by the
-    pre-rename qapbot.log* in the same order -- every one of those is older than any
-    clashcontrol.log file."""
-    names = os.listdir(log_dir)
-    ordered: List[str] = []
-    for base in (LOG_BASENAME, LEGACY_LOG_BASENAME):
-        ordered += sorted(
-            (f for f in names if f == base or f.startswith(base + ".")),
-            key=lambda f, base=base: "9999-99-99" if f == base else f[len(base) + 1:],
-            reverse=True,
-        )
-    return ordered
+    """clashcontrol.log* newest first: the live file, then its dated midnight rotations."""
+    return sorted(
+        (f for f in os.listdir(log_dir) if f == LOG_BASENAME or f.startswith(LOG_BASENAME + ".")),
+        key=lambda f: "9999-99-99" if f == LOG_BASENAME else f[len(LOG_BASENAME) + 1:],
+        reverse=True,
+    )
 
 
 def scan_logs(log_dir: str) -> Dict[str, Any]:
@@ -263,7 +254,7 @@ def scan_logs(log_dir: str) -> Dict[str, Any]:
                     
                     # Stop at the most recent bot start — everything accumulated so far
                     # is from after this startup (we are reading bottom-to-top).
-                    if "[INFO] ClashControl started" in l or "[INFO] QapBot started" in l:
+                    if "[INFO] ClashControl started" in l:
                         if dt:
                             bot_start_date = dt
                             first_date = dt
@@ -365,7 +356,7 @@ def _fmt_duration(seconds: float) -> str:
 def find_last_nightly_maintenance_duration(log_dir: str) -> Optional[Tuple[datetime, float]]:
     """
     Find the most recently completed nightly-maintenance run by scanning
-    clashcontrol.log* (then pre-rename qapbot.log*) rotations newest-first, independent of this process's own
+    clashcontrol.log* rotations newest-first, independent of this process's own
     startup marker.
 
     Unlike scan_logs() (which resets its counters at the last "ClashControl started"

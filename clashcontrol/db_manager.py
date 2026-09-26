@@ -67,23 +67,6 @@ def derive_history_db_path(db_path: str) -> str:
     return f"{base}_history{ext or '.db'}"
 
 
-# The DB files were renamed with the bot (QapBot -> ClashControl, 2026-09-26).
-LEGACY_DB_BASENAMES = {"clashcontrol.db": "qapbot.db", "clashcontrol_history.db": "qapbot_history.db"}
-
-
-def find_unrenamed_legacy_db(db_path: str, history_db_path: str) -> Optional[str]:
-    """The pre-rename file (e.g. ``data/qapbot.db``) when the configured DB is missing but that
-    file sits in the same folder, else None. SQLite would silently create an empty DB at the
-    new path and the bot would run without its data, so startup refuses instead."""
-    for path in (db_path, history_db_path):
-        legacy_name = LEGACY_DB_BASENAMES.get(os.path.basename(path))
-        if legacy_name and not os.path.exists(path):
-            legacy_path = os.path.join(os.path.dirname(path), legacy_name)
-            if os.path.exists(legacy_path):
-                return legacy_path
-    return None
-
-
 # ─────────────────────────────────────────────────────────────────────────────
 # Registry of every table/column that references clans.clan_tag — the single
 # source of truth iterated by is_clan_tag_referenced() (orphan-purge guard).

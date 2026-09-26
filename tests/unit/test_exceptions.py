@@ -2,7 +2,7 @@ import pytest
 
 
 @pytest.mark.smoke
-def test_qapbot_error_str_includes_context_when_present():
+def test_clashcontrol_error_str_includes_context_when_present():
     from clashcontrol.exceptions import ClashControlError
 
     exc = ClashControlError("boom", context={"user_id": "123"})
@@ -13,7 +13,7 @@ def test_qapbot_error_str_includes_context_when_present():
 
 
 @pytest.mark.smoke
-def test_specific_exception_is_qapbot_error_subclass():
+def test_specific_exception_is_clashcontrol_error_subclass():
     from clashcontrol.exceptions import ConfigurationError, ClashControlError
 
     exc = ConfigurationError("bad config")

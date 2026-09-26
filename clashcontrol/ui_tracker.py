@@ -2401,7 +2401,7 @@ def build_tracker_testcase_view(item_number: int, testcases: List[Dict[str, Any]
 
 async def post_test_cases(item_number: int, cases: List[Dict[str, str]], actor_id: Optional[str] = None) -> Dict[str, Any]:
     """Persist *cases* ({environment, description, priority?}) and (re)post the test-case message to
-    #qapbot-test, transitioning the item to 'testing' the moment it posts (plan §2.4 point 4)
+    #cc-testing, transitioning the item to 'testing' the moment it posts (plan §2.4 point 4)
     unless it's already testing/done. Shared by the Discord flow and the bridge/MCP
     `tracker_add_testcases` tool — there is no native Discord UI for *composing* test cases,
     only for signing them off (plan §2.3's "Test cases" button is a jump link, not an editor)."""
@@ -2423,7 +2423,7 @@ async def post_test_cases(item_number: int, cases: List[Dict[str, str]], actor_i
         # pointing there) — a fresh post_test_cases() call is starting a NEW round and must land
         # in the live test channel, not silently keep reusing that leftover archive pointer
         # (2026-08-24 live bug report: tracker #0044's Phase 5-6 test cases landed in Done
-        # Testing instead of the configured qapbot-testing channel). Mirrors the same `archived`
+        # Testing instead of the configured cc-testing channel). Mirrors the same `archived`
         # check _refresh_testcase_message() already makes for the opposite direction.
         channel_id_str = CACHE.tracker_settings.get(TRACKER_SETTING_TEST_CHANNEL)
     if not channel_id_str:

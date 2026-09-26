@@ -19,49 +19,16 @@ from clashcontrol.QBdiscocmdshelper_admin_command import (
 )
 
 
-# -- log rename QapBot -> ClashControl (2026-09-26): old qapbot.log* files stay on disk ---------
-
-def test_log_files_newest_first_puts_new_files_before_pre_rename_ones(tmp_path: Path) -> None:
+def test_log_files_newest_first_orders_live_file_then_rotations(tmp_path: Path) -> None:
     for name in (
-        "qapbot.log", "qapbot.log.2026-09-24", "qapbot.log.2026-09-25",
-        "clashcontrol.log", "clashcontrol.log.2026-09-26", "phase1_profile.txt",
+        "clashcontrol.log", "clashcontrol.log.2026-09-25", "clashcontrol.log.2026-09-26",
+        "phase1_profile.txt",
     ):
         (tmp_path / name).write_text("", encoding="utf-8")
 
     assert log_files_newest_first(str(tmp_path)) == [
-        "clashcontrol.log", "clashcontrol.log.2026-09-26",
-        "qapbot.log", "qapbot.log.2026-09-25", "qapbot.log.2026-09-24",
+        "clashcontrol.log", "clashcontrol.log.2026-09-26", "clashcontrol.log.2026-09-25",
     ]
-
-
-def test_nightly_maintenance_lookup_falls_back_to_pre_rename_logs(tmp_path: Path) -> None:
-    """Right after the switch the new log has no completed nightly run yet; /status must still
-    show the last one from the old qapbot.log."""
-    (tmp_path / "clashcontrol.log").write_text(
-        "2026-09-26 10:00:00,000 [INFO] ClashControl started\n", encoding="utf-8"
-    )
-    (tmp_path / "qapbot.log").write_text(
-        "2026-09-26 03:04:00,000 [INFO] [NIGHTLY-MAINTENANCE] END — total duration 239.0s\n",
-        encoding="utf-8",
-    )
-
-    dt, seconds = find_last_nightly_maintenance_duration(str(tmp_path))  # type: ignore[misc]
-
-    assert dt == datetime(2026, 9, 26, 3, 4, 0)
-    assert seconds == 239.0
-
-
-def test_scan_logs_still_stops_at_a_pre_rename_start_marker(tmp_path: Path) -> None:
-    (tmp_path / "qapbot.log").write_text(
-        "2026-09-25 10:00:00,000 [INFO] QapBot started\n"
-        "2026-09-25 10:00:01,000 [ERROR] after start\n",
-        encoding="utf-8",
-    )
-
-    result = scan_logs(str(tmp_path))
-
-    assert any("QapBot started" in s for s in result["summary"])
-    assert len(result["errors"]) == 1
 
 
 def test_parse_log_line_parses_valid_timestamp() -> None:

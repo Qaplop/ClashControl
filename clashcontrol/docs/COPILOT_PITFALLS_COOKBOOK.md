@@ -683,16 +683,16 @@ double-firing; it wasn't — the *logger* was registered twice.
 
 Root cause: `QBdiscordcmds.py` has a module-level `from ClashControl import GLOBAL_GUILD_ID,
 run_nightly_maintenance_routine, is_history_migration_due`. `ClashControl.py` is run as `python
-ClashControl.py`, so Python loads it into `sys.modules['__main__']` — there is no `sys.modules['QapBot']`
+ClashControl.py`, so Python loads it into `sys.modules['__main__']` — there is no `sys.modules['ClashControl']`
 entry. When execution reaches (directly or transitively) an import of `QBdiscordcmds`, that
 module's `from ClashControl import ...` line doesn't find a `'ClashControl'` key in `sys.modules`, so Python
 does NOT recognize the running script as already loaded — it opens `ClashControl.py` again and executes
 **every top-level statement in the file a second time**, this time under the module name
-`"QapBot"`, completely independent of the `__main__` execution already in progress.
+`"ClashControl"`, completely independent of the `__main__` execution already in progress.
 
 Why this doesn't start a second bot: the actual `bot.run()` call is correctly gated behind `if
 __name__ == "__main__":` at the bottom of the file, and the second execution's `__name__` is
-`"QapBot"`, not `"__main__"`, so that block is skipped there. `@QBcore.bot.event` decorators
+`"ClashControl"`, not `"__main__"`, so that block is skipped there. `@QBcore.bot.event` decorators
 (`on_ready`, `on_disconnect`, etc.) are also safe by accident: `discord.Client.event()` just does
 `setattr(bot, coro.__name__, coro)`, so re-running the decorator on the second execution simply
 overwrites the attribute with an identical redefinition — not a second registration.
@@ -1559,7 +1559,7 @@ role or current clan changed), so a shared `added_at` across a user's whole acco
 - The real link/unlink audit trail is the **log**, not the DB:
   `USER ACTION: <user> skipped verification for player <name> (<tag>)`, the `/link` and unlink
   paths' own log lines, and `[USER-ACCOUNTS-UPDATE] <tag>: newly tracked from clan <clan>`.
-  Grep the rotated `data/logs/clashcontrol.log* (older: qapbot.log*)` for the player tag.
+  Grep the rotated `data/logs/clashcontrol.log*` for the player tag.
 - Watch the timezone when correlating the two: log lines are **local** (UTC+2 on PROD) while
   `added_at` / `datetime('now')` are **UTC**. A DB timestamp of `2026-08-21 22:41:49` is
   `00:41:49` on 2026-08-22 in the log — a different file once the log has rotated.

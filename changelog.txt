@@ -1,6 +1,28 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-26 (5)  Build 116.
+- Removed (rename to ClashControl, final cleanup; project owner: backwards compatibility no
+  longer needed, all installs are renamed):
+  - DB startup guard find_unrenamed_legacy_db() / LEGACY_DB_BASENAMES (db_manager.py,
+    ClashControl.py initialize_database) and its test file.
+  - Log fallback to the old qapbot.log* files (LEGACY_LOG_BASENAME) and the "QapBot started"
+    start marker in /admin's log summary + nightly-maintenance lookup; log_files_newest_first()
+    now only lists clashcontrol.log*.
+  - Old .gitignore patterns (qapbot.log.*, qapbot.db*, qapbot_history.db*, "QapBot - Kopie.py");
+    data/ as a whole stays ignored.
+- Changed: last stale old-name references: start_clashcontrol.sh (comments), README
+  (PROD_SSD_UNC example, project tree root, prose), .env.example, Activity Worker comments /
+  package.json / wrangler.toml, the sys.modules explanation in the playbook + pitfalls cookbook
+  (module is "ClashControl"), DATABASE_ARCHITECTURE (prose, manual backup file names),
+  log_time_gaps.py help, coc_health flag _clashcontrol_capital_districts_patched, test fixture /
+  test names, and the renamed Discord test channel #cc-testing (tracker MCP tool description,
+  ui_tracker comments, DB doc). The tracker addresses all its channels by ID (tracker_settings),
+  so renaming Discord channels needs no code change.
+  Deliberately unchanged: history (changelog, plans/implemented, archives, incident write-ups)
+  and real external names (qapbot.uk domain, qapbot-prod/dev-bridge tunnels, workers.dev
+  subdomain).
+
 2026-09-26 (4)
 - Changed: requirements.txt pinned to the versions now installed on DEV after the project
   owner's package upgrade: matplotlib 3.11.1 -> 3.11.2, tzdata 2026.3 -> 2026.4, wcwidth

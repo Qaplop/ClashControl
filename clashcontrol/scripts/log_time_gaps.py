@@ -4,7 +4,7 @@ Usage:
     python clashcontrol/scripts/log_time_gaps.py [--log PATH] [--top N]
 
 Defaults:
-    --log data/logs/qapbot_PROD.log
+    --log data/logs/clashcontrol.log
     --top 20
 """
 
@@ -46,7 +46,7 @@ def parse_args() -> argparse.Namespace:
         "--since-marker",
         default=None,
         help="Only consider gaps at/after the LAST line containing this substring (e.g. "
-             "'QapBot started.' to scope a report to the most recent restart, ignoring "
+             "'ClashControl started.' to scope a report to the most recent restart, ignoring "
              "everything from earlier restarts/days in the same log file).",
     )
     return parser.parse_args()

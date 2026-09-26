@@ -327,7 +327,7 @@ class BotConfig:
     # touch the climb: RSS still went 4.0 GB -> 8.5 GB overnight on 2026-09-07/08). A process
     # restart is the only mechanism PROVEN to reclaim it, and the bot already has a safe,
     # battle-tested restart path — /admin Maintenance Start (close DB with a FULL checkpoint)
-    # followed by Maintenance End (exit 42, which start_qapbot.sh's loop restarts).
+    # followed by Maintenance End (exit 42, which start_clashcontrol.sh's loop restarts).
     #
     # Restarting BEFORE the box is in trouble is what makes this worth doing. The 2026-09-07/08
     # incident showed the failure sequence is: RSS climbs -> box hits ~94-96% RAM -> kernel

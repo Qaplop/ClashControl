@@ -712,13 +712,13 @@ async def test_leaderboard_clan_autocomplete_guild_unaffected(mock_interaction, 
 # ---------------------------------------------------------------------------
 
 @pytest.fixture()
-def qapbot_module_for_filters():
+def clashcontrol_module_for_filters():
     import ClashControl
     return ClashControl
 
 
 @pytest.mark.discord
-def test_autocomplete_expired_interaction_filter_suppresses_10062(qapbot_module_for_filters):
+def test_autocomplete_expired_interaction_filter_suppresses_10062(clashcontrol_module_for_filters):
     import logging
 
     record = logging.LogRecord(
@@ -731,12 +731,12 @@ def test_autocomplete_expired_interaction_filter_suppresses_10062(qapbot_module_
     except Exception as e:
         record.exc_info = (type(e), e, e.__traceback__)
 
-    filt = qapbot_module_for_filters._AutocompleteExpiredInteractionFilter()
+    filt = clashcontrol_module_for_filters._AutocompleteExpiredInteractionFilter()
     assert filt.filter(record) is False
 
 
 @pytest.mark.discord
-def test_autocomplete_expired_interaction_filter_keeps_genuine_errors(qapbot_module_for_filters):
+def test_autocomplete_expired_interaction_filter_keeps_genuine_errors(clashcontrol_module_for_filters):
     import logging
 
     record = logging.LogRecord(
@@ -749,33 +749,33 @@ def test_autocomplete_expired_interaction_filter_keeps_genuine_errors(qapbot_mod
     except Exception as e:
         record.exc_info = (type(e), e, e.__traceback__)
 
-    filt = qapbot_module_for_filters._AutocompleteExpiredInteractionFilter()
+    filt = clashcontrol_module_for_filters._AutocompleteExpiredInteractionFilter()
     assert filt.filter(record) is True
 
 
 @pytest.mark.discord
-def test_discord_reconnect_filter_suppresses_reconnect_message(qapbot_module_for_filters):
+def test_discord_reconnect_filter_suppresses_reconnect_message(clashcontrol_module_for_filters):
     import logging
 
     record = logging.LogRecord(
         name="discord.client", level=logging.ERROR, pathname=__file__, lineno=1,
         msg="Attempting a reconnect in 5.00s", args=(), exc_info=None,
     )
-    filt = qapbot_module_for_filters._DiscordReconnectFilter()
+    filt = clashcontrol_module_for_filters._DiscordReconnectFilter()
     assert filt.filter(record) is False
 
 
 @pytest.mark.discord
-def test_log_filters_are_attached_to_every_handler(qapbot_module_for_filters):
+def test_log_filters_are_attached_to_every_handler(clashcontrol_module_for_filters):
     """Regression guard for the actual bug this round fixed: a filter added via
     logging.getLogger('discord').addFilter(...) never fires for records that only propagate up
     from a child logger like discord.app_commands.tree — Python's Logger.callHandlers() walks
     ancestor HANDLERS, not ancestor LOGGER filters. Both filters must be attached to the real
     handlers instead."""
-    for handler in qapbot_module_for_filters.handlers:
+    for handler in clashcontrol_module_for_filters.handlers:
         filter_types = {type(f) for f in handler.filters}
-        assert qapbot_module_for_filters._DiscordReconnectFilter in filter_types
-        assert qapbot_module_for_filters._AutocompleteExpiredInteractionFilter in filter_types
+        assert clashcontrol_module_for_filters._DiscordReconnectFilter in filter_types
+        assert clashcontrol_module_for_filters._AutocompleteExpiredInteractionFilter in filter_types
 
 
 @pytest.mark.discord

@@ -2259,7 +2259,7 @@ def _fake_thread_with_history(messages):
 async def test_get_thread_messages_reverses_to_chronological_order(db, monkeypatch):
     # Discord's history() yields newest-first; get_thread_messages must reverse it.
     newest = _fake_thread_message("1", "Qaplop", "any update?")
-    oldest = _fake_thread_message("2", "QapBot", "filed as #0016", is_bot=True)
+    oldest = _fake_thread_message("2", "ClashControl", "filed as #0016", is_bot=True)
     thread = _fake_thread_with_history([newest, oldest])
     _wire_bot(monkeypatch, channel=thread)
     item_number = await _make_item(db)

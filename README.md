@@ -158,7 +158,7 @@ A powerful, modular Discord bot designed for Clash of Clans clan management, fea
    # PROD_SSD_UNC is the UNC path to PROD_DATA_DIR where the data files reside. This is used for faster access to data files on a server or network share.
    PROD_DATA_DIR=<path-to-prod-bot-root>
    PROD_BOT_ROOT=<path-to-prod-bot-root>
-   PROD_SSD_UNC=\\<server-machine_HOST>\<share>\QapBot
+   PROD_SSD_UNC=\\<server-machine_HOST>\<share>\ClashControl
   ```
 
 6. **Run the bot**
@@ -168,7 +168,7 @@ A powerful, modular Discord bot designed for Clash of Clans clan management, fea
 
 ## 📋 Commands
 
-QapBot's slash-command surface is intentionally small — related actions are consolidated into a
+ClashControl's slash-command surface is intentionally small — related actions are consolidated into a
 single command with an `action` choice parameter (`/list`, `/admin`) rather than one command per
 action. There is no separate `/clans`, `/list_families`, `/list_players`, `/list_accounts`,
 `/link_account`, `/import_data`, or `/removeclan` command — those are now `/list` actions or
@@ -231,7 +231,7 @@ action. There is no separate `/clans`, `/list_families`, `/list_players`, `/list
 
 ### Project Structure
 ```
-QapBot/
+ClashControl/
 ├── ClashControl.py              # Main bot orchestration and periodic loops
 ├── QBcore.py              # Core bot and CoC client initialization
 ├── QBdiscordcmds.py       # Discord command handlers and registration

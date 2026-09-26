@@ -78,7 +78,7 @@ class TestRestartPrimitives:
     These pin that the pieces it calls still exist and still mean what the code assumes."""
 
     def test_maintenance_exit_code_is_what_the_wrapper_restarts_on(self):
-        """start_qapbot.sh restarts on exit 42 and stops on anything else — if this constant
+        """start_clashcontrol.sh restarts on exit 42 and stops on anything else — if this constant
         ever changed, the 'restart' would silently become a permanent shutdown."""
         assert QBcore.EXIT_CODE_MAINTENANCE == 42
 

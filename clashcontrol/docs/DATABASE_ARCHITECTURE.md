@@ -437,7 +437,7 @@ lifecycle, bridge, and MCP server, see the dedicated `BUG_FEATURE_TRACKER.md` do
 - `tracker_testcases` - Junction: tracker items ↔ manual test-case rows, `ON DELETE CASCADE`.
   `seq` orders rows within one `(item_number, environment)` pair.
 - `tracker_items.test_channel_id` / `test_message_id` (added via `_add_column_if_missing` inside
-  `_create_tracker_schema()` itself, Phase 5) - pointer to the posted `#qapbot-test` message.
+  `_create_tracker_schema()` itself, Phase 5) - pointer to the posted `#cc-testing` message.
 - `tracker_items.priority` / `tracker_testcases.priority` (added via `_add_column_if_missing`,
   2026-08-22) - `TEXT NOT NULL DEFAULT 'MEDIUM'`, one of HIGH/MEDIUM/LOW. Item priority is set by
   the reporter in the `/bug`/`/feature` modal (a `discord.ui.RadioGroup`, not a dropdown — see
@@ -685,7 +685,7 @@ except Exception as e:
 ### 4. Essential-Field Bypass for New Columns
 **When a new column is added via `ALTER TABLE`, existing cache entries will have `NULL`/missing values for it.**
 
-QapBot's `fetch_clan_war_data()` (in `QBhelperfunctions.py`) has an essential-field bypass:
+ClashControl's `fetch_clan_war_data()` (in `QBhelperfunctions.py`) has an essential-field bypass:
 if a required field is absent in the `clan_name_cache` entry, it forces an immediate API fetch
 even though the TTL gate would otherwise suppress it. This populates the field without waiting
 up to 12 h for the next scheduled refresh.
@@ -857,7 +857,7 @@ cp ${PROD_DATA_DIR}/data/clashcontrol_history.db \
 
 ```powershell
 # Dev: manual backup
-Copy-Item "data\clashcontrol.db" "data\qapbot_backup_$(Get-Date -Format 'yyyyMMdd_HHmmss').db"
+Copy-Item "data\clashcontrol.db" "data\clashcontrol_backup_$(Get-Date -Format 'yyyyMMdd_HHmmss').db"
 ```
 
 ### Database Integrity Check
@@ -876,7 +876,7 @@ sqlite3 "data\clashcontrol.db" "PRAGMA integrity_check;"
 
 # 3. If corrupted, restore from backup
 Remove-Item "data\clashcontrol.db" -Force
-Copy-Item "data\qapbot_backup_YYYYMMDD_HHMMSS.db" "data\clashcontrol.db"
+Copy-Item "data\clashcontrol_backup_YYYYMMDD_HHMMSS.db" "data\clashcontrol.db"
 
 # 4. Restart bot
 ```

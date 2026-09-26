@@ -211,7 +211,7 @@ TOOLS: List[Dict[str, Any]] = [
     {
         "name": "tracker_add_testcases",
         "description": (
-            "Post manual test cases for a tracker item into the #qapbot-test channel, "
+            "Post manual test cases for a tracker item into the #cc-testing channel, "
             "transitioning the item to 'testing'. Assign each case its own `priority` "
             "(HIGH/MEDIUM/LOW) based on your judgment of how critical that specific case is to "
             "verify — defaults to MEDIUM if omitted."

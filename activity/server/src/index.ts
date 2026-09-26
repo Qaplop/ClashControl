@@ -4,7 +4,7 @@
  *
  * This Worker does two things, on purpose, and nothing else:
  *  1. OAuth2 code -> access_token exchange (CLIENT_SECRET must never reach the frontend).
- *  2. A thin proxy to QapBot's own bridge API, which is the actual source of truth for CWL
+ *  2. A thin proxy to ClashControl's own bridge API, which is the actual source of truth for CWL
  *     data and re-verifies admin status itself — this Worker is a UX/session gate, not the
  *     security boundary. See "Auth & permission model" in the plan doc.
  *
@@ -23,7 +23,7 @@ type Bindings = {
   // Nothing ever navigates here for an Activity — Discord's token endpoint just requires it
   // to be present and registered, per standard OAuth2 authorization_code grant rules.
   REDIRECT_URI: string
-  // cloudflared tunnel URL to QapBot's bridge API, and the shared secret it expects.
+  // cloudflared tunnel URL to ClashControl's bridge API, and the shared secret it expects.
   BRIDGE_URL?: string
   BRIDGE_SECRET?: string
 }

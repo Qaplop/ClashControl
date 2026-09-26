@@ -5,7 +5,7 @@ Phase A skeleton of the Discord Activity described in
 deployed to Cloudflare:
 
 - **`server/`** — Cloudflare Worker (Hono). OAuth2 code→token exchange, plus a thin proxy to
-  QapBot's own bridge API (not wired up until Phase B).
+  ClashControl's own bridge API (not wired up until Phase B).
 - **`client/`** — Cloudflare Pages. Plain TypeScript, no framework (see the plan doc for why).
   Currently just proves the OAuth round-trip: shows "Hello, guild {id}" once launched from
   inside Discord.

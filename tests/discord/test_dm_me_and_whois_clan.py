@@ -46,7 +46,9 @@ def test_greeting_dm_has_install_and_support_buttons(monkeypatch):
     monkeypatch.setattr(QBcore, "bot", MagicMock(application_id=1234))
     urls = [b.url for b in build_greeting_dm_view("1", None).children]
     assert urls == ["https://discord.com/oauth2/authorize?client_id=1234", SUPPORT_INVITE_URL]
-    assert any("➕" in f.name for f in build_greeting_dm_embed("1", None, "Qap").fields)
+    install = next(f for f in build_greeting_dm_embed("1", None, "Qap").fields if "➕" in f.name)
+    assert "](https://discord.com/oauth2/authorize?client_id=1234)" in install.value   # clickable link
+    assert "Manage Server" not in install.value                                          # no permission hint
 
 
 def test_help_texts_tracker_142_143():

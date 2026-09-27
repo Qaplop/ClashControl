@@ -1,6 +1,12 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-27 (2)
+- Changed (tracker #0141 follow-up): the greeting DM's "New here? Add ClashControl to your server"
+  section now contains the clickable add-to-server link instead of the Manage Server permission
+  hint (project owner); the "Add to server" / support buttons stay. Build 129.
+  Files: clashcontrol/greeting_dm.py, tests. 3600 tests pass.
+
 2026-09-27 (1)
 - Changed (tracker #0140 follow-up): when a /whois clan leaderboard is split over several
   messages, the dropdown now sits at the end of the LAST part instead of under part 1. The next

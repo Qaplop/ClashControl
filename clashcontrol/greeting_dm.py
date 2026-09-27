@@ -65,10 +65,15 @@ def build_greeting_dm_embed(user_id: str, guild_id: Optional[int], display_name:
         f"{command_mention(cmd)} – {tr(f'activity.landing.{key}')}" for cmd, key in _GET_STARTED
     )
     embed.add_field(name=tr('activity.landing.members_title'), value=get_started[:1024], inline=False)
-    # Tracker #0141: the invite itself is the "Add to server" button (build_greeting_dm_view()).
+    # Tracker #0141: a clickable "add the app to a server" link right in the text (2026-09-27,
+    # project owner: the link is what matters, not the permission hint), plus the same link as
+    # the "Add to server" button below the message (build_greeting_dm_view()).
+    import QBcore
+    from clashcontrol.constants import bot_install_url
+    install_url = bot_install_url(QBcore.bot.application_id)
     embed.add_field(
         name=f"➕ {tr('activity.landing.install_title')}",
-        value=tr('activity.landing.install_text')[:1024],
+        value=f"**[{tr('activity.landing.install_button')}]({install_url})**"[:1024],
         inline=False,
     )
     embed.add_field(

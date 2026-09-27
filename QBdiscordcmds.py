@@ -5535,17 +5535,23 @@ async def _render_whois_clan_mode(
 
 
 class _WhoisClanView(discord.ui.View):
-    """The /whois clan dropdown: "Overview" plus every /leaderboard mode. Each pick edits the ONE
-    ephemeral message in place (Cardinal Rule 7).
+    """The /whois clan dropdown: "Overview" plus every /leaderboard mode (Cardinal Rule 7: one
+    page at a time, no leftovers).
 
-    Pitfall 41: an ephemeral message can only be edited through the token of an interaction that
-    responded on it, and each token dies 15 minutes after its interaction. Every pick answers on
-    the message (a fresh token), and the timeout (10 min, restarted on every pick) stays below
-    that, so on_timeout can still remove the dropdown through the last pick's token.
+    A short result (overview, embeds, a board that fits one message) replaces the content of the
+    message the dropdown is on. A long text leaderboard (tracker #0140) is split into several
+    messages, and the dropdown always sits at the END of the last one (2026-09-27, project owner):
+    the picked message gets part 1 without the dropdown, the remaining parts follow as ephemeral
+    follow-ups and the last of them carries it. The next pick — which then comes from that last
+    message — deletes the earlier parts first, so each pick leaves exactly one page behind.
 
-    Tracker #0140: a long text leaderboard continues in extra ephemeral follow-ups
-    (self.extra_messages). They are deleted on the next pick and on timeout — both within
-    15 minutes of the pick that sent them, so their token is still valid.
+    Handles on ephemeral messages (Pitfall 41 — only the token of the interaction that responded
+    on a message can edit/delete it, and it dies after 15 minutes):
+      - self._holder: what can edit the message carrying the dropdown — the interaction whose
+        original response it is, or the WebhookMessage of the follow-up that carries it;
+      - self._parts: the earlier parts of the current page, same two kinds, deleted on the next
+        pick. The view timeout (10 min, restarted on every pick) keeps every handle within 15 min.
+    On timeout only the dropdown is removed; the page itself stays complete.
     """
 
     def __init__(self, clan_tag: str, overview: discord.Embed, user_id: str, guild_id: Optional[int],
@@ -5557,8 +5563,8 @@ class _WhoisClanView(discord.ui.View):
         self.user_id = user_id
         self.guild_id = guild_id
         self.highlight_player_ids = highlight_player_ids
-        self.last_interaction: Optional[discord.Interaction] = None
-        self.extra_messages: List[discord.WebhookMessage] = []
+        self._holder: Any = None                 # discord.Interaction | discord.WebhookMessage
+        self._parts: List[Any] = []              # same kinds — earlier parts of the current page
         self._busy = False
 
         options = [discord.SelectOption(
@@ -5591,8 +5597,10 @@ class _WhoisClanView(discord.ui.View):
                 opt.default = (opt.value == mode)
             if not await _safe_defer(interaction):
                 return
-            self.last_interaction = interaction
-            await self._delete_extra_messages()
+            # This pick came from the message carrying the dropdown; its interaction is now the
+            # freshest handle on it. The previous page's other parts go first.
+            self._holder = interaction
+            await self._delete_parts()
             contents: List[str] = []
             if mode == _WHOIS_CLAN_OVERVIEW:
                 embeds, files = [self.overview], []
@@ -5607,33 +5615,60 @@ class _WhoisClanView(discord.ui.View):
                                       guild_id=self.guild_id, mode=mode),
                         color=discord.Color.red(),
                     )], []
-            await interaction.edit_original_response(
-                content=contents[0] if contents else None, embeds=embeds, attachments=files, view=self)
-            for extra in contents[1:]:
+
+            if len(contents) <= 1:
+                await interaction.edit_original_response(
+                    content=contents[0] if contents else None, embeds=embeds, attachments=files, view=self)
+                return
+
+            # Split board: part 1 here without the dropdown, the dropdown moves to the last part.
+            await interaction.edit_original_response(content=contents[0], embeds=[], attachments=[], view=None)
+            self._parts = [interaction]
+            for index, part in enumerate(contents[1:], start=2):
+                is_last = index == len(contents)
                 try:
-                    self.extra_messages.append(
-                        await interaction.followup.send(extra, ephemeral=True, wait=True))
+                    if is_last:
+                        self._holder = await interaction.followup.send(part, ephemeral=True, wait=True, view=self)
+                    else:
+                        self._parts.append(await interaction.followup.send(part, ephemeral=True, wait=True))
                 except discord.HTTPException as exc:
-                    logging.warning(f"[WHOIS-CLAN] could not send leaderboard part for {self.clan_tag}: {exc}")
+                    logging.warning(f"[WHOIS-CLAN] could not send leaderboard part {index} for {self.clan_tag}: {exc}")
+                    # Never leave the page without a dropdown: put it back on part 1.
+                    self._parts.remove(interaction)
+                    self._holder = interaction
+                    await interaction.edit_original_response(view=self)
                     break
         finally:
             self._busy = False
 
-    async def _delete_extra_messages(self) -> None:
-        """Remove the previous pick's leaderboard continuation messages (tracker #0140)."""
-        extras, self.extra_messages = self.extra_messages, []
-        for message in extras:
-            try:
-                await message.delete()
-            except discord.HTTPException:
-                pass
+    @staticmethod
+    async def _delete_handle(handle: Any) -> None:
+        """Delete the ephemeral message behind an Interaction (its original response) or a
+        WebhookMessage (a follow-up)."""
+        try:
+            if isinstance(handle, discord.Interaction):
+                await handle.delete_original_response()
+            else:
+                await handle.delete()
+        except discord.HTTPException:
+            pass
+
+    async def _delete_parts(self) -> None:
+        """Remove the previous page's earlier parts (never the message carrying the dropdown)."""
+        parts, self._parts = self._parts, []
+        for handle in parts:
+            await self._delete_handle(handle)
 
     async def on_timeout(self) -> None:
-        await self._delete_extra_messages()
-        if self.last_interaction is None:
+        # Keep the page as it is — only the dropdown goes away.
+        holder = self._holder
+        if holder is None:
             return
         try:
-            await self.last_interaction.edit_original_response(view=None)
+            if isinstance(holder, discord.Interaction):
+                await holder.edit_original_response(view=None)
+            else:
+                await holder.edit(view=None)
         except discord.HTTPException:
             pass
 
@@ -5664,7 +5699,7 @@ async def _whois_clan_logic(interaction: discord.Interaction, clan: str) -> None
 
     overview = await _build_whois_clan_embed(resolved, user_id, guild_id)
     view = _WhoisClanView(resolved, overview, user_id, guild_id, highlight_player_ids)
-    view.last_interaction = interaction
+    view._holder = interaction
     await interaction.edit_original_response(embed=overview, view=view)
 
 

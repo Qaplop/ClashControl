@@ -1,6 +1,14 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-27 (1)
+- Changed (tracker #0140 follow-up): when a /whois clan leaderboard is split over several
+  messages, the dropdown now sits at the end of the LAST part instead of under part 1. The next
+  pick (from that last message) deletes the earlier parts first, so every pick leaves exactly one
+  page; short results still edit a single message. Timeout only removes the dropdown and keeps
+  the page complete (it used to delete the continuation parts). Build 128.
+  Files: QBdiscordcmds.py (_WhoisClanView), tests. 3600 tests pass.
+
 2026-09-26 (18)
 - Added (tracker #0144): daily error/warning summary DM to the bot admin (SERVER_ADMIN), 00:05
   server time, for the previous day -- own background task, not part of nightly maintenance. Reads

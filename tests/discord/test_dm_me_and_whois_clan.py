@@ -222,25 +222,56 @@ def test_long_leaderboard_is_split_into_capped_messages():
 
 
 @pytest.mark.asyncio
-async def test_clan_view_replaces_previous_continuation_messages(mock_interaction, monkeypatch):
-    """A long board's extra messages go away on the next pick (tracker #0140)."""
+async def test_split_board_puts_dropdown_on_last_part(mock_interaction, monkeypatch):
+    """Tracker #0140 follow-up (2026-09-27): the picked message gets part 1 WITHOUT the dropdown,
+    the rest follow as ephemeral follow-ups and only the last one carries it. The previous page's
+    parts are deleted first."""
     from unittest.mock import AsyncMock as _AM
 
     view = QBdiscordcmds._WhoisClanView("#CLAN", MagicMock(), "1", None, set())
-    old = MagicMock()
-    old.delete = _AM()
-    view.extra_messages = [old]
-    monkeypatch.setattr(QBdiscordcmds, "_render_whois_clan_mode", _AM(return_value=(["part1", "part2"], [], [])))
+    old_part = MagicMock()
+    old_part.delete = _AM()
+    view._parts = [old_part]
+    monkeypatch.setattr(QBdiscordcmds, "_render_whois_clan_mode",
+                        _AM(return_value=(["part1", "part2", "part3"], [], [])))
     mock_interaction.data = {"values": ["attack"]}
-    mock_interaction.followup.send = _AM(return_value=MagicMock())
+    msg2, msg3 = MagicMock(), MagicMock()
+    mock_interaction.followup.send = _AM(side_effect=[msg2, msg3])
 
     await view._on_select(mock_interaction)
 
-    old.delete.assert_awaited_once()
+    old_part.delete.assert_awaited_once()
+    first = mock_interaction.edit_original_response.await_args.kwargs
+    assert first["content"] == "part1" and first["view"] is None
+    calls = mock_interaction.followup.send.await_args_list
+    assert calls[0].args == ("part2",) and "view" not in calls[0].kwargs
+    assert calls[1].args == ("part3",) and calls[1].kwargs["view"] is view
+    assert view._holder is msg3
+    assert view._parts == [mock_interaction, msg2]      # deleted on the next pick
+
+
+@pytest.mark.asyncio
+async def test_next_pick_from_last_part_cleans_up_to_one_message(mock_interaction, monkeypatch):
+    """After a split page, a short result (here: the overview) leaves a single message: the
+    earlier parts are deleted and the message carrying the dropdown shows the overview."""
+    from unittest.mock import AsyncMock as _AM
+
+    overview = MagicMock()
+    view = QBdiscordcmds._WhoisClanView("#CLAN", overview, "1", None, set())
+    first_part = AsyncMock()                           # an Interaction-like handle of part 1
+    first_part.__class__ = QBdiscordcmds.discord.Interaction
+    middle = MagicMock()
+    middle.delete = _AM()
+    view._parts = [first_part, middle]
+    mock_interaction.data = {"values": [QBdiscordcmds._WHOIS_CLAN_OVERVIEW]}
+
+    await view._on_select(mock_interaction)
+
+    first_part.delete_original_response.assert_awaited_once()
+    middle.delete.assert_awaited_once()
     kwargs = mock_interaction.edit_original_response.await_args.kwargs
-    assert kwargs["content"] == "part1" and kwargs["embeds"] == []
-    mock_interaction.followup.send.assert_awaited_once_with("part2", ephemeral=True, wait=True)
-    assert len(view.extra_messages) == 1
+    assert kwargs["embeds"] == [overview] and kwargs["view"] is view
+    assert view._parts == [] and view._holder is mock_interaction
 
 
 def test_clan_view_offers_overview_and_every_mode():

@@ -168,5 +168,10 @@
     "attr": "CWL_BENCH",
     "name": "cwl_bench",
     "source": "cwl_bench.svg"
+  },
+  {
+    "attr": "GPLUS",
+    "name": "gplus",
+    "source": "gplus.svg"
   }
 ]

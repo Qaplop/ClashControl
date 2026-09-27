@@ -1,6 +1,16 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-27 (3)
+- Changed (tracker #0141 follow-up): greeting DM install line now reads "New here? Click the
+  button below to add ClashControl to your server" (new key commands.dm.install_hint, 5 languages),
+  with a blank line before it (zero-width-space, Pitfall 52); the in-text link is gone again.
+  New application emoji GPLUS (green plus, clashcontrol/icons/gplus.svg, uploaded by the bot on
+  its next start; fallback grey plus) used on that line and on the "Add to server" button. Link
+  buttons can't be blue -- Discord renders the link style grey only. Build 130.
+  Files: clashcontrol/greeting_dm.py, clashcontrol/emojis.py, icons (gplus.svg, emoji/gplus.webp,
+  emoji_manifest.json), translations, tests. 3600 tests pass.
+
 2026-09-27 (2)
 - Changed (tracker #0141 follow-up): the greeting DM's "New here? Add ClashControl to your server"
   section now contains the clickable add-to-server link instead of the Manage Server permission

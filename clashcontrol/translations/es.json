@@ -464,6 +464,7 @@
       "guild_picker_selected": "✅ Entendido — continuando con ese servidor.",
       "greeting_title": "👋 ¡Hola {name}, bienvenido a ClashControl!",
       "features_title": "✨ Qué hace ClashControl",
+      "install_hint": "¿Eres nuevo? Haz clic en el botón de abajo para añadir ClashControl a tu servidor",
       "help_hint": "¿Quieres verlo todo? {help} muestra todos los comandos y {about} abre la página de presentación completa. Puedes usar la mayoría de los comandos aquí mismo, en este MD.",
       "me_sent": "✅ Te he enviado un MD — échale un vistazo: {link}",
       "me_failed": "❌ No he podido enviarte un MD. Permite los mensajes directos de miembros del servidor (menú del servidor → Ajustes de privacidad) e inténtalo de nuevo.",

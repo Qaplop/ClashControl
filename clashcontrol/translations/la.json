@@ -464,6 +464,7 @@
       "guild_picker_selected": "✅ Intellexi — cum illo servitore continuamus.",
       "greeting_title": "👋 Salve {name}, bene venisti ad ClashControl!",
       "features_title": "✨ Quid ClashControl faciat",
+      "install_hint": "Novus hic es? Preme globulum infra ut ClashControl servitori tuo addas",
       "help_hint": "Omnia videre vis? {help} omnia mandata enumerat, {about} paginam introductionis plenam aperit. Pleraque mandata hic in hoc nuntio privato uti potes.",
       "me_sent": "✅ Nuntium privatum tibi misi — inspice: {link}",
       "me_failed": "❌ Nuntium privatum tibi mittere non potui. Permitte nuntios directos a sodalibus servitoris (index servitoris → Optiones secreti) et iterum conare.",

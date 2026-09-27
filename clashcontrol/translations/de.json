@@ -464,6 +464,7 @@
       "guild_picker_selected": "✅ Alles klar — weiter mit diesem Server.",
       "greeting_title": "👋 Hallo {name}, willkommen bei ClashControl!",
       "features_title": "✨ Was ClashControl kann",
+      "install_hint": "Neu hier? Klicke auf den Button unten, um ClashControl deinem Server hinzuzufügen",
       "help_hint": "Du willst alles sehen? {help} listet jeden Befehl auf, {about} öffnet die komplette Vorstellungsseite. Die meisten Befehle funktionieren direkt hier in dieser DM.",
       "me_sent": "✅ Ich habe dir eine DM geschickt — schau mal rein: {link}",
       "me_failed": "❌ Ich konnte dir keine DM schicken. Bitte erlaube Direktnachrichten von Servermitgliedern (Servermenü → Privatsphäre-Einstellungen) und versuche es noch einmal.",

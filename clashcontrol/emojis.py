@@ -103,6 +103,10 @@ class BotEmojis(metaclass=_ResolvingEmojiMeta):
     # emoji, so its fallback is the unicode chair rather than a guild-emoji id.
     CWL_BENCH = "🪑"
 
+    # Green "add" plus (greeting DM "add to server" line + button, tracker #0141). Unicode has no
+    # green plus — its fallback is the grey ➕ until the application emoji is uploaded.
+    GPLUS = "➕"
+
 
 _CUSTOM_EMOJI_RE = re.compile(r"^<a?:\w+:(\d+)>$")
 

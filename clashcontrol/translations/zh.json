@@ -464,6 +464,7 @@
       "guild_picker_selected": "✅ 好的——将继续使用该服务器。",
       "greeting_title": "👋 你好 {name}，欢迎使用 ClashControl！",
       "features_title": "✨ ClashControl 能做什么",
+      "install_hint": "第一次来？点击下方按钮，将 ClashControl 添加到你的服务器",
       "help_hint": "想了解全部功能？{help} 会列出所有命令，{about} 会打开完整的介绍页面。大多数命令都可以直接在这个私信中使用。",
       "me_sent": "✅ 我已经给你发了一条私信——去看看吧：{link}",
       "me_failed": "❌ 我无法给你发送私信。请允许来自服务器成员的私信（服务器菜单 → 隐私设置），然后再试一次。",

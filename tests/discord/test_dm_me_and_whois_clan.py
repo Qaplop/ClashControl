@@ -46,9 +46,13 @@ def test_greeting_dm_has_install_and_support_buttons(monkeypatch):
     monkeypatch.setattr(QBcore, "bot", MagicMock(application_id=1234))
     urls = [b.url for b in build_greeting_dm_view("1", None).children]
     assert urls == ["https://discord.com/oauth2/authorize?client_id=1234", SUPPORT_INVITE_URL]
-    install = next(f for f in build_greeting_dm_embed("1", None, "Qap").fields if "➕" in f.name)
-    assert "](https://discord.com/oauth2/authorize?client_id=1234)" in install.value   # clickable link
-    assert "Manage Server" not in install.value                                          # no permission hint
+    fields = build_greeting_dm_embed("1", None, "Qap").fields
+    install = next(f for f in fields if "button below" in f.name)
+    # 2026-09-27 follow-up: the line points at the button — no link, no permission hint in the text.
+    assert "oauth2" not in install.value and "Manage Server" not in install.value
+    # Blank lines around the install line survive Discord's trim (Pitfall 52): zero-width space.
+    before = fields[fields.index(install) - 1]
+    assert before.value.endswith("\n\u200b") and install.value.startswith("\u200b\n")
 
 
 def test_help_texts_tracker_142_143():

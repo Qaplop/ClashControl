@@ -464,6 +464,7 @@
       "guild_picker_selected": "✅ Got it — continuing with that server.",
       "greeting_title": "👋 Hi {name}, welcome to ClashControl!",
       "features_title": "✨ What ClashControl does",
+      "install_hint": "New here? Click the button below to add ClashControl to your server",
       "help_hint": "Want to see everything? {help} lists every command, {about} opens the full intro page. You can use most commands right here in this DM.",
       "me_sent": "✅ I've sent you a DM — have a look: {link}",
       "me_failed": "❌ I couldn't send you a DM. Please allow direct messages from server members (server menu → Privacy Settings) and try again.",

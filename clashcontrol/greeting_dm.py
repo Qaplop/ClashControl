@@ -64,21 +64,17 @@ def build_greeting_dm_embed(user_id: str, guild_id: Optional[int], display_name:
     get_started = "\n".join(
         f"{command_mention(cmd)} – {tr(f'activity.landing.{key}')}" for cmd, key in _GET_STARTED
     )
-    embed.add_field(name=tr('activity.landing.members_title'), value=get_started[:1024], inline=False)
-    # Tracker #0141: a clickable "add the app to a server" link right in the text (2026-09-27,
-    # project owner: the link is what matters, not the permission hint), plus the same link as
-    # the "Add to server" button below the message (build_greeting_dm_view()).
-    import QBcore
-    from clashcontrol.constants import bot_install_url
-    install_url = bot_install_url(QBcore.bot.application_id)
+    # Trailing "\n\u200b": a blank line before the install line. A bare trailing "\n" would be
+    # trimmed away by Discord (Pitfall 52); the zero-width space keeps the line.
+    embed.add_field(name=tr('activity.landing.members_title'), value=get_started[:1020] + "\n\u200b", inline=False)
+    # Tracker #0141 (2026-09-27, project owner): the line points at the "Add to server" button
+    # below the message (build_greeting_dm_view()) — no link or permission hint in the text. The
+    # help hint follows after a blank line, again kept alive by a leading zero-width space.
+    from clashcontrol.emojis import BotEmojis
+    help_hint = tr('commands.dm.help_hint', help=command_mention("help"), about=command_mention("about"))
     embed.add_field(
-        name=f"➕ {tr('activity.landing.install_title')}",
-        value=f"**[{tr('activity.landing.install_button')}]({install_url})**"[:1024],
-        inline=False,
-    )
-    embed.add_field(
-        name="​",
-        value=tr('commands.dm.help_hint', help=command_mention("help"), about=command_mention("about"))[:1024],
+        name=f"{BotEmojis.GPLUS} {tr('commands.dm.install_hint')}"[:256],
+        value=f"\u200b\n{help_hint}"[:1024],
         inline=False,
     )
     embed.set_footer(text=tr('activity.landing.footer'))
@@ -88,7 +84,9 @@ def build_greeting_dm_embed(user_id: str, guild_id: Optional[int], display_name:
 def build_greeting_dm_view(user_id: str, guild_id: Optional[int]) -> discord.ui.View:
     """The landing page's two link buttons for the greeting DM (tracker #0141): "Add to server"
     (bot_install_url) and "Open support channel". Link buttons never call back into the bot, so
-    the view needs neither a timeout nor persistent registration.
+    the view needs neither a timeout nor persistent registration. Discord always renders link
+    buttons grey (the link style has no colour variants), so the green plus emoji is what makes
+    "Add to server" stand out.
 
     Args:
         user_id: Recipient's Discord user id (button labels follow their language).
@@ -96,12 +94,13 @@ def build_greeting_dm_view(user_id: str, guild_id: Optional[int]) -> discord.ui.
     """
     import QBcore
     from clashcontrol.constants import SUPPORT_INVITE_URL, bot_install_url
+    from clashcontrol.emojis import BotEmojis, button_emoji
 
     view = discord.ui.View(timeout=None)
     view.add_item(discord.ui.Button(
         label=t('activity.landing.install_button', guild_id=guild_id, user_id=user_id)[:80],
         url=bot_install_url(QBcore.bot.application_id),
-        emoji="➕",
+        emoji=button_emoji(BotEmojis.GPLUS),
     ))
     view.add_item(discord.ui.Button(
         label=t('activity.landing.support_button', guild_id=guild_id, user_id=user_id)[:80],

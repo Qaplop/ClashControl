@@ -275,6 +275,30 @@ async def test_start_cwl_refuses_when_a_clan_has_no_start_time(db):
 
 
 @pytest.mark.asyncio
+async def test_start_cwl_refuses_a_start_time_from_another_season(db):
+    """Tracker #0145/#0147/#0148: a start time carried over from last month made the roster DM
+    say "switch before 1 September (a month ago)". Refused like a missing one, naming the clan."""
+    from clashcontrol.QBdiscocmdshelper_cwl import announce_cwl_rosters
+
+    guild_id = "112"
+    await _seed_guild_and_clans(db, guild_id, ("#CLAN1", "#CLAN2"))
+    event_id = await _make_announced_event(
+        db, guild_id,
+        [{"clan_tag": "#CLAN1", "cwl_start_at": f"{SEASON}-01T08:00Z"},
+         {"clan_tag": "#CLAN2", "cwl_start_at": "2026-08-01T16:15Z"}],
+    )
+    await _seed_player(db, "u1", "#P1", "#CLAN1")
+    _assign(db, event_id, "#P1", "#CLAN1")
+
+    result = await announce_cwl_rosters(int(guild_id), SEASON)
+
+    assert result["ok"] is False
+    assert result["error"] == "out_of_season_start_times"
+    assert "#CLAN2" in result["out_of_season_start_times"]
+    assert db.get_cwl_event_sync(guild_id, SEASON)["status"] == "signup_open"
+
+
+@pytest.mark.asyncio
 async def test_start_cwl_sends_marks_notified_and_announces(db, monkeypatch):
     from clashcontrol.cache_manager import CACHE
     from clashcontrol.QBdiscocmdshelper_cwl import announce_cwl_rosters

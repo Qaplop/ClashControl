@@ -1267,6 +1267,7 @@
       "announce_rosters_error_not_open": "\u26a0\ufe0f Die Anmeldephase f\u00fcr diese Saison wurde noch nicht gestartet.",
       "announce_rosters_error_nobody_to_notify": "\u26a0\ufe0f Niemand zu benachrichtigen \u2014 es ist noch kein Spieler einem teilnehmenden Clan zugewiesen.",
       "announce_rosters_error_missing_start_times": "\u26a0\ufe0f F\u00fcr diese Clans ist noch keine CWL-Startzeit gesetzt, daher wurde nichts bekannt gegeben: **{clans}**\nSetze sie pro Clan unter \"Teilnehmende Clans konfigurieren\" und versuche es erneut.",
+      "announce_rosters_error_out_of_season_start_times": "\u26a0\ufe0f Die CWL-Startzeit dieser Clans liegt nicht in der Saison {season}, daher wurde nichts bekannt gegeben: **{clans}**\nKorrigiere sie pro Clan unter \"Teilnehmende Clans konfigurieren\" und versuche es erneut.",
       "button_help": "\u2753 Hilfe",
       "button_hub_settings": "Einstellungen",
       "button_hub_season_management": "Saisonverwaltung",

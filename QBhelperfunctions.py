@@ -2648,11 +2648,15 @@ def _load_cwl_analysis_from_db_sync(
 #     fix didn't catch (i.e. these 19 groups' recorded "Champion League II" is
 #     itself probably wrong), not a real promotion-rule quirk — needs manual
 #     spot-checking, not a rule-table change.
+#
+# Titan League I/II/III and Legend League corrected 2026-09-30 (tracker #0146) from Supercell's
+# own announcement of the October rollback, which states what this revamp period used: Titan
+# promoted 4 / demoted 1 (same as Champion League I), Legend demoted 1.
 _CWL_PROMO_RULES_FROM_2026_05: Dict[str, Tuple[int, int]] = {
-    "Legend League":       (0, 2),
-    "Titan League I":      (2, 2),
-    "Titan League II":     (2, 2),
-    "Titan League III":    (2, 2),
+    "Legend League":       (0, 1),
+    "Titan League I":      (4, 1),
+    "Titan League II":     (4, 1),
+    "Titan League III":    (4, 1),
     "Champion League I":   (4, 1),
     "Champion League II":  (2, 2),
     "Champion League III": (2, 2),
@@ -2671,6 +2675,23 @@ _CWL_PROMO_RULES_FROM_2026_05: Dict[str, Tuple[int, int]] = {
     "Bronze League I":     (3, 1),
     "Bronze League II":    (3, 1),
     "Bronze League III":   (3, 0),
+}
+
+# ── Rules valid from 2026-10 onwards (tracker #0146) ─────────────────────────
+# Supercell's announcement (2026-09-29): the higher leagues go back to the standard numbers
+# after the revamp. Master League I, Champion League III and II promote 1 instead of 2;
+# Champion League I and Titan League III/II/I promote 1 instead of 4 and demote 2 instead of 1;
+# Legend League demotes 2 instead of 1. Every other league is unchanged from 2026-05.
+_CWL_PROMO_RULES_FROM_2026_10: Dict[str, Tuple[int, int]] = {
+    **_CWL_PROMO_RULES_FROM_2026_05,
+    "Legend League":       (0, 2),
+    "Titan League I":      (1, 2),
+    "Titan League II":     (1, 2),
+    "Titan League III":    (1, 2),
+    "Champion League I":   (1, 2),
+    "Champion League II":  (1, 2),
+    "Champion League III": (1, 2),
+    "Master League I":     (1, 2),
 }
 
 # ── Rules valid up to and including 2026-04 ───────────────────────────────────
@@ -2703,6 +2724,7 @@ _CWL_PROMO_RULES_PRE_2026_05: Dict[str, Tuple[int, int]] = {
 # The effective range of entry[i] is: first_season_str[i] ≤ season < first_season_str[i-1].
 # The last entry in the list is the catch-all for the oldest seasons.
 _CWL_PROMO_RULES_VERSIONED: List[Tuple[str, Dict[str, Tuple[int, int]]]] = [
+    ("2026-10", _CWL_PROMO_RULES_FROM_2026_10),
     ("2026-05", _CWL_PROMO_RULES_FROM_2026_05),
     ("2000-01", _CWL_PROMO_RULES_PRE_2026_05),   # covers everything before 2026-05
 ]

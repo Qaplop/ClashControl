@@ -447,6 +447,65 @@ def cwl_season_window_closed(cwl_season: str, now: object = None) -> bool:
     return reference.date() >= start + timedelta(days=CWL_SEASON_WINDOW_DAYS)
 
 
+# A regular season's official CWL start (1st of the month, 08:00 UTC) and how long after it a
+# clan may still start its own CWL. Same window the Activity's start-time picker clamps to
+# (seasonStartUtc/seasonEndUtc in activity/client/src/clanConfigTable.ts).
+CWL_START_HOUR_UTC = 8
+CWL_START_WINDOW_HOURS = 48
+
+
+def cwl_start_at_for_season(cwl_start_at: object, cwl_season: str) -> str:
+    """Return a per-clan `cwl_start_at` ("YYYY-MM-DDTHH:MMZ", UTC) that lies inside *cwl_season*'s
+    start window, moving it there if it doesn't.
+
+    A value already inside the window is returned unchanged. A value from another season keeps
+    its offset from THAT season's official start (1st 08:00 UTC) and is re-applied to this one, so
+    a clan that always starts "the 1st at 16:15" keeps doing so; the result is clamped into the
+    window. A missing or unparseable value becomes the season's official start.
+
+    Tracker #0145/#0147/#0148: the season carry-over copied last season's full timestamp, so the
+    October roster DMs told players to switch "before 1 September" and the switch alarms fired at
+    once. Every writer that derives a start time from another season must go through this.
+
+    Args:
+        cwl_start_at: Stored start time, or None.
+        cwl_season: Regular season key "YYYY-MM". Any other shape returns *cwl_start_at*
+            unchanged (or "" if it was empty), since there is no window to check against.
+
+    Returns:
+        A "YYYY-MM-DDTHH:MMZ" string inside the season's window.
+    """
+    from datetime import datetime, timedelta
+
+    fmt = "%Y-%m-%dT%H:%M"
+    try:
+        season_start = datetime.strptime(f"{cwl_season}-01T{CWL_START_HOUR_UTC:02d}:00", fmt)
+    except (TypeError, ValueError):
+        return cwl_start_at if isinstance(cwl_start_at, str) else ""
+    season_end = season_start + timedelta(hours=CWL_START_WINDOW_HOURS)
+
+    try:
+        value = datetime.strptime(str(cwl_start_at).rstrip("Z"), fmt)
+    except ValueError:
+        return f"{season_start.strftime(fmt)}Z"
+    if season_start <= value <= season_end:
+        return f"{value.strftime(fmt)}Z"
+
+    own_season_start = value.replace(day=1, hour=CWL_START_HOUR_UTC, minute=0)
+    offset = value - own_season_start
+    rebased = min(max(season_start + offset, season_start), season_end)
+    return f"{rebased.strftime(fmt)}Z"
+
+
+def cwl_start_at_in_season(cwl_start_at: object, cwl_season: str) -> bool:
+    """True when *cwl_start_at* is set and lies inside *cwl_season*'s start window (see
+    cwl_start_at_for_season). False for an empty value; True for a non-regular season key, which
+    has no window to check against."""
+    if not cwl_start_at:
+        return False
+    return cwl_start_at_for_season(cwl_start_at, cwl_season) == str(cwl_start_at)
+
+
 # --- Clan Capital raid weekends (tracker #0115) ---------------------------------------------
 # A raid season runs Fri 07:00 UTC -> Mon 07:00 UTC every week (COC_GAME_MECHANICS.md
 # § Clan Capital Raid Weekends). Season keys are the ISO start timestamp, e.g.

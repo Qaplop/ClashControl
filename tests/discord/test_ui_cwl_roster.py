@@ -2014,7 +2014,7 @@ async def test_cwl_carry_over_prompt_yes_presets_participating_from_real_war_his
     old_event_id = db.create_cwl_event_sync("4444", "2026-01", "discordid1")
     db.set_cwl_event_clans_sync(old_event_id, [
         {"clan_tag": "#CLAN1", "target_league_rank": "Master League II",
-         "roster_size": 30, "cwl_start_at": "2026-01-01T08:00Z", "participating": True},
+         "roster_size": 30, "cwl_start_at": "2026-01-01T16:15Z", "participating": True},
     ])
     # Real CWL war history: #CLAN1 actually played last season, #CLAN2 didn't (no row at all).
     await db.conn.execute(
@@ -2037,7 +2037,8 @@ async def test_cwl_carry_over_prompt_yes_presets_participating_from_real_war_his
     clans = {c["clan_tag"]: c for c in db.get_cwl_event_clans_sync(event["id"])}
     assert clans["#CLAN1"]["participating"] == 1  # played last season -> True
     assert clans["#CLAN1"]["roster_size"] == 30  # settings still carried over
-    assert clans["#CLAN1"]["cwl_start_at"] == "2026-01-01T08:00Z"
+    # Time of day carries over, the date moves into the new season (tracker #0145).
+    assert clans["#CLAN1"]["cwl_start_at"] == "2026-02-01T16:15Z"
     assert clans["#CLAN2"]["participating"] == 0  # didn't play last season -> False
     assert clans["#CLAN2"]["roster_size"] == 15  # never configured before -> plain default
     assert CACHE.server_config["4444"]["cwl_selected_season"] == "2026-02"

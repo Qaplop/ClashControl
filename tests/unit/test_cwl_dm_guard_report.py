@@ -119,6 +119,7 @@ async def test_announce_rosters_records_dm_guard_skipped(guarded, monkeypatch):
     monkeypatch.setattr(guarded, "resolve_cwl_announcement_targets_sync", lambda *a: {
         "groups": {"10": [dict(a, clan_tag="#C") for a in ACCOUNTS]}, "skipped_unlinked": 0,
         "unlinked_names": [], "skipped_not_owner": 0, "missing_start_times": [],
+        "out_of_season_start_times": [],
     })
     result = await guarded.announce_cwl_rosters(1, "2026-10")
     assert result["skipped_dm_guard"] == 2

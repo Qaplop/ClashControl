@@ -22,7 +22,7 @@ from zoneinfo import ZoneInfo
 import discord
 
 from clashcontrol.cache_manager import CACHE
-from clashcontrol.constants import CWL_LEAGUE_ORDER
+from clashcontrol.constants import CWL_LEAGUE_ORDER, cwl_start_at_in_season
 from clashcontrol.db_manager import CWL_RETENTION_MONTHS_NEW_GUILD
 from clashcontrol.emojis import bench_emoji, signup_dm_icons
 
@@ -4213,14 +4213,15 @@ def resolve_cwl_announcement_targets_sync(
     sync() — kept fresh by every regular clan poll, so this costs no CoC API call.
 
     Returns {"groups": {discord_id: [account, ...]}, "skipped_unlinked", "unlinked_names",
-    "skipped_not_owner", "missing_start_times", "total_assigned", "already_notified"} where an
-    account is {"player_tag", "player_name", "clan_tag", "clan_name", "cwl_start_at", "in_clan",
+    "skipped_not_owner", "missing_start_times", "out_of_season_start_times", "total_assigned",
+    "already_notified"} where an account is {"player_tag", "player_name", "clan_tag", "clan_name", "cwl_start_at", "in_clan",
     "current_clan_tag", "current_clan_name", "shared_clan_id", "notified"}. Plain sync function
     (Pitfall 26) — the caller wraps it in one asyncio.to_thread() hop."""
     db = CACHE.db_manager
     result: Dict[str, Any] = {
         "groups": {}, "skipped_unlinked": 0, "unlinked_names": [], "skipped_not_owner": 0,
-        "missing_start_times": [], "total_assigned": 0, "already_notified": 0,
+        "missing_start_times": [], "out_of_season_start_times": [], "total_assigned": 0,
+        "already_notified": 0,
     }
     if db is None:
         return result
@@ -4231,6 +4232,12 @@ def resolve_cwl_announcement_targets_sync(
     if not participating:
         return result
     result["missing_start_times"] = [tag for tag, c in participating.items() if not c.get("cwl_start_at")]
+    # Set, but not inside this season's start window — e.g. a date carried over from last month
+    # (tracker #0145/#0147/#0148). Announcing it would tell players a start date in the past.
+    result["out_of_season_start_times"] = [
+        tag for tag, c in participating.items()
+        if c.get("cwl_start_at") and not cwl_start_at_in_season(c["cwl_start_at"], season)
+    ]
 
     shared_by_tag = get_event_shared_clans_by_tag_sync(event_id, season)
 
@@ -4788,7 +4795,7 @@ async def announce_cwl_rosters(guild_id: int, season: str) -> Dict[str, Any]:
     idempotent and re-runnable for late arrivals. Then transitions signup_open -> announced, the
     only writer of 'announced' in the codebase.
 
-    Returns {"ok", "error"?, "missing_start_times"?, "contacted", "contacted_users",
+    Returns {"ok", "error"?, "missing_start_times"?, "out_of_season_start_times"?, "contacted", "contacted_users",
     "skipped_dm_guard", "skipped_unlinked", "unlinked_names", "skipped_not_owner", "blocked",
     "no_mutual_guild", "failed"}."""
     db = CACHE.db_manager
@@ -4806,6 +4813,13 @@ async def announce_cwl_rosters(guild_id: int, season: str) -> Dict[str, Any]:
             "ok": False, "error": "missing_start_times",
             "missing_start_times": [
                 CACHE.get_clan_name(tag, tag) or tag for tag in targets["missing_start_times"]
+            ],
+        }
+    if targets["out_of_season_start_times"]:
+        return {
+            "ok": False, "error": "out_of_season_start_times",
+            "out_of_season_start_times": [
+                CACHE.get_clan_name(tag, tag) or tag for tag in targets["out_of_season_start_times"]
             ],
         }
     if not targets["groups"] and not targets["skipped_unlinked"]:

@@ -1266,6 +1266,7 @@
       "announce_rosters_error_not_open": "⚠️ La inscripción aún no se ha iniciado para esta temporada.",
       "announce_rosters_error_nobody_to_notify": "⚠️ Nadie a quien anunciar — todavía no hay ningún jugador asignado a un clan participante.",
       "announce_rosters_error_missing_start_times": "⚠️ Estos clanes todavía no tienen hora de inicio de LGC, así que no se anunció nada: **{clans}**\nEstablécela por clan en \"Configurar Clanes Participantes\", y vuelve a intentarlo.",
+      "announce_rosters_error_out_of_season_start_times": "⚠️ La hora de inicio de LGC de estos clanes no está en la temporada {season}, así que no se anunció nada: **{clans}**\nCorrígela por clan en \"Configurar Clanes Participantes\", y vuelve a intentarlo.",
       "button_help": "❓ Ayuda",
       "button_hub_settings": "Ajustes",
       "button_hub_season_management": "Gestión de temporada",

@@ -33,6 +33,29 @@ async def test_sync_fallback_refuses_to_reopen_db_during_maintenance(tmp_path, m
 
 
 @pytest.mark.asyncio
+async def test_async_reconnect_is_refused_during_nightly_db_maintenance(tmp_path, monkeypatch):
+    """Tracker #0149: nightly DB maintenance closes the async connection and holds an EXCLUSIVE
+    lock for ~25 min of REINDEX. A caller in that window (the daily log summary at 05:05) used to
+    try a reconnect, wait out busy_timeout and log "database is locked" as an ERROR."""
+    db = WarHistoryDB()
+    await db.initialize(str(tmp_path / "nightly.db"))
+    try:
+        await db.conn.close()
+        db.conn = None
+        monkeypatch.setattr(QBcore, "maintenance_mode", False)
+        monkeypatch.setattr(QBcore, "db_maintenance_mode", True)
+        with pytest.raises(DatabaseMaintenanceError):
+            await db._ensure_connection()
+        assert db.conn is None
+
+        monkeypatch.setattr(QBcore, "db_maintenance_mode", False)
+        await db._ensure_connection()
+        assert db.conn is not None
+    finally:
+        await db.close()
+
+
+@pytest.mark.asyncio
 async def test_bridge_answers_503_json_during_maintenance(monkeypatch):
     from clashcontrol.web_bridge import create_app
 

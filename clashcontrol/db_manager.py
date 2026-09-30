@@ -1523,10 +1523,18 @@ class WarHistoryDB:
         if self.conn is None:
             # Don't auto-reconnect during maintenance — the DB was intentionally
             # closed and must stay closed so the data/ directory is safe to copy.
+            #
+            # Same for nightly DB maintenance (db_maintenance_mode): it closes this connection and
+            # holds an EXCLUSIVE lock for the whole run, so a reconnect can only wait out
+            # busy_timeout and fail with "database is locked" (tracker #0149: the daily log summary
+            # hit exactly that at 05:05, mid-REINDEX). nightly_db_maintenance() reopens the
+            # connection itself via _reconnect() once it is done.
             _in_maintenance = False
             try:
                 import QBcore as _qbcore
-                _in_maintenance = _qbcore.maintenance_mode
+                _in_maintenance = bool(
+                    _qbcore.maintenance_mode or getattr(_qbcore, "db_maintenance_mode", False)
+                )
             except ImportError:
                 pass
             if _in_maintenance:
@@ -1904,6 +1912,68 @@ class WarHistoryDB:
         await self._backfill_player_name_search_if_needed()
         await self._cleanup_stray_unassigned_duplicates()
         await self._repair_cwl_signups_for_sent_dms()
+        await self._repair_cwl_start_times_outside_season()
+
+    async def _repair_cwl_start_times_outside_season(self) -> None:
+        """Idempotent repair of per-clan CWL start times that lie outside their event's season
+        (tracker #0145/#0147/#0148; Cardinal Rule 12 — a no-op once none remain).
+
+        The season carry-over copied last season's whole cwl_start_at, so the 2026-10 event held
+        "2026-09-01T16:15Z" for every clan whose time had been set by hand. Moves each such value
+        into its own season with cwl_start_at_for_season() (same time of day). The switch alarms
+        and the coordinator report already fired for these clans because the start looked past,
+        so their dedup markers are reset — they fire again, at the right time, with the right
+        date. Skips clans that have already started CWL in-game (locked_at), whose rows are frozen.
+        """
+        from clashcontrol.constants import cwl_start_at_for_season
+
+        cursor = await self._conn.execute(
+            """
+            SELECT ec.event_id AS event_id, ec.clan_tag AS clan_tag,
+                   ec.cwl_start_at AS cwl_start_at, e.cwl_season AS cwl_season
+            FROM cwl_event_clans ec
+            JOIN cwl_events e ON e.id = ec.event_id
+            WHERE ec.cwl_start_at IS NOT NULL AND ec.locked_at IS NULL
+              AND length(e.cwl_season) = 7
+            """
+        )
+        rows = await cursor.fetchall()
+        repaired = []
+        try:
+            for row in rows:
+                fixed = cwl_start_at_for_season(row["cwl_start_at"], row["cwl_season"])
+                if fixed == row["cwl_start_at"]:
+                    continue
+                await self._conn.execute(
+                    "UPDATE cwl_event_clans SET cwl_start_at = ?, coordinator_reminder_sent_at = NULL "
+                    "WHERE event_id = ? AND clan_tag = ?",
+                    (fixed, row["event_id"], row["clan_tag"]),
+                )
+                await self._conn.execute(
+                    "UPDATE cwl_assignments SET alarm_stage_sent = 0 "
+                    "WHERE event_id = ? AND assigned_clan_tag = ? AND alarm_stage_sent != 0",
+                    (row["event_id"], row["clan_tag"]),
+                )
+                await self._conn.execute(
+                    """
+                    UPDATE cwl_shared_clan_players SET alarm_stage_sent = 0
+                    WHERE alarm_stage_sent != 0 AND shared_clan_id IN (
+                        SELECT id FROM cwl_shared_clans
+                        WHERE owner_event_id = ? AND clan_tag = ?
+                    )
+                    """,
+                    (row["event_id"], row["clan_tag"]),
+                )
+                repaired.append(f"{row['cwl_season']} {row['clan_tag']} {row['cwl_start_at']} -> {fixed}")
+            await self._conn.commit()
+        except Exception:
+            await self._conn.rollback()
+            raise
+        if repaired:
+            logging.info(
+                f"[DB-REPAIR] Moved {len(repaired)} CWL start time(s) into their own season "
+                f"(tracker #0145): {'; '.join(repaired)}"
+            )
 
     async def _repair_cwl_signups_for_sent_dms(self) -> None:
         """Idempotent repair of enrollment DMs whose button has no cwl_signups row to land on

@@ -1021,14 +1021,21 @@ class CwlCarryOverPromptView(discord.ui.View):
             # the family, or only ever enabled via the auto-enable-all fallback below — got
             # cwl_start_at=NULL here, and once a real row exists that fallback in the payload
             # builder no longer applies, so the date field rendered empty instead of pre-filled).
-            default_start_at = f"{self.target_season}-01T08:00Z"
+            #
+            # A carried-over start time keeps only its time of day (its offset from the season's
+            # official start), moved into THIS season — copying the whole timestamp carried
+            # last month's date over (tracker #0145/#0147/#0148).
+            from clashcontrol.constants import cwl_start_at_for_season
+
             clan_configs = [
                 {
                     "clan_tag": clan_tag,
                     "target_league_rank": previous_settings.get(clan_tag, {}).get("target_league_rank"),
                     "roster_size": previous_settings.get(clan_tag, {}).get("roster_size", 15),
                     "tier_order": previous_settings.get(clan_tag, {}).get("tier_order", 0),
-                    "cwl_start_at": previous_settings.get(clan_tag, {}).get("cwl_start_at") or default_start_at,
+                    "cwl_start_at": cwl_start_at_for_season(
+                        previous_settings.get(clan_tag, {}).get("cwl_start_at"), self.target_season
+                    ),
                     "participating": clan_tag in played_last_season,
                 }
                 for clan_tag in family_clan_tags
@@ -3003,6 +3010,12 @@ class CwlAnnounceRostersConfirmView(discord.ui.View):
                 content = t(
                     'cwl.management.announce_rosters_error_missing_start_times',
                     guild_id=self.guild_id, clans=", ".join(result["missing_start_times"]),
+                )
+            elif result["error"] == "out_of_season_start_times":
+                content = t(
+                    'cwl.management.announce_rosters_error_out_of_season_start_times',
+                    guild_id=self.guild_id, season=self.season,
+                    clans=", ".join(result["out_of_season_start_times"]),
                 )
             else:
                 content = t(f"cwl.management.announce_rosters_error_{result['error']}", guild_id=self.guild_id)

@@ -1267,6 +1267,7 @@
       "announce_rosters_error_not_open": "\u26a0\ufe0f Enrollment hasn't been started yet for this season.",
       "announce_rosters_error_nobody_to_notify": "\u26a0\ufe0f Nobody to announce to \u2014 no player is assigned to a participating clan yet.",
       "announce_rosters_error_missing_start_times": "\u26a0\ufe0f These clans still have no CWL start time, so nothing was announced: **{clans}**\nSet it per clan in \"Configure Participating Clans\", then try again.",
+      "announce_rosters_error_out_of_season_start_times": "\u26a0\ufe0f The CWL start time of these clans is not in season {season}, so nothing was announced: **{clans}**\nCorrect it per clan in \"Configure Participating Clans\", then try again.",
       "button_help": "\u2753 Help",
       "button_hub_settings": "Settings",
       "button_hub_season_management": "Season Management",

@@ -1266,6 +1266,7 @@
       "announce_rosters_error_not_open": "⚠️ 此赛季的报名尚未开始。",
       "announce_rosters_error_nobody_to_notify": "⚠️ 没有可宣布的对象 — 目前还没有玩家被分配到参赛部落。",
       "announce_rosters_error_missing_start_times": "⚠️ 以下部落仍未设置部落战联赛开始时间，因此未做任何宣布：**{clans}**\n请在“配置参赛部落”中按部落设置该时间，然后重试。",
+      "announce_rosters_error_out_of_season_start_times": "⚠️ 以下部落的部落战联赛开始时间不在 {season} 赛季内，因此未做任何宣布：**{clans}**\n请在“配置参赛部落”中按部落更正该时间，然后重试。",
       "button_help": "❓ 帮助",
       "button_hub_settings": "设置",
       "button_hub_season_management": "赛季管理",

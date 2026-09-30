@@ -46,7 +46,14 @@ UNIQUE (event_id, clan_tag)
   `roster_size`/`cwl_start_at`/`target_league_rank` on every toggle), so participation is this
   explicit column, never "row exists."
 - `cwl_start_at` — per **clan**, not per event: clans in the same family start CWL at different
-  times, since starting is a manual in-game action.
+  times, since starting is a manual in-game action. Always inside its own season's window
+  (`{season}-01T08:00Z` to +48h, the Activity picker's clamp). Any writer that derives a start
+  time from another season (the season carry-over) must pass it through
+  `cwl_start_at_for_season()` (`clashcontrol/constants.py`), which keeps the time of day and moves
+  the date. Copying the raw value carried "2026-09-01T16:15Z" into the 2026-10 event, so the
+  roster DMs named last month's date and the switch alarms fired at once (tracker #0145). A
+  startup repair (`_repair_cwl_start_times_outside_season`) fixes any stored value outside its
+  season for clans that haven't started yet.
 - `locked_at` — set once, never cleared, the moment this clan's CWL is observed to have actually
   started in-game (§10). Every freeze guard and the War-phase indicator key off this column alone.
 - `coordinator_reminder_sent_at` — one-shot dedup for the 30-minutes-before roster status report
@@ -536,7 +543,7 @@ clans starting at different times arrive as one coherent message. A shared clan 
 by its **owner** guild, to avoid two guilds double-announcing the same player.
 
 Refuses outright — no partial send — if any participating clan still has no `cwl_start_at`,
-naming the offending clans. The confirm dialog separately warns (not blocks) if any clan's roster
+or one outside the season's start window (`out_of_season_start_times`), naming the offending clans. The confirm dialog separately warns (not blocks) if any clan's roster
 is short of its configured size, and asks whether to proceed anyway.
 
 Marks each successful send `notified` + `notified_clan_tag`, which is what makes the action

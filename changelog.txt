@@ -1,6 +1,30 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-30 (3)
+- Fixed (tracker #0149): the daily log summary logged "database is locked" at 05:05, because
+  nightly DB maintenance had closed the async connection and held an EXCLUSIVE lock for its
+  REINDEX. _ensure_connection() now raises DatabaseMaintenanceError during nightly DB maintenance
+  too (not only admin maintenance), which the scheduler already retries quietly. Build 131.
+  Files: clashcontrol/db_manager.py, .github/copilot-instructions.md, tests. 3629 tests pass.
+
+2026-09-30 (2)
+- Changed (tracker #0146): CWL promotion/demotion counts from season 2026-10 (Supercell's
+  rollback): Master I, Champion III/II promote 1; Champion I and Titan III/II/I promote 1 and
+  demote 2; Legend demotes 2. The 2026-05 table's Titan (4,1) and Legend (0,1) placeholders are
+  corrected from the same announcement. Build 131.
+  Files: QBhelperfunctions.py, clashcontrol/scripts/audit_cwl_league_rank.py, tests. 3629 tests pass.
+
+2026-09-30 (1)
+- Fixed (tracker #0145/#0147/#0148): the 2026-10 roster DMs said "switch before 1 September (a
+  month ago)" and sent the URGENT alarm at once. The season carry-over copied last season's
+  whole cwl_start_at; it now keeps only the time of day (cwl_start_at_for_season(), constants.py).
+  A startup repair moves stored start times into their own season and re-arms the alarms and
+  coordinator report for those clans; "Start CWL" refuses a start time outside the season (new key
+  announce_rosters_error_out_of_season_start_times, 5 languages). Build 131.
+  Files: clashcontrol/constants.py, ui_cwl_roster.py, QBdiscocmdshelper_cwl.py, db_manager.py,
+  translations, docs/CWL_ROSTER_PLANNING_PLAN.md, tests. 3629 tests pass.
+
 2026-09-27 (3)
 - Changed (tracker #0141 follow-up): greeting DM install line now reads "New here? Click the
   button below to add ClashControl to your server" (new key commands.dm.install_hint, 5 languages),

@@ -289,6 +289,11 @@ _TRUSTED_LEAGUE_PROMO_RULES: Dict[str, Tuple[int, int]] = {
     "Champion League III": (2, 2),
     "Champion League II":  (2, 2),
     "Champion League I":   (4, 1),
+    # Not measured, but confirmed by Supercell's own announcement (tracker #0146).
+    "Titan League III":    (4, 1),
+    "Titan League II":     (4, 1),
+    "Titan League I":      (4, 1),
+    "Legend League":       (0, 1),
 }
 
 

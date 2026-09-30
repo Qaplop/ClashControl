@@ -1,6 +1,12 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-09-30 (4)
+- Changed: war prediction league priors (CWL_LEAGUE_STAR_DISTRIBUTION) updated from 2026-08 to
+  2026-09 clashspot.net data (per-league 3/2/1/0-star + missed rates; 0-star and missed merged).
+  Biggest shift: Titan I-III 3-star rate up 13-19 points (e.g. Titan I 58% -> 77%). Build 132.
+  File: QBwarsim.py. 67 war-sim tests pass.
+
 2026-09-30 (3)
 - Fixed (tracker #0149): the daily log summary logged "database is locked" at 05:05, because
   nightly DB maintenance had closed the async connection and held an EXCLUSIVE lock for its

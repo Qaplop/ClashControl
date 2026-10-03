@@ -218,11 +218,22 @@ recovered on retry.
   channel (or the bot admin disables it there). The fix above would disable it automatically.
 - Tests: NotFound clears config; Forbidden keeps it; the warning is rate-limited.
 
+**Implemented (Build 133)** as planned. Two notes:
+- The `*_enabled` flag is left on when the channel is cleared, so an admin only has to pick a new
+  channel. Until then the message is skipped silently.
+- No message to the guild's admins was added. That would be new user-facing text (i18n in 5
+  languages) and a product decision, not part of fixing the log noise. The config UI already
+  shows "no channel".
+
 ### Item 5 — outage log hygiene — MEDIUM (fold into item 1)
 
 - Per-clan `[PHASE-1] Exception fetching clan …` ERRORs (603+421+76+… on Oct 3) should collapse into
   one per-cycle summary once the breaker is tripped.
 - The daily summary should then show "CoC API outage 02:03–07:01 (N cycles affected)", not 5,000 lines.
+
+**Implemented with item 1 (Build 133):** per-clan gateway failures go to DEBUG once the breaker has
+tripped (WARNING before; never ERROR), there is one `[PHASE-1]` summary and an `api_fail:Gateway`
+bucket. `[COC-API-ERROR] ... failed after N attempts` ERRORs no longer appear for gateway errors.
 
 ### Item 6 — CWL hub edit limit 429/30046 — LOW
 

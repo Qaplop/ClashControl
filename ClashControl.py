@@ -4894,6 +4894,49 @@ async def _confirm_delete_message_from_channel(channel_id: int, message_id: str,
         return False
 
 
+async def _fetch_anchored_channel(channel_id: int) -> Tuple[Optional[Any], bool]:
+    """Live-fetch an anchored message's channel after a `get_channel()` cache miss.
+
+    Returns ``(channel, gone)``:
+      - ``(channel, False)`` — it exists; the miss was a cache gap. Use it.
+      - ``(None, True)`` — Discord answered ``NotFound``: confirmed deleted.
+      - ``(None, False)`` — inconclusive (Forbidden, HTTP error, network). Keep the config
+        and retry next cycle; only a confirmed ``NotFound`` may clear tracking (Pitfall 14).
+    """
+    try:
+        return await QBcore.bot.fetch_channel(channel_id), False
+    except discord.NotFound:
+        return None, True
+    except Exception as e:
+        logging.debug(f"fetch_channel({channel_id}) inconclusive: {type(e).__name__}: {e}")
+        return None, False
+
+
+#: (log_label, channel_id) -> monotonic time of the last "unreachable" warning. Log throttling
+#: only — not runtime data, so it lives here rather than in CACHE (Cardinal Rule 3 is about
+#: data that must not diverge; this can be lost at any time without consequence).
+_anchored_unreachable_warned: dict[tuple[str, int], float] = {}
+_ANCHORED_UNREACHABLE_WARN_INTERVAL_S = 24 * 3600
+
+
+def _warn_anchored_channel_unreachable(log_label: str, channel_id: int, guild_id: int) -> None:
+    """Warn that an anchored message's channel exists but is unreachable — at most once a day
+    per channel. Forbidden is a guild-side permission change that only an admin can fix, so
+    repeating it every bump cycle (tracker #0150: ~280/day) adds noise, not information."""
+    key = (log_label, channel_id)
+    now = time.monotonic()
+    last = _anchored_unreachable_warned.get(key)
+    if last is not None and now - last < _ANCHORED_UNREACHABLE_WARN_INTERVAL_S:
+        logging.debug(f"{log_label} channel {channel_id} for guild {guild_id} still unreachable")
+        return
+    _anchored_unreachable_warned[key] = now
+    logging.warning(
+        f"Could not reach {log_label} channel {channel_id} for guild {guild_id} (not in cache, "
+        f"live fetch failed without NotFound — missing access?). Keeping the config; "
+        f"repeats are logged at DEBUG for 24 h."
+    )
+
+
 async def repost_anchored_message(
     *,
     log_label: str,
@@ -5038,11 +5081,31 @@ async def repost_anchored_message(
             filtered_count += 1
             continue
 
-        # Get the Discord channel
+        # Get the Discord channel. get_channel() is a cache lookup — a miss is not proof the
+        # channel is gone (Pitfall 14), so confirm with a live fetch before acting on it.
         channel = QBcore.bot.get_channel(int(channel_id))
         if not channel:
-            logging.warning(f"Could not find {log_label} channel {channel_id} for guild {guild_id_int}")
-            continue
+            channel, channel_gone = await _fetch_anchored_channel(int(channel_id))
+            if channel_gone:
+                # Confirmed deleted (discord.NotFound). Stop tracking it instead of warning
+                # every bump cycle forever — tracker #0150: one deleted registration channel
+                # produced ~280 warnings/day from 2026-09-28. The enabled flag is left as is,
+                # so picking a new channel in the guild's config restores the message.
+                config[channel_key] = None
+                config[message_id_key] = None
+                config[old_channel_key] = None
+                server_config[guild_id_str] = config
+                CACHE.server_config = server_config
+                await CACHE.persist_server_config(guild_id_str)
+                logging.warning(
+                    f"[ANCHORED-CHANNEL-GONE] {log_label} channel {channel_id} in guild "
+                    f"{guild_id_int} no longer exists — cleared it from the guild config. The "
+                    f"{log_label} message stays off there until an admin picks a new channel."
+                )
+                continue
+            if channel is None:
+                _warn_anchored_channel_unreachable(log_label, int(channel_id), guild_id_int)
+                continue
 
         # Type guard - only process text-based channels that support views
         if not isinstance(channel, (discord.TextChannel, discord.Thread)):

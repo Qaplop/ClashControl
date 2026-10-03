@@ -843,6 +843,25 @@ so it was left out of scope for tracker #45.
 | API Verification Prompt | After button clicked | N/A |
 | Action View (verify dropdown) | After success | On failure (for retry) |
 
+### When the anchored message's channel disappears (tracker #0150)
+
+Applies to all three anchored messages (registration, CWL Management Hub, Player CWL Settings
+Hub — they share `repost_anchored_message()` in `ClashControl.py`):
+
+- **Channel deleted while the bot is online:** `QBcore.on_guild_channel_delete()` clears that
+  feature's channel and message ID from the guild config at once (keys:
+  `clashcontrol/constants.py` `ANCHORED_MESSAGE_CHANNEL_KEYS`) and logs one `[CHANNEL-DELETE]`
+  warning.
+- **Noticed later by the bump cycle** (`get_channel()` miss): the channel is live-fetched first
+  (Pitfall 14). `NotFound` → clear it once, log `[ANCHORED-CHANNEL-GONE]`. Inconclusive
+  (`Forbidden`, HTTP/network error) → keep the config and warn at most once per 24 h per channel.
+  A fetched channel (a cache gap) is used normally.
+- The `*_enabled` flag is left on, so an admin only has to pick a new channel. Until then the
+  message is silently skipped.
+
+Before this, one deleted registration channel produced ~280 warnings a day (2026-09-28 →
+2026-10-03) and was never resolved.
+
 ### Common Regression Patterns
 
 1. **Webhook Expiration**

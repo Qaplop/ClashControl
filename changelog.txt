@@ -1,6 +1,18 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-03 (4)
+- Fixed (tracker #0150): one guild's deleted registration channel produced ~280 "Could not find
+  registration channel" warnings a day since 2026-09-28, forever, because the bump cycle only
+  ever logged a get_channel() miss. A miss is now confirmed with fetch_channel(): NotFound
+  clears the channel/message from the guild config once ([ANCHORED-CHANNEL-GONE]); an
+  inconclusive result keeps it and warns at most once per 24 h. on_guild_channel_delete() now
+  also clears registration and both CWL hub messages when their channel is deleted. Applies to
+  all three anchored messages. Build 133.
+  Files: ClashControl.py, QBcore.py, clashcontrol/constants.py,
+  tests/unit/test_anchored_channel_gone.py, clashcontrol/docs/REGISTRATION_MESSAGE_WORKFLOWS.md.
+  3669 tests pass.
+
 2026-10-03 (3)
 - Added (tracker #0150): diagnostics that NAME what holds retained memory, for the daily ~4 GB
   RSS ramp since 2026-09-29 whose holder no existing profile could identify. A [MEM-GAUGES] line

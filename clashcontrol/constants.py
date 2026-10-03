@@ -563,3 +563,19 @@ def coc_timestamp_to_iso(raw: str) -> str:
         return datetime.strptime(raw, "%Y%m%dT%H%M%S.%fZ").strftime("%Y-%m-%dT%H:%M:%SZ")
     except (TypeError, ValueError):
         return ""
+
+
+# Per-guild anchored messages (registration + the two CWL hubs) — the server_config keys each
+# one stores its channel and message under: (log_label, channel_key, message_id_key,
+# old_channel_key). Used by QBcore.on_guild_channel_delete() to clear a deleted channel from every
+# anchored feature (tracker #0150). Must match the keys the three repost_* wrappers in
+# ClashControl.py pass to repost_anchored_message() — tests/unit/test_anchored_channel_gone.py
+# pins that.
+ANCHORED_MESSAGE_CHANNEL_KEYS: Tuple[Tuple[str, str, str, str], ...] = (
+    ("registration", "registration_channel_id", "registration_message_id",
+     "_old_registration_channel_id"),
+    ("CWL Management Hub", "cwl_management_channel_id", "cwl_management_message_id",
+     "_old_cwl_management_channel_id"),
+    ("Player CWL Settings Hub", "cwl_player_hub_channel_id", "cwl_player_hub_message_id",
+     "_old_cwl_player_hub_channel_id"),
+)

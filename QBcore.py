@@ -866,11 +866,40 @@ async def on_guild_channel_delete(channel: discord.abc.GuildChannel) -> None:
     Requires only the default `guilds` intent (already enabled).
     """
     import logging
-    if not isinstance(channel, discord.TextChannel):
-        return  # only text channels can hold subscriptions
 
     channel_id_str = str(channel.id)
     guild_id_str = str(channel.guild.id)
+
+    # 0. Anchored messages (registration + both CWL hubs) that lived in this channel (tracker
+    #    #0150). Discord itself reports the deletion here, so this is confirmed, unlike a
+    #    get_channel() miss. Before this, a deleted registration channel was only noticed by the
+    #    bump cycle, which warned about it every ~5 minutes forever. Runs for every channel type,
+    #    ahead of the text-channel guard below that only concerns subscriptions.
+    try:
+        from clashcontrol.cache_manager import CACHE
+        from clashcontrol.constants import ANCHORED_MESSAGE_CHANNEL_KEYS
+        _guild_cfg = CACHE.server_config.get(guild_id_str)
+        if isinstance(_guild_cfg, dict):
+            _cleared: list[str] = []
+            for _label, _chan_key, _msg_key, _old_key in ANCHORED_MESSAGE_CHANNEL_KEYS:
+                if str(_guild_cfg.get(_chan_key) or "") == channel_id_str:
+                    _guild_cfg[_chan_key] = None
+                    _guild_cfg[_msg_key] = None
+                    _guild_cfg[_old_key] = None
+                    _cleared.append(_label)
+            if _cleared:
+                CACHE.server_config[guild_id_str] = _guild_cfg
+                await CACHE.persist_server_config(guild_id_str)
+                logging.warning(
+                    f"[CHANNEL-DELETE] Channel {channel_id_str} (#{channel.name}) in guild "
+                    f"{guild_id_str} ({channel.guild.name}) held the {', '.join(_cleared)} "
+                    f"message(s) — cleared from the guild config until an admin picks a new channel."
+                )
+    except Exception as e:
+        logging.error(f"[CHANNEL-DELETE] Error clearing anchored messages for channel {channel_id_str}: {e}")
+
+    if not isinstance(channel, discord.TextChannel):
+        return  # only text channels can hold subscriptions
 
     try:
         from clashcontrol.cache_manager import CACHE

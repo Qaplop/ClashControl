@@ -738,6 +738,14 @@ all rebuild/button-handler paths so the reference is never lost.
   before it reaches a tool result — bug/feature reports are arbitrary Discord-user text fed
   straight into an agent's context, a textbook prompt-injection surface.
 
+🟫 clashcontrol/mem_diagnostics.py (tracker #0150)
+- `format_mem_gauges(cache, coc_client)` — the per-cycle `[MEM-GAUGES]` line (py_blocks,
+  malloc in-use/free, coc.py HTTP cache, our caches, asyncio tasks/timers). O(1) fields only.
+- `dict_shape_census()` / `build_retention_report()` — the Memory Profile's `[RETENTION]`
+  section: dict-shape growth since the trace was armed + gc.get_referrers() chains up to a
+  named holder (CACHE attribute, module global, coc.py HTTP cache), time-budgeted.
+  How to read both: PERFORMANCE_TUNING.md § Finding the HOLDER of retained memory.
+
 🟫 clashcontrol/coc_health.py
 - CoC API retry wrapper: `coc_retry(operation, operation_name, max_retries=2)`
 - Exception routing (no-retry vs retry):
@@ -1340,6 +1348,8 @@ kept here only for functions not narrated elsewhere.
 ├── is_maintenance_detected()      # True if coc.Maintenance was seen this cycle
 ├── clear_gateway_outage_detection() # cycle start; resets the gateway-outage breaker (#0150)
 ├── is_gateway_outage_detected()   # True if the breaker tripped this cycle
+├── apply_coc_library_patches()    # coc.py shims: clanCapital.districts, bounded HTTP response cache (#0150)
+├── get_coc_http_cache_stats()     # coc.py HTTP cache entries/cap, for [MEM-GAUGES] / profile
 ├── set_reconnect_callback()       # registers re-auth hook for session-close recovery
 ├── reset_cycle_stats()            # clears per-cycle rate-limit counters
 └── get_coc_stats()                # returns dict of lifetime + cycle API statistics

@@ -843,6 +843,8 @@ Instruments that answer this, and the ones that do **not**:
 | What does the user feel? | `[LOOP-LAG]` p95 + `over_500ms` |
 | What is resident, and what is frozen? | Memory Profile `[GC OBJECT COUNTS]` |
 | **Where does a GC pause come from?** | **NOT `PROFILE_PHASE1`** - see below |
+| Is RSS growth live Python objects or the allocator? | `[MEM-GAUGES]` `py_blocks` vs `malloc_inuse/free` (tracker #0150) |
+| **What is holding retained data?** | Memory Profile `[RETENTION]` referrer chains (tracker #0150) |
 
 `PROFILE_PHASE1` cannot see a GC pause. cProfile instruments Python function *calls*, while a
 collection runs inside the allocator, triggered by whichever allocation happened to cross the
@@ -928,3 +930,47 @@ cache sits under its cap, and a swallowed `KeyError` on eviction once it is over
 and the cap is now `CONFIG.coc_http_cache_max_entries` (default 2000, env
 `COC_HTTP_CACHE_MAX_ENTRIES`, 0 disables). ClashControl caches clans itself (`coc_clan_cache`), so
 this cache only dedupes repeats inside a short window. `[MEM-GAUGES]` logs its size each cycle.
+
+## Finding the HOLDER of retained memory: `[MEM-GAUGES]` and `[RETENTION]` (tracker #0150)
+
+Every profile up to 2026-10-03 could say where retained objects were *allocated* (tracemalloc,
+`nframe=1`: the JSON decode line in aiohttp) and how many of each *type* exist — never what keeps
+them alive. That is the question that decides a fix, and two investigations (#0009, #0106) spent
+days on plausible-but-wrong holders. Since 2026-09-29 PROD has shown a ~4 GB ramp over a few hours
+(not tied to a time of day: 06:15 one day, 09:15 another), which these two instruments exist to
+pin down.
+
+**`[MEM-GAUGES]`** — one line per cycle after `[PAGECACHE]` (`mem_diagnostics.format_mem_gauges()`):
+
+| Field | Read it as |
+|---|---|
+| `py_blocks` | live interpreter memory blocks (`sys.getallocatedblocks()`). **Rises with RSS => retained Python objects.** Flat while RSS rises => allocator / fragmentation |
+| `malloc_inuse/free` | glibc `mallinfo2()` in-use vs freed-but-not-returned, MB |
+| `coc_http` | coc.py HTTP response cache entries / cap. A `(deque=N)` suffix means the bounded-cache shim is NOT in effect |
+| `coc_clan`, `temp_war_*`, `notif_state`, `history_cache` | our own caches, entry counts |
+| `tasks`, `timers` | live asyncio tasks and scheduled `call_later` handles (coc.py schedules one per cached response) |
+
+Correlate each against `RSS=` over a ramp: whichever moves with it is the lead.
+
+**`[RETENTION]`** — a section of the Memory Profile (`mem_diagnostics.build_retention_report()`),
+written automatically by the RSS-triggered restart (i.e. *during* a ramp, which is exactly when
+it is needed) and by `/admin Memory Profile`:
+
+1. Counts gc-tracked dicts by **shape** (first keys, insertion order). One API endpoint always
+   yields the same shape, so payloads are recognisable (`{state, teamSize, ...}` = a war,
+   `{tag, name, type, ...}` = a clan).
+2. Diffs against a census taken when the trace was armed (`QBcore.memtrace_shape_baseline`) and
+   ranks shapes by **growth** over the traced cycle.
+3. For the fastest-growing data shapes, walks `gc.get_referrers()` upward from sample objects until
+   a **named** holder: `CACHE.<attr>`, `module X globals ['NAME']`, `coc.py HTTP response cache`,
+   or an object attribute (`.slot` / `['key']`). One heap walk per level serves all chains, and
+   the walk stops at a time budget (120 s on the RSS-restart path, which exits right after; 30 s
+   for an interactive profile — the walk holds the GIL).
+
+A chain ending in "no gc-tracked referrer" is held from C code or by an untracked owner (e.g. a
+coc.py generator frame) — that ending is itself a finding.
+
+**Census ordering fix (same change):** `save_memtrace_snapshot()` now takes the GC census *before*
+`tracemalloc.take_snapshot()`. The snapshot holds one tuple per traced block (13.7 M on
+2026-10-03); `gc.get_objects()` lists the youngest objects first, so a census after it hit the
+5 M scan cap on those tuples alone (that profile reported 4,990,878 tuples and 317 dicts).

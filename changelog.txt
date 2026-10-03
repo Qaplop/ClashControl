@@ -1,6 +1,21 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-03 (3)
+- Added (tracker #0150): diagnostics that NAME what holds retained memory, for the daily ~4 GB
+  RSS ramp since 2026-09-29 whose holder no existing profile could identify. A [MEM-GAUGES] line
+  every cycle (py_blocks, malloc in-use/free, coc.py HTTP cache, our caches, asyncio
+  tasks/timers), and a [RETENTION] section in the memory profile: dict-shape growth since the
+  trace was armed plus gc.get_referrers() chains up to a named holder (CACHE attribute, module
+  global, coc.py cache), time-budgeted. The RSS-restart writes that profile during a ramp, so
+  the next one diagnoses itself.
+- Fixed: the memory profile's GC census ran after tracemalloc.take_snapshot(), whose own trace
+  tuples hit the 5M scan cap (the 2026-10-03 profile showed 4,990,878 tuples and 317 dicts).
+  Build 133. Files: clashcontrol/mem_diagnostics.py (new),
+  clashcontrol/QBdiscocmdshelper_admin_command.py, ClashControl.py, QBcore.py,
+  tests/unit/test_mem_diagnostics.py, tests/unit/test_memory_profile_retention.py,
+  clashcontrol/docs/PERFORMANCE_TUNING.md, clashcontrol/docs/CODE_STRUCTURE.md. 3663 tests pass.
+
 2026-10-03 (2)
 - Fixed (tracker #0150): coc.py's own HTTP response cache held decoded API JSON (~70-100 KB per
   response) up to its 10,000-entry default -- ~1 GB during the 2026-10-03 post-outage catch-up.

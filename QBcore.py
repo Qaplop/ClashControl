@@ -792,6 +792,13 @@ and emit a differential section showing only what grew since tracing began.
 Reset to None after the snapshot is saved.
 """
 
+memtrace_shape_baseline: object = None  # type: ignore[assignment]
+"""
+Dict-shape census (Counter) taken when tracing starts (tracker #0150), so the profile can show
+which payload shapes GREW over the traced cycle and chase their holders first. Reset with the
+baseline above.
+"""
+
 bot_start_time: float = 0.0
 """Unix timestamp set once in on_ready; used to report uptime in memory profiles."""
 

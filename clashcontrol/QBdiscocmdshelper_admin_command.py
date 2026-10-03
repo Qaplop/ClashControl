@@ -1714,6 +1714,25 @@ def save_memtrace_snapshot(cache: Any) -> str:
     import QBcore
 
     gc.collect()
+    # Census BEFORE take_snapshot() (tracker #0150). A snapshot holds one tuple per traced
+    # block — 13.7M of them in the 2026-10-03 profile — and gc.get_objects() lists the
+    # youngest objects first, so a census taken after it saw almost nothing but those tuples
+    # and hit _build_gc_type_counts()'s 5M scan cap (that profile reported 4,990,878 tuples
+    # and 317 dicts). Same reason the retention analysis runs here.
+    cache_summary = _build_cache_summary(cache)
+    top_types, top_types_by_size = _build_gc_type_counts(15)
+    from clashcontrol.mem_diagnostics import build_retention_report
+    # Budget: the RSS-restart path exits right after writing this, so a longer GIL hold costs
+    # nothing there; an interactive /admin profile keeps it short.
+    _retention_budget = 120.0 if getattr(QBcore, "rss_restart_armed", False) else 30.0
+    retention_lines = build_retention_report(
+        cache, getattr(cache, "coc_client", None),
+        getattr(QBcore, "memtrace_shape_baseline", None),
+        budget_s=_retention_budget,
+    )
+    from clashcontrol.coc_health import get_coc_http_cache_stats
+    coc_http_stats = get_coc_http_cache_stats(getattr(cache, "coc_client", None))
+
     snapshot = tracemalloc.take_snapshot()
     top_stats = snapshot.statistics("lineno")
 
@@ -1721,8 +1740,6 @@ def save_memtrace_snapshot(cache: Any) -> str:
     baseline = QBcore.memtrace_baseline
     diff_stats = snapshot.compare_to(baseline, "lineno") if baseline is not None else None  # type: ignore[arg-type]
 
-    cache_summary = _build_cache_summary(cache)
-    top_types, top_types_by_size = _build_gc_type_counts(15)
     rss_mb, vms_mb = _get_process_memory_mb()
     malloc_info = _get_malloc_info()
     rss_breakdown = _get_rss_breakdown()
@@ -1810,6 +1827,25 @@ def save_memtrace_snapshot(cache: Any) -> str:
 
     lines.append("\n[CACHE STRUCTURE SIZES]")
     lines.extend(cache_summary)
+    if coc_http_stats:
+        _deque_note = (
+            f"  (key deque={coc_http_stats['deque']} — the bounded-cache shim is NOT in effect)"
+            if coc_http_stats.get("deque") else ""
+        )
+        lines.append(
+            f"  coc.py HTTP cache    : {coc_http_stats['entries']}/{coc_http_stats['max']} "
+            f"decoded API responses (~70-100 KB each){_deque_note}"
+        )
+
+    lines.append("\n[RETENTION — what is holding the data? (tracker #0150)]")
+    lines.append(
+        "  Dicts counted by shape (first keys, insertion order — one API endpoint always yields "
+        "the same shape). For the fastest-growing data shapes, a few samples are followed up "
+        "gc.get_referrers() until a NAMED holder: a CACHE attribute, a module global, coc.py's "
+        "HTTP cache. A chain ending in 'no gc-tracked referrer' is held from C code or by an "
+        "object the collector does not track."
+    )
+    lines.extend(retention_lines)
 
     lines.append("\n[GC OBJECT COUNTS — top 15 by type]")
     # Frozen-generation caveat (2026-08-29, tracker #0009). gc.get_objects() walks generations
@@ -1889,6 +1925,7 @@ def save_memtrace_snapshot(cache: Any) -> str:
 
     # Clear the baseline so the next trace starts fresh
     QBcore.memtrace_baseline = None
+    QBcore.memtrace_shape_baseline = None
     QBcore._memtrace_baseline_time = None  # type: ignore[attr-defined]
 
     logging.info(f"[ADMIN] MEMORY_PROFILE written to {report_path}")
@@ -2178,6 +2215,15 @@ async def start_memtrace_baseline() -> None:
 
     tracemalloc.start(1)
     await _asyncio.to_thread(gc.collect, 1)
+    # Dict-shape census at arming time (tracker #0150) — the profile diffs against it to find
+    # which payload shapes grew, then names their holders. One heap pass; failure only costs
+    # the growth section, never the trace.
+    try:
+        from clashcontrol.mem_diagnostics import dict_shape_census
+        QBcore.memtrace_shape_baseline = await _asyncio.to_thread(dict_shape_census)
+    except Exception as _sc_e:
+        QBcore.memtrace_shape_baseline = None
+        logging.debug(f"[MEMTRACE] shape baseline failed: {_sc_e}")
     QBcore.memtrace_baseline = tracemalloc.take_snapshot()
     QBcore._memtrace_baseline_time = _dt.now().strftime("%Y-%m-%dT%H:%M:%S")  # type: ignore[attr-defined]
     QBcore.memtrace_pending = True

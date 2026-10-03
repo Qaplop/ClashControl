@@ -3402,6 +3402,19 @@ async def periodic_main() -> None:
                 except Exception:
                     pass  # non-Linux dev box has no /proc/meminfo
 
+                # --- Memory gauges, for tracker #0150 (2026-10-03) ----------------------
+                # Since 2026-09-29 RSS ramps ~4 GB over a few hours most days, and nothing in
+                # the log could say whether that was live Python objects (py_blocks rises),
+                # allocator retention (malloc free rises while py_blocks stays flat), or which
+                # structure grew. One cheap line per cycle answers that from the plain log;
+                # mem_diagnostics.build_retention_report() in the RSS-restart profile then
+                # names the holder.
+                try:
+                    from clashcontrol.mem_diagnostics import format_mem_gauges
+                    logging.info("[MEM-GAUGES] %s", format_mem_gauges(CACHE, CACHE.coc_client))
+                except Exception:
+                    pass
+
                 # --- RSS-triggered self-restart (tracker #0106, 2026-09-08) ---
                 # A STOPGAP for an unexplained ~1 GB/hour heap climb. A restart is the only
                 # mechanism proven to reclaim it, and this reuses the bot's existing, tested

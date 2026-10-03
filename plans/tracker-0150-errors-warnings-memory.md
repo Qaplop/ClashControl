@@ -179,6 +179,32 @@ recovered on retry.
    environment has `MALLOC_ARENA_MAX=2` and that `vm.swappiness` was lowered. The Oct 3 profile's
    1.35 GB `free_not_returned` and 4.9 GB swap suggest at least one of them is not in effect.
 
+**Re-evaluation before implementing (2026-10-03):**
+- Operator settings verified on PROD by qaplop: `vm.swappiness=10`, `MALLOC_ARENA_MAX=2` in the
+  running process's environment, `VmSwap: 0 kB` after the restart. Step 3 above is closed. The
+  Oct 3 swap was a consequence of the post-outage memory blow-up (items 1/2), not a missing setting.
+- The ramp is **not tied to a time window**. On Oct 2 RSS grew only ~+10 MB/cycle from 06:00 and
+  the steep +80-155 MB/cycle phase began at **09:15**. On Oct 1 it stopped at ~10:00, exactly when
+  the CoC API turned flaky (Phase 1 took 812 s at 10:02), and never resumed that day. It looks
+  like a mode that switches on and off, not a schedule.
+- The tracemalloc GROWTH figure (70-120 MiB of decoded JSON) is **not proof of the ramp's cause**.
+  A coc.py cache holding one cycle's responses for their max-age would show the same number at
+  steady state. So the holder is still unknown, and naming it is what the instrumentation below
+  is for.
+- The Oct 3 profile's GC census was an artifact: it ran after `take_snapshot()`, whose 13.7 M
+  trace tuples hit the 5 M scan cap (4,990,878 tuples, 317 dicts). Fixed below.
+
+**Implemented (Build 133):**
+- `[MEM-GAUGES]` every cycle (`clashcontrol/mem_diagnostics.py: format_mem_gauges`): py_blocks,
+  malloc in-use/free, coc.py HTTP cache, our caches, asyncio tasks/timers.
+- Memory profile `[RETENTION]` section (`build_retention_report`): dict-shape growth since arming
+  + `gc.get_referrers()` chains up to a named holder (120 s budget on the RSS-restart path, 30 s
+  interactive). The RSS-restart writes this profile *during* a ramp, so the next ramp names its
+  holder automatically.
+- GC census moved before `take_snapshot()`.
+- **Next step for this item:** read the first RSS-restart profile written by Build 133 (and
+  `[MEM-GAUGES]` across that ramp), then fix the named holder. Not before.
+
 ### Item 4 — anchored-message channel loss (§2.1) — MEDIUM
 
 - In `repost_anchored_message()`, when `get_channel()` misses, confirm with `fetch_channel()`

@@ -1,7 +1,9 @@
 # Tracker #0150 — Errors/warnings since 2026-09-28, memory restarts: analysis + fix plan
 
-**Status:** ANALYSIS COMPLETE, fixes not started. Work the items in the order of §3, one per
-commit/build, each with its own test case on the tracker.
+**Status (2026-10-03):** items 1, 2, 4, 5 IMPLEMENTED (Build 133). Item 6 investigated and
+deliberately not changed. **Item 3 OPEN:** its diagnostics shipped in Build 133. The actual fix
+waits for the first RSS-restart profile from Build 133 to name the holder. Keep this file in
+`plans/` until then.
 
 **Data:** PROD logs 2026-09-13 → 2026-10-03 08:00 (synced to DEV), the 9 memory profiles in
 `data/logs/memprofile_*.txt`, DEV copy of the PROD DB. Read together with
@@ -240,6 +242,19 @@ bucket. `[COC-API-ERROR] ... failed after N attempts` ERRORs no longer appear fo
 - One occurrence (Sep 28 16:29). Discord caps edits to messages older than 1 h.
 - Check that `refresh_cwl_management_hub_message()` skips edits when the rendered content is
   unchanged. Otherwise leave it and watch for recurrence during the October CWL.
+
+**Investigated, deliberately NOT changed (2026-10-03):**
+- The 429 came from a roster session in the Activity: 37 `POST /api/cwl/enrollment/assign` in
+  16:00-16:30, each refreshing the hub with a real `message.edit()`. Discord caps edits to
+  messages older than 1 h.
+- "Skip the edit when nothing changed" would break an existing fix. The Activity-closed refresh
+  (`web_bridge.py`, 2026-08-16 iPad issue) relies on an unconditional `message.edit()` to clear
+  Discord's stuck client-side launch state, even when nothing changed.
+- Throttling or coalescing would break the interactive callers, which rely on the message being
+  updated when the call returns (tracker #0066).
+- Cost today: one warning in seven days, and the next refresh catches up. Not worth either risk.
+  Revisit only if it starts recurring during the October CWL; a fix would then need a debounce
+  limited to the bridge's `assign` path.
 
 ### Not actionable
 

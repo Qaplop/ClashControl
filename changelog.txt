@@ -1,6 +1,17 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-03 (2)
+- Fixed (tracker #0150): coc.py's own HTTP response cache held decoded API JSON (~70-100 KB per
+  response) up to its 10,000-entry default -- ~1 GB during the 2026-10-03 post-outage catch-up.
+  Its FIFO also had two bugs: a key deque that grows forever while under the cap (~300k URL
+  strings/day) and a swallowed KeyError on eviction once over it. Replaced it with a correct
+  bounded cache via apply_coc_library_patches() and capped it at 2000 entries
+  (CONFIG.coc_http_cache_max_entries / COC_HTTP_CACHE_MAX_ENTRIES, 0 disables). Build 133.
+  Files: clashcontrol/coc_health.py, clashcontrol/config.py, ClashControl.py, .env.example,
+  tests/unit/test_coc_http_response_cache.py, clashcontrol/docs/PERFORMANCE_TUNING.md,
+  plans/tracker-0150-errors-warnings-memory.md. 3651 tests pass.
+
 2026-10-03 (1)
 - Fixed (tracker #0150): a CoC API outage turned one update cycle into 11,376 s (2026-10-03,
   02:01-05:10). coc.py already retries a timeout 5x (~170 s) before raising GatewayError, and

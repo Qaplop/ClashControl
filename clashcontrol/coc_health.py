@@ -27,6 +27,8 @@ from collections import deque
 from typing import TypeVar, Callable, Any, Dict, Optional
 import aiohttp
 import coc  # type: ignore[import]
+import coc.http as coc_http_module  # type: ignore[import]
+import coc.utils as coc_utils  # type: ignore[import]
 from clashcontrol.config import CONFIG
 
 T = TypeVar('T')
@@ -109,7 +111,8 @@ def apply_coc_library_patches() -> None:
     Idempotent — safe to call repeatedly (``startup_login()`` doubles as the
     CoC-client reconnect callback, so it can run many times per process).
 
-    Currently one shim:
+    Two shims. The second, ``_BoundedResponseCache`` (tracker #0150), is documented on that
+    class. The first:
 
     ``coc.Clan._from_data`` — tolerate ``clanCapital`` without ``districts``.
         ``coc.py`` 4.0.0 (``coc/clans.py``, in ``Clan._from_data``) does::
@@ -143,6 +146,10 @@ def apply_coc_library_patches() -> None:
         ``ClanWarLeagueClan`` all derive from ``BaseClan``), and none of them
         touch ``clanCapital``.
     """
+    # Second shim (tracker #0150), installed first so the Clan shim's early return below can
+    # never skip it: replace coc.py's leaky HTTP response cache. Idempotent on its own.
+    _install_bounded_response_cache()
+
     if getattr(coc.Clan, "_clashcontrol_capital_districts_patched", False):
         return
 
@@ -180,7 +187,88 @@ def apply_coc_library_patches() -> None:
     # *instance* attributes only, so this is legal and makes the call idempotent.
     # pyright flags it because the attribute is (by design) not declared on Clan.
     coc.Clan._clashcontrol_capital_districts_patched = True  # pyright: ignore[reportAttributeAccessIssue]
-    logging.info("[COC-COMPAT] Applied coc.py compatibility shims (clanCapital.districts tolerance).")
+
+    logging.info(
+        "[COC-COMPAT] Applied coc.py compatibility shims (clanCapital.districts tolerance, "
+        "bounded HTTP response cache)."
+    )
+
+
+class _BoundedResponseCache(coc_utils.FIFO):  # type: ignore[misc]
+    """Drop-in replacement for coc.py's HTTP response cache (``coc.utils.FIFO``) — tracker #0150.
+
+    coc.py 4.0.0's ``FIFO`` tracks insertion order in a private ``deque`` that only shrinks when
+    the dict exceeds ``max_size``. But ``HTTPClient`` also removes entries itself when their
+    Cache-Control max-age expires (``loop.call_later(delta, _cache_remove, key)``), and those
+    removals never touch the deque. Two consequences, both verified against the real class:
+
+    1. **Unbounded growth.** While the cache stays under its cap — every normal cycle — the deque
+       is never popped, so it keeps one URL string per cached response forever (~1,100 per
+       cycle, ~300k per day on PROD).
+    2. **Silent KeyError on eviction.** Once the dict does exceed the cap, ``popleft()`` hands
+       back keys whose entries the timers already deleted, and ``del`` raises ``KeyError``.
+       ``HTTPClient.request()`` stores into the cache inside a ``try ... except (KeyError, ...)``
+       meant for missing headers, so the error is swallowed — and the ``call_later`` that would
+       expire the entry is skipped, leaving it to linger until FIFO eviction reaches it.
+
+    This class keeps the same contract (bounded, oldest-first eviction, ``copy()`` returns
+    ``self``) using the dict's own insertion order, so removals from either path stay
+    consistent. It subclasses ``FIFO`` because ``HTTPClient.request()`` gates every lookup and
+    store on ``isinstance(cache, FIFO)``.
+    """
+
+    def __init__(self, max_size: int) -> None:
+        super().__init__(max_size)  # sets max_size, data={} and FIFO's (now unused) deque
+
+    def __setitem__(self, key: Any, value: Any) -> None:
+        # Re-insert at the end so a refreshed key counts as newest, like a fresh FIFO entry.
+        self.data.pop(key, None)
+        self.data[key] = value
+        while len(self.data) > self.max_size:
+            del self.data[next(iter(self.data))]
+
+    def __getitem__(self, key: Any) -> Any:
+        return self.data[key]
+
+    def __contains__(self, key: object) -> bool:
+        return key in self.data
+
+    def copy(self) -> "_BoundedResponseCache":  # type: ignore[override]
+        # Same intent as FIFO.copy(): rebuild the backing dict so a long-lived dict's freed
+        # slots are released, while callers keep using this same instance.
+        self.data = dict(self.data)
+        return self
+
+
+def _install_bounded_response_cache() -> None:
+    """Make coc.py's ``HTTPClient`` build ``_BoundedResponseCache`` instead of ``FIFO``.
+
+    ``HTTPClient.__init__`` and ``request()`` both resolve the name ``FIFO`` from the
+    ``coc.http`` module namespace (``from .utils import FIFO``), and nothing else in coc.py
+    uses it, so rebinding that one name is the whole patch. Must run before ``coc.Client``
+    creates its HTTP client — ``startup_login()`` calls ``apply_coc_library_patches()`` first.
+    Idempotent.
+    """
+    if coc_http_module.FIFO is not _BoundedResponseCache:
+        coc_http_module.FIFO = _BoundedResponseCache  # pyright: ignore[reportAttributeAccessIssue]
+
+
+def get_coc_http_cache_stats(client: Any) -> Dict[str, Any]:
+    """Size of coc.py's HTTP response cache, for ``[MEM-GAUGES]`` and the memory profile.
+
+    Returns ``{'entries': int, 'max': int, 'deque': int}`` — ``deque`` is FIFO's private key
+    deque length (stays 0 with ``_BoundedResponseCache``; any other value means the shim is not
+    in effect). Returns ``{}`` if the client or its cache is unavailable (no login yet,
+    ``NO_COC_API``, cache disabled). Never raises.
+    """
+    try:
+        cache = getattr(getattr(client, "http", None), "cache", None)
+        if not isinstance(cache, coc_utils.FIFO):
+            return {}
+        deque_len = len(getattr(cache, "_FIFO__keys", ()) or ())
+        return {"entries": len(cache.data), "max": cache.max_size, "deque": deque_len}
+    except Exception:
+        return {}
 
 
 def set_reconnect_callback(callback: Callable[[], Any]) -> None:

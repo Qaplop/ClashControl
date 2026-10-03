@@ -348,6 +348,14 @@ class BotConfig:
     # since arming also requires the threshold).
     rss_restart_min_uptime_minutes: int = 45
 
+    # coc.py's own HTTP response cache (tracker #0150). It stores every decoded API response
+    # (~70-100 KB of Python objects for a clan or war) until its Cache-Control max-age expires,
+    # bounded only by this entry count. coc.py's default of 10,000 let it hold ~1 GB during the
+    # 2026-10-03 post-outage catch-up cycles (~10,600 responses each). ClashControl does its own
+    # caching (coc_clan_cache), so this one only dedupes repeats inside a short window.
+    # 0 disables it. See apply_coc_library_patches() for the eviction-bug shim that ships with it.
+    coc_http_cache_max_entries: int = 2000
+
     # DEV-only: Skip CoC API connection entirely (for testing without valid API token)
     no_coc_api: bool = False
 
@@ -626,6 +634,10 @@ def load_config() -> BotConfig:
         rss_restart_min_uptime_minutes = max(0, int(os.getenv("RSS_RESTART_MIN_UPTIME_MINUTES", "45")))
     except ValueError:
         rss_restart_min_uptime_minutes = 45
+    try:
+        coc_http_cache_max_entries = max(0, int(os.getenv("COC_HTTP_CACHE_MAX_ENTRIES", "2000")))
+    except ValueError:
+        coc_http_cache_max_entries = 2000
 
     # DEV-only: Skip CoC API connection (for testing without valid API token)
     no_coc_api = os.getenv("NO_COC_API", "false").lower() in ("true", "1", "yes")
@@ -701,6 +713,7 @@ def load_config() -> BotConfig:
         rss_restart_enabled=rss_restart_enabled,
         rss_restart_threshold_mb=rss_restart_threshold_mb,
         rss_restart_min_uptime_minutes=rss_restart_min_uptime_minutes,
+        coc_http_cache_max_entries=coc_http_cache_max_entries,
         is_dev_mode=is_dev_mode,
         discord_guild_id=discord_guild_id,
         dev_playerregistration_channel_id=dev_playerregistration_channel_id,

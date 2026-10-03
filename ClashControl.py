@@ -747,7 +747,13 @@ async def startup_login() -> None:
             # is shared with every other caller — /status, leaderboards, CWL discovery — and
             # exceeding the real CoC limit blocks requests for 30-60s. 20% margin absorbs
             # those bursts. Raise toward 100 only with the api_fail: buckets watched.
-            QBcore.coc_client = coc.Client(key_count=10, throttler=WallClockBatchThrottler, throttle_limit=80)
+            # cache_max_size (tracker #0150): coc.py's own response cache holds decoded JSON (~70-100 KB
+            # per response) until max-age expiry; its 10,000 default allowed ~1 GB during the
+            # 2026-10-03 catch-up cycles. See CONFIG.coc_http_cache_max_entries.
+            QBcore.coc_client = coc.Client(
+                key_count=10, throttler=WallClockBatchThrottler, throttle_limit=80,
+                cache_max_size=CONFIG.coc_http_cache_max_entries,
+            )
 
 
             # Store in CACHE for centralized access

@@ -137,6 +137,25 @@ recovered on retry.
   - at ~100 KB of decoded JSON per response, the 10 k default allows ~1 GB
   - `coc_clan_cache` already provides our own clan caching
 
+**Implemented (Build 133), re-scoped during implementation:**
+- Reading coc.py's cache code turned up two real bugs in `coc.utils.FIFO`, both verified against
+  the installed class (`tests/unit/test_coc_http_response_cache.py` pins them as canaries):
+  1. Its private key deque only shrinks when the dict exceeds the cap. Expiry timers
+     (`_cache_remove`) delete dict entries without touching the deque, so in normal operation it
+     grows by one URL per cached response forever (~300k/day). That's a genuine slow leak.
+  2. Once the cap *is* exceeded, `popleft()` returns timer-removed keys and `del` raises
+     `KeyError`. coc.py swallows it in `request()`'s header-parsing `try`, which also skips that
+     entry's expiry timer.
+- Fix: `_BoundedResponseCache` (a `FIFO` subclass using the dict's own order) is installed by
+  `apply_coc_library_patches()`, plus `coc.Client(cache_max_size=CONFIG.coc_http_cache_max_entries)`
+  with a default of 2000 (env `COC_HTTP_CACHE_MAX_ENTRIES`, 0 disables). Worst case ~150-200 MB
+  of decoded JSON instead of ~1 GB.
+- **Not done: a reduced post-outage catch-up cap.** The cost of a big catch-up cycle was the
+  decoded JSON coc.py's cache retained. That cost is now bounded at the source. Throttling the
+  catch-up would only spread the same work over more cycles ("remove the cost, don't relocate
+  it"). `_MAX_INACTIVE_PER_CYCLE` stays 5000 (see its 2026-09-06 comment). Revisit only if the
+  next catch-up still shows multi-GB steps with the cache bounded.
+
 ### Item 3 — identify the daily-ramp retainer (§2.2) — HIGH, instrumentation first
 
 1. Add a scheduled diagnostic trace: start `tracemalloc` (nframe ≥ 8) at nightly-maintenance end,

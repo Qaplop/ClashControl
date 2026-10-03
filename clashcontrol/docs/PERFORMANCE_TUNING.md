@@ -910,3 +910,21 @@ leak, and a restart re-establishes the freeze anyway.
 **Rule:** freeze once, over a set you can argue is permanent. Never freeze on a schedule that
 happens to catch live working data — "what is tracked right now" is not the same question as
 "what is permanent".
+
+---
+
+## coc.py's own HTTP response cache is a memory structure — bound it (2026-10-03, tracker #0150)
+
+`coc.Client` caches every decoded API response (~70-100 KB of Python objects for a clan or war)
+until its Cache-Control max-age expires, capped by `cache_max_size` (default **10,000**). It is
+invisible to `[CACHE STRUCTURE SIZES]`; a profile only shows it as live allocations at
+`aiohttp/client_reqrep.py` (`loads(...)`). During the 2026-10-03 post-outage catch-up
+(~10,600 responses per cycle) it held ~1 GB (1,059 MiB / 13.7 M allocations in one 18-minute
+trace window).
+
+Two bugs in coc.py 4.0.0's `FIFO` made it worse: a key deque that grows without bound while the
+cache sits under its cap, and a swallowed `KeyError` on eviction once it is over. Both are fixed by
+`_BoundedResponseCache` (`clashcontrol/coc_health.py`, installed by `apply_coc_library_patches()`),
+and the cap is now `CONFIG.coc_http_cache_max_entries` (default 2000, env
+`COC_HTTP_CACHE_MAX_ENTRIES`, 0 disables). ClashControl caches clans itself (`coc_clan_cache`), so
+this cache only dedupes repeats inside a short window. `[MEM-GAUGES]` logs its size each cycle.

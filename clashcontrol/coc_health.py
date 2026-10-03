@@ -23,6 +23,7 @@ Usage:
 import asyncio
 import logging
 import time
+from collections import deque
 from typing import TypeVar, Callable, Any, Dict, Optional
 import aiohttp
 import coc  # type: ignore[import]
@@ -72,6 +73,27 @@ _maintenance_detected: bool = False
 # equally: retrying per-clan wastes time and floods the log.
 # Cleared at the start of each update cycle via clear_dns_detection().
 _dns_failure_detected: bool = False
+
+# Per-cycle CoC gateway-outage circuit breaker (tracker #0150).
+# coc.py raises GatewayError when the API keeps timing out (or keeps answering 500/502/504)
+# AFTER its own 5 internal attempts — with the default 30 s client timeout plus 1+3+5+7 s of
+# backoff, one GatewayError already represents ~170 s of waiting. On 2026-10-03 the CoC API timed
+# out for five hours; with no breaker every clan cost ~9 min (3 wrapper attempts x ~170 s), 50 at
+# a time, and a single update cycle ran for 11,376 s while logging 5,300 lines of per-clan errors.
+#
+# Unlike Maintenance (a fast 503) and DNS failures (fail instantly), gateway timeouts are SLOW, so
+# flagging alone is not enough: once tripped, coc_retry() refuses new calls up front (the
+# pre-check at the top of its retry loop) instead of letting each one sit out its own timeout.
+#
+# Trip threshold: _GATEWAY_TRIP_COUNT failures within _GATEWAY_TRIP_WINDOW_S. Measured on PROD:
+# the 2026-10-01 flakiness peaked at 11 gateway errors in any 60 s window and every one of them
+# recovered on a single retry, while the 2026-10-03 outage hit 50 in 60 s (the entire Phase-1
+# fetch concurrency failing together). 25 in 120 s separates the two with margin on both sides.
+_GATEWAY_TRIP_COUNT: int = 25
+_GATEWAY_TRIP_WINDOW_S: float = 120.0
+_gateway_failure_times: "deque[float]" = deque()
+_gateway_outage_detected: bool = False
+_gateway_fast_failed: int = 0  # calls refused while tripped, this cycle (for the Phase-1 summary)
 
 # Count of clan payloads repaired by apply_coc_library_patches()'s clanCapital
 # shim (see that function).  Lifetime counter, surfaced via get_coc_stats() so a
@@ -180,6 +202,37 @@ def is_dns_failure_detected() -> bool:
     """Return True if a DNS resolution failure was seen during the current cycle."""
     return _dns_failure_detected
 
+def clear_gateway_outage_detection() -> None:
+    """Reset the per-cycle CoC gateway-outage breaker.  Called at the start of each update cycle,
+    so every cycle re-probes the API once instead of staying tripped indefinitely."""
+    global _gateway_outage_detected, _gateway_fast_failed
+    _gateway_outage_detected = False
+    _gateway_fast_failed = 0
+    _gateway_failure_times.clear()
+
+def is_gateway_outage_detected() -> bool:
+    """Return True if the gateway-outage breaker tripped during the current cycle."""
+    return _gateway_outage_detected
+
+def get_gateway_fast_failed_count() -> int:
+    """Number of CoC calls refused without a network attempt since the breaker tripped."""
+    return _gateway_fast_failed
+
+def _record_gateway_failure(operation_name: str) -> None:
+    """Count one GatewayError toward the breaker and trip it when the window threshold is hit."""
+    global _gateway_outage_detected
+    now = time.monotonic()
+    _gateway_failure_times.append(now)
+    while _gateway_failure_times and now - _gateway_failure_times[0] > _GATEWAY_TRIP_WINDOW_S:
+        _gateway_failure_times.popleft()
+    if not _gateway_outage_detected and len(_gateway_failure_times) >= _GATEWAY_TRIP_COUNT:
+        _gateway_outage_detected = True
+        logging.warning(
+            f"[COC-GATEWAY-OUTAGE] {len(_gateway_failure_times)} CoC API gateway timeouts within "
+            f"{_GATEWAY_TRIP_WINDOW_S:.0f}s (last: {operation_name}). Fast-failing all further "
+            f"CoC API calls this cycle; next cycle will re-probe."
+        )
+
 def is_maintenance_detected() -> bool:
     """Return True if a coc.Maintenance error was seen during the current cycle."""
     return _maintenance_detected
@@ -277,6 +330,15 @@ async def coc_retry(
     call_start_time = time.time()
     
     for attempt in range(max_retries + 1):
+        # Gateway-outage breaker pre-check (tracker #0150): once tripped, refuse the call before
+        # it reaches the network. Checked on every attempt, so an in-flight call that is about to
+        # retry also stops here instead of sitting out another ~170 s timeout.
+        if _gateway_outage_detected:
+            global _gateway_fast_failed
+            _gateway_fast_failed += 1
+            _stats['api_errors'] += 1
+            logging.debug(f"[COC-GATEWAY-OUTAGE] Fast-fail (outage active): {operation_name}")
+            raise coc.GatewayError("fast-fail: CoC API gateway outage detected this cycle")
         try:
             # DEV-only global rate limiter: enforce min gap between API calls
             if _DEV_API_THROTTLE_S > 0 and CONFIG.is_dev_mode:
@@ -346,7 +408,27 @@ async def coc_retry(
             else:
                 logging.debug(f"[COC-MAINTENANCE] Fast-fail (maintenance active): {operation_name}")
             raise
-            
+
+        except coc.GatewayError as e:
+            # Tracker #0150. coc.py has ALREADY retried this request 5 times internally
+            # (timeouts and 500/502/504 alike) before raising, ~170 s of waiting for a timeout.
+            # So: at most ONE wrapper retry (the 2026-10-01 flakiness recovered on exactly one),
+            # count it toward the breaker, and never retry once the breaker has tripped.
+            _stats['api_errors'] += 1
+            _record_gateway_failure(operation_name)
+            if attempt < min(max_retries, 1) and not _gateway_outage_detected:
+                logging.warning(
+                    f"[COC-API-ERROR] {operation_name} gateway error after coc.py's internal "
+                    f"retries, retrying once in 1s: {e}"
+                )
+                await asyncio.sleep(1)
+                continue
+            if _gateway_outage_detected:
+                logging.debug(f"[COC-GATEWAY-OUTAGE] {operation_name} failed: {e}")
+            else:
+                logging.warning(f"[COC-API-ERROR] {operation_name} gateway error, giving up: {e}")
+            raise
+
         except coc.HTTPException as e:
             # Check if it's a rate limit error (429)
             is_rate_limit = False

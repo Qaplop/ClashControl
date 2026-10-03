@@ -744,6 +744,8 @@ all rebuild/button-handler paths so the reference is never lost.
   · coc.NotFound — immediate raise, no retry
   · coc.PrivateWarLog — immediate raise, counted as success (definitive 403)
   · coc.Maintenance — immediate raise, no retry (see maintenance detection below)
+  · coc.GatewayError — at most ONE retry (coc.py already retried 5×); feeds the
+    gateway-outage breaker (tracker #0150, see RATE_LIMITING_IMPLEMENTATION.md)
   · coc.HTTPException 429 — sleep Retry-After then retry
   · other HTTP / generic — exponential backoff retry
 - Per-cycle CoC maintenance fast-fail:
@@ -756,6 +758,11 @@ all rebuild/button-handler paths so the reference is never lost.
     `reset_cycle_stats()`) so every cycle re-probes the API fresh
   · `is_maintenance_detected()` — checked after Phase-1 gather() to log a single
     [PHASE-1] WARNING summary with the count of affected clans
+- Per-cycle CoC gateway-outage breaker (tracker #0150):
+  · ≥25 GatewayErrors within 120 s trip `_gateway_outage_detected` (one [COC-GATEWAY-OUTAGE] WARNING)
+  · once tripped, coc_retry() refuses calls BEFORE the network (gateway timeouts are slow, ~170 s)
+  · `clear_gateway_outage_detection()` at cycle start; `is_gateway_outage_detected()` /
+    `get_gateway_fast_failed_count()` feed the [PHASE-1] summary
 - DEV-mode throttle: `_DEV_API_THROTTLE_S = 0.022` (22 ms global gap between calls)
 - Reconnect callback: `set_reconnect_callback()` — registered by startup_login() so
   coc_retry can re-auth the client on unexpected session close
@@ -1331,6 +1338,8 @@ kept here only for functions not narrated elsewhere.
 ├── coc_retry()                    # main wrapper — routes all CoC API exceptions
 ├── clear_maintenance_detection()  # called at cycle start; resets _maintenance_detected
 ├── is_maintenance_detected()      # True if coc.Maintenance was seen this cycle
+├── clear_gateway_outage_detection() # cycle start; resets the gateway-outage breaker (#0150)
+├── is_gateway_outage_detected()   # True if the breaker tripped this cycle
 ├── set_reconnect_callback()       # registers re-auth hook for session-close recovery
 ├── reset_cycle_stats()            # clears per-cycle rate-limit counters
 └── get_coc_stats()                # returns dict of lifetime + cycle API statistics

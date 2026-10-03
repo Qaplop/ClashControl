@@ -1,6 +1,18 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-03 (1)
+- Fixed (tracker #0150): a CoC API outage turned one update cycle into 11,376 s (2026-10-03,
+  02:01-05:10). coc.py already retries a timeout 5x (~170 s) before raising GatewayError, and
+  coc_retry() retried that twice more with no circuit breaker. Now: at most one wrapper retry
+  for GatewayError, and >=25 gateway errors in 120 s trip a per-cycle breaker that refuses all
+  further CoC calls before they reach the network ([COC-GATEWAY-OUTAGE], cleared each cycle).
+  Phase 1 logs per-clan gateway failures at DEBUG once tripped (was 2,521 ERROR lines) plus one
+  summary WARNING. Build 133.
+  Files: clashcontrol/coc_health.py, ClashControl.py, tests/unit/test_health_coverage.py,
+  clashcontrol/docs/RATE_LIMITING_IMPLEMENTATION.md, clashcontrol/docs/CODE_STRUCTURE.md,
+  QBcore.py. 3636 tests pass.
+
 2026-09-30 (4)
 - Changed: war prediction league priors (CWL_LEAGUE_STAR_DISTRIBUTION) updated from 2026-08 to
   2026-09 clashspot.net data (per-league 3/2/1/0-star + missed rates; 0-star and missed merged).

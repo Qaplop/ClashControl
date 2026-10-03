@@ -315,3 +315,29 @@ clan fetches within the same cycle is pointless and caused extreme cycle bloat:
 | Maintenance log noise | ~3800 WARNING lines / event | 1 WARNING + N DEBUG lines |
 | Cycle duration during maintenance | ~53 min (2026-05-26) | ~5 min (fast-fail) |
 | Phases 2–4 | Blocked waiting for retries | Run normally on existing temp files |
+
+## CoC API Gateway-Outage Circuit Breaker (tracker #0150)
+
+`coc.GatewayError` is raised by coc.py only **after its own 5 internal attempts** — for a timeout
+that is 5 × the 30 s client timeout plus 1+3+5+7 s of backoff, **~170 s per call**. Unlike a
+maintenance 503 (fast) or a DNS failure (instant), a gateway outage is *slow*, so a flag alone is
+not enough.
+
+> 2026-10-03: the CoC API timed out from 02:03 to 07:01. Without a breaker each clan cost
+> ~9 min (3 wrapper attempts × ~170 s), 50 at a time — one cycle ran **11,376 s** and logged
+> 2,807 WARNING + 2,521 ERROR lines.
+
+### Strategy (`clashcontrol/coc_health.py`)
+
+- `coc.GatewayError` gets **at most one** wrapper retry (it already had 5), and none once tripped.
+- Every GatewayError is timestamped; **≥ 25 within 120 s** trips `_gateway_outage_detected` and
+  logs one `[WARNING] [COC-GATEWAY-OUTAGE]`. Threshold measured on PROD: the 2026-10-01
+  flakiness peaked at 11/60 s and always recovered on one retry; the 2026-10-03 outage hit
+  50/60 s (the whole Phase-1 concurrency failing together).
+- Once tripped, `coc_retry()` **refuses every call before it reaches the network** (pre-check at
+  the top of the retry loop, also before an in-flight retry) and raises `coc.GatewayError`.
+- Phase 1 logs per-clan gateway failures at DEBUG once tripped (WARNING before), buckets them as
+  `api_fail:Gateway`, and emits one `[PHASE-1]` summary WARNING. A failed fetch never stamps
+  `last_war_update`, so those clans are simply retried next cycle.
+- `clear_gateway_outage_detection()` runs at each cycle start, so every cycle re-probes. During a
+  long outage each cycle therefore costs ~one timeout (~170 s) instead of hours.

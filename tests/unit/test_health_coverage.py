@@ -128,6 +128,107 @@ class TestCocRetryMaintenance:
             assert len(backoff_calls) == 0
 
 
+class TestCocRetryGatewayOutage:
+    """Tracker #0150: coc.GatewayError circuit breaker.
+
+    coc.py raises GatewayError only after 5 internal attempts (~170 s for a timeout), so the
+    wrapper must retry at most once and, once the breaker trips, refuse calls without touching
+    the network. 2026-10-03: no breaker -> one update cycle ran 11,376 s.
+    """
+
+    def setup_method(self):
+        from clashcontrol.coc_health import clear_gateway_outage_detection
+        clear_gateway_outage_detection()
+
+    def teardown_method(self):
+        # Never leak a tripped breaker into other test classes (it fast-fails EVERY coc_retry).
+        from clashcontrol.coc_health import clear_gateway_outage_detection
+        clear_gateway_outage_detection()
+
+    @staticmethod
+    def _gw():
+        return coc.GatewayError("The API timed out waiting for the request.")
+
+    @pytest.mark.asyncio
+    async def test_retries_at_most_once_even_with_more_retries_allowed(self):
+        from clashcontrol.coc_health import coc_retry
+        op = AsyncMock(side_effect=self._gw())
+        with patch("clashcontrol.coc_health.asyncio.sleep", new_callable=AsyncMock):
+            with pytest.raises(coc.GatewayError):
+                await coc_retry(op, "gw_once", max_retries=2)
+        assert op.await_count == 2  # first try + exactly one retry, not max_retries + 1
+
+    @pytest.mark.asyncio
+    async def test_recovers_on_the_single_retry(self):
+        # The 2026-10-01 flakiness: every gateway error recovered on one retry.
+        from clashcontrol.coc_health import coc_retry, is_gateway_outage_detected
+        op = AsyncMock(side_effect=[self._gw(), "ok"])
+        with patch("clashcontrol.coc_health.asyncio.sleep", new_callable=AsyncMock):
+            assert await coc_retry(op, "gw_recover", max_retries=2) == "ok"
+        assert not is_gateway_outage_detected()
+
+    @pytest.mark.asyncio
+    async def test_below_threshold_does_not_trip(self):
+        import clashcontrol.coc_health as _ch
+        op = AsyncMock(side_effect=self._gw())
+        with patch("clashcontrol.coc_health.asyncio.sleep", new_callable=AsyncMock):
+            # each call records 2 failures (try + retry); stay strictly below the threshold
+            for _ in range((_ch._GATEWAY_TRIP_COUNT - 1) // 2):
+                with pytest.raises(coc.GatewayError):
+                    await _ch.coc_retry(op, "gw_below", max_retries=1)
+        assert not _ch.is_gateway_outage_detected()
+
+    @pytest.mark.asyncio
+    async def test_trips_and_then_fast_fails_without_calling(self):
+        import clashcontrol.coc_health as _ch
+        failing = AsyncMock(side_effect=self._gw())
+        with patch("clashcontrol.coc_health.asyncio.sleep", new_callable=AsyncMock):
+            for _ in range(_ch._GATEWAY_TRIP_COUNT):
+                with pytest.raises(coc.GatewayError):
+                    await _ch.coc_retry(failing, "gw_trip", max_retries=0)
+        assert _ch.is_gateway_outage_detected()
+
+        healthy = AsyncMock(return_value="ok")
+        with pytest.raises(coc.GatewayError):
+            await _ch.coc_retry(healthy, "gw_after_trip")
+        healthy.assert_not_awaited()  # refused before reaching the network
+        assert _ch.get_gateway_fast_failed_count() == 1
+
+    @pytest.mark.asyncio
+    async def test_failures_outside_window_do_not_count(self):
+        import clashcontrol.coc_health as _ch
+        op = AsyncMock(side_effect=self._gw())
+        clock = [1000.0]
+        with patch("clashcontrol.coc_health.asyncio.sleep", new_callable=AsyncMock), \
+             patch("clashcontrol.coc_health.time.monotonic", side_effect=lambda: clock[0]):
+            for _ in range(_ch._GATEWAY_TRIP_COUNT * 2):
+                clock[0] += _ch._GATEWAY_TRIP_WINDOW_S  # every failure lands in a fresh window
+                with pytest.raises(coc.GatewayError):
+                    await _ch.coc_retry(op, "gw_spread", max_retries=0)
+        assert not _ch.is_gateway_outage_detected()
+
+    @pytest.mark.asyncio
+    async def test_clear_resets_breaker(self):
+        import clashcontrol.coc_health as _ch
+        _ch._gateway_outage_detected = True
+        _ch.clear_gateway_outage_detection()
+        op = AsyncMock(return_value="ok")
+        assert await _ch.coc_retry(op, "gw_cleared") == "ok"
+
+    @pytest.mark.asyncio
+    async def test_plain_500_still_uses_generic_retry_path(self):
+        # A non-Gateway HTTPException keeps the existing max_retries behaviour.
+        from clashcontrol.coc_health import coc_retry, is_gateway_outage_detected
+        exc = coc.HTTPException(MagicMock(), "server error")
+        exc.status = 500
+        op = AsyncMock(side_effect=exc)
+        with patch("clashcontrol.coc_health.asyncio.sleep", new_callable=AsyncMock):
+            with pytest.raises(coc.HTTPException):
+                await coc_retry(op, "http500_generic", max_retries=2)
+        assert op.await_count == 3
+        assert not is_gateway_outage_detected()
+
+
 class TestCocRetryRateLimit:
     def _make_429(self, retry_after=None):
         exc = coc.HTTPException(MagicMock(), "rate limited")

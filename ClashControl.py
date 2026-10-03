@@ -319,7 +319,7 @@ from clashcontrol.constants import (
     PLAYERREGISTRATION_BUMP_COOLDOWN_SECONDS
 )
 from clashcontrol.discord_health import discord_retry, bulk_sync_global_commands
-from clashcontrol.coc_health import reset_cycle_stats, get_coc_stats, clear_maintenance_detection, is_maintenance_detected, clear_dns_detection
+from clashcontrol.coc_health import reset_cycle_stats, get_coc_stats, clear_maintenance_detection, is_maintenance_detected, clear_dns_detection, clear_gateway_outage_detection, is_gateway_outage_detected, get_gateway_fast_failed_count
 from QBhelperfunctions import (
     generate_leaderboard_text, generate_cwlinfo_embeds, generate_cwlinfo_comp_embeds, post_discord_content_with_tracking,
     post_leaderboard_to_discord, calculate_content_hash,
@@ -1070,6 +1070,8 @@ async def main() -> None:
     clear_maintenance_detection()
     # Reset per-cycle DNS failure detection (new probe at each cycle start)
     clear_dns_detection()
+    # Reset the per-cycle CoC gateway-outage breaker (tracker #0150) — each cycle re-probes
+    clear_gateway_outage_detection()
     # Reset per-cycle war counters
     CACHE.reset_cycle_stats()
 
@@ -1649,10 +1651,22 @@ async def main() -> None:
                 _ename = type(e).__name__
                 _emsg  = str(e).lower()
                 _is_maint = "maintenance" in _emsg or "503" in _emsg
+                # coc.GatewayError surfaces here wrapped in WarDataFetchError, so match on the
+                # wrapped text (type name, or coc.py's timeout message) rather than the type.
+                _is_gateway = "gatewayerror" in _emsg or "timed out waiting" in _emsg
                 if _is_maint and is_maintenance_detected():
                     # Maintenance already flagged globally; suppress per-clan ERROR spam.
                     # coc_health.py already logged one WARNING on first detection.
                     logging.debug(f"[PHASE-1] Maintenance fast-fail: {clan_tag}")
+                elif _is_gateway and is_gateway_outage_detected():
+                    # Tracker #0150: same idea for a CoC gateway outage — one
+                    # [COC-GATEWAY-OUTAGE] WARNING from coc_health.py plus the Phase-1 summary
+                    # below, instead of one ERROR per clan (2,521 of them on 2026-10-03).
+                    logging.debug(f"[PHASE-1] Gateway-outage fast-fail: {clan_tag}")
+                elif _is_gateway:
+                    # External and transient (retried next cycle, since a failed fetch never
+                    # stamps last_war_update) — a WARNING, not an ERROR.
+                    logging.warning(f"[PHASE-1] CoC gateway error fetching clan {clan_tag}: {e}")
                 else:
                     logging.error(f"[PHASE-1] Exception fetching clan {clan_tag}: {e}")
                 # Bucket the failure reason for the cycle summary
@@ -1664,6 +1678,8 @@ async def main() -> None:
                     _bucket = "PrivateWarLog"
                 elif "notfound" in _ename.lower() or "404" in _emsg:
                     _bucket = "NotFound"
+                elif _is_gateway:
+                    _bucket = "Gateway"
                 elif "maintenance" in _emsg or "503" in _emsg:
                     _bucket = "Maintenance"
                 elif "network" in _emsg or "connection" in _emsg or "ssl" in _emsg:
@@ -1716,6 +1732,13 @@ async def main() -> None:
         logging.warning(
             f"[PHASE-1] CoC API in maintenance this cycle — {_maint_n} clan fetch(es) failed fast. "
             f"Phases 2-4 will still run on existing temp files. Next cycle will re-probe."
+        )
+    if is_gateway_outage_detected():
+        _gw_n = CACHE.cycle_stats.get("api_fail:Gateway", 0)
+        logging.warning(
+            f"[PHASE-1] CoC API gateway outage this cycle — {_gw_n} clan fetch(es) failed "
+            f"({get_gateway_fast_failed_count()} CoC call(s) refused without a network attempt). "
+            f"Failed clans keep their last_war_update and are retried next cycle."
         )
 
     # Record Phase-1 API counts in cycle stats

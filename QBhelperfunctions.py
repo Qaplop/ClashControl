@@ -6663,7 +6663,15 @@ async def refresh_stale_passive_clans(candidates: List[Tuple[str, str]]) -> int:
         async with _sem:
             try:
                 was_tracked = bool(CACHE.clan_name_cache.get(tag, {}).get('track_war_updates'))  # type: ignore[union-attr]
-                await CACHE.coc_clan_cache.get_clan(tag)
+                # store_result gate (tracker #0094), same as fetch_clan_war_data's Phase-1 call:
+                # this sweep re-fetches a clan only after PASSIVE_CLAN_REFRESH_INTERVAL_DAYS, far
+                # beyond the cache's 600 s TTL, so it can never re-read what it stores. Without
+                # the gate it filled coc_clan_cache with ~2,000 unprotected clans for hours on
+                # 2026-10-08 (cache size tracked 2x the per-cycle passive batch exactly). Reads
+                # stay enabled, so this can never cost an extra API call.
+                await CACHE.coc_clan_cache.get_clan(
+                    tag, store_result=tag in CACHE.coc_clan_cache.protected_tags
+                )
                 now_tracked = bool(CACHE.clan_name_cache.get(tag, {}).get('track_war_updates'))  # type: ignore[union-attr]
                 if now_tracked and not was_tracked:
                     _promoted += 1

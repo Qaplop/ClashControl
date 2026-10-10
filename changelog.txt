@@ -1,6 +1,15 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-10 (7)
+- Fixed (tracker #0094, test case 288 failed): the [PASSIVE-REFRESH] sweep stored every clan it
+  fetched in coc_clan_cache, although it re-fetches a clan only after days -- far beyond the
+  600 s TTL, so nothing ever read those entries. On 2026-10-08 the cache held ~2,000 unprotected
+  clans for hours (size tracked exactly 2x the per-cycle passive batch, with only 81-89 protected
+  clans). It now uses the same store_result gate as the Phase-1 poll (store only protected
+  clans); reads stay enabled, so no extra API calls. Build 139.
+  Files: QBhelperfunctions.py, tests/unit/test_passive_clan_refresh.py. 3730 tests pass.
+
 2026-10-10 (6)
 - Fixed (tracker #0150, test case 439 failed): the memory profile's [RETENTION] referrer chains
   never reached a named holder on PROD -- startup gc.freeze() hides the long-lived CACHE

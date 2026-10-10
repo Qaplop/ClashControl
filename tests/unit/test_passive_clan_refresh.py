@@ -41,6 +41,7 @@ def _make_cache() -> MagicMock:
     cache = MagicMock()
     cache.clan_name_cache = {}
     cache.coc_clan_cache = AsyncMock()
+    cache.coc_clan_cache.protected_tags = set()
     return cache
 
 
@@ -104,7 +105,7 @@ class TestRefreshStalePassiveClans:
         result = await refresh_stale_passive_clans(candidates)
 
         assert result == 1
-        cache.coc_clan_cache.get_clan.assert_awaited_once_with("#NEVER")
+        cache.coc_clan_cache.get_clan.assert_awaited_once_with("#NEVER", store_result=False)
 
     @pytest.mark.asyncio
     async def test_detects_promotion_after_get_clan(self, monkeypatch):
@@ -113,7 +114,7 @@ class TestRefreshStalePassiveClans:
         cache = _make_cache()
         cache.clan_name_cache = {"#PROMOTED": _passive(None)}
 
-        async def _fake_get_clan(tag: str) -> None:
+        async def _fake_get_clan(tag: str, **_kwargs: Any) -> None:
             cache.clan_name_cache[tag]["track_war_updates"] = True
             cache.clan_name_cache[tag]["war_league"] = "Master League III"
 
@@ -145,7 +146,7 @@ class TestRefreshStalePassiveClans:
         cache = _make_cache()
         cache.clan_name_cache = {"#A": _passive(None), "#B": _passive(None)}
 
-        async def _flaky(tag: str) -> None:
+        async def _flaky(tag: str, **_kwargs: Any) -> None:
             if tag == "#A":
                 raise RuntimeError("transient network error")
             cache.clan_name_cache[tag]["last_checked_via_api"] = datetime.now(timezone.utc).isoformat()
@@ -156,3 +157,20 @@ class TestRefreshStalePassiveClans:
         result = await refresh_stale_passive_clans([("#A", ""), ("#B", "")])
 
         assert result == 2  # both attempted despite #A's failure
+
+
+class TestPassiveRefreshStoreGate:
+    """Tracker #0094: the passive sweep must not fill coc_clan_cache with clans nothing re-reads
+    (2026-10-08: ~2,000 unprotected entries for hours). Protected clans still store."""
+
+    @pytest.mark.asyncio
+    async def test_unprotected_clans_are_not_stored_protected_are(self, monkeypatch):
+        cache = _make_cache()
+        cache.clan_name_cache = {"#PLAIN": _passive(None), "#PROT": _passive(None)}
+        cache.coc_clan_cache.protected_tags = {"#PROT"}
+        monkeypatch.setattr(QBhelperfunctions, "CACHE", cache)
+
+        await refresh_stale_passive_clans([("#PLAIN", ""), ("#PROT", "")])
+
+        calls = {c.args[0]: c.kwargs for c in cache.coc_clan_cache.get_clan.await_args_list}
+        assert calls == {"#PLAIN": {"store_result": False}, "#PROT": {"store_result": True}}

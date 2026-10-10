@@ -2915,7 +2915,7 @@ def _dump_phase1_profile(prof: Any, clan_count: int) -> None:
 
 
 async def event_loop_lag_watchdog(
-    interval: float = 0.1, warn_threshold: float = 0.5
+    interval: float = 0.1, warn_threshold: float = 0.5, warning_level_threshold: float = 2.0
 ) -> None:
     """Measure and report event-loop stalls — the thing users feel as an unresponsive bot.
 
@@ -2930,7 +2930,10 @@ async def event_loop_lag_watchdog(
     Sustained stalls beyond ~60s risk the gateway dropping the connection entirely.
 
     Reporting is deliberately asymmetric:
-      * every stall over *warn_threshold* is logged at WARNING with the offender's duration
+      * every stall over *warn_threshold* is logged with the offender's duration — at INFO
+        below *warning_level_threshold* (the routine gen-2 GC pauses, hundreds a day on PROD,
+        still well inside the 3s ACK deadline), at WARNING from there on, where an interaction
+        that arrived during the stall is at real risk of missing its deadline
       * a periodic INFO summary carries max/p95 even when nothing crossed the threshold,
         so "responsiveness is fine" is evidence rather than an absence of complaints
 
@@ -2945,8 +2948,9 @@ async def event_loop_lag_watchdog(
     _worst_n = 0
     _last_summary = time.monotonic()
     logging.info(
-        "[LOOP-LAG] Watchdog started (probe=%.0fms, warn>%.0fms, summary every %.0fs)",
-        interval * 1000, warn_threshold * 1000, _SUMMARY_EVERY,
+        "[LOOP-LAG] Watchdog started (probe=%.0fms, log>%.0fms, WARNING>=%.0fms, "
+        "summary every %.0fs)",
+        interval * 1000, warn_threshold * 1000, warning_level_threshold * 1000, _SUMMARY_EVERY,
     )
     while not QBcore.shutdown_event.is_set():
         _t0 = time.monotonic()
@@ -2961,7 +2965,8 @@ async def event_loop_lag_watchdog(
                 _worst = _lag
             if _lag > warn_threshold:
                 _worst_n += 1
-                logging.warning(
+                logging.log(
+                    logging.WARNING if _lag >= warning_level_threshold else logging.INFO,
                     "[LOOP-LAG] Event loop stalled %.2fs — Discord interactions were "
                     "unservable for that long (ACK deadline is 3s)", _lag,
                 )

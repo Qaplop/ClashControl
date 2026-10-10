@@ -840,7 +840,7 @@ Instruments that answer this, and the ones that do **not**:
 |---|---|
 | How often does each generation collect? | `[GC-STATS]` per-cycle deltas |
 | What does a collection cost? | `[GC-AUTO]` (logs pauses >= 0.5 s) |
-| What does the user feel? | `[LOOP-LAG]` p95 + `over_500ms` |
+| What does the user feel? | `[LOOP-LAG]` p95 + `over_500ms`; each stall > 0.5 s is logged, at INFO below 2 s (routine gen-2 GC pauses), at WARNING from 2 s (Build 140) — so grep both levels when counting stalls |
 | What is resident, and what is frozen? | Memory Profile `[GC OBJECT COUNTS]` |
 | **Where does a GC pause come from?** | **NOT `PROFILE_PHASE1`** - see below |
 | Is RSS growth live Python objects or the allocator? | `[MEM-GAUGES]` `py_blocks` vs `malloc_inuse/free` (tracker #0150) |

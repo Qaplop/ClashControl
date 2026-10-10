@@ -2993,8 +2993,17 @@ async def clan_management(interaction: discord.Interaction):
         current_page=current_page
     )
     
-    # Edit message to add view
-    await sent_message.edit(view=view)
+    # Edit message to add view. Logs what Discord stored (its response, not our view): qaplop saw the
+    # view posted with no buttons/selects several times on 2026-10-10 with nothing in the log, so
+    # this line tells "Discord dropped them" (stored=0) apart from "removed later" (stored>0).
+    edited = await sent_message.edit(view=view)
+    _stored = sum(len(getattr(row, "children", []) or []) for row in (getattr(edited, "components", None) or []))
+    logging.info(
+        f"[CLAN-MANAGEMENT] Posted message {sent_message.id} in channel {channel_id}: "
+        f"{len(view.children)} component(s) sent, {_stored} stored by Discord"
+        + ("" if _stored else " — NO COMPONENTS STORED")
+    )
+    _log_cmd_done(interaction, "clan management")
     
     # Track the message
     timestamp = generate_message_key_timestamp()

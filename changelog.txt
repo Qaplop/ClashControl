@@ -1,6 +1,17 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-10 (17)
+- Diagnostics (/clan management posted without buttons/selects, seen several times on PROD
+  2026-10-10, e.g. 20:45:22 and 4× at 19:31-19:32): nothing in the log explained it. No error,
+  no permission issue, no loop lag, and no code path found that strips the view's components. The
+  command now logs "[CLAN-MANAGEMENT] Posted message <id> in channel <id>: N component(s) sent,
+  M stored by Discord" from the edit's response (with "— NO COMPONENTS STORED" when M=0), plus
+  the missing "[CMD-DONE] /clan management". This shows whether Discord dropped the components
+  or something removed them later. Build 149.
+  Files: QBdiscordcmds.py, tests/discord/test_clan_management_permissions.py, QBcore.py.
+  3747 tests pass.
+
 2026-10-10 (16)
 - Changed (UI wording, Simple Roles + permission warning): rewrote the remaining generic or
   wrong notices so they give the exact information.

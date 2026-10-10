@@ -53,3 +53,41 @@ async def test_missing_permissions_reply_is_logged_as_warning(mock_interaction, 
     assert len(warnings) == 1
     assert "channel 777" in warnings[0].getMessage()
     assert "send_messages, embed_links" in warnings[0].getMessage()
+
+
+@pytest.mark.discord
+@pytest.mark.asyncio
+@pytest.mark.parametrize("stored_rows, expect_flag", [([SimpleNamespace(children=[1, 2])], False), ([], True)])
+async def test_posted_message_logs_components_stored_by_discord(mock_interaction, monkeypatch, caplog,
+                                                                stored_rows, expect_flag):
+    """2026-10-10: the view was seen without buttons with nothing in the log. The command now logs
+    how many components Discord stored (from the edit's response)."""
+    import clashcontrol.ui_clan_management as ui_cm
+    sent = MagicMock()
+    sent.id = 4242
+    sent.edit = AsyncMock(return_value=SimpleNamespace(components=stored_rows))
+    channel = MagicMock(spec=discord.TextChannel)
+    channel.id = 777
+    channel.send = AsyncMock(return_value=sent)
+    mock_interaction.channel = channel
+    mock_interaction.guild = MagicMock()
+    mock_interaction.guild_id = 555
+    mock_interaction.followup.send = AsyncMock()
+    mock_interaction.delete_original_response = AsyncMock()
+
+    monkeypatch.setattr(QBdiscordcmds, "_safe_defer", AsyncMock(return_value=True))
+    monkeypatch.setattr(QBdiscordcmds, "CACHE", SimpleNamespace(leaderboard_messages={}, set_leaderboard_message=AsyncMock()))
+    monkeypatch.setattr(cmdshelper, "get_guild_clans_including_member_config", lambda gid: ["#CLAN1"])
+    monkeypatch.setattr(cmdshelper, "get_most_active_clan_for_guild", lambda gid, clans: "#CLAN1")
+    monkeypatch.setattr(cmdshelper, "format_clan_management_message",
+                        AsyncMock(return_value=(discord.Embed(title="x"), None, [], [])))
+    monkeypatch.setattr(bot_permissions, "check_channel_feature", lambda guild, feature, cid: [])
+    monkeypatch.setattr(ui_cm, "ClanManagementView", lambda **kw: SimpleNamespace(children=[1, 2, 3]))
+
+    caplog.set_level(logging.INFO)
+    await QBdiscordcmds.clan_management.callback(mock_interaction)  # type: ignore[call-arg]
+
+    msg = next(r.getMessage() for r in caplog.records if "[CLAN-MANAGEMENT] Posted message 4242" in r.getMessage())
+    assert "3 component(s) sent" in msg
+    assert ("NO COMPONENTS STORED" in msg) is expect_flag
+    assert any("[CMD-DONE] /clan management" in r.getMessage() for r in caplog.records)

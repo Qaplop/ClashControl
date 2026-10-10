@@ -361,3 +361,22 @@ The bot can't fix these. With Build 134 they each log at most once a day.
   war-notification (1556176808494505994) channels.
 - **INTL BootCamp (1228000883581911091)**: the bot can't post (50013) in leaderboard channel
   1547508198246981713, subscribed on 2026-10-08 to #2JQUJPVQU/attack.
+
+## 6. Closed 2026-10-10 (Builds 135-150)
+
+All 18 test cases passed (#150-1 to #150-18). Follow-ups shipped while testing:
+- Builds 135-139: guild-absent handling, permission audit and config-time permission warnings,
+  memory-profile holders named despite the startup `gc.freeze()`, passive refresh no longer fills
+  `coc_clan_cache` (#0094).
+- Build 140: `[LOOP-LAG]` stalls under 2 s logged at INFO, WARNING only from 2 s.
+- Builds 141-142: the `/clan management` up-front permission check and `[BOT-PERMS]` both log a
+  WARNING naming the missing permissions.
+- Builds 143-144: DEV leaves PROD's tracker messages alone at startup, and logs its absence
+  from the PROD-DB copy's other guilds quietly (`expected_absence`).
+- Builds 145-148: precise permission-warning and Simple Roles texts (role-list position, fix
+  hints only for the listed issue kinds, real button/mode labels as placeholders).
+- Builds 149-150: `/clan management` posted without visible buttons until Ctrl+R. Discord had
+  stored them; the view is now sent with the message (Pitfall 68).
+
+Still on watch (no action unless they recur): a reduced post-outage catch-up cap (item 2), the
+CWL hub edit limit (item 6), and the two guild-side permission problems above.

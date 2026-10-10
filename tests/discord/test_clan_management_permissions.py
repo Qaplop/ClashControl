@@ -58,14 +58,16 @@ async def test_missing_permissions_reply_is_logged_as_warning(mock_interaction, 
 @pytest.mark.discord
 @pytest.mark.asyncio
 @pytest.mark.parametrize("stored_rows, expect_flag", [([SimpleNamespace(children=[1, 2])], False), ([], True)])
-async def test_posted_message_logs_components_stored_by_discord(mock_interaction, monkeypatch, caplog,
-                                                                stored_rows, expect_flag):
-    """2026-10-10: the view was seen without buttons with nothing in the log. The command now logs
-    how many components Discord stored (from the edit's response)."""
+async def test_view_is_sent_with_the_message_and_stored_count_logged(mock_interaction, monkeypatch, caplog,
+                                                                     stored_rows, expect_flag):
+    """2026-10-10: sending the embed and adding the view with a second edit left the components
+    invisible in the Discord client until Ctrl+R (Discord had stored all 12). The view now goes out
+    with the message itself, and the command logs how many components Discord stored."""
     import clashcontrol.ui_clan_management as ui_cm
     sent = MagicMock()
     sent.id = 4242
-    sent.edit = AsyncMock(return_value=SimpleNamespace(components=stored_rows))
+    sent.components = stored_rows
+    sent.edit = AsyncMock(side_effect=AssertionError("the view must be sent with the message, not edited in"))
     channel = MagicMock(spec=discord.TextChannel)
     channel.id = 777
     channel.send = AsyncMock(return_value=sent)
@@ -82,11 +84,21 @@ async def test_posted_message_logs_components_stored_by_discord(mock_interaction
     monkeypatch.setattr(cmdshelper, "format_clan_management_message",
                         AsyncMock(return_value=(discord.Embed(title="x"), None, [], [])))
     monkeypatch.setattr(bot_permissions, "check_channel_feature", lambda guild, feature, cid: [])
-    monkeypatch.setattr(ui_cm, "ClanManagementView", lambda **kw: SimpleNamespace(children=[1, 2, 3]))
+    built = {}
+
+    def fake_view(**kw):
+        built["guild"] = kw["sent_message"].guild
+        built["view"] = SimpleNamespace(children=[1, 2, 3], sent_message=kw["sent_message"])
+        return built["view"]
+
+    monkeypatch.setattr(ui_cm, "ClanManagementView", fake_view)
 
     caplog.set_level(logging.INFO)
     await QBdiscordcmds.clan_management.callback(mock_interaction)  # type: ignore[call-arg]
 
+    assert channel.send.await_args.kwargs["view"] is built["view"]
+    assert built["guild"] is mock_interaction.guild  # builders got the guild before the message existed
+    assert built["view"].sent_message is sent  # real message handed over after sending
     msg = next(r.getMessage() for r in caplog.records if "[CLAN-MANAGEMENT] Posted message 4242" in r.getMessage())
     assert "3 component(s) sent" in msg
     assert ("NO COMPONENTS STORED" in msg) is expect_flag

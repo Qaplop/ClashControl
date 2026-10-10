@@ -46,6 +46,7 @@ from clashcontrol.emojis import BotEmojis
 import platform
 import psutil
 import QBcore
+from types import SimpleNamespace
 from typing import Optional, Union, Any, Dict, List, Tuple, Set
 from QBhelperfunctions import (
     generate_leaderboard_text, generate_cwlinfo_embeds, generate_cwlinfo_comp_embeds, post_discord_content_with_tracking, post_leaderboard_to_discord,
@@ -2965,11 +2966,26 @@ async def clan_management(interaction: discord.Interaction):
             ephemeral=True,
         )
         return
+    # Build the view first and send it WITH the message (2026-10-10). Sending the embed alone and
+    # adding the view with a second edit left the buttons/selects invisible in the Discord client
+    # until Ctrl+R, although Discord had stored all of them (log: "12 component(s) sent, 12 stored
+    # by Discord"): the client renders the first version and sometimes misses the update. The
+    # builders only read sent_message.guild, so a stand-in carries the guild until the real
+    # message exists.
+    view = ClanManagementView(
+        clan_tag=default_clan_tag,
+        guild_clans=guild_clans,
+        unlinked_players=unlinked_players,
+        sent_message=SimpleNamespace(guild=interaction.guild, id=None),  # type: ignore[arg-type]
+        mode="config",  # Default mode (Basic Configuration)
+        timeout=1800,  # 30 minute timeout (int required)
+        all_embeds=all_embeds if all_embeds else None,
+        current_page=current_page
+    )
     try:
-        sent_message = await interaction.channel.send(
-            embeds=display_embeds
-        )
+        sent_message = await interaction.channel.send(embeds=display_embeds, view=view)
     except discord.Forbidden:
+        view.stop()
         logging.warning(
             f"[CLAN-MANAGEMENT] No permission to post in channel {interaction.channel.id} "
             f"(guild {interaction.guild_id}) — told the user which permissions are missing"
@@ -2980,24 +2996,10 @@ async def clan_management(interaction: discord.Interaction):
             ephemeral=True,
         )
         return
+    view.sent_message = sent_message
 
-    # Create interactive view with clan selector and mode selector
-    view = ClanManagementView(
-        clan_tag=default_clan_tag,
-        guild_clans=guild_clans,
-        unlinked_players=unlinked_players,
-        sent_message=sent_message,
-        mode="config",  # Default mode (Basic Configuration)
-        timeout=1800,  # 30 minute timeout (int required)
-        all_embeds=all_embeds if all_embeds else None,
-        current_page=current_page
-    )
-    
-    # Edit message to add view. Logs what Discord stored (its response, not our view): qaplop saw the
-    # view posted with no buttons/selects several times on 2026-10-10 with nothing in the log, so
-    # this line tells "Discord dropped them" (stored=0) apart from "removed later" (stored>0).
-    edited = await sent_message.edit(view=view)
-    _stored = sum(len(getattr(row, "children", []) or []) for row in (getattr(edited, "components", None) or []))
+    # What Discord stored, from its response (not our view).
+    _stored = sum(len(getattr(row, "children", []) or []) for row in (getattr(sent_message, "components", None) or []))
     logging.info(
         f"[CLAN-MANAGEMENT] Posted message {sent_message.id} in channel {channel_id}: "
         f"{len(view.children)} component(s) sent, {_stored} stored by Discord"

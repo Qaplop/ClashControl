@@ -1,6 +1,18 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-10 (18)
+- Fixed (/clan management showing no buttons or selects until Ctrl+R): the command sent the embed
+  first and added the view with a second edit. Discord stored every component (Build 149 log,
+  20:59:22: "12 component(s) sent, 12 stored by Discord"), but the Discord client sometimes
+  missed the update and showed the bare first version. The view is now built first, with a
+  stand-in carrying the guild because its builders only read sent_message.guild, and sent
+  together with the message. The real message is handed to the view after the send. Added as
+  Pitfall 68 in COPILOT_PITFALLS_COOKBOOK.md; no other place posts a message and attaches its
+  first view by an edit. Build 150.
+  Files: QBdiscordcmds.py, tests/discord/test_clan_management_permissions.py,
+  clashcontrol/docs/COPILOT_PITFALLS_COOKBOOK.md, QBcore.py. 3747 tests pass.
+
 2026-10-10 (17)
 - Diagnostics (/clan management posted without buttons/selects, seen several times on PROD
   2026-10-10, e.g. 20:45:22 and 4× at 19:31-19:32): nothing in the log explained it. No error,

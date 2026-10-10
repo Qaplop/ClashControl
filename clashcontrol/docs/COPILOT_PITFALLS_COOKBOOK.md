@@ -3084,3 +3084,23 @@ and discord.py's own component-state sync for the view was skipped. Renamed to `
   `_dispatch_item`, `_refresh_timeout` and the like are discord.py's own.
 - Treat `reportIncompatibleMethodOverride` on a discord.py base class as a real bug, not
   typing noise: the base method is usually called by the library, so the override is live code.
+
+## Pitfall 68: post a message WITH its view — don't send it bare and add the components by a later edit
+
+**Symptom (2026-10-10, /clan management, PROD):** the management panel kept appearing with its
+embed but no buttons or selects, several times a day. Ctrl+R in the Discord client brought them
+back. The log had no error, and Build 149's diagnostic line showed Discord had stored all of them:
+`[CLAN-MANAGEMENT] Posted message ...: 12 component(s) sent, 12 stored by Discord`.
+
+**Cause:** the command did `msg = await channel.send(embeds=...)`, built the view (its builders
+read `sent_message.guild`), then `await msg.edit(view=view)`. The client renders the bare first
+version and sometimes misses the follow-up update that adds the components. The data is correct
+server-side, but what the user sees is wrong until they reload.
+
+**Rule:**
+- Send a new message together with its view: `channel.send(embeds=..., view=view)`.
+- If the view needs the message (for `.guild`, later edits or `on_timeout`), build it with a
+  stand-in (`SimpleNamespace(guild=interaction.guild, id=None)`) and assign the real message
+  after the send (`view.sent_message = msg`). This is what `/clan management` does since Build 150.
+- Editing an EXISTING message's view (mode switch, refresh, lock/unlock) is fine. Only the
+  first appearance of the components must not come from an edit.

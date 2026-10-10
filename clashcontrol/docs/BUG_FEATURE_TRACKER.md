@@ -137,7 +137,10 @@ independent objects that only ever move on their OWN trigger:
   buttons posted to the item's discussion thread, falling back to a DM to the reactor if there's
   no thread. The bridge/MCP surface never blocks on this — `tracker_mark_testcase_passed`/
   `tracker_move_testcases_done`'s response just names the linked item and status and suggests
-  calling `tracker_set_status(..., "done")` if the agent wants to.
+  calling `tracker_set_status(..., "done")` if the agent wants to. **Agent convention (qaplop,
+  2026-10-10):** when the agent's own sign-off passes the last open case, the agent sets the item
+  to `done` in the same turn. It doesn't leave the item at `testing` or ask first. The exception is
+  a case the agent passed with a caveat it wants qaplop to check: then it says so instead.
 - The passive (thread/DM) prompt opens with an `<@actor_id>` mention (`item_done_confirm_prompt_
   passive`, 2026-08-22 live bug report: item #0015's prompt sat unnoticed in the thread because a
   plain, unmentioned message doesn't highlight or notify anyone in Discord). The ephemeral variant

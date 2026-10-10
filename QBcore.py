@@ -87,7 +87,7 @@ BOT_VERSION: str = "1.3.42"
 # .github/copilot-instructions.md.  BOT_VERSION answers "which release is this?";
 # BOT_BUILD answers "which edit of it is actually running?", which is the question that
 # matters when reading the server-machine's log after a file-copy deploy.
-BOT_BUILD: int = 133
+BOT_BUILD: int = 134
 
 
 def source_fingerprint() -> str:
@@ -415,6 +415,17 @@ async def on_app_command_error(interaction: discord.Interaction, error: app_comm
         if http_error.status == 429:
             return await send(t('commands.errors.rate_limited', guild_id=None), ephemeral=True)
         elif http_error.status == 403:
+            # Name the refused Discord call: without a traceback the log said only "Missing
+            # Permissions", which left the 2026-10-08 /clan management failure undiagnosable
+            # (tracker #0150).
+            try:
+                _resp = getattr(http_error, "response", None)
+                logging.warning(
+                    f"Slash command 403 in {command_info} ({guild_info}): Discord refused "
+                    f"{getattr(_resp, 'method', '?')} {getattr(_resp, 'url', '?')}"
+                )
+            except Exception:
+                pass
             return await send(t('commands.errors.access_denied', guild_id=None), ephemeral=True)
         elif http_error.status == 404:
             return await send(t('commands.errors.not_found', guild_id=None), ephemeral=True)

@@ -341,3 +341,11 @@ not enough.
   `last_war_update`, so those clans are simply retried next cycle.
 - `clear_gateway_outage_detection()` runs at each cycle start, so every cycle re-probes. During a
   long outage each cycle therefore costs ~one timeout (~170 s) instead of hours.
+- **Fan-outs after Phase 1 must check the breaker too** (Build 134). Phase 2
+  `process_orphaned_cwl_wars()` and the raid update return before their per-war / per-clan
+  `gather()` when `is_gateway_outage_detected()`. On 2026-10-04 they fast-failed one call and
+  logged one warning each (64,055 + 1,562 in three hours). An outage also *inflates* the orphan
+  list: every Phase-1 failure is a "failed clan", and the failed-clans rule treats its newest CWL
+  file as an orphan. Any new per-clan API step that runs after Phase 1 should do the same.
+- Verified on PROD 2026-10-04 02:06-05:02: 36 tripped cycles of 190-209 s each, vs one
+  11,376 s cycle on 2026-10-03.

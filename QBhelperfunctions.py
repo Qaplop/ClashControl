@@ -8594,6 +8594,14 @@ async def update_capital_raids_for_member_clans(now: Optional[datetime] = None) 
         )
     if not due:
         return totals
+    # CoC gateway outage tripped earlier this cycle (tracker #0150): every call would fast-fail
+    # and log two warnings per clan (1,562 on 2026-10-04). Skip as a whole; unfinalized
+    # seasons are still due next cycle, so nothing is lost.
+    from clashcontrol.coc_health import is_gateway_outage_detected
+    if is_gateway_outage_detected():
+        logging.warning(f"[RAID-UPDATE] CoC API gateway outage this cycle — skipping {len(due)} clan(s); retried next cycle.")
+        totals["errors"] = len(due)
+        return totals
     results = await asyncio.gather(*(update_capital_raid_for_clan(t, now) for t in due), return_exceptions=True)
     for clan_tag, result in zip(due, results):
         if isinstance(result, BaseException):
@@ -9050,25 +9058,51 @@ async def process_orphaned_cwl_wars(
                 logging.warning(f"[ORPHANED-CWL] API error for {war_tag}: {api_ex}")
                 return (False, clan_tag, filename)
     
+    # CoC gateway outage (tracker #0150): Phase 1 already tripped the breaker, so every fetch
+    # below would fast-fail. Worse, an outage makes EVERY Phase-1 clan a "failed clan", and the
+    # failed-clans rule above then treats each one's newest CWL file as an orphan — on
+    # 2026-10-04 that grew to ~4,500 doomed fetches and as many WARNING lines per cycle
+    # (64,055 in three hours). Nothing here can succeed this cycle; the files stay put and are
+    # re-evaluated next cycle.
+    from clashcontrol.coc_health import is_gateway_outage_detected
+    if orphaned_wars and is_gateway_outage_detected():
+        logging.warning(
+            f"[ORPHANED-CWL] CoC API gateway outage this cycle — skipping "
+            f"{len(orphaned_wars)} orphaned CWL war fetch(es); re-evaluated next cycle."  # type: ignore[arg-type]
+        )
+        return None
+
     # Execute all fetches in parallel
     tasks = [fetch_and_update_orphan(war_tag, clan_tag, war_file, filename, state)  # type: ignore[misc, arg-type]
              for war_tag, clan_tag, war_file, filename, state in orphaned_wars]  # type: ignore[misc]
     results = await asyncio.gather(*tasks, return_exceptions=True)
-    
+
     # Count successes
     success_count = sum(1 for r in results if isinstance(r, tuple) and r[0])
     logging.info(f"[ORPHANED-CWL] Parallel fetch complete: {success_count}/{len(orphaned_wars)} successful")  # type: ignore[arg-type]
-    
+
     # Deduplicate finalization by clan — one manage_war_files() call per clan
     # processes ALL that clan's temp files, so calling per-file is wasteful.
+    # Exceptions are summarised, not logged one per war: one failure mode usually hits all of
+    # them at once (tracker #0150), so the first few carry all the information there is.
     _finalize_clans: Set[str] = set()
+    _non_tuple: Dict[str, int] = {}
     for result in results:
         if not isinstance(result, tuple):
-            logging.warning(f"[ORPHANED-CWL] Skipping non-tuple result: {result}")
+            _kind = type(result).__name__
+            _non_tuple[_kind] = _non_tuple.get(_kind, 0) + 1
+            if sum(_non_tuple.values()) <= 3:
+                logging.warning(f"[ORPHANED-CWL] Skipping non-tuple result: {_kind}: {result}")
             continue
         success, clan_tag, _filename = result
         if success:
             _finalize_clans.add(clan_tag)
+    if sum(_non_tuple.values()) > 3:
+        logging.warning(
+            f"[ORPHANED-CWL] {sum(_non_tuple.values())} orphan fetch(es) failed with an exception "
+            f"this cycle ({', '.join(f'{k}={v}' for k, v in sorted(_non_tuple.items()))}); "
+            f"first 3 logged above."
+        )
 
     # ── Batched sequential finalization (P0 + P1) ──────────────────────
     # Instead of Semaphore(3) parallel manage_war_files() calls that each

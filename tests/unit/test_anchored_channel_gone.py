@@ -24,6 +24,7 @@ import ClashControl  # noqa: E402
 import QBcore  # noqa: E402
 from clashcontrol.cache_manager import CACHE  # noqa: E402
 from clashcontrol.constants import ANCHORED_MESSAGE_CHANNEL_KEYS  # noqa: E402
+from clashcontrol.log_throttle import reset_log_throttle  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
@@ -31,9 +32,9 @@ def _isolate(monkeypatch):
     monkeypatch.setattr(CACHE, "server_config", {})
     monkeypatch.setattr(CACHE, "persist_server_config", AsyncMock())
     monkeypatch.setattr(ClashControl, "CONFIG", dataclasses.replace(ClashControl.CONFIG, is_dev_mode=False))
-    ClashControl._anchored_unreachable_warned.clear()
+    reset_log_throttle()
     yield
-    ClashControl._anchored_unreachable_warned.clear()
+    reset_log_throttle()
 
 
 def _registration_config(channel_id: str = "1436391672400576663") -> dict:

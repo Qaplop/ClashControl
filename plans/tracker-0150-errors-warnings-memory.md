@@ -1,9 +1,8 @@
 # Tracker #0150 — Errors/warnings since 2026-09-28, memory restarts: analysis + fix plan
 
-**Status (2026-10-03):** items 1, 2, 4, 5 IMPLEMENTED (Build 133). Item 6 investigated and
-deliberately not changed. **Item 3 OPEN:** its diagnostics shipped in Build 133. The actual fix
-waits for the first RSS-restart profile from Build 133 to name the holder. Keep this file in
-`plans/` until then.
+**Status (2026-10-10): COMPLETE.** Items 1, 2, 4, 5 shipped in Build 133. Item 3 was resolved by
+item 2: the ramp disappeared under Build 133 (§5). Item 6 was investigated and deliberately left
+unchanged. The Build 133 PROD week surfaced six follow-ups, shipped in Build 134 (§5).
 
 **Data:** PROD logs 2026-09-13 → 2026-10-03 08:00 (synced to DEV), the 9 memory profiles in
 `data/logs/memprofile_*.txt`, DEV copy of the PROD DB. Read together with
@@ -270,3 +269,95 @@ bucket. `[COC-API-ERROR] ... failed after N attempts` ERRORs no longer appear fo
 - Next CoC outage: cycle length bounded (minutes, not hours) and one `[COC-GATEWAY-OUTAGE]` line.
 - Item 3: a morning trace that names the holder, then a morning with no ramp.
 - RSS-restart no longer firing daily at ~09:40.
+
+## 5. Build 133 PROD week (2026-10-03 10:13 .. 2026-10-10 08:00) — results and follow-ups
+
+### Memory: the daily ~4 GB ramp is gone (item 3 resolved by item 2)
+
+| run (Build 133, src 66988632) | duration | RSS range | slope after 6 h |
+|---|---|---|---|
+| 2026-10-03 21:38 | 68.9 h | 1.2-3.7 GB | +24 MB/h |
+| 2026-10-06 19:07 | 22.3 h | 1.8-2.8 GB | +54 MB/h |
+| 2026-10-07 17:40 | 62.3 h (still running) | 1.4-3.3 GB, flat ~2.6 GB | **+1.5 MB/h** |
+
+- Every run before Build 133 crossed 6 GB within 24-44 h; none did after, so no RSS restart
+  fired and no `[RETENTION]` profile was written. The instrument had nothing to capture.
+- That held through the Oct 4 outage and catch-up (peak ~3.3 GB, vs +4 GB on Oct 3), during CWL
+  season, i.e. under higher load.
+- The coc.py response cache was the only memory-relevant change in Build 133.
+
+What `[MEM-GAUGES]` showed, and what it means for the mechanism:
+- `coc_http` sits at 2000/2000 nearly all the time, with **8-23k pending `call_later` expiry
+  timers**. So the CoC API's Cache-Control `max-age` here is long (order of an hour), not minutes.
+- Under the old 10,000-entry FIFO, that working set (~15-20k live responses) kept the cache
+  permanently at its cap, holding ~0.7-1 GB of decoded JSON under constant churn.
+- A replay of coc.py's store path against the real FIFO class showed it **does** stay bounded at
+  the cap; it does not grow without limit. So the "dead keys make it grow forever" idea is wrong.
+  Holding ~1 GB at the cap, plus the fragmentation of churning it, is the remaining explanation.
+- The ~1 GB -> ~4 GB RSS step itself (most likely pymalloc arena pinning) was **not** measured.
+  If a ramp ever reappears, the Build 133 `[RETENTION]` profile is still armed to name it.
+
+`py_blocks` swings between 13M and 22M per cycle with no upward trend. malloc free-not-returned
+holds at ~0.3-0.55 GB.
+
+### Outage breaker: worked on the first real outage (2026-10-04 02:06-05:02)
+
+- 36 cycles tripped the breaker at 25 gateway errors and finished in **190-209 s each**, instead
+  of the 11,376 s single cycle on Oct 3.
+- Two fan-outs it did not cover, both fixed in Build 134:
+  - Phase 2 `process_orphaned_cwl_wars()` still launched one fetch per orphaned CWL war and
+    logged each fast-fail: **64,055 warnings**. An outage also inflates the orphan list itself,
+    because every Phase-1 failure becomes a "failed clan" whose newest CWL file is treated as an
+    orphan (~4,500 per cycle). It now returns before the fan-out when the breaker is tripped, and
+    summarises non-tuple results (first 3 + a count) in any case.
+  - The raid update logged two warnings per clan (**1,562**). It is now skipped as a whole when
+    the breaker is tripped.
+
+### Registration channel: fixed
+
+`[ANCHORED-CHANNEL-GONE]` fired exactly once (2026-10-03 10:13:41, guild 1400585784347594882),
+then zero "Could not find registration channel" lines all week (~280/day before).
+
+### Not regressions (checked)
+
+- **More LOOP-LAG** (578-893/day vs 190-400) and Phase-1 CPU 15-20 s -> 42-54 s per cycle. Per-clan
+  cost is unchanged (~27 ms); inactive clans per cycle rose ~650 -> ~1,600.
+  - The rise started at 09:59 on 2026-10-03 under Build **132**, 14 minutes before Build 133 went
+    live, and is falling today (1,164). That matches the October CWL.
+  - During CWL every tracked clan has a war every day. The "poll 8 min before war end" smart
+    timestamp then re-queues it to catch the final state, giving ~2.8 polls per clan per day
+    (~107k clans). That is by design.
+  - `league_war` cache full at 1000/1000 is the known #0009 Stage 4 cost.
+- **Restarts** on Oct 6 18:38 and Oct 7 17:29 were clean SIGTERM shutdowns with the same build
+  (operator stops), not crashes.
+
+### Build 134 follow-ups (all from this week's logs)
+
+1. Orphan-CWL and raid-update fan-out skipped while the gateway breaker is tripped (above).
+2. `clashcontrol/log_throttle.py`: `log_throttled()` logs once per interval per key, repeats go to
+   DEBUG. `find_discord_forbidden()` finds a `discord.Forbidden` through wrapper exceptions.
+   Applied to:
+   - **leaderboard post 403s**: a subscription in a channel where INTL BootCamp
+     (1228000883581911091) gave the bot no post permission produced **310 ERRORs with
+     tracebacks** in 28 h. Now one WARNING a day per channel, and the post is still retried.
+   - **war-notification channel 403s**: 275 warnings in 2 days, Odyssey COC (1537876277988429834).
+   - **discord_retry() 403s**: once an hour per operation + error code.
+   - the anchored-channel "unreachable" warning, which is now ported onto the shared helper.
+3. `/clan management` in a channel where the bot can't post: the admin used to get a generic
+   "access denied" (twice, 2026-10-08). Now they get the existing `bot_missing_permissions` text
+   naming View Channel / Send Messages / Embed Links. The global slash-command error handler
+   also logs which Discord call (method + URL) was refused on a 403.
+4. A member joining during nightly DB maintenance lost their pending tracker access grant (ERROR
+   2026-10-08 05:37; join is the only place it is applied). It is now deferred to a tracked task
+   that retries once maintenance ends (give-up after 2 h), per Pitfall 43.
+5. `[INACTIVE] Smart timestamp set` demoted to DEBUG: 327,869 lines / 49 MB on 2026-10-08, the
+   largest single source of the 130 MB/day logs during CWL.
+
+### Guild-side issues only their admins can fix
+
+The bot can't fix these. With Build 134 they each log at most once a day.
+- **Odyssey COC (1537876277988429834)**, joined 2026-10-04: the bot has no access (50001) to its
+  configured registration (1556177199801835540), CWL hub (1556176753226158140) and
+  war-notification (1556176808494505994) channels.
+- **INTL BootCamp (1228000883581911091)**: the bot can't post (50013) in leaderboard channel
+  1547508198246981713, subscribed on 2026-10-08 to #2JQUJPVQU/attack.

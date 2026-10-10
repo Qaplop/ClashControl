@@ -1565,7 +1565,13 @@ async def _send_channel_war_notification(clan_tag: str, war_data: Dict[str, Any]
                 if channel is None:
                     channel = await QBcore.bot.fetch_channel(int(war_notification_channel_id))
             except Exception as e:
-                logging.warning(f"Could not fetch war notification channel {war_notification_channel_id} for guild {guild_id}: {e}")
+                # Once a day per channel (tracker #0150): a 403 here is a guild permission the
+                # bot cannot fix, and it recurs every cycle (275 times in two days, 2026-10-04/05).
+                from clashcontrol.log_throttle import log_throttled
+                log_throttled(
+                    logging.WARNING, ("war-notification-channel", str(war_notification_channel_id)),
+                    f"Could not fetch war notification channel {war_notification_channel_id} for guild {guild_id}: {e}",
+                )
                 continue
             
             # Raid reminder scope is per guild (tracker #0115): "not_attacked" keeps only 0-attack

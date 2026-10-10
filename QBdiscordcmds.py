@@ -2903,11 +2903,25 @@ async def clan_management(interaction: discord.Interaction):
         await interaction.followup.send("❌ Cannot send message in this channel type.", ephemeral=True)
         return
     
-    # Send new message
-    sent_message = await interaction.channel.send(
-        embeds=display_embeds
-    )
-    
+    # Send new message. A channel where the bot may not post raises 50013 here; until tracker
+    # #0150 that reached the global handler and the admin only saw a generic "access denied"
+    # (twice, INTL BootCamp, 2026-10-08) with nothing saying what to fix.
+    try:
+        sent_message = await interaction.channel.send(
+            embeds=display_embeds
+        )
+    except discord.Forbidden:
+        logging.warning(
+            f"[CLAN-MANAGEMENT] No permission to post in channel {interaction.channel.id} "
+            f"(guild {interaction.guild_id}) — told the user which permissions are missing"
+        )
+        await interaction.followup.send(
+            t('commands.errors.bot_missing_permissions', user_id=str(interaction.user.id),
+              guild_id=interaction.guild_id, perms="View Channel, Send Messages, Embed Links"),
+            ephemeral=True,
+        )
+        return
+
     # Create interactive view with clan selector and mode selector
     view = ClanManagementView(
         clan_tag=default_clan_tag,

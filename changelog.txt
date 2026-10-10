@@ -1,6 +1,30 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-10 (1)
+- Tracker #0150, Build 133 PROD week reviewed: the daily ~4 GB RSS ramp did not recur once
+  (longest run flat at ~2.6 GB for 62 h, through a CoC outage and CWL); the gateway breaker
+  held every outage cycle to ~200 s (2026-10-04); the registration-channel warning is gone.
+- Fixed: during a tripped CoC gateway breaker, Phase 2 still launched one orphaned-CWL-war fetch
+  per war and the raid update one per clan, each logging its fast-fail (64,055 + 1,562 warnings
+  on 2026-10-04). Both now skip while tripped; orphan non-tuple results are summarised.
+- Fixed: failures only a guild admin can fix were logged every cycle -- leaderboard 403s as
+  ERRORs with tracebacks (310 in 28 h), war-notification channel 403s (275 in 2 days),
+  discord_retry() 403s. New clashcontrol/log_throttle.py logs them once a day per channel
+  (discord_retry: once an hour); the anchored-channel warning now uses it too.
+- Fixed: /clan management in a channel the bot can't post in answered with a generic "access
+  denied"; it now names the missing permissions (existing bot_missing_permissions text). The
+  global slash-command handler logs which Discord call a 403 refused.
+- Fixed: a member joining during nightly DB maintenance lost their pending tracker access grant
+  (logged as ERROR); it is now retried once maintenance ends (Pitfall 43).
+- Changed: "[INACTIVE] Smart timestamp set" is DEBUG (327,869 lines / 49 MB on 2026-10-08).
+  Build 134. Files: QBhelperfunctions.py, ClashControl.py, QBcore.py, QBdiscordcmds.py,
+  clashcontrol/log_throttle.py (new), clashcontrol/discord_health.py,
+  clashcontrol/war_notifications.py, tests/unit/test_tracker_0150_followups.py,
+  tests/unit/test_anchored_channel_gone.py, docs (PERFORMANCE_TUNING, RATE_LIMITING_IMPLEMENTATION,
+  CODE_STRUCTURE, copilot-instructions), plans/implemented/tracker-0150-errors-warnings-memory.md.
+  3680 tests pass.
+
 2026-10-03 (4)
 - Fixed (tracker #0150): one guild's deleted registration channel produced ~280 "Could not find
   registration channel" warnings a day since 2026-09-28, forever, because the bump cycle only

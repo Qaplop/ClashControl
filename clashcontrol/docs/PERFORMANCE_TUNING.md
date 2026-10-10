@@ -931,6 +931,17 @@ and the cap is now `CONFIG.coc_http_cache_max_entries` (default 2000, env
 `COC_HTTP_CACHE_MAX_ENTRIES`, 0 disables). ClashControl caches clans itself (`coc_clan_cache`), so
 this cache only dedupes repeats inside a short window. `[MEM-GAUGES]` logs its size each cycle.
 
+**Result (Build 133, 2026-10-03 .. 10-10):** the daily ~4 GB ramp that had forced an RSS restart
+almost every day since 2026-09-29 did not occur once in a week. The longest run sat flat at
+~2.6 GB (+1.5 MB/h over 62 h), through a CoC outage and CWL season. `[MEM-GAUGES]` also showed the
+real reason this cache matters: it sits at its cap (2000/2000) with **8-23k pending expiry
+timers**, so the API's `max-age` is on the order of an hour. Under the old 10,000 cap that working
+set kept ~0.7-1 GB of decoded JSON permanently resident under constant churn. A replay of coc.py's
+store path showed the old FIFO stays bounded at its cap (it does not grow without limit). The
+remaining 1 GB -> ~4 GB RSS amplification (most likely pymalloc arena pinning from that churn) was
+not measured. **Rule: treat any library-internal cache whose entries are decoded payloads as a
+memory structure, and bound it by bytes-equivalent, not by the library's default entry count.**
+
 ## Finding the HOLDER of retained memory: `[MEM-GAUGES]` and `[RETENTION]` (tracker #0150)
 
 Every profile up to 2026-10-03 could say where retained objects were *allocated* (tracemalloc,
@@ -938,7 +949,8 @@ Every profile up to 2026-10-03 could say where retained objects were *allocated*
 them alive. That is the question that decides a fix, and two investigations (#0009, #0106) spent
 days on plausible-but-wrong holders. Since 2026-09-29 PROD has shown a ~4 GB ramp over a few hours
 (not tied to a time of day: 06:15 one day, 09:15 another), which these two instruments exist to
-pin down.
+pin down. (Outcome: the ramp stopped with Build 133's bounded coc.py response cache —
+see the section above. Both instruments stay in place in case it returns.)
 
 **`[MEM-GAUGES]`** — one line per cycle after `[PAGECACHE]` (`mem_diagnostics.format_mem_gauges()`):
 

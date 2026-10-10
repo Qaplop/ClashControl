@@ -979,7 +979,19 @@ async def post_leaderboards_to_subscribed_channels() -> None:
                         await post_leaderboard_to_discord(leaderboard_text, clan_tag, month_range, year, channel, mode=subscription_type)
                 except Exception as e:
                     failed_count_label = f"{clan_tag}/{subscription_type}" if clan_tag else f"unknown/{subscription_type}"
-                    logging.error(f"[LEADERBOARD-POST] Error processing subscription {failed_count_label}: {e}", exc_info=True)
+                    from clashcontrol.log_throttle import find_discord_forbidden, log_throttled
+                    if find_discord_forbidden(e) is not None:
+                        # Tracker #0150: a channel the guild took the bot's permissions away
+                        # from. Only an admin can fix that, and it recurs every cycle — 310
+                        # identical ERRORs (with tracebacks) in 28 h on 2026-10-09. Once a day
+                        # per channel, no traceback; the post is still retried every cycle.
+                        log_throttled(
+                            logging.WARNING, ("leaderboard-forbidden", str(channel_id)),
+                            f"[LEADERBOARD-POST] No permission to post {failed_count_label} in "
+                            f"channel {channel_id} — a server admin must grant the bot access: {e}",
+                        )
+                    else:
+                        logging.error(f"[LEADERBOARD-POST] Error processing subscription {failed_count_label}: {e}", exc_info=True)
         return posted, skipped
 
     results = await asyncio.gather(
@@ -2081,7 +2093,11 @@ async def main() -> None:
                                         backdated_time = war_end_time - timedelta(hours=INACTIVE_CLAN_UPDATE_INTERVAL_HOURS, minutes=8)
                                         update_timestamp = backdated_time.isoformat()
                                         next_update = backdated_time + timedelta(hours=INACTIVE_CLAN_UPDATE_INTERVAL_HOURS)
-                                        logging.info(f"[INACTIVE] {clan_tag}: Smart timestamp set - War ends {war_end_time.isoformat()}, next update {next_update.isoformat()}")
+                                        # DEBUG, not INFO (tracker #0150): one line per in-war inactive clan
+                                        # per poll — 327,869 lines / 49 MB on 2026-10-08 during CWL, more
+                                        # than any other tag. The clans are already listed per batch in
+                                        # "[INACTIVE 22H FETCHING]".
+                                        logging.debug(f"[INACTIVE] {clan_tag}: Smart timestamp set - War ends {war_end_time.isoformat()}, next update {next_update.isoformat()}")
                                     else:
                                         logging.debug(f"[INACTIVE-BACKDATE-CHECK] {clan_tag}: Not enough datetime args: {dt_args}")
                                 else:
@@ -4501,6 +4517,30 @@ async def on_resumed() -> None:
     logging.info("[DISCORD-WS] Gateway session resumed — connection restored.")
 
 
+async def _apply_pending_requestor_access_after_maintenance(
+    member: discord.Member, *, poll_s: float = 60.0, give_up_s: float = 2 * 3600.0
+) -> None:
+    """Retry apply_pending_requestor_access() once DB maintenance is over (tracker #0150).
+
+    on_member_join() is the only place the grant is applied, so a join during nightly DB
+    maintenance (~25-30 min of exclusive lock) would otherwise lose it. Polls the two
+    maintenance flags rather than catching and re-sleeping, and gives up after ``give_up_s``.
+    """
+    from clashcontrol.ui_tracker import apply_pending_requestor_access
+    waited = 0.0
+    while (QBcore.db_maintenance_mode or QBcore.maintenance_mode) and waited < give_up_s:
+        await asyncio.sleep(poll_s)
+        waited += poll_s
+    if QBcore.db_maintenance_mode or QBcore.maintenance_mode:
+        logging.warning(f"[TRACKER] Gave up on pending requestor access for {member.id}: maintenance still active after {give_up_s / 3600:g} h")
+        return
+    try:
+        await apply_pending_requestor_access(member)
+        logging.info(f"[TRACKER] Applied deferred pending requestor access check for {member.id} after DB maintenance")
+    except Exception as e:
+        logging.error(f"[TRACKER] Failed to apply pending requestor access for {member.id} after maintenance: {e}")
+
+
 @QBcore.bot.event
 async def on_member_join(member: discord.Member) -> None:
     """
@@ -4535,9 +4575,17 @@ async def on_member_join(member: discord.Member) -> None:
     # granting channel access to a reporter who was invited via DM while not yet a guild member.
     # apply_pending_requestor_access() gates on CONFIG.tracker_enabled itself (see its own
     # docstring) — this is a raw gateway event, fired on every bot in the guild including DEV.
+    from clashcontrol.db_manager import DatabaseMaintenanceError
     try:
         from clashcontrol.ui_tracker import apply_pending_requestor_access
         await apply_pending_requestor_access(member)
+    except DatabaseMaintenanceError:
+        # Joined during nightly DB maintenance (2026-10-08 05:37). Join is the ONLY time this
+        # grant is applied, so skipping would lose it — retry once the DB is back (Pitfall 43).
+        logging.info(f"[TRACKER] DB maintenance active — pending requestor access for {member.id} deferred until it ends")
+        QBcore.spawn_tracked(
+            f"tracker-pending-access-{member.id}", _apply_pending_requestor_access_after_maintenance(member)
+        )
     except Exception as e:
         logging.error(f"[TRACKER] Failed to apply pending requestor access for {member.id}: {e}")
 
@@ -4912,28 +4960,15 @@ async def _fetch_anchored_channel(channel_id: int) -> Tuple[Optional[Any], bool]
         return None, False
 
 
-#: (log_label, channel_id) -> monotonic time of the last "unreachable" warning. Log throttling
-#: only — not runtime data, so it lives here rather than in CACHE (Cardinal Rule 3 is about
-#: data that must not diverge; this can be lost at any time without consequence).
-_anchored_unreachable_warned: dict[tuple[str, int], float] = {}
-_ANCHORED_UNREACHABLE_WARN_INTERVAL_S = 24 * 3600
-
-
 def _warn_anchored_channel_unreachable(log_label: str, channel_id: int, guild_id: int) -> None:
     """Warn that an anchored message's channel exists but is unreachable — at most once a day
     per channel. Forbidden is a guild-side permission change that only an admin can fix, so
     repeating it every bump cycle (tracker #0150: ~280/day) adds noise, not information."""
-    key = (log_label, channel_id)
-    now = time.monotonic()
-    last = _anchored_unreachable_warned.get(key)
-    if last is not None and now - last < _ANCHORED_UNREACHABLE_WARN_INTERVAL_S:
-        logging.debug(f"{log_label} channel {channel_id} for guild {guild_id} still unreachable")
-        return
-    _anchored_unreachable_warned[key] = now
-    logging.warning(
+    from clashcontrol.log_throttle import log_throttled
+    log_throttled(
+        logging.WARNING, ("anchored-unreachable", log_label, channel_id),
         f"Could not reach {log_label} channel {channel_id} for guild {guild_id} (not in cache, "
-        f"live fetch failed without NotFound — missing access?). Keeping the config; "
-        f"repeats are logged at DEBUG for 24 h."
+        f"live fetch failed without NotFound — missing access?). Keeping the config",
     )
 
 

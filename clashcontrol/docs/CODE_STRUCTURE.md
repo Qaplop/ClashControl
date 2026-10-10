@@ -738,6 +738,14 @@ all rebuild/button-handler paths so the reference is never lost.
   before it reaches a tool result — bug/feature reports are arbitrary Discord-user text fed
   straight into an agent's context, a textbook prompt-injection surface.
 
+🟫 clashcontrol/log_throttle.py (tracker #0150)
+- `log_throttled(level, key, message, interval_s=DAY_S)` — log a recurring failure once per
+  interval per key, repeats at DEBUG. For conditions only a guild admin can fix (a channel the
+  bot lost access to): leaderboard/war-notification 403s, `discord_retry()` 403s, unreachable
+  anchored channels.
+- `find_discord_forbidden(exc)` — the `discord.Forbidden` behind a wrapper exception
+  (`__cause__`/`__context__` chain).
+
 🟫 clashcontrol/mem_diagnostics.py (tracker #0150)
 - `format_mem_gauges(cache, coc_client)` — the per-cycle `[MEM-GAUGES]` line (py_blocks,
   malloc in-use/free, coc.py HTTP cache, our caches, asyncio tasks/timers). O(1) fields only.

@@ -111,7 +111,18 @@ async def discord_retry(
                 # 4xx = client error (bad request, forbidden, not found, etc.).
                 # These are permanent — retrying will never succeed.
                 _stats['api_errors'] += 1
-                logging.error(f"{operation_name} failed: {e.status} {e} (not retrying — client error)")
+                if e.status == 403:
+                    # Tracker #0150: a missing guild permission repeats on every attempt and the
+                    # caller re-raises/reports it with its own context (channel, clan), so here
+                    # once an hour per operation + error code is plenty.
+                    from clashcontrol.log_throttle import log_throttled
+                    log_throttled(
+                        logging.WARNING, ("discord-403", operation_name, getattr(e, "code", 0)),
+                        f"{operation_name} failed: {e.status} {e} (not retrying — client error)",
+                        interval_s=3600,
+                    )
+                else:
+                    logging.error(f"{operation_name} failed: {e.status} {e} (not retrying — client error)")
                 raise
             else:
                 # 5xx = server error (Discord outage/overload).

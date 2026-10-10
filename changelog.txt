@@ -1,6 +1,15 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-10 (9)
+- Fixed (tracker #0150, DEV test #150-12): /clan management in a channel where the bot can't
+  post showed the missing permissions to the user, but logged nothing. The up-front permission
+  check returns before channel.send(), so the "[CLAN-MANAGEMENT] No permission to post in
+  channel ..." WARNING in the discord.Forbidden backstop never ran. The up-front path now logs
+  that WARNING too, naming the missing permissions. Build 141.
+  Files: QBdiscordcmds.py, tests/discord/test_clan_management_permissions.py, QBcore.py.
+  3732 tests pass.
+
 2026-10-10 (8)
 - Changed (log noise): [LOOP-LAG] "Event loop stalled" lines for stalls of 0.5-2 s are now
   logged at INFO instead of WARNING; only stalls >= 2 s, where an interaction is at real risk of

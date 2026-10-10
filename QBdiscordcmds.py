@@ -2954,6 +2954,12 @@ async def clan_management(interaction: discord.Interaction):
     from clashcontrol.bot_permissions import check_channel_feature, format_issues_message
     _perm_issues = check_channel_feature(interaction.guild, "clan_management", interaction.channel.id)
     if _perm_issues:
+        logging.warning(
+            f"[CLAN-MANAGEMENT] No permission to post in channel {interaction.channel.id} "
+            f"(guild {interaction.guild_id}) — missing "
+            f"{', '.join(p for i in _perm_issues for p in i.perms) or ', '.join(i.kind for i in _perm_issues)}; "
+            f"told the user which permissions are missing"
+        )
         await interaction.followup.send(
             format_issues_message(_perm_issues, guild_id=interaction.guild_id, user_id=str(interaction.user.id)),
             ephemeral=True,

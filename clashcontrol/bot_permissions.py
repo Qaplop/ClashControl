@@ -354,9 +354,16 @@ async def warn_missing_permissions(
         return []
     if not issues:
         return []
-    logging.info(
+    # WARNING, not INFO (2026-10-10, qaplop): telling the admin doesn't fix anything — the feature
+    # stays broken until someone grants the permission, and only WARNING reaches the daily summary.
+    _details = "; ".join(
+        f"{i.feature}: {i.kind}" + (f" {i.target_id}" if i.target_id is not None else "")
+        + (f" ({', '.join(i.perms)})" if i.perms else "")
+        for i in issues
+    )
+    logging.warning(
         f"[BOT-PERMS] Guild {guild.id} ({guild.name}): {len(issues)} permission issue(s) for "
-        f"{sorted(features)} — user {interaction.user.id} informed"
+        f"{sorted(features)} — {_details} — user {interaction.user.id} informed"
     )
     text = format_issues_message(issues, guild_id=guild.id, user_id=str(interaction.user.id))
     try:

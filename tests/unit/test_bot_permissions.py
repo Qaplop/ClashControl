@@ -9,6 +9,7 @@ user-facing warning, and that every config entry point calls the check.
 from __future__ import annotations
 
 import inspect
+import logging
 import os
 from types import SimpleNamespace
 from typing import Dict, Optional
@@ -180,6 +181,16 @@ class TestWarn:
         issues = await bp.warn_missing_permissions(it, features={"registration"})
         assert issues
         assert it.followup.send.await_args.kwargs["ephemeral"] is True
+
+    @pytest.mark.asyncio
+    async def test_issue_is_logged_as_warning_with_details(self, caplog):
+        g = _guild({1: _channel(1)})
+        CACHE.server_config["4242"] = {"registration_channel_id": "1"}
+        caplog.set_level(logging.INFO)
+        await bp.warn_missing_permissions(self._interaction(g), features={"registration"})
+        lines = [r for r in caplog.records if "[BOT-PERMS] Guild 4242" in r.getMessage()]
+        assert [r.levelno for r in lines] == [logging.WARNING]
+        assert f"registration: {bp.MISSING_CHANNEL_PERMS} 1 (" in lines[0].getMessage()
 
     @pytest.mark.asyncio
     async def test_silent_when_fine(self):

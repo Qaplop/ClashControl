@@ -1,6 +1,18 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-10 (10)
+- Changed (tracker #0150): the config-time "[BOT-PERMS] Guild ...: N permission issue(s) for
+  [...] — user ... informed" line is now a WARNING instead of INFO. Telling the admin doesn't fix
+  the problem: the feature stays broken until someone grants the permission, and only warnings
+  reach the daily log summary. The line now also names each issue (feature, kind, channel/role
+  id, missing permissions). Reviewed the other permission-related INFO/DEBUG log lines and left
+  them as they are: closed DMs (user's choice), CoC "403 Private War Log" (CoC API, not
+  Discord), the /admin audit summary (on-demand report), Forbidden on deleting an ephemeral
+  config message and on fetch_member during role sync (not actionable). Build 142.
+  Files: clashcontrol/bot_permissions.py, tests/unit/test_bot_permissions.py, QBcore.py.
+  3733 tests pass.
+
 2026-10-10 (9)
 - Fixed (tracker #0150, DEV test #150-12): /clan management in a channel where the bot can't
   post showed the missing permissions to the user, but logged nothing. The up-front permission

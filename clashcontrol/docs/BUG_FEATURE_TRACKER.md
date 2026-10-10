@@ -47,6 +47,13 @@ touching tracker state needs the same explicit check; do not rely on "DEV won't 
 row" or "DEV won't receive this event" without verifying which kind of Discord event it actually
 is.
 
+The same applies to anything the bot does **on its own** with tracker messages: startup tasks,
+migrations' follow-up work and scheduled jobs. No Discord event is involved, so DEV runs them too,
+against the PROD message ids in its DB copy. Second live case (2026-10-10, DEV): the one-time
+re-render after the per-ticket test-case renumbering ran on DEV and tried to edit 15 PROD
+test-case messages (403 50005 each). `refresh_renumbered_testcase_messages()` now checks
+`CONFIG.tracker_enabled` first. Every new self-initiated tracker write needs the same check.
+
 ## Data model
 
 Four tables, all created in `WarHistoryDB._create_tracker_schema()` (called from

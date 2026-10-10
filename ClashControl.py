@@ -4506,18 +4506,12 @@ async def _run_startup_initialization() -> None:
             logging.warning(f"[GUILD-ABSENT] Startup check failed: {e}")
         # One-time, on the start that migrated test cases to per-ticket numbering: re-render the
         # posted test-case messages of the renumbered tickets so Discord never shows the old
-        # per-environment numbers next to the new ones (2026-10-10).
+        # per-environment numbers next to the new ones (2026-10-10). PROD only — the function
+        # checks CONFIG.tracker_enabled (DEV's PROD-DB copy holds PROD's message ids).
         _renumbered = list(getattr(CACHE.db_manager, "tracker_testcases_renumbered", []) or [])
         if _renumbered:
-            async def _refresh_renumbered_testcase_messages(items: List[int]) -> None:
-                from clashcontrol.ui_tracker import _refresh_testcase_message  # pyright: ignore[reportPrivateUsage]
-                for _item in items:
-                    try:
-                        await _refresh_testcase_message(_item)
-                    except Exception as _e:
-                        logging.warning(f"[TRACKER] Could not refresh renumbered test cases of #{_item}: {_e}")
-                logging.info(f"[TRACKER] Refreshed test-case messages of {len(items)} renumbered item(s)")
-            QBcore.spawn_tracked("tracker-renumber-refresh", _refresh_renumbered_testcase_messages(_renumbered))
+            from clashcontrol.ui_tracker import refresh_renumbered_testcase_messages
+            QBcore.spawn_tracked("tracker-renumber-refresh", refresh_renumbered_testcase_messages(_renumbered))
             CACHE.db_manager.tracker_testcases_renumbered = []  # type: ignore[union-attr]
         logging.info("=== Bot initialization completed successfully ===")
         

@@ -2568,6 +2568,25 @@ async def _move_test_message_to_done_testing_channel(item: Dict[str, Any]) -> bo
     return True
 
 
+async def refresh_renumbered_testcase_messages(items: List[int]) -> None:
+    """One-time startup re-render of the posted test-case messages of tickets the per-ticket
+    numbering migration renumbered (2026-10-10), so Discord never shows the old numbers.
+
+    Gated on CONFIG.tracker_enabled: DEV runs on a PROD-DB copy, so it runs the same migration
+    and sees the same message ids — but those messages are PROD's. Ungated, DEV's first start
+    after a DB copy tried to edit every one of them (15× 403 "Cannot edit a message authored by
+    another user", DEV 2026-10-10 18:55)."""
+    from clashcontrol.config import CONFIG
+    if not CONFIG.tracker_enabled or not items:
+        return
+    for item in items:
+        try:
+            await _refresh_testcase_message(item)
+        except Exception as e:
+            logging.warning(f"[TRACKER] Could not refresh renumbered test cases of #{item}: {e}")
+    logging.info(f"[TRACKER] Refreshed test-case messages of {len(items)} renumbered item(s)")
+
+
 async def _refresh_testcase_message(item_number: int) -> None:
     """Re-render the posted test-case message in place. Skips rebuilding the Pass/Fail/Move-to-
     Done view once the message has been archived to the Done Testing channel (2026-08-22, live

@@ -1,6 +1,18 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-10 (11)
+- Fixed (tracker, DEV): the one-time startup re-render of renumbered test-case messages (Build
+  138) wasn't gated on CONFIG.tracker_enabled. DEV runs on a PROD-DB copy, so it ran the same
+  migration and tried to edit PROD's test-case messages: 15× "403 Cannot edit a message authored
+  by another user" on the DEV start of 18:55. Discord refused every edit, so nothing changed
+  on PROD. Moved into ui_tracker.refresh_renumbered_testcase_messages(), which returns at once
+  unless tracker_enabled (PROD only). BUG_FEATURE_TRACKER.md: self-initiated tracker writes
+  (startup tasks, migration follow-ups, scheduled jobs) need the same explicit check. Build 143.
+  Files: ClashControl.py, clashcontrol/ui_tracker.py,
+  tests/unit/test_tracker_renumber_refresh_gate.py, clashcontrol/docs/BUG_FEATURE_TRACKER.md,
+  QBcore.py. 3736 tests pass.
+
 2026-10-10 (10)
 - Changed (tracker #0150): the config-time "[BOT-PERMS] Guild ...: N permission issue(s) for
   [...] — user ... informed" line is now a WARNING instead of INFO. Telling the admin doesn't fix

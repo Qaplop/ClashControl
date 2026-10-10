@@ -289,13 +289,63 @@ async def test_add_tracker_testcases_appends_and_keeps_signoffs(db):
     ]) == 1
 
     cases = await db.get_tracker_testcases(item_number)
+    # Numbers are per TICKET in the order added (not per environment): 1 = build 133 case,
+    # 2 = dev case, 3 = build 134 case. Listing stays grouped by environment.
     assert [(c["environment"], c["seq"], c["description"]) for c in cases] == [
-        ("DEV", 1, "dev case"),
+        ("DEV", 2, "dev case"),
         ("PROD", 1, "build 133 case"),
-        ("PROD", 2, "build 134 case"),
+        ("PROD", 3, "build 134 case"),
     ]
     kept = next(c for c in cases if c["description"] == "build 133 case")
     assert kept["passed"] == 1 and kept["passed_by"] == "42"  # sign-off survived the second add
+
+
+@pytest.mark.asyncio
+async def test_testcase_numbers_are_unique_per_ticket_and_never_reused(db):
+    """2026-10-10 (qaplop): one number per case per ticket, across environments and rounds; a
+    removed case's number is never handed out again, so '#2' always means the same case."""
+    item_number = await db.create_tracker_item(
+        item_type="bug", title="t", description="d", reporter_id="1", reporter_name="A"
+    )
+    other = await db.create_tracker_item(
+        item_type="bug", title="o", description="d", reporter_id="1", reporter_name="A"
+    )
+    await db.add_tracker_testcases(item_number, [
+        {"environment": "DEV", "description": "a"}, {"environment": "PROD", "description": "b"},
+        {"environment": "DEV", "description": "c"},
+    ])
+    await db.add_tracker_testcases(other, [{"environment": "PROD", "description": "own numbering"}])
+    by_desc = {c["description"]: c for c in await db.get_tracker_testcases(item_number)}
+    assert [by_desc[d]["seq"] for d in "abc"] == [1, 2, 3]
+
+    await db.delete_tracker_testcases(item_number, [by_desc["c"]["id"]])  # remove the highest
+    await db.add_tracker_testcases(item_number, [{"environment": "PROD", "description": "d"}])
+    numbers = {c["description"]: c["seq"] for c in await db.get_tracker_testcases(item_number)}
+    assert numbers == {"a": 1, "b": 2, "d": 4}  # 3 is not reused
+    assert (await db.get_tracker_testcases(other))[0]["seq"] == 1  # each ticket counts on its own
+
+
+@pytest.mark.asyncio
+async def test_renumber_migration_numbers_existing_cases_per_ticket(db):
+    """The one-time migration turns old per-environment numbers (DEV 1, PROD 1, DEV 2) into
+    per-ticket numbers in the order the cases were added, and sets the counter."""
+    item_number = await db.create_tracker_item(
+        item_type="bug", title="t", description="d", reporter_id="1", reporter_name="A"
+    )
+    await db._conn.execute("DROP INDEX IF EXISTS idx_tracker_testcases_item_seq")  # old schema
+    await db._conn.executemany(
+        "INSERT INTO tracker_testcases (item_number, environment, seq, description) VALUES (?, ?, ?, ?)",
+        [(item_number, "DEV", 1, "first"), (item_number, "PROD", 1, "second"), (item_number, "DEV", 2, "third")],
+    )
+    await db._conn.commit()
+
+    changed = await db._renumber_tracker_testcases_per_item()
+
+    assert changed == [item_number]
+    numbers = {c["description"]: c["seq"] for c in await db.get_tracker_testcases(item_number)}
+    assert numbers == {"first": 1, "second": 2, "third": 3}
+    await db.add_tracker_testcases(item_number, [{"environment": "PROD", "description": "fourth"}])
+    assert {c["description"]: c["seq"] for c in await db.get_tracker_testcases(item_number)}["fourth"] == 4
 
 
 @pytest.mark.asyncio

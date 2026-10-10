@@ -64,8 +64,14 @@ apply, but Rule 14 named-column access still does):
 - `tracker_attachments` — junction, `ON DELETE CASCADE`. `local_path` is the on-disk copy
   under `CONFIG.tracker_data_dir` (agent-readable, immune to Discord's expiring CDN URLs);
   `discord_url` is the bot's own re-upload.
-- `tracker_testcases` — junction, `ON DELETE CASCADE`. `seq` orders rows within one
-  `(item_number, environment)` pair. `priority` (HIGH/MEDIUM/LOW, default MEDIUM) is set
+- `tracker_testcases` — junction, `ON DELETE CASCADE`. `seq` is the case's **number, unique per
+  ticket** across all environments and test rounds (unique index `(item_number, seq)`), shown as
+  `#N` in the test-case message, the per-case dropdown and `tracker_get_item`.
+  `tracker_items.testcase_counter` is the highest number ever handed out, so a removed case's
+  number is never reused. Until 2026-10-10 `seq` restarted at 1 per environment ("DEV #1",
+  "PROD #1"), which made "case #2" ambiguous; the migration that added `testcase_counter`
+  renumbered existing cases once, in the order they were added, and the startup after it
+  refreshes the affected posted messages. `priority` (HIGH/MEDIUM/LOW, default MEDIUM) is set
   per-row by whoever calls `tracker_add_testcases` (there is no Discord modal for composing
   test cases — see below) and shown next to each case in the posted test-case message.
 - **Adding appends, removing is explicit (2026-10-10, tracker #0150).** `tracker_add_testcases`

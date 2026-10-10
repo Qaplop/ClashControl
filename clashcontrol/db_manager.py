@@ -3227,6 +3227,38 @@ class WarHistoryDB:
             return True
         return False
 
+    async def _renumber_tracker_testcases_per_item(self) -> List[int]:
+        """One-time migration: number every item's test cases 1..N in the order they were added
+        (id order) and set tracker_items.testcase_counter = N. Returns the item numbers whose
+        numbers changed, so their posted Discord test-case messages can be refreshed once."""
+        cursor = await self._conn.execute(
+            "SELECT id, item_number, seq FROM tracker_testcases ORDER BY item_number, id"
+        )
+        rows = await cursor.fetchall()
+        changed_items: Set[int] = set()
+        counters: Dict[int, int] = {}
+        updates: List[Tuple[int, int]] = []
+        for row in rows:
+            item_number = int(row["item_number"])
+            number = counters.get(item_number, 0) + 1
+            counters[item_number] = number
+            if int(row["seq"]) != number:
+                updates.append((number, int(row["id"])))
+                changed_items.add(item_number)
+        if updates:
+            await self._conn.executemany("UPDATE tracker_testcases SET seq = ? WHERE id = ?", updates)
+        if counters:
+            await self._conn.executemany(
+                "UPDATE tracker_items SET testcase_counter = ? WHERE item_number = ?",
+                [(n, item) for item, n in counters.items()],
+            )
+        await self._conn.commit()
+        logging.info(
+            f"[DB-MIGRATE] Tracker test cases renumbered per ticket: {len(rows)} case(s) across "
+            f"{len(counters)} item(s), {len(changed_items)} item(s) with changed numbers"
+        )
+        return sorted(changed_items)
+
     async def _rename_column_if_present(self, table: str, old_column: str, new_column: str) -> bool:
         """Idempotently ALTER TABLE RENAME COLUMN for pre-existing databases.
 
@@ -3632,6 +3664,20 @@ class WarHistoryDB:
         await self._add_column_if_missing("tracker_testcases", "failed_at", "TEXT")
         await self._add_column_if_missing("tracker_testcases", "fail_note", "TEXT")
 
+        # Test-case numbers are unique PER TICKET and never reused (2026-10-10, qaplop): `seq`
+        # used to restart at 1 per environment (DEV 1, 2… and PROD 1, 2…), so "case #2" was
+        # ambiguous, and across several test-and-fix rounds even more so. tracker_items.
+        # testcase_counter is the highest number ever handed out for the item; it keeps counting
+        # past removed cases, so a number always means the same case. The one-time renumbering
+        # of existing rows (in the order they were added) runs only on the start that adds the
+        # column, and the unique index is created after it (Cardinal Rule 12).
+        self.tracker_testcases_renumbered: List[int] = []
+        if await self._add_column_if_missing("tracker_items", "testcase_counter", "INTEGER NOT NULL DEFAULT 0"):
+            self.tracker_testcases_renumbered = await self._renumber_tracker_testcases_per_item()
+        await self._conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_tracker_testcases_item_seq ON tracker_testcases(item_number, seq)"
+        )
+
         # Set by _handle_grant_access() (ui_tracker.py) when "Reply to requestor" is clicked for
         # a reporter who isn't a guild member yet -- they get DM'd an invite instead of failing
         # outright, and apply_pending_requestor_access() (called from ClashControl.py's on_member_join)
@@ -3848,17 +3894,17 @@ class WarHistoryDB:
         """Replace the full test-case set for an item atomically. *cases* is a list of
         {environment, description, priority?} dicts (priority one of HIGH/MEDIUM/LOW, defaulting
         to MEDIUM when omitted or unrecognized — the caller, e.g. an MCP agent, decides each
-        case's priority individually); seq is assigned per-environment in list order."""
+        case's priority individually); cases are numbered 1..N per ticket in list order.
+
+        NOT used by production code any more (tracker #0150: post_test_cases() appends via
+        add_tracker_testcases()); kept as a fixture helper for tests that need a known set."""
         await self._ensure_connection()
-        seq_by_env: Dict[str, int] = {}
         rows = []
-        for case in cases:
-            env = case["environment"]
-            seq_by_env[env] = seq_by_env.get(env, 0) + 1
+        for number, case in enumerate(cases, start=1):
             priority = str(case.get("priority") or "").strip().upper()
             if priority not in ("HIGH", "MEDIUM", "LOW"):
                 priority = "MEDIUM"
-            rows.append((item_number, env, seq_by_env[env], case["description"], priority))
+            rows.append((item_number, case["environment"], number, case["description"], priority))
         async with self._write_lock:
             await self._conn.execute("DELETE FROM tracker_testcases WHERE item_number = ?", (item_number,))
             if rows:
@@ -3867,6 +3913,10 @@ class WarHistoryDB:
                     "VALUES (?, ?, ?, ?, ?)",
                     rows,
                 )
+            await self._conn.execute(
+                "UPDATE tracker_items SET testcase_counter = ? WHERE item_number = ?",
+                (len(rows), item_number),
+            )
             await self._conn.commit()
 
     async def add_tracker_testcases(self, item_number: int, cases: List[Dict[str, Any]]) -> int:
@@ -3874,8 +3924,8 @@ class WarHistoryDB:
 
         What ``tracker_add_testcases`` / ``post_test_cases()`` use (2026-10-10, tracker #0150:
         they used set_tracker_testcases() above, which REPLACES the whole set — each new batch
-        silently deleted the previous ones, including any sign-offs). seq continues per
-        environment after the item's current highest one. A case whose (environment,
+        silently deleted the previous ones, including any sign-offs). numbering continues after
+        the ticket's highest number ever used. A case whose (environment,
         description) already exists for the item is skipped, so a caller retrying after a
         failed Discord post (the DB write commits first) does not duplicate cases.
 
@@ -3884,12 +3934,17 @@ class WarHistoryDB:
         """
         await self._ensure_connection()
         async with self._write_lock:
+            # Next number = the ticket's counter (highest number ever handed out, including
+            # removed cases), so numbers are unique per ticket and never reused. MAX(seq) covers
+            # an item whose counter predates the column (defensive; the migration sets it).
             cursor = await self._conn.execute(
-                "SELECT environment, MAX(seq) AS max_seq FROM tracker_testcases "
-                "WHERE item_number = ? GROUP BY environment",
+                "SELECT MAX(COALESCE(i.testcase_counter, 0), COALESCE((SELECT MAX(seq) FROM "
+                "tracker_testcases t WHERE t.item_number = i.item_number), 0)) AS last_no "
+                "FROM tracker_items i WHERE i.item_number = ?",
                 (item_number,),
             )
-            seq_by_env: Dict[str, int] = {row["environment"]: int(row["max_seq"] or 0) for row in await cursor.fetchall()}
+            row = await cursor.fetchone()
+            last_no = int(row["last_no"]) if row is not None and row["last_no"] is not None else 0
             cursor = await self._conn.execute(
                 "SELECT environment, description FROM tracker_testcases WHERE item_number = ?",
                 (item_number,),
@@ -3902,16 +3957,20 @@ class WarHistoryDB:
                 if key in existing:
                     continue
                 existing.add(key)
-                seq_by_env[env] = seq_by_env.get(env, 0) + 1
+                last_no += 1
                 priority = str(case.get("priority") or "").strip().upper()
                 if priority not in ("HIGH", "MEDIUM", "LOW"):
                     priority = "MEDIUM"
-                rows.append((item_number, env, seq_by_env[env], case["description"], priority))
+                rows.append((item_number, env, last_no, case["description"], priority))
             if rows:
                 await self._conn.executemany(
                     "INSERT INTO tracker_testcases (item_number, environment, seq, description, priority) "
                     "VALUES (?, ?, ?, ?, ?)",
                     rows,
+                )
+                await self._conn.execute(
+                    "UPDATE tracker_items SET testcase_counter = ? WHERE item_number = ?",
+                    (last_no, item_number),
                 )
             await self._conn.commit()
         return len(rows)
@@ -3934,7 +3993,8 @@ class WarHistoryDB:
         return deleted
 
     async def get_tracker_testcases(self, item_number: int) -> List[Dict[str, Any]]:
-        """Return every test case for an item, ordered by environment then seq."""
+        """Return every test case for an item, ordered by environment then case number (the
+        number is unique per ticket, so within one environment the numbers can have gaps)."""
         await self._ensure_connection()
         cursor = await self._conn.execute(
             "SELECT * FROM tracker_testcases WHERE item_number = ? ORDER BY environment ASC, seq ASC",

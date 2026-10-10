@@ -2223,7 +2223,9 @@ def _format_testcase_lines(item: Dict[str, Any], testcases: List[Dict[str, Any]]
             else:
                 box = "☐"
             priority = _normalize_priority(case.get("priority"))
-            line = f"{box} {PRIORITY_EMOJI[priority]} {case['seq']}. {case['description']}"
+            # #N is the case's number, unique per ticket and never reused (2026-10-10), so it
+            # can be quoted unambiguously across environments and test-and-fix rounds.
+            line = f"{box} {PRIORITY_EMOJI[priority]} #{case['seq']} {case['description']}"
             if case.get("failed") and case.get("fail_note"):
                 line += f" — ❌ {case['fail_note']}"
             lines.append(line)
@@ -2493,7 +2495,7 @@ async def remove_test_cases(
     await _refresh_testcase_message(item_number)
 
     lines = "\n".join(
-        f"• [{current[i]['environment']} #{current[i]['seq']}] {str(current[i]['description'])[:150]}"
+        f"• #{current[i]['seq']} ({current[i]['environment']}) {str(current[i]['description'])[:150]}"
         for i in wanted
     )
     note = f"🗑️ Removed {len(wanted)} obsolete test case(s) — {reason.strip()}\n{lines}"
@@ -2958,7 +2960,7 @@ def _build_testcase_action_options(testcases: List[Dict[str, Any]]) -> List[disc
     ui_clan_management.py already uses for its family_select ("Discord limit")."""
     options: List[discord.SelectOption] = []
     for case in sorted(testcases, key=lambda c: (c["environment"], c["seq"])):
-        label_base = f"{case['environment']} #{case['seq']}: {case['description']}"
+        label_base = f"#{case['seq']} ({case['environment']}): {case['description']}"
         if len(label_base) > 90:
             label_base = label_base[:89] + "…"
         if not case["passed"]:

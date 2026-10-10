@@ -406,10 +406,12 @@ async def render_item_markdown(client: TrackerBridgeClient, item_number: int) ->
             f.write(data)
         attachment_lines.append(f"- {attachment['filename']} -> {local_path}")
 
-    testcases = detail.get("testcases", [])
+    # Listed by case number (#N — unique per ticket, never reused, and the number the owner sees
+    # in Discord), with the database id the per-case tools take.
+    testcases = sorted(detail.get("testcases", []), key=lambda c: int(c.get("seq") or 0))
     testcase_lines = [
         f"- [{'x' if c['passed'] else ('!' if c.get('failed') else ' ')}] "
-        f"(id={c['id']}, {c['environment']}, {c.get('priority') or 'MEDIUM'}) {c['description']}"
+        f"#{c.get('seq')} (id={c['id']}, {c['environment']}, {c.get('priority') or 'MEDIUM'}) {c['description']}"
         + (f" — FAILED: {c['fail_note']}" if c.get("failed") and c.get("fail_note") else "")
         for c in testcases
     ]

@@ -1,6 +1,19 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-10 (5)
+- Changed: tracker test cases are numbered uniquely PER TICKET (#1, #2, ... across all
+  environments and test rounds) instead of restarting at 1 per environment ("DEV #1",
+  "PROD #1"), so a case number is never ambiguous. New tracker_items.testcase_counter keeps
+  counting past removed cases, so a number is never reused; unique index (item_number, seq).
+  The startup that adds the column renumbers existing cases once in the order they were added
+  (DEV copy: 18 numbers in 15 tickets change) and refreshes those tickets' posted test-case
+  messages. Shown as "#N" in the message, the per-case dropdown ("#N (ENV): ...") and
+  tracker_get_item. Build 138.
+  Files: clashcontrol/db_manager.py, clashcontrol/ui_tracker.py, clashcontrol/mcp/tracker_mcp.py,
+  ClashControl.py, tests/unit/test_tracker_db.py, clashcontrol/docs/BUG_FEATURE_TRACKER.md,
+  QBcore.py. 3728 tests pass.
+
 2026-10-10 (4)
 - Fixed: adding tracker test cases REPLACED all existing ones. tracker_add_testcases ->
   post_test_cases() called set_tracker_testcases(), which deletes the item's whole set first, so

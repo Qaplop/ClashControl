@@ -1,6 +1,29 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-10 (2)
+- Added (tracker #0150 follow-up): bot permission checks for every automation that posts messages
+  or manages roles. Two PROD guilds had set up channels the bot could not see/post in and got a
+  normal success reply; the automation then failed silently every cycle (the default install
+  requests Administrator, but installers can untick it).
+  - New clashcontrol/bot_permissions.py: what each automation needs (registration + both CWL
+    hubs, war/raid reminders, leaderboards, welcome, /clan management; role system, CoC roles,
+    clan roles, CWL coordinator role: Manage Roles + role below the bot's top role, not managed).
+  - Config-time warning (ephemeral, translated, never blocks the setting) whenever an admin sets
+    a channel (all five channel slots, war channel select), enables an automation (registration,
+    war/raid reminders, welcome, both CWL hubs, role system, CoC roles, clan roles), picks
+    newbie/member or CWL coordinator roles, adds clans that create clan roles, or runs
+    /subscribe (checks that channel). /clan management now checks before posting.
+  - /admin Permission Audit (bot admin): per server Administrator yes/no, the bot's top role,
+    server-level gaps and every issue for the configured automations, as a text file.
+  - New `permissions.*` i18n keys in en/de/es/zh/la (key parity verified); /help admin lists the
+    new action. Build 135.
+  Files: clashcontrol/bot_permissions.py (new), clashcontrol/ui_clan_management.py,
+  clashcontrol/ui_cwl_roster.py, QBdiscordcmds.py, clashcontrol/translations/*.json,
+  tests/unit/test_bot_permissions.py (new), tests/unit/test_cwl_per_clan_coordinator_roles.py,
+  clashcontrol/docs/CODE_STRUCTURE.md, .github/copilot-instructions.md, QBcore.py.
+  3712 tests pass.
+
 2026-10-10 (1)
 - Tracker #0150, Build 133 PROD week reviewed: the daily ~4 GB RSS ramp did not recur once
   (longest run flat at ~2.6 GB for 62 h, through a CoC outage and CWL); the gateway breaker

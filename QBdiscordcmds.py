@@ -250,6 +250,10 @@ async def subscribe(
     await interaction.followup.send(t('commands.errors.subscribed_success', guild_id=guild_id, display_name=display_name, mode=requested_mode, date_suffix=date_suffix), ephemeral=True)
     if not interaction.channel:
         return
+    # Tracker #0150: on 2026-10-08 an admin subscribed a channel the bot could not post in, got
+    # this success reply, and the leaderboard then failed every cycle. Say so right away.
+    from clashcontrol.bot_permissions import warn_missing_permissions
+    await warn_missing_permissions(interaction, features={"leaderboard"}, only_channel_id=interaction.channel.id)
     _log_cmd_done(interaction, "subscribe")
     logging.info(f"ADMIN ACTION: {interaction.user} subscribed channel {interaction.channel.id} to {tag} for mode '{requested_mode}' (year_scope={'current' if current_year else 'month'})")
 
@@ -1301,6 +1305,7 @@ async def do_maintenance_shutdown() -> None:
     # broke startup on the next restart). tests/discord/test_command_payload_limits.py guards this.
     app_commands.Choice(name="Execute Nightly Maintenance - Archive move + CWL purge + DB ANALYZE/REINDEX/VACUUM now (bot admin)", value="OPTIMIZE_DB"),
     app_commands.Choice(name="Memory Profile - Dump memory allocation stats to log file (bot admin)", value="MEMORY_PROFILE"),
+    app_commands.Choice(name="Permission Audit - Check bot rights for every configured automation (bot admin)", value="PERMISSION_AUDIT"),
     app_commands.Choice(name="Maintenance Start - Suspend updates and close DB for safe data access (bot admin)", value="MAINTENANCE_START"),
     app_commands.Choice(name="Maintenance End - Restart bot and resume normal operation (bot admin)", value="MAINTENANCE_END"),
 ])
@@ -2764,6 +2769,40 @@ async def admin(
             logging.error(f"MEMORY_PROFILE failed: {e}", exc_info=True)
         return
 
+    # Handle PERMISSION_AUDIT action (bot admin only, tracker #0150 follow-up)
+    if action_norm == "PERMISSION_AUDIT":
+        if not await _safe_defer(interaction, thinking=True, ephemeral=True):
+            return
+        from clashcontrol.QBdiscocmdshelper import check_bot_admin_only
+        if not check_bot_admin_only(interaction, SERVER_ADMIN):
+            guild_id = interaction.guild.id if interaction.guild else None
+            await interaction.followup.send(
+                t('commands.errors.bot_admin_only', guild_id=guild_id), ephemeral=True
+            )
+            return
+        from clashcontrol.bot_permissions import build_audit_report
+        try:
+            report, guilds_with_issues, total = build_audit_report(QBcore.bot.guilds)
+            logging.info(
+                f"[BOT-PERMS] Permission audit by {interaction.user.id}: {len(QBcore.bot.guilds)} guild(s), "
+                f"{guilds_with_issues} with issues, {total} issue(s)"
+            )
+            # Bot-admin diagnostic (English, like the other bot-admin actions): short summary
+            # inline, the full per-guild report as a file — it easily exceeds 2000 chars.
+            summary = (
+                f"🔎 **Permission audit** — {len(QBcore.bot.guilds)} server(s), "
+                f"{guilds_with_issues} with issues, {total} issue(s) in total. Full report attached."
+            )
+            await interaction.followup.send(
+                summary,
+                file=discord.File(io.BytesIO(report.encode("utf-8")), filename="permission_audit.txt"),
+                ephemeral=True,
+            )
+        except Exception as e:
+            await interaction.followup.send(f"❌ Permission audit failed: {e}", ephemeral=True)
+            logging.error(f"PERMISSION_AUDIT failed: {e}", exc_info=True)
+        return
+
     # Unknown action
     guild_id = interaction.guild.id if interaction.guild else None
     await interaction.followup.send(t('commands.errors.unknown_action', guild_id=guild_id, action=action), ephemeral=True)
@@ -2905,7 +2944,17 @@ async def clan_management(interaction: discord.Interaction):
     
     # Send new message. A channel where the bot may not post raises 50013 here; until tracker
     # #0150 that reached the global handler and the admin only saw a generic "access denied"
-    # (twice, INTL BootCamp, 2026-10-08) with nothing saying what to fix.
+    # (twice, INTL BootCamp, 2026-10-08) with nothing saying what to fix. Checked up front so the
+    # admin gets the exact missing permissions; the except below stays as the backstop for
+    # anything the cached permission state got wrong.
+    from clashcontrol.bot_permissions import check_channel_feature, format_issues_message
+    _perm_issues = check_channel_feature(interaction.guild, "clan_management", interaction.channel.id)
+    if _perm_issues:
+        await interaction.followup.send(
+            format_issues_message(_perm_issues, guild_id=interaction.guild_id, user_id=str(interaction.user.id)),
+            ephemeral=True,
+        )
+        return
     try:
         sent_message = await interaction.channel.send(
             embeds=display_embeds

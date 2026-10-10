@@ -1588,7 +1588,11 @@ class ClanManagementView(discord.ui.View):
             self._add_refresh_button()  # type: ignore[attr-defined]
             
             await self.sent_message.edit(embeds=[main_embed] if main_embed else [], view=self)
-            
+
+            if not current_enabled:  # just enabled — tracker #0150 permission check
+                from clashcontrol.bot_permissions import warn_missing_permissions
+                await warn_missing_permissions(interaction, features={"role_system"})
+
         except Exception as e:
             from clashcontrol.i18n import t
             user_id = str(interaction.user.id)
@@ -1721,6 +1725,9 @@ class ClanManagementView(discord.ui.View):
             # Immediately assign roles to all current guild members
             await guild_role_manager.sync_all_roles_for_guild(interaction.guild, guild_id)
             await self._refresh_roles_view(interaction)
+            # Tracker #0150: tell the admin now if the bot can't create/assign these roles.
+            from clashcontrol.bot_permissions import warn_missing_permissions
+            await warn_missing_permissions(interaction, features={"coc_roles"})
         else:
             # DISABLE: find roles to delete and show confirmation if any exist
             roles_to_delete = guild_role_manager.get_coc_roles_to_delete(interaction.guild, guild_id)
@@ -1778,6 +1785,9 @@ class ClanManagementView(discord.ui.View):
             # Immediately assign roles to all current guild members
             await guild_role_manager.sync_all_roles_for_guild(interaction.guild, guild_id)
             await self._refresh_roles_view(interaction)
+            # Tracker #0150: tell the admin now if the bot can't create/assign these roles.
+            from clashcontrol.bot_permissions import warn_missing_permissions
+            await warn_missing_permissions(interaction, features={"clan_roles"})
         else:
             # DISABLE: find clan roles to delete and show confirmation if any exist
             roles_to_delete = guild_role_manager.get_clan_roles_to_delete(interaction.guild, guild_id)
@@ -2252,6 +2262,10 @@ class ClanManagementView(discord.ui.View):
                 removable_tags = await _handle_clan_role_changes_for_guild(
                     interaction.guild, pre_guild_id, pre_old_coverage, post_new_coverage
                 )
+                if post_new_coverage - pre_old_coverage and post_guild_config.get("clan_role_enabled"):
+                    # Tracker #0150: new clan roles were just created — can the bot manage them?
+                    from clashcontrol.bot_permissions import warn_missing_permissions
+                    await warn_missing_permissions(interaction, features={"clan_roles"})
                 if removable_tags:
                     removed_lines = "\n".join(
                         f"• {CACHE.get_clan_name(tag, tag)}"  # type: ignore[arg-type]
@@ -2341,9 +2355,12 @@ class ClanManagementView(discord.ui.View):
         
         CACHE.server_config[guild_id]["war_notification_channel_id"] = selected_channel_id
         await CACHE.persist_server_config(guild_id)
-        
+
         # Refresh view
         await self._refresh_config_view(interaction)
+        # Tracker #0150: warn now if the bot can't post reminders there (raid falls back to it).
+        from clashcontrol.bot_permissions import warn_missing_permissions
+        await warn_missing_permissions(interaction, features={"war_notifications", "raid_notifications"})
     
     async def _on_toggle_registration(self, interaction: discord.Interaction) -> None:
         """Toggle registration message enabled/disabled."""
@@ -2393,9 +2410,12 @@ class ClanManagementView(discord.ui.View):
                 QBcore.spawn_tracked("repost-registration-msg", repost_playerregistration_messages(only_if_not_bottom=False, guild_id=guild_id_int))
         except Exception as e:
             logging.warning(f"Could not update registration message immediately: {e}")
-        
+
         # Refresh view
         await self._refresh_config_view(interaction)
+        if not current_enabled:  # just enabled — tracker #0150 permission check
+            from clashcontrol.bot_permissions import warn_missing_permissions
+            await warn_missing_permissions(interaction, features={"registration"})
     
     async def _on_toggle_channel_notifications(self, interaction: discord.Interaction) -> None:
         """Toggle channel war notifications enabled/disabled."""
@@ -2441,9 +2461,13 @@ class ClanManagementView(discord.ui.View):
             CACHE.server_config[guild_id] = {}
         CACHE.server_config[guild_id][flag_key] = not current_enabled
         await CACHE.persist_server_config(guild_id)
-        
+
         # Refresh view
         await self._refresh_config_view(interaction)
+        if not current_enabled:  # just enabled — tracker #0150 permission check
+            from clashcontrol.bot_permissions import warn_missing_permissions
+            _feature = "raid_notifications" if flag_key == "channel_raid_notifications_enabled" else "war_notifications"
+            await warn_missing_permissions(interaction, features={_feature})
 
     async def _on_toggle_welcome_message(self, interaction: discord.Interaction) -> None:
         """Toggle welcome message enabled/disabled."""
@@ -2482,6 +2506,9 @@ class ClanManagementView(discord.ui.View):
         await CACHE.persist_server_config(guild_id_str)
 
         await self._refresh_config_view(interaction)
+        if not current_enabled:  # just enabled — tracker #0150: system channel set + postable?
+            from clashcontrol.bot_permissions import warn_missing_permissions
+            await warn_missing_permissions(interaction, features={"welcome"})
 
     async def _on_configure_welcome_message(self, interaction: discord.Interaction) -> None:
         """Open welcome message configuration view."""
@@ -3213,6 +3240,24 @@ class ChannelConfigurationView(discord.ui.View):
         # ClanManagementView and CwlManagementHubView implement for exactly this.
         await self.clan_management_view.refresh_cwl_view(interaction, self.origin_mode)  # type: ignore[attr-defined]
 
+        # Tracker #0150: every channel that is set after this apply gets checked against what its
+        # feature needs, whether or not the feature is switched on yet — the admin picked it to
+        # use it. Raid reminders fall back to the war channel, so a war channel also checks raid.
+        _slot_features = {
+            "registration": {"registration"},
+            "war": {"war_notifications", "raid_notifications"},
+            "raid": {"raid_notifications"},
+            "cwl_management": {"cwl_management"},
+            "cwl_player_hub": {"cwl_player_hub"},
+        }
+        _features: set = set()
+        for slot in self.slots:
+            if guild_config.get(slot.config_key):
+                _features |= _slot_features.get(slot.key, set())
+        if _features:
+            from clashcontrol.bot_permissions import warn_missing_permissions
+            await warn_missing_permissions(interaction, features=_features)
+
         # Delete the configuration message after a short delay to ensure main view is updated
         if self.config_message:
             try:
@@ -3829,10 +3874,17 @@ class RoleConfigurationView(discord.ui.View):
                           user_id=user_id, guild_id=guild_id_for_t, 
                           reason=disabled_reason)
             await interaction.followup.send(warning_msg, ephemeral=True)
-        
+
+        # Tracker #0150: roles were just picked — check the bot can actually assign them
+        # (Manage Roles, and each role below the bot's highest role), even before the role
+        # system itself is switched on.
+        if self.newbie_role or self.member_role:
+            from clashcontrol.bot_permissions import warn_missing_permissions
+            await warn_missing_permissions(interaction, features={"role_system"}, include_disabled=True)
+
         # Refresh the clan management view
         from clashcontrol.QBdiscocmdshelper import format_clan_management_message
-        
+
         try:
             main_embed, _, _, _ = await format_clan_management_message(
                 self.clan_management_view.clan_tag,
@@ -4968,6 +5020,9 @@ class MemberClansConfigurationView(discord.ui.View):
                 if roles_created or new_clans_set != old_clans_set or new_families_set != old_families_set:
                     logging.info(f"[ROLES] Triggering guild-wide role sync after member-clan changes in guild {guild_id}")
                     await guild_role_manager.sync_all_roles_for_guild(interaction.guild, guild_id)
+                if roles_created:  # tracker #0150: new clan roles — can the bot manage them?
+                    from clashcontrol.bot_permissions import warn_missing_permissions
+                    await warn_missing_permissions(interaction, features={"clan_roles"})
 
                 # Ask admin whether to delete Discord roles for removed clans.
                 # Build the set of clans still reachable via the new config
@@ -6008,6 +6063,10 @@ class EditFamilyView(discord.ui.View):
                     removable_tags = await _handle_clan_role_changes_for_guild(
                         interaction.guild, guild_id, old_coverage, new_coverage
                     )
+                    if new_coverage - old_coverage and CACHE.server_config.get(guild_id, {}).get("clan_role_enabled"):
+                        # Tracker #0150: new clan roles were just created — can the bot manage them?
+                        from clashcontrol.bot_permissions import warn_missing_permissions
+                        await warn_missing_permissions(interaction, features={"clan_roles"})
                     if removable_tags:
                         removed_lines = "\n".join(
                             f"• {CACHE.get_clan_name(tag, tag)}"  # type: ignore[arg-type]

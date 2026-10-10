@@ -339,4 +339,6 @@ async def test_view_save_persists_everything_and_syncs(monkeypatch):
     assert CACHE.server_config["9953"]["cwl_clan_coordinator_roles"] == {"#A": "601"}
     sync.assert_awaited_once_with(guild)
     assert not view.is_dirty
-    assert "+1 / -0" in save_interaction.followup.send.await_args.args[0]
+    # First follow-up is the save confirmation. Since tracker #0150 a permission warning may
+    # follow it (this MagicMock guild models no bot permissions), so don't read the LAST call.
+    assert "+1 / -0" in save_interaction.followup.send.await_args_list[0].args[0]

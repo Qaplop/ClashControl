@@ -316,7 +316,7 @@
       "admin": {
         "short": "Actiones administrativae et instrumenta",
         "title": "⚙️ Mandatum Admin",
-        "detailed": "Instrumenta administrativa pro configuratione, diagnosi, et sustentatione automati.\n\n**Usus:**\n`/admin action:<genus_actionis>`\n\n**Actiones Praesto:**\n• `Cleanup Messages` - Munda nuntia automati in servitore currenti (Administrator)\n• `Cleanup Messages All` - Munda omnia nuntia automati (Administrator Automati)\n• `Check Logs` - Perlustra et summa fac diaria errorum (Administrator Automati)\n• `Check Data` - Verifica constantiam datorum (Administrator Automati)\n• `List All Subscriptions` - Vide omnes subscriptiones in omnibus servitoribus (Administrator Automati)\n• `Test Notify` - Proba nuntiationes belli (Administrator Automati)\n• `DM User` - Nuntium salutationis /dm me sodali servitoris mitte (Administrator, solum in servitore)\n• `Remove Clan` - Remove gentem ex notatione (Administrator)\n• `List All Clans` - Indica omnes gentes notatas (Administrator)\n• `Import Data` - Importa inscriptiones lusorum ex ClashPerk (Administrator Automati)\n• `Analyze Message` - Investiga structuram nuntii Discord (Administrator)\n• `Refresh Data` - Coge renovationem omnium datorum gentis ex API CoC (Administrator Automati)\n• `Retrieve CWL Data` - Comple historiam CWL pro gente (Administrator Automati)\n• `Backfill CWL Groups` - Accipe coetus ligae CWL pro gentibus cum minus quam 7 rotis (Administrator Automati)\n• `War Prediction` - Praedic eventum belli inter duas gentes (Administrator Automati)\n• `Start Update Cycle` - Praeteri phasim quietis et incipe proximum cyclum renovationis statim (Administrator Automati)\n• `Execute Nightly Maintenance` - Age nunc translationem archivi + ANALYZE/REINDEX/VACUUM databasis (Administrator Automati)\n  ↳ `skip_db_maintenance:True` - soli gradus datorum, sine longa parte REINDEX/VACUUM/ANALYZE\n• `Memory Profile` - Effunde statisticas assignationis memoriae in fasciculum diarii (Administrator Automati)\n• `Maintenance Start` - Suspende renovationes et claude databasim ad accessum datorum tutum (Administrator Automati)\n• `Maintenance End` - Iterum incipe automatum et normale opus resume (Administrator Automati)\n\n**Gradus Licentiae:**\n• Administrator - Requirit licentiam administratoris servitoris Discord\n• Administrator Automati - Requirit ordinem administratoris automati (in optionibus automati configuratum)\n\n**Exemplum:**\n`/admin action:Cleanup Messages`"
+        "detailed": "Instrumenta administrativa pro configuratione, diagnosi, et sustentatione automati.\n\n**Usus:**\n`/admin action:<genus_actionis>`\n\n**Actiones Praesto:**\n• `Cleanup Messages` - Munda nuntia automati in servitore currenti (Administrator)\n• `Cleanup Messages All` - Munda omnia nuntia automati (Administrator Automati)\n• `Check Logs` - Perlustra et summa fac diaria errorum (Administrator Automati)\n• `Check Data` - Verifica constantiam datorum (Administrator Automati)\n• `List All Subscriptions` - Vide omnes subscriptiones in omnibus servitoribus (Administrator Automati)\n• `Test Notify` - Proba nuntiationes belli (Administrator Automati)\n• `DM User` - Nuntium salutationis /dm me sodali servitoris mitte (Administrator, solum in servitore)\n• `Remove Clan` - Remove gentem ex notatione (Administrator)\n• `List All Clans` - Indica omnes gentes notatas (Administrator)\n• `Import Data` - Importa inscriptiones lusorum ex ClashPerk (Administrator Automati)\n• `Analyze Message` - Investiga structuram nuntii Discord (Administrator)\n• `Refresh Data` - Coge renovationem omnium datorum gentis ex API CoC (Administrator Automati)\n• `Retrieve CWL Data` - Comple historiam CWL pro gente (Administrator Automati)\n• `Backfill CWL Groups` - Accipe coetus ligae CWL pro gentibus cum minus quam 7 rotis (Administrator Automati)\n• `War Prediction` - Praedic eventum belli inter duas gentes (Administrator Automati)\n• `Start Update Cycle` - Praeteri phasim quietis et incipe proximum cyclum renovationis statim (Administrator Automati)\n• `Execute Nightly Maintenance` - Age nunc translationem archivi + ANALYZE/REINDEX/VACUUM databasis (Administrator Automati)\n  ↳ `skip_db_maintenance:True` - soli gradus datorum, sine longa parte REINDEX/VACUUM/ANALYZE\n• `Memory Profile` - Effunde statisticas assignationis memoriae in fasciculum diarii (Administrator Automati)\n• `Permission Audit` - Permissiones automati pro omni automatione constituta in omnibus servitoribus inspice (Administrator Automati)\n• `Maintenance Start` - Suspende renovationes et claude databasim ad accessum datorum tutum (Administrator Automati)\n• `Maintenance End` - Iterum incipe automatum et normale opus resume (Administrator Automati)\n\n**Gradus Licentiae:**\n• Administrator - Requirit licentiam administratoris servitoris Discord\n• Administrator Automati - Requirit ordinem administratoris automati (in optionibus automati configuratum)\n\n**Exemplum:**\n`/admin action:Cleanup Messages`"
       },
       "list": {
         "short": "Indica rationes, familias, vel lusores",
@@ -1427,6 +1427,42 @@
       "support_text": "Quaestiones tuas in canali auxilii publico nostro in servitore The QCrew pone.",
       "support_button": "Canalem auxilii aperi",
       "footer": "Errorem invenisti aut consilium habes? Utere /bug vel /feature."
+    }
+  },
+  "permissions": {
+    "warning_header": "⚠️ **Servatum est — sed ClashControl permissionibus caret, itaque nondum operabitur:**",
+    "warning_footer": "Administrator servitoris hoc in optionibus canalis corrigere potest (Canalem emendare → Permissiones → ClashControl adde) aut, pro muneribus, munus ClashControl super ea trahendo (Optiones servitoris → Munera). Statim operabitur ubi permissiones datae erunt — iterum constituere non oportet.",
+    "warning_more": "… et {count} alia.",
+    "feature": {
+      "registration": "Nuntius inscriptionis",
+      "cwl_management": "Centrum Moderationis CWL",
+      "cwl_player_hub": "Centrum Optionum CWL Lusoris",
+      "war_notifications": "Monita belli",
+      "raid_notifications": "Monita incursionis",
+      "leaderboard": "Tabula honoris",
+      "welcome": "Nuntius salutationis",
+      "clan_management": "Conspectus moderationis gentis",
+      "role_system": "Munera tironum/sodalium",
+      "coc_roles": "Munera ludi (CoC)",
+      "clan_roles": "Munera gentis",
+      "cwl_coordinator_role": "Munus coordinatoris CWL"
+    },
+    "perm": {
+      "view_channel": "Canalem videre",
+      "send_messages": "Nuntios mittere",
+      "send_messages_in_threads": "Nuntios in filis mittere",
+      "embed_links": "Nexus inserere",
+      "read_message_history": "Historiam nuntiorum legere",
+      "manage_roles": "Munera moderari"
+    },
+    "issue": {
+      "missing_channel_perms": "**{feature}** in {channel}: deest {perms}",
+      "channel_not_found": "**{feature}**: canalis constitutus {channel} non iam exstat aut automaton eum videre non potest",
+      "no_system_channel": "**{feature}**: servitor canalem nuntiorum systematis non habet (Optiones servitoris → Conspectus → Canalis nuntiorum systematis)",
+      "missing_manage_roles": "**{feature}**: automato deest permissio **{perms}**",
+      "role_above_bot": "**{feature}**: {role} par aut superius summo munere automati est — munus ClashControl super id move",
+      "role_managed": "**{feature}**: {role} a Discord aut integratione regitur nec ab automato tribui potest",
+      "role_not_found": "**{feature}**: munus constitutum {role} non iam exstat"
     }
   }
 }

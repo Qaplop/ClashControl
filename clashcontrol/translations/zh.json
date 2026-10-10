@@ -316,7 +316,7 @@
       "admin": {
         "short": "管理操作与实用工具",
         "title": "⚙️ Admin 命令",
-        "detailed": "用于机器人配置、诊断和维护的管理工具。\n\n**用法：**\n`/admin action:<操作类型>`\n\n**可用操作：**\n• `Cleanup Messages` - 清理当前服务器中的机器人消息（管理员）\n• `Cleanup Messages All` - 清理所有机器人消息（机器人管理员）\n• `Check Logs` - 扫描并汇总错误日志（机器人管理员）\n• `Check Data` - 校验数据一致性（机器人管理员）\n• `List All Subscriptions` - 查看所有服务器中的所有订阅（机器人管理员）\n• `Test Notify` - 测试战争通知（机器人管理员）\n• `DM User` - 向服务器成员发送 /dm me 的欢迎私信（管理员，仅限服务器）\n• `Remove Clan` - 从跟踪列表中移除部落（管理员）\n• `List All Clans` - 列出所有已跟踪的部落（管理员）\n• `Import Data` - 从 ClashPerk 导入玩家注册信息（机器人管理员）\n• `Analyze Message` - 调试 Discord 消息结构（管理员）\n• `Refresh Data` - 强制从部落冲突 API 刷新所有部落数据（机器人管理员）\n• `Retrieve CWL Data` - 为某部落补录部落战联赛历史数据（机器人管理员）\n• `Backfill CWL Groups` - 为轮次少于 7 轮的部落获取部落战联赛联赛组信息（机器人管理员）\n• `War Prediction` - 预测两个部落之间的战争结果（机器人管理员）\n• `Start Update Cycle` - 跳过休眠阶段，立即开始下一个更新周期（机器人管理员）\n• `Execute Nightly Maintenance` - 立即执行归档迁移 + 数据库 ANALYZE/REINDEX/VACUUM（机器人管理员）\n  ↳ `skip_db_maintenance:True` - 仅执行数据步骤，跳过耗时的 REINDEX/VACUUM/ANALYZE 部分\n• `Memory Profile` - 将内存分配统计信息转储到日志文件（机器人管理员）\n• `Maintenance Start` - 暂停更新并关闭数据库以进行安全数据访问（机器人管理员）\n• `Maintenance End` - 重启机器人并恢复正常运行（机器人管理员）\n\n**权限级别：**\n• 管理员 - 需要 Discord 服务器管理员权限\n• 机器人管理员 - 需要机器人管理员身份组（在机器人设置中配置）\n\n**示例：**\n`/admin action:Cleanup Messages`"
+        "detailed": "用于机器人配置、诊断和维护的管理工具。\n\n**用法：**\n`/admin action:<操作类型>`\n\n**可用操作：**\n• `Cleanup Messages` - 清理当前服务器中的机器人消息（管理员）\n• `Cleanup Messages All` - 清理所有机器人消息（机器人管理员）\n• `Check Logs` - 扫描并汇总错误日志（机器人管理员）\n• `Check Data` - 校验数据一致性（机器人管理员）\n• `List All Subscriptions` - 查看所有服务器中的所有订阅（机器人管理员）\n• `Test Notify` - 测试战争通知（机器人管理员）\n• `DM User` - 向服务器成员发送 /dm me 的欢迎私信（管理员，仅限服务器）\n• `Remove Clan` - 从跟踪列表中移除部落（管理员）\n• `List All Clans` - 列出所有已跟踪的部落（管理员）\n• `Import Data` - 从 ClashPerk 导入玩家注册信息（机器人管理员）\n• `Analyze Message` - 调试 Discord 消息结构（管理员）\n• `Refresh Data` - 强制从部落冲突 API 刷新所有部落数据（机器人管理员）\n• `Retrieve CWL Data` - 为某部落补录部落战联赛历史数据（机器人管理员）\n• `Backfill CWL Groups` - 为轮次少于 7 轮的部落获取部落战联赛联赛组信息（机器人管理员）\n• `War Prediction` - 预测两个部落之间的战争结果（机器人管理员）\n• `Start Update Cycle` - 跳过休眠阶段，立即开始下一个更新周期（机器人管理员）\n• `Execute Nightly Maintenance` - 立即执行归档迁移 + 数据库 ANALYZE/REINDEX/VACUUM（机器人管理员）\n  ↳ `skip_db_maintenance:True` - 仅执行数据步骤，跳过耗时的 REINDEX/VACUUM/ANALYZE 部分\n• `Memory Profile` - 将内存分配统计信息转储到日志文件（机器人管理员）\n• `Permission Audit` - 检查机器人在所有服务器中为每项已配置自动化所需的权限（机器人管理员）\n• `Maintenance Start` - 暂停更新并关闭数据库以进行安全数据访问（机器人管理员）\n• `Maintenance End` - 重启机器人并恢复正常运行（机器人管理员）\n\n**权限级别：**\n• 管理员 - 需要 Discord 服务器管理员权限\n• 机器人管理员 - 需要机器人管理员身份组（在机器人设置中配置）\n\n**示例：**\n`/admin action:Cleanup Messages`"
       },
       "list": {
         "short": "列出账号、家族或玩家",
@@ -1427,6 +1427,42 @@
       "support_text": "在 The QCrew 服务器的公开支持频道中提出你的问题。",
       "support_button": "打开支持频道",
       "footer": "发现问题或有新想法？使用 /bug 或 /feature。"
+    }
+  },
+  "permissions": {
+    "warning_header": "⚠️ **已保存——但 ClashControl 缺少权限，因此暂时无法生效：**",
+    "warning_footer": "服务器管理员可以在频道设置中修复（编辑频道 → 权限 → 添加 ClashControl）；如果是身份组问题，请在 服务器设置 → 身份组 中把 ClashControl 的身份组拖到它们上方。授予权限后即可生效，无需重新设置。",
+    "warning_more": "……还有 {count} 项。",
+    "feature": {
+      "registration": "注册消息",
+      "cwl_management": "部落战联赛管理中心",
+      "cwl_player_hub": "玩家部落战联赛设置中心",
+      "war_notifications": "部落战提醒",
+      "raid_notifications": "突袭提醒",
+      "leaderboard": "排行榜",
+      "welcome": "欢迎消息",
+      "clan_management": "部落管理视图",
+      "role_system": "新人/成员身份组",
+      "coc_roles": "游戏内职位身份组",
+      "clan_roles": "部落身份组",
+      "cwl_coordinator_role": "部落战联赛协调员身份组"
+    },
+    "perm": {
+      "view_channel": "查看频道",
+      "send_messages": "发送消息",
+      "send_messages_in_threads": "在子区中发送消息",
+      "embed_links": "嵌入链接",
+      "read_message_history": "阅读消息历史记录",
+      "manage_roles": "管理身份组"
+    },
+    "issue": {
+      "missing_channel_perms": "**{feature}**（{channel}）：缺少 {perms}",
+      "channel_not_found": "**{feature}**：所设置的频道 {channel} 已不存在，或机器人无法看到它",
+      "no_system_channel": "**{feature}**：服务器没有设置系统消息频道（服务器设置 → 概况 → 系统消息频道）",
+      "missing_manage_roles": "**{feature}**：机器人缺少 **{perms}** 权限",
+      "role_above_bot": "**{feature}**：{role} 不低于机器人的最高身份组——请把 ClashControl 的身份组移到它上方",
+      "role_managed": "**{feature}**：{role} 由 Discord 或某个集成管理，机器人无法分配",
+      "role_not_found": "**{feature}**：所设置的身份组 {role} 已不存在"
     }
   }
 }

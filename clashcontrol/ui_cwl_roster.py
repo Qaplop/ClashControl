@@ -327,6 +327,9 @@ def _make_cwl_settings_toggle_callback(view: discord.ui.View):
             await push_refresh_to_open_cwl_settings_session(guild_id_int, "cwl_settings")
 
             await _refresh_parent(view, interaction, "cwl_settings")
+            if not currently_enabled:  # just enabled — tracker #0150 permission check
+                from clashcontrol.bot_permissions import warn_missing_permissions
+                await warn_missing_permissions(interaction, features={"cwl_management"})
         finally:
             if guild_id_int is not None:
                 _CWL_HUB_TOGGLE_IN_PROGRESS.discard(guild_id_int)
@@ -390,6 +393,9 @@ def _make_cwl_settings_toggle_player_hub_callback(view: discord.ui.View):
             await push_refresh_to_open_cwl_settings_session(guild_id_int, "cwl_settings")
 
             await _refresh_parent(view, interaction, "cwl_settings")
+            if not currently_enabled:  # just enabled — tracker #0150 permission check
+                from clashcontrol.bot_permissions import warn_missing_permissions
+                await warn_missing_permissions(interaction, features={"cwl_player_hub"})
         finally:
             if guild_id_int is not None:
                 _CWL_PLAYER_HUB_TOGGLE_IN_PROGRESS.discard(guild_id_int)
@@ -2149,6 +2155,10 @@ class CwlCoordinatorRoleConfigurationView(discord.ui.View):
 
             await self._rerender(interaction)
             await interaction.followup.send(msg, ephemeral=True)
+            # Tracker #0150: a linked coordinator role the bot can't assign (Manage Roles, or the
+            # role sits above the bot's highest role) would otherwise just never sync.
+            from clashcontrol.bot_permissions import warn_missing_permissions
+            await warn_missing_permissions(interaction, features={"cwl_coordinator_role"})
 
 
 class CwlDeleteSeasonConfirmView(discord.ui.View):

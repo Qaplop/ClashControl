@@ -316,7 +316,7 @@
       "admin": {
         "short": "Administrative Aktionen und Werkzeuge",
         "title": "⚙️ Admin-Befehl",
-        "detailed": "Administrative Werkzeuge für Bot-Konfiguration, Diagnose und Wartung.\n\n**Verwendung:**\n`/admin action:<aktionstyp>`\n\n**Verfügbare Aktionen:**\n• `Cleanup Messages` - Bot-Nachrichten im aktuellen Server aufräumen (Admin)\n• `Cleanup Messages All` - Alle Bot-Nachrichten aufräumen (Bot-Admin)\n• `Check Logs` - Fehlerprotokolle scannen und zusammenfassen (Bot-Admin)\n• `Check Data` - Datenkonsistenz validieren (Bot-Admin)\n• `List All Subscriptions` - Alle Abos über Server hinweg anzeigen (Bot-Admin)\n• `Test Notify` - Kriegsbenachrichtigungen testen (Bot-Admin)\n• `DM User` - Die Begrüßungs-DM von /dm me an ein Servermitglied schicken (Admin, nur im Server)\n• `Remove Clan` - Clan aus Tracking entfernen (Admin)\n• `List All Clans` - Alle getrackten Clans auflisten (Admin)\n• `Import Data` - Spielerregistrierungen von ClashPerk importieren (Bot-Admin)\n• `Analyze Message` - Discord-Nachrichtenstruktur debuggen (Admin)\n• `Refresh Data` - Alle Clan-Daten aus der CoC API neu laden (Bot-Admin)\n• `Retrieve CWL Data` - CWL-Historie für einen Clan nachladen (Bot-Admin)\n• `Backfill CWL Groups` - CWL-Ligagruppen für Clans mit weniger als 7 Runden abrufen (Bot-Admin)\n• `War Prediction` - Kriegsausgang zwischen zwei Clans vorhersagen (Bot-Admin)\n• `Start Update Cycle` - Schlafphase überspringen und nächsten Update-Zyklus sofort starten (Bot-Admin)\n• `Execute Nightly Maintenance` - Archiv-Verschiebung + DB ANALYZE/REINDEX/VACUUM jetzt ausführen (Bot-Admin)\n  ↳ `skip_db_maintenance:True` - nur die Daten-Schritte, ohne den langen REINDEX/VACUUM/ANALYZE-Teil\n• `Memory Profile` - Speicher-Belegungsstatistiken in die Log-Datei schreiben (Bot-Admin)\n• `Maintenance Start` - Updates pausieren und DB schließen für sicheren Datenzugriff (Bot-Admin)\n• `Maintenance End` - Bot neu starten und normalen Betrieb wieder aufnehmen (Bot-Admin)\n\n**Berechtigungsstufen:**\n• Admin - Erfordert Discord-Server-Administratorberechtigung\n• Bot-Admin - Erfordert Bot-Administratorrolle (in Bot-Einstellungen konfiguriert)\n\n**Beispiel:**\n`/admin action:Cleanup Messages`"
+        "detailed": "Administrative Werkzeuge für Bot-Konfiguration, Diagnose und Wartung.\n\n**Verwendung:**\n`/admin action:<aktionstyp>`\n\n**Verfügbare Aktionen:**\n• `Cleanup Messages` - Bot-Nachrichten im aktuellen Server aufräumen (Admin)\n• `Cleanup Messages All` - Alle Bot-Nachrichten aufräumen (Bot-Admin)\n• `Check Logs` - Fehlerprotokolle scannen und zusammenfassen (Bot-Admin)\n• `Check Data` - Datenkonsistenz validieren (Bot-Admin)\n• `List All Subscriptions` - Alle Abos über Server hinweg anzeigen (Bot-Admin)\n• `Test Notify` - Kriegsbenachrichtigungen testen (Bot-Admin)\n• `DM User` - Die Begrüßungs-DM von /dm me an ein Servermitglied schicken (Admin, nur im Server)\n• `Remove Clan` - Clan aus Tracking entfernen (Admin)\n• `List All Clans` - Alle getrackten Clans auflisten (Admin)\n• `Import Data` - Spielerregistrierungen von ClashPerk importieren (Bot-Admin)\n• `Analyze Message` - Discord-Nachrichtenstruktur debuggen (Admin)\n• `Refresh Data` - Alle Clan-Daten aus der CoC API neu laden (Bot-Admin)\n• `Retrieve CWL Data` - CWL-Historie für einen Clan nachladen (Bot-Admin)\n• `Backfill CWL Groups` - CWL-Ligagruppen für Clans mit weniger als 7 Runden abrufen (Bot-Admin)\n• `War Prediction` - Kriegsausgang zwischen zwei Clans vorhersagen (Bot-Admin)\n• `Start Update Cycle` - Schlafphase überspringen und nächsten Update-Zyklus sofort starten (Bot-Admin)\n• `Execute Nightly Maintenance` - Archiv-Verschiebung + DB ANALYZE/REINDEX/VACUUM jetzt ausführen (Bot-Admin)\n  ↳ `skip_db_maintenance:True` - nur die Daten-Schritte, ohne den langen REINDEX/VACUUM/ANALYZE-Teil\n• `Memory Profile` - Speicher-Belegungsstatistiken in die Log-Datei schreiben (Bot-Admin)\n• `Permission Audit` - Berechtigungen des Bots für jede eingerichtete Automatisierung in allen Servern prüfen (Bot-Admin)\n• `Maintenance Start` - Updates pausieren und DB schließen für sicheren Datenzugriff (Bot-Admin)\n• `Maintenance End` - Bot neu starten und normalen Betrieb wieder aufnehmen (Bot-Admin)\n\n**Berechtigungsstufen:**\n• Admin - Erfordert Discord-Server-Administratorberechtigung\n• Bot-Admin - Erfordert Bot-Administratorrolle (in Bot-Einstellungen konfiguriert)\n\n**Beispiel:**\n`/admin action:Cleanup Messages`"
       },
       "list": {
         "short": "Konten, Familien oder Spieler auflisten",
@@ -1428,6 +1428,42 @@
       "support_text": "Stell deine Fragen in unserem öffentlichen Support-Kanal auf dem Server The QCrew.",
       "support_button": "Support-Kanal öffnen",
       "footer": "Fehler gefunden oder eine Idee? Nutze /bug oder /feature."
+    }
+  },
+  "permissions": {
+    "warning_header": "⚠️ **Gespeichert — aber ClashControl fehlen Berechtigungen, daher funktioniert das noch nicht:**",
+    "warning_footer": "Ein Server-Admin kann das in den Kanaleinstellungen beheben (Kanal bearbeiten → Berechtigungen → ClashControl hinzufügen) oder bei Rollen, indem er die ClashControl-Rolle unter Servereinstellungen → Rollen darüber zieht. Es funktioniert, sobald die Berechtigungen erteilt sind — eine erneute Einrichtung ist nicht nötig.",
+    "warning_more": "… und {count} weitere.",
+    "feature": {
+      "registration": "Registrierungsnachricht",
+      "cwl_management": "CWL-Verwaltungs-Hub",
+      "cwl_player_hub": "Persönlicher CWL-Einstellungs-Hub",
+      "war_notifications": "Kriegserinnerungen",
+      "raid_notifications": "Raid-Erinnerungen",
+      "leaderboard": "Leaderboard",
+      "welcome": "Willkommensnachricht",
+      "clan_management": "Clan-Verwaltungsansicht",
+      "role_system": "Neulings-/Mitgliederrollen",
+      "coc_roles": "CoC-Ingame-Rollen",
+      "clan_roles": "Clan-Rollen",
+      "cwl_coordinator_role": "CWL-Koordinator-Rolle"
+    },
+    "perm": {
+      "view_channel": "Kanäle ansehen",
+      "send_messages": "Nachrichten senden",
+      "send_messages_in_threads": "Nachrichten in Threads senden",
+      "embed_links": "Links einbetten",
+      "read_message_history": "Nachrichtenverlauf anzeigen",
+      "manage_roles": "Rollen verwalten"
+    },
+    "issue": {
+      "missing_channel_perms": "**{feature}** in {channel}: es fehlt {perms}",
+      "channel_not_found": "**{feature}**: der eingestellte Kanal {channel} existiert nicht mehr oder ist für den Bot nicht sichtbar",
+      "no_system_channel": "**{feature}**: der Server hat keinen Kanal für Systemnachrichten (Servereinstellungen → Übersicht → Kanal für Systemnachrichten)",
+      "missing_manage_roles": "**{feature}**: dem Bot fehlt die Berechtigung **{perms}**",
+      "role_above_bot": "**{feature}**: {role} steht auf oder über der höchsten Rolle des Bots — verschiebe die ClashControl-Rolle darüber",
+      "role_managed": "**{feature}**: {role} wird von Discord oder einer Integration verwaltet und kann von Bots nicht vergeben werden",
+      "role_not_found": "**{feature}**: die eingestellte Rolle {role} existiert nicht mehr"
     }
   }
 }

@@ -738,6 +738,23 @@ all rebuild/button-handler paths so the reference is never lost.
   before it reaches a tool result — bug/feature reports are arbitrary Discord-user text fed
   straight into an agent's context, a textbook prompt-injection surface.
 
+🟫 clashcontrol/bot_permissions.py (tracker #0150 follow-up, Build 135)
+- Single source of what every automation needs from Discord:
+  · `CHANNEL_FEATURES` — posting features -> required permissions (registration / CWL hubs /
+    war + raid reminders / leaderboards / welcome / clan management), derived from what each
+    actually sends (embeds, history reads to find and delete its previous message). Threads
+    check *Send Messages in Threads*.
+  · role automations (role system, CoC roles, clan roles, CWL coordinator role) need *Manage
+    Roles*, and each role must be below the bot's highest role and not integration-managed.
+- `audit_guild(guild, features=, include_disabled=)` — every issue for a guild's configured
+  automations (cached state only, no API calls).
+- `warn_missing_permissions(interaction, features=, only_channel_id=)` — config-time check: run
+  right after a change is persisted; sends an ephemeral, translated list of what is missing.
+  Never blocks the setting and never raises. Called from every entry point that enables an
+  automation or sets its channel/role (`tests/unit/test_bot_permissions.py` lists them).
+- `build_audit_report(guilds)` — `/admin Permission Audit` (bot admin): per guild Administrator
+  yes/no, the bot's top role, server-level gaps and every issue, as a text file.
+
 🟫 clashcontrol/log_throttle.py (tracker #0150)
 - `log_throttled(level, key, message, interval_s=DAY_S)` — log a recurring failure once per
   interval per key, repeats at DEBUG. For conditions only a guild admin can fix (a channel the

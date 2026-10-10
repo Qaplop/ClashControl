@@ -663,8 +663,8 @@
       "button_clan_notifications": "⚙️ Whole Clan",
       "button_user_notifications": "👤 Single User",
       "button_custodians": "🛡️ Custodians",
-      "button_toggle_role_system_disable": "🔴 Disable Role System",
-      "button_toggle_role_system_enable": "🟢 Enable Role System",
+      "button_toggle_role_system_disable": "🔴 Disable Simple Roles",
+      "button_toggle_role_system_enable": "🟢 Enable Simple Roles",
       "button_configure_roles": "⚙️ Configure Roles",
       "button_toggle_coc_roles_disable": "🔴 Disable CoC Roles",
       "button_toggle_coc_roles_enable": "🟢 Enable CoC Roles",
@@ -1080,7 +1080,7 @@
       "admin_override_cancelled": "❌ **Cancelled** - No changes made.",
       "import_cancelled": "❌ **Import cancelled** - No changes made.",
       "unlink_player_success": "✅ Unlinked **{player_name} ({player_tag})** from <@{discord_user_id}>.",
-      "role_system_auto_disabled": "⚠️ **Role System Auto-Disabled**\n\nThe role system has been automatically disabled because {reason} was cleared.\n\n**To re-enable the role system:**\n1. Configure all required settings:\n   • Newbie role\n   • Member role\n   • At least one clan or family\n2. Click the **Enable Role System** button"
+      "role_system_auto_disabled": "⚠️ **Role System Auto-Disabled**\n\nThe role system has been automatically disabled because {reason} was cleared.\n\n**To re-enable the role system:**\n1. Configure all required settings:\n   • Newbie role\n   • Member role\n   • At least one clan or family\n2. Click the **Enable Simple Roles** button"
     },
     "prompts": {
       "link_account_header": "**Link Player Account**\n\nSelect a player to link, choose notification settings, and select the Discord user.",

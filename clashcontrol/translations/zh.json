@@ -663,8 +663,8 @@
       "button_clan_notifications": "⚙️ 整个部落",
       "button_user_notifications": "👤 单个用户",
       "button_custodians": "🛡️ 值守员",
-      "button_toggle_role_system_disable": "🔴 禁用身份组系统",
-      "button_toggle_role_system_enable": "🟢 启用身份组系统",
+      "button_toggle_role_system_disable": "🔴 禁用简单身份组",
+      "button_toggle_role_system_enable": "🟢 启用简单身份组",
       "button_configure_roles": "⚙️ 配置身份组",
       "button_toggle_coc_roles_disable": "🔴 禁用部落冲突身份组",
       "button_toggle_coc_roles_enable": "🟢 启用部落冲突身份组",
@@ -1079,7 +1079,7 @@
       "admin_override_cancelled": "❌ **已取消** - 未做任何更改。",
       "import_cancelled": "❌ **导入已取消** - 未做任何更改。",
       "unlink_player_success": "✅ 已将 **{player_name}（{player_tag}）** 从 <@{discord_user_id}> 解绑。",
-      "role_system_auto_disabled": "⚠️ **身份组系统已自动禁用**\n\n由于 {reason} 已被清除，身份组系统已被自动禁用。\n\n**要重新启用身份组系统：**\n1. 配置所有必需的设置：\n   • 新人身份组\n   • 成员身份组\n   • 至少一个部落或家族\n2. 点击**启用身份组系统**按钮"
+      "role_system_auto_disabled": "⚠️ **身份组系统已自动禁用**\n\n由于 {reason} 已被清除，身份组系统已被自动禁用。\n\n**要重新启用简单身份组：**\n1. 配置所有必需的设置：\n   • 新人身份组\n   • 成员身份组\n   • 至少一个部落或家族\n2. 点击**启用简单身份组**按钮"
     },
     "prompts": {
       "link_account_header": "**绑定玩家账号**\n\n选择要绑定的玩家，选择通知设置，并选择 Discord 用户。",

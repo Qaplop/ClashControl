@@ -1522,7 +1522,7 @@ class ClanManagementView(discord.ui.View):
         await interaction.followup.send(header, view=custodians_view, ephemeral=True)  # type: ignore[arg-type]
 
     async def _on_toggle_role_system(self, interaction: discord.Interaction) -> None:
-        """Handle Enable/Disable Role System button - toggle automatic role assignment. Admin-only."""
+        """Handle Enable/Disable Simple Roles button - toggle automatic role assignment. Admin-only."""
         # Check admin permission first
         if not await self._check_admin_permission(interaction):
             return

@@ -663,8 +663,8 @@
       "button_clan_notifications": "⚙️ Tota Gens",
       "button_user_notifications": "👤 Unus Usor",
       "button_custodians": "🛡️ Custodes",
-      "button_toggle_role_system_disable": "🔴 Inactiva Systema Ordinum",
-      "button_toggle_role_system_enable": "🟢 Activa Systema Ordinum",
+      "button_toggle_role_system_disable": "🔴 Inactiva Ordines Simplices",
+      "button_toggle_role_system_enable": "🟢 Activa Ordines Simplices",
       "button_configure_roles": "⚙️ Configura Ordines",
       "button_toggle_coc_roles_disable": "🔴 Inactiva Ordines CoC",
       "button_toggle_coc_roles_enable": "🟢 Activa Ordines CoC",
@@ -1079,7 +1079,7 @@
       "admin_override_cancelled": "❌ **Cancellatum** - Nullae mutationes factae.",
       "import_cancelled": "❌ **Importatio cancellata** - Nullae mutationes factae.",
       "unlink_player_success": "✅ **{player_name} ({player_tag})** ab <@{discord_user_id}> disiunctus est.",
-      "role_system_auto_disabled": "⚠️ **Systema Ordinum Automatice Inactivatum**\n\nSystema ordinum automatice inactivatum est quia {reason} vacuatum est.\n\n**Ut systema ordinum iterum activetur:**\n1. Configura omnes optiones necessarias:\n   • Ordinem novicii\n   • Ordinem sodalis\n   • Saltem unam gentem vel familiam\n2. Preme bullam **Activa Systema Ordinum**"
+      "role_system_auto_disabled": "⚠️ **Systema Ordinum Automatice Inactivatum**\n\nSystema ordinum automatice inactivatum est quia {reason} vacuatum est.\n\n**Ut systema ordinum iterum activetur:**\n1. Configura omnes optiones necessarias:\n   • Ordinem novicii\n   • Ordinem sodalis\n   • Saltem unam gentem vel familiam\n2. Preme bullam **Activa Ordines Simplices**"
     },
     "prompts": {
       "link_account_header": "**Iungere Rationem Lusoris**\n\nElige lusorem ad iungendum, elige optiones nuntiationis, et elige usorem Discord.",

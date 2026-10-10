@@ -663,8 +663,8 @@
       "button_clan_notifications": "⚙️ Todo el Clan",
       "button_user_notifications": "👤 Usuario Individual",
       "button_custodians": "🛡️ Custodios",
-      "button_toggle_role_system_disable": "🔴 Desactivar Sistema de Roles",
-      "button_toggle_role_system_enable": "🟢 Activar Sistema de Roles",
+      "button_toggle_role_system_disable": "🔴 Desactivar Roles Simples",
+      "button_toggle_role_system_enable": "🟢 Activar Roles Simples",
       "button_configure_roles": "⚙️ Configurar Roles",
       "button_toggle_coc_roles_disable": "🔴 Desactivar Roles de CoC",
       "button_toggle_coc_roles_enable": "🟢 Activar Roles de CoC",
@@ -1079,7 +1079,7 @@
       "admin_override_cancelled": "❌ **Cancelado** - No se hicieron cambios.",
       "import_cancelled": "❌ **Importación cancelada** - No se hicieron cambios.",
       "unlink_player_success": "✅ Se desvinculó a **{player_name} ({player_tag})** de <@{discord_user_id}>.",
-      "role_system_auto_disabled": "⚠️ **Sistema de Roles Auto-Desactivado**\n\nEl sistema de roles se ha desactivado automáticamente porque se borró {reason}.\n\n**Para volver a activar el sistema de roles:**\n1. Configura todos los ajustes necesarios:\n   • Rol de novato\n   • Rol de miembro\n   • Al menos un clan o familia\n2. Haz clic en el botón **Activar Sistema de Roles**"
+      "role_system_auto_disabled": "⚠️ **Sistema de Roles Auto-Desactivado**\n\nEl sistema de roles se ha desactivado automáticamente porque se borró {reason}.\n\n**Para volver a activar el sistema de roles:**\n1. Configura todos los ajustes necesarios:\n   • Rol de novato\n   • Rol de miembro\n   • Al menos un clan o familia\n2. Haz clic en el botón **Activar Roles Simples**"
     },
     "prompts": {
       "link_account_header": "**Vincular Cuenta de Jugador**\n\nSelecciona un jugador a vincular, elige los ajustes de notificación, y selecciona el usuario de Discord.",

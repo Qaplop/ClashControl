@@ -1,6 +1,16 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-10 (15)
+- Changed (UI, /clan management → Manage Server Roles): the "Disable/Enable Role System" toggle is
+  renamed "Disable/Enable Simple Roles". The old name read as if it switched off all role
+  automation, but it only toggles the Simple Server Roles (newbie/member), not CoC In-Game Roles
+  or Per-Clan Roles. The names follow each language's existing "Simple Server Roles" term (de
+  "Einfache Rollen", es "Roles Simples", la "Ordines Simplices", zh "简单身份组"). The "role
+  system auto-disabled" notice now names the new button. All 5 languages. Build 147.
+  Files: clashcontrol/translations/{de,en,es,la,zh}.json, clashcontrol/ui_clan_management.py
+  (docstring), QBcore.py. 3739 tests pass.
+
 2026-10-10 (14)
 - Changed (tracker #0150): the permission warning's footer now only gives fix hints for the
   kinds of issue actually listed. Before, every warning showed the channel-settings hint (wrong

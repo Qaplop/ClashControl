@@ -663,8 +663,8 @@
       "button_clan_notifications": "⚙️ Ganzer Clan",
       "button_user_notifications": "👤 Einzelner Benutzer",
       "button_custodians": "🛡️ Betreuer",
-      "button_toggle_role_system_disable": "🔴 Rollensystem deaktivieren",
-      "button_toggle_role_system_enable": "🟢 Rollensystem aktivieren",
+      "button_toggle_role_system_disable": "🔴 Einfache Rollen deaktivieren",
+      "button_toggle_role_system_enable": "🟢 Einfache Rollen aktivieren",
       "button_configure_roles": "⚙️ Rollen konfigurieren",
       "button_toggle_coc_roles_disable": "🔴 CoC-Rollen deaktivieren",
       "button_toggle_coc_roles_enable": "🟢 CoC-Rollen aktivieren",
@@ -1080,7 +1080,7 @@
       "admin_override_cancelled": "❌ **Abgebrochen** - Keine Änderungen vorgenommen.",
       "import_cancelled": "❌ **Import abgebrochen** - Keine Änderungen vorgenommen.",
       "unlink_player_success": "✅ **{player_name} ({player_tag})** wurde von <@{discord_user_id}> entkoppelt.",
-      "role_system_auto_disabled": "⚠️ **Rollensystem automatisch deaktiviert**\n\nDas Rollensystem wurde automatisch deaktiviert, da {reason} gelöscht wurde.\n\n**Um das Rollensystem erneut zu aktivieren:**\n1. Konfiguriere alle erforderlichen Einstellungen:\n   • Neuling-Rolle\n   • Mitglieds-Rolle\n   • Mindestens einen Clan oder eine Familie\n2. Klicke auf die Schaltfläche **Rollensystem aktivieren**"
+      "role_system_auto_disabled": "⚠️ **Rollensystem automatisch deaktiviert**\n\nDas Rollensystem wurde automatisch deaktiviert, da {reason} gelöscht wurde.\n\n**Um das Rollensystem erneut zu aktivieren:**\n1. Konfiguriere alle erforderlichen Einstellungen:\n   • Neuling-Rolle\n   • Mitglieds-Rolle\n   • Mindestens einen Clan oder eine Familie\n2. Klicke auf die Schaltfläche **Einfache Rollen aktivieren**"
     },
     "prompts": {
       "link_account_header": "**Spielerkonto verknüpfen**\n\nWähle einen Spieler zum Verknüpfen, wähle Benachrichtigungseinstellungen und wähle den Discord-Benutzer aus.",

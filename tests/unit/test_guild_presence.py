@@ -43,6 +43,8 @@ def _isolate(monkeypatch):
     monkeypatch.setattr(CACHE, "subscriptions", {})
     monkeypatch.setattr(CACHE, "persist_server_config", AsyncMock())
     monkeypatch.setattr(ClashControl, "CONFIG", dataclasses.replace(ClashControl.CONFIG, is_dev_mode=False))
+    # guild_presence reads clashcontrol.config.CONFIG (expected_absence); PROD unless a test says DEV.
+    monkeypatch.setattr("clashcontrol.config.CONFIG", dataclasses.replace(ClashControl.CONFIG, is_dev_mode=False))
     reset_log_throttle()
     yield
     reset_log_throttle()
@@ -106,6 +108,31 @@ class TestReconciliationLogging:
         assert absent == sorted([str(GONE), "1400585784347594882"])
         msg = next(r.getMessage() for r in caplog.records if "[GUILD-ABSENT]" in r.getMessage())
         assert "registration, war reminders" in msg and "2 subscription channel(s)" in msg
+
+    def test_dev_expected_absence_is_quiet_but_still_skipped(self, monkeypatch, caplog):
+        """DEV is only in its own guild; the PROD-DB copy's other guilds are absent by design
+        (DEV 2026-10-10: 6 INFO lines + a WARNING on every start after a DB copy)."""
+        monkeypatch.setattr(QBcore, "bot", _bot())
+        monkeypatch.setattr("clashcontrol.config.CONFIG",
+                            dataclasses.replace(ClashControl.CONFIG, is_dev_mode=True, discord_guild_id=PRESENT))
+        CACHE.server_config[str(GONE)] = {"registration_message_enabled": True}
+        CACHE.server_config["1400585784347594882"] = {"registration_message_enabled": True}
+        with caplog.at_level(logging.INFO):
+            assert gp.is_guild_absent(GONE)  # automations still skipped
+            assert gp.log_absent_configured_guilds() == []
+        lines = [r for r in caplog.records if "[GUILD-ABSENT]" in r.getMessage()]
+        assert [r.levelno for r in lines] == [logging.INFO]
+        assert "DEV: 2 configured guild(s)" in lines[0].getMessage()
+
+    def test_dev_guild_itself_absent_is_still_reported(self, monkeypatch, caplog):
+        monkeypatch.setattr(QBcore, "bot", _bot(present=()))
+        monkeypatch.setattr("clashcontrol.config.CONFIG",
+                            dataclasses.replace(ClashControl.CONFIG, is_dev_mode=True, discord_guild_id=GONE))
+        CACHE.server_config[str(GONE)] = {"registration_message_enabled": True}
+        with caplog.at_level(logging.INFO):
+            assert gp.log_absent_configured_guilds() == [str(GONE)]
+        assert any(r.levelno == logging.WARNING and "[GUILD-ABSENT] 1 configured guild(s)" in r.getMessage()
+                   for r in caplog.records)
 
     def test_nothing_reported_while_unknown(self, monkeypatch):
         monkeypatch.setattr(QBcore, "bot", _bot(ready=False))

@@ -1,6 +1,18 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-10 (12)
+- Changed (tracker #0150, DEV): guild-absence handling treats DEV's absence from the PROD-DB
+  copy's other guilds as expected. DEV is only invited to its own guild, so after every DB copy it
+  logged one "[GUILD-ABSENT] Bot is not in guild ..." INFO line per guild plus the startup
+  WARNING listing them all (6 guilds on 2026-10-10 19:05). New
+  guild_presence.expected_absence(): on DEV, every guild except CONFIG.discord_guild_id. Those
+  guilds are still skipped. The per-guild line drops to DEBUG, and the startup WARNING becomes
+  one INFO line "DEV: N configured guild(s) ... not joined by this bot (expected)". PROD is
+  unchanged, and on DEV the absence of the DEV guild itself is still a WARNING. Build 144.
+  Files: clashcontrol/guild_presence.py, tests/unit/test_guild_presence.py,
+  clashcontrol/docs/CODE_STRUCTURE.md, QBcore.py. 3738 tests pass.
+
 2026-10-10 (11)
 - Fixed (tracker, DEV): the one-time startup re-render of renumbered test-case messages (Build
   138) wasn't gated on CONFIG.tracker_enabled. DEV runs on a PROD-DB copy, so it ran the same

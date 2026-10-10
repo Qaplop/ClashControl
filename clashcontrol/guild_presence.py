@@ -56,6 +56,17 @@ def bot_guild_presence(guild_id: Any) -> Optional[bool]:
         return None
 
 
+def expected_absence(guild_id: Any) -> bool:
+    """True if the bot is not meant to be in ``guild_id`` at all: on DEV, every guild except the
+    DEV guild. DEV runs on a PROD-DB copy and is only invited to its own guild, so every other
+    configured guild is absent by design. Without this, each DB copy re-reported all of them
+    (DEV 2026-10-10: 6 INFO lines plus a startup WARNING). Absence of the DEV guild itself is still
+    reported."""
+    from clashcontrol.config import CONFIG
+
+    return bool(CONFIG.is_dev_mode) and str(guild_id) != str(CONFIG.discord_guild_id)
+
+
 def is_guild_absent(guild_id: Any, *, context: str = "") -> bool:
     """True only if the bot is definitely NOT in ``guild_id``. The first time per process (per
     guild) this is True, one INFO line says the guild's automations are paused; after that it is
@@ -63,7 +74,7 @@ def is_guild_absent(guild_id: Any, *, context: str = "") -> bool:
     if bot_guild_presence(guild_id) is not False:
         return False
     log_throttled(
-        logging.INFO, (_ABSENT_KEY, str(guild_id)),
+        logging.DEBUG if expected_absence(guild_id) else logging.INFO, (_ABSENT_KEY, str(guild_id)),
         f"[GUILD-ABSENT] Bot is not in guild {guild_id} — its stored config is kept, its "
         f"automations are paused until the bot is re-added"
         + (f" (first skipped: {context})" if context else ""),
@@ -108,8 +119,17 @@ def absent_configured_guilds() -> List[str]:
 
 def log_absent_configured_guilds() -> List[str]:
     """Startup reconciliation: one WARNING listing configured guilds the bot was removed from
-    while it was offline (or earlier, before this check existed). Returns their ids."""
+    while it was offline (or earlier, before this check existed). Returns their ids. On DEV the
+    guilds it was never meant to join (``expected_absence``) only get one INFO count line and are
+    not returned."""
     absent = absent_configured_guilds()
+    expected = [g for g in absent if expected_absence(g)]
+    if expected:
+        logging.info(
+            f"[GUILD-ABSENT] DEV: {len(expected)} configured guild(s) from the PROD-DB copy are not "
+            f"joined by this bot (expected) — their automations are skipped"
+        )
+        absent = [g for g in absent if g not in expected]
     if absent:
         parts = []
         for gid in absent:

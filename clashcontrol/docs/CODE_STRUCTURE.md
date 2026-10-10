@@ -747,6 +747,9 @@ all rebuild/button-handler paths so the reference is never lost.
 - `is_guild_absent(gid, context=)` — the skip check for loops over stored config (anchored
   messages, war/raid reminders, raid tracking/routing); logs `[GUILD-ABSENT]` once per guild
   per process. Leaderboards need no check (they already skip uncached channels).
+- `expected_absence(gid)` — True on DEV for every guild except `CONFIG.discord_guild_id`. DEV
+  runs on a PROD-DB copy but is only in its own guild, so those guilds are still skipped, but
+  only at DEBUG, plus one INFO count line at startup instead of the WARNING (Build 144).
 - `log_absent_configured_guilds()` — startup reconciliation (removals while offline); QBcore's
   `on_guild_remove` / `on_guild_join` log removals/joins (join also logs Administrator yes/no
   and re-arms the one-time log line).

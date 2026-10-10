@@ -1036,7 +1036,7 @@
       "clan_not_found_api": "❌ Clan {clan_tag} not found in CoC API.",
       "no_clans_found": "❌ No clans found matching '{search_input}'.\n\nTry using a complete clan tag (e.g., #2C9UR9GJY) to fetch from CoC API.",
       "all_matches_already_added": "✅ All matching clans are already available in this {list_name} view.",
-      "error_toggling_role_system": "❌ Error toggling role system: {error}",
+      "error_toggling_role_system": "❌ Error switching Simple Roles on or off: {error}",
       "error_saving_configuration": "❌ Error saving configuration: {error}",
       "error_saving_family": "❌ Error saving family: {error}",
       "invalid_user_id_format": "❌ Invalid Discord user ID format. Please enter a numeric ID.",
@@ -1045,9 +1045,9 @@
       "newbie_role_not_configured": "❌ Newbie Role not configured",
       "member_role_not_configured": "❌ Member Role not configured",
       "member_clans_families_not_configured": "❌ Member Clans/Families not configured",
-      "role_system_config_incomplete": "⚠️ **Role System Configuration Incomplete**\n\n{missing_items}\n\nPlease configure these settings in the **Basic Server Configuration** mode before enabling the role system.",
+      "role_system_config_incomplete": "⚠️ **Simple Roles can't be switched on yet — this is missing:**\n\n{missing_items}\n\nThen click **{enable_button}** again.",
       "permission_admin_only": "🔒 Only server administrators can use clan management controls.",
-      "member_role_system_disabled": "⚠️ **Member Role System Disabled**\n\nThe member role granting system has been automatically disabled because you removed all configured clans and families.\n\nTo use it again, add clans or families in **Manage Member Clans & Families**, then manually enable the role system in **Manage Server Roles**.",
+      "member_role_system_disabled": "⚠️ **Simple Roles switched off automatically**\n\nYou removed all member clans and families. Simple Roles need at least one to know who gets the member role, so they have been switched off.\n\n**To switch them back on:**\n1. {mode_config} → **{member_clans}**: add at least one clan or family\n2. {mode_roles} → click **{enable_button}**",
       "family_will_affect_guilds": "⚠️ This will affect {count} guild(s):",
       "no_other_guilds_using_family": "**No other guilds are currently using this family.**",
       "delete_family_title": "**Delete Family: {family_name}**",
@@ -1080,7 +1080,10 @@
       "admin_override_cancelled": "❌ **Cancelled** - No changes made.",
       "import_cancelled": "❌ **Import cancelled** - No changes made.",
       "unlink_player_success": "✅ Unlinked **{player_name} ({player_tag})** from <@{discord_user_id}>.",
-      "role_system_auto_disabled": "⚠️ **Role System Auto-Disabled**\n\nThe role system has been automatically disabled because {reason} was cleared.\n\n**To re-enable the role system:**\n1. Configure all required settings:\n   • Newbie role\n   • Member role\n   • At least one clan or family\n2. Click the **Enable Simple Roles** button"
+      "role_system_auto_disabled": "⚠️ **Simple Roles switched off automatically**\n\n{reason} Simple Roles need both roles, so they have been switched off.\n\n**To switch them back on:**\n1. {mode_roles} → **{configure_roles}**: set the newbie role and the member role\n2. Click **{enable_button}**",
+      "role_system_reason_both_removed": "You removed the newbie role and the member role.",
+      "role_system_reason_newbie_removed": "You removed the newbie role.",
+      "role_system_reason_member_removed": "You removed the member role."
     },
     "prompts": {
       "link_account_header": "**Link Player Account**\n\nSelect a player to link, choose notification settings, and select the Discord user.",
@@ -1431,7 +1434,7 @@
     }
   },
   "permissions": {
-    "warning_header": "⚠️ **Saved — but ClashControl is missing permissions, so this won't work yet:**",
+    "warning_header": "⚠️ **Saved — but this won't work yet. Fix the following on the server:**",
     "warning_fix_channel": "A server admin can fix missing channel permissions in the channel's settings (Edit Channel → Permissions → add ClashControl).",
     "warning_fix_manage_roles": "A server admin can enable “Manage Roles” under Server Settings → Roles → ClashControl role → Permissions.",
     "warning_footer": "It starts working as soon as this is fixed — no need to set it up again.",

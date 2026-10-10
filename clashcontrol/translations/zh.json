@@ -1035,7 +1035,7 @@
       "clan_not_found_api": "❌ 在部落冲突 API 中未找到部落 {clan_tag}。",
       "no_clans_found": "❌ 未找到与“{search_input}”匹配的部落。\n\n请尝试使用完整的部落标签（例如 #2C9UR9GJY）从部落冲突 API 获取。",
       "all_matches_already_added": "✅ 所有匹配的部落都已在此 {list_name} 视图中可用。",
-      "error_toggling_role_system": "❌ 切换身份组系统时出错：{error}",
+      "error_toggling_role_system": "❌ 开启或关闭简单身份组时出错：{error}",
       "error_saving_configuration": "❌ 保存配置时出错：{error}",
       "error_saving_family": "❌ 保存家族时出错：{error}",
       "invalid_user_id_format": "❌ Discord 用户 ID 格式无效。请输入数字 ID。",
@@ -1044,9 +1044,9 @@
       "newbie_role_not_configured": "❌ 未配置新人身份组",
       "member_role_not_configured": "❌ 未配置成员身份组",
       "member_clans_families_not_configured": "❌ 未配置成员部落/家族",
-      "role_system_config_incomplete": "⚠️ **身份组系统配置不完整**\n\n{missing_items}\n\n请先在**服务器基础配置**模式中配置这些设置，然后再启用身份组系统。",
+      "role_system_config_incomplete": "⚠️ **简单身份组暂时无法开启——缺少：**\n\n{missing_items}\n\n然后再次点击 **{enable_button}**。",
       "permission_admin_only": "🔒 只有服务器管理员可以使用部落管理控件。",
-      "member_role_system_disabled": "⚠️ **成员身份组系统已自动禁用**\n\n由于你移除了所有已配置的部落和家族，成员身份组授予系统已被自动禁用。\n\n**要重新启用身份组系统：**\n1. 配置所有必需的设置：\n   • 新人身份组\n   • 成员身份组\n   • 至少一个部落或家族\n2. 点击**启用身份组系统**按钮",
+      "member_role_system_disabled": "⚠️ **简单身份组已自动关闭**\n\n你移除了所有成员部落和家族。简单身份组至少需要一个，才能确定谁获得成员身份组，因此已被关闭。\n\n**重新开启的方法：**\n1. {mode_config} → **{member_clans}**：至少添加一个部落或家族\n2. {mode_roles} → 点击 **{enable_button}**",
       "family_will_affect_guilds": "⚠️ 这将影响 {count} 个服务器：",
       "no_other_guilds_using_family": "**目前没有其他服务器在使用此家族。**",
       "delete_family_title": "**删除家族：{family_name}**",
@@ -1079,7 +1079,10 @@
       "admin_override_cancelled": "❌ **已取消** - 未做任何更改。",
       "import_cancelled": "❌ **导入已取消** - 未做任何更改。",
       "unlink_player_success": "✅ 已将 **{player_name}（{player_tag}）** 从 <@{discord_user_id}> 解绑。",
-      "role_system_auto_disabled": "⚠️ **身份组系统已自动禁用**\n\n由于 {reason} 已被清除，身份组系统已被自动禁用。\n\n**要重新启用简单身份组：**\n1. 配置所有必需的设置：\n   • 新人身份组\n   • 成员身份组\n   • 至少一个部落或家族\n2. 点击**启用简单身份组**按钮"
+      "role_system_auto_disabled": "⚠️ **简单身份组已自动关闭**\n\n{reason}简单身份组需要这两个身份组，因此已被关闭。\n\n**重新开启的方法：**\n1. {mode_roles} → **{configure_roles}**：设置新人身份组和成员身份组\n2. 点击 **{enable_button}**",
+      "role_system_reason_both_removed": "你移除了新人身份组和成员身份组。",
+      "role_system_reason_newbie_removed": "你移除了新人身份组。",
+      "role_system_reason_member_removed": "你移除了成员身份组。"
     },
     "prompts": {
       "link_account_header": "**绑定玩家账号**\n\n选择要绑定的玩家，选择通知设置，并选择 Discord 用户。",
@@ -1430,7 +1433,7 @@
     }
   },
   "permissions": {
-    "warning_header": "⚠️ **已保存——但 ClashControl 缺少权限，因此暂时无法生效：**",
+    "warning_header": "⚠️ **已保存——但暂时还不能生效。请在服务器上调整以下内容：**",
     "warning_fix_channel": "缺少的频道权限可由服务器管理员在频道设置中修复（编辑频道 → 权限 → 添加 ClashControl）。",
     "warning_fix_manage_roles": "服务器管理员可在 服务器设置 → 身份组 → ClashControl 身份组 → 权限 中开启“管理身份组”。",
     "warning_footer": "修复后即可生效，无需重新设置。",

@@ -1035,7 +1035,7 @@
       "clan_not_found_api": "❌ Gens {clan_tag} in API CoC non inventa.",
       "no_clans_found": "❌ Nullae gentes cum '{search_input}' congruentes inventae.\n\nConare nota gentis completa (e.g., #2C9UR9GJY) ut ex API CoC accipiatur.",
       "all_matches_already_added": "✅ Omnes gentes congruentes iam in hoc visu {list_name} praesto sunt.",
-      "error_toggling_role_system": "❌ Error in systemate ordinum commutando: {error}",
+      "error_toggling_role_system": "❌ Error in Ordinibus Simplicibus activandis vel inactivandis: {error}",
       "error_saving_configuration": "❌ Error in configuratione servanda: {error}",
       "error_saving_family": "❌ Error in familia servanda: {error}",
       "invalid_user_id_format": "❌ Formatus ID usoris Discord invalidus. Quaeso ID numericum insere.",
@@ -1044,9 +1044,9 @@
       "newbie_role_not_configured": "❌ Ordo Novicii non configuratus",
       "member_role_not_configured": "❌ Ordo Sodalis non configuratus",
       "member_clans_families_not_configured": "❌ Gentes/Familiae Sodales non configuratae",
-      "role_system_config_incomplete": "⚠️ **Configuratio Systematis Ordinum Incompleta**\n\n{missing_items}\n\nQuaeso has optiones in modo **Configuratio Basica Servitoris** configura antequam systema ordinum activas.",
+      "role_system_config_incomplete": "⚠️ **Ordines Simplices nondum activari possunt — deest:**\n\n{missing_items}\n\nDeinde rursus preme **{enable_button}**.",
       "permission_admin_only": "🔒 Tantum administratores servitoris moderamentis moderationis gentis uti possunt.",
-      "member_role_system_disabled": "⚠️ **Systema Ordinis Sodalis Automatice Inactivatum**\n\nSystema dationis ordinis sodalis automatice inactivatum est quia omnes gentes et familias configuratas removisti.\n\n**Ut systema ordinum iterum activetur:**\n1. Configura omnes optiones necessarias:\n   • Ordinem novicii\n   • Ordinem sodalis\n   • Saltem unam gentem vel familiam\n2. Preme bullam **Activa Systema Ordinum**",
+      "member_role_system_disabled": "⚠️ **Ordines Simplices automatice inactivati**\n\nOmnes gentes et familias sodalium removisti. Ordines Simplices saltem unam requirunt ut sciant quis munus sodalis accipiat, itaque inactivati sunt.\n\n**Ut eos rursus activas:**\n1. {mode_config} → **{member_clans}**: saltem unam gentem vel familiam adde\n2. {mode_roles} → preme **{enable_button}**",
       "family_will_affect_guilds": "⚠️ Hoc {count} servitores afficiet:",
       "no_other_guilds_using_family": "**Nullus alius servitor hac familia nunc utitur.**",
       "delete_family_title": "**Dele Familiam: {family_name}**",
@@ -1079,7 +1079,10 @@
       "admin_override_cancelled": "❌ **Cancellatum** - Nullae mutationes factae.",
       "import_cancelled": "❌ **Importatio cancellata** - Nullae mutationes factae.",
       "unlink_player_success": "✅ **{player_name} ({player_tag})** ab <@{discord_user_id}> disiunctus est.",
-      "role_system_auto_disabled": "⚠️ **Systema Ordinum Automatice Inactivatum**\n\nSystema ordinum automatice inactivatum est quia {reason} vacuatum est.\n\n**Ut systema ordinum iterum activetur:**\n1. Configura omnes optiones necessarias:\n   • Ordinem novicii\n   • Ordinem sodalis\n   • Saltem unam gentem vel familiam\n2. Preme bullam **Activa Ordines Simplices**"
+      "role_system_auto_disabled": "⚠️ **Ordines Simplices automatice inactivati**\n\n{reason} Ordines Simplices ambo munera requirunt, itaque inactivati sunt.\n\n**Ut eos rursus activas:**\n1. {mode_roles} → **{configure_roles}**: munus novicii et munus sodalis constitue\n2. Preme **{enable_button}**",
+      "role_system_reason_both_removed": "Munus novicii et munus sodalis removisti.",
+      "role_system_reason_newbie_removed": "Munus novicii removisti.",
+      "role_system_reason_member_removed": "Munus sodalis removisti."
     },
     "prompts": {
       "link_account_header": "**Iungere Rationem Lusoris**\n\nElige lusorem ad iungendum, elige optiones nuntiationis, et elige usorem Discord.",
@@ -1430,7 +1433,7 @@
     }
   },
   "permissions": {
-    "warning_header": "⚠️ **Servatum est — sed ClashControl permissionibus caret, itaque nondum operabitur:**",
+    "warning_header": "⚠️ **Servatum — sed nondum operabitur. Haec in servitore corrige:**",
     "warning_fix_channel": "Permissiones canalis deficientes administrator servitoris in optionibus canalis corrigit (Canalem emendare → Permissiones → ClashControl adde).",
     "warning_fix_manage_roles": "„Munera administrare“ administrator servitoris in Optionibus servitoris → Munera → munus ClashControl → Permissiones activat.",
     "warning_footer": "Statim operabitur ubi hoc correctum erit — iterum constituere non oportet.",

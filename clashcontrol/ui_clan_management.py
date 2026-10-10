@@ -31,6 +31,22 @@ def _view_guild_id(view: Any) -> Optional[int]:
     return getattr(getattr(view, "guild", None), "id", None)
 
 
+def simple_roles_labels(guild_id: Optional[int]) -> Dict[str, str]:
+    """The exact UI labels the Simple Roles notices point to, in the guild's language.
+
+    Passed into the notice texts as placeholders instead of being retyped in each translation,
+    so a notice can never name a button or mode that doesn't exist (2026-10-10: the old texts
+    said "Basic Server Configuration" for the roles and "Manage Member Clans & Families" for a
+    button actually called "Member Clans")."""
+    return {
+        "mode_roles": t('ui_components.clan_management.mode_roles_label', guild_id=guild_id),
+        "configure_roles": t('ui_components.clan_management.button_configure_roles', guild_id=guild_id),
+        "mode_config": t('ui_components.clan_management.mode_config_label', guild_id=guild_id),
+        "member_clans": t('ui_components.clan_management.button_member_clans', guild_id=guild_id),
+        "enable_button": t('ui_components.clan_management.button_toggle_role_system_enable', guild_id=guild_id),
+    }
+
+
 class ManualPlayerTagModal(discord.ui.Modal, title="Enter Player Tag"):
     """
     Modal for manually entering a player tag in clan management link account flow.
@@ -1551,16 +1567,21 @@ class ClanManagementView(discord.ui.View):
             from clashcontrol.i18n import t
             guild_id_for_errors = interaction.guild.id if interaction.guild else None
             
+            # Each missing item names where it is set (2026-10-10: the notice used to send every
+            # item to "Basic Server Configuration", where the roles can't be set at all).
+            labels = simple_roles_labels(guild_id_for_errors)
+            roles_where = f"{labels['mode_roles']} → **{labels['configure_roles']}**"
+            clans_where = f"{labels['mode_config']} → **{labels['member_clans']}**"
             if not newbie_role_id:
-                missing_items.append(t('ui_components.errors.newbie_role_not_configured', guild_id=guild_id_for_errors))
+                missing_items.append(t('ui_components.errors.newbie_role_not_configured', guild_id=guild_id_for_errors) + f" — {roles_where}")
             if not member_role_id:
-                missing_items.append(t('ui_components.errors.member_role_not_configured', guild_id=guild_id_for_errors))
+                missing_items.append(t('ui_components.errors.member_role_not_configured', guild_id=guild_id_for_errors) + f" — {roles_where}")
             if not member_clans and not member_families:
-                missing_items.append(t('ui_components.errors.member_clans_families_not_configured', guild_id=guild_id_for_errors))
-            
+                missing_items.append(t('ui_components.errors.member_clans_families_not_configured', guild_id=guild_id_for_errors) + f" — {clans_where}")
+
             if missing_items:
                 missing_text = "\n".join(missing_items)  # type: ignore[arg-type]
-                validation_msg = t('ui_components.errors.role_system_config_incomplete', guild_id=guild_id_for_errors, missing_items=missing_text)
+                validation_msg = t('ui_components.errors.role_system_config_incomplete', guild_id=guild_id_for_errors, missing_items=missing_text, **labels)
                 await interaction.followup.send(validation_msg, ephemeral=True)
                 return
         
@@ -3855,12 +3876,14 @@ class RoleConfigurationView(discord.ui.View):
             if not self.newbie_role or not self.member_role:
                 CACHE.server_config[guild_id]["role_system_enabled"] = False
                 system_auto_disabled = True
+                # Translation keys, not English text: the reason used to be inserted untranslated
+                # into every language ("da newbie role gelöscht wurde").
                 if not self.newbie_role and not self.member_role:
-                    disabled_reason = "both newbie and member roles"
+                    disabled_reason = "role_system_reason_both_removed"
                 elif not self.newbie_role:
-                    disabled_reason = "newbie role"
+                    disabled_reason = "role_system_reason_newbie_removed"
                 else:
-                    disabled_reason = "member role"
+                    disabled_reason = "role_system_reason_member_removed"
         
         # Save to file
         await CACHE.persist_server_config(guild_id)
@@ -3870,9 +3893,10 @@ class RoleConfigurationView(discord.ui.View):
             from clashcontrol.i18n import t
             user_id = str(interaction.user.id)
             guild_id_for_t = interaction.guild.id if interaction.guild else None
-            warning_msg = t('ui_components.messages.role_system_auto_disabled', 
-                          user_id=user_id, guild_id=guild_id_for_t, 
-                          reason=disabled_reason)
+            warning_msg = t('ui_components.messages.role_system_auto_disabled',
+                          user_id=user_id, guild_id=guild_id_for_t,
+                          reason=t(f'ui_components.messages.{disabled_reason}', user_id=user_id, guild_id=guild_id_for_t),
+                          **simple_roles_labels(guild_id_for_t))
             await interaction.followup.send(warning_msg, ephemeral=True)
 
         # Tracker #0150: roles were just picked — check the bot can actually assign them
@@ -5070,7 +5094,8 @@ class MemberClansConfigurationView(discord.ui.View):
             if system_auto_disabled:
                 from clashcontrol.i18n import t
                 guild_id = self.clan_management_view.sent_message.guild.id if self.clan_management_view.sent_message.guild else None
-                warning_msg = t('ui_components.errors.member_role_system_disabled', guild_id=guild_id)
+                warning_msg = t('ui_components.errors.member_role_system_disabled', guild_id=guild_id,
+                                **simple_roles_labels(guild_id))
                 await interaction.followup.send(warning_msg, ephemeral=True)
             
             # Refresh parent view

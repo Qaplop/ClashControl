@@ -1035,7 +1035,7 @@
       "clan_not_found_api": "❌ Clan {clan_tag} no encontrado en la API de CoC.",
       "no_clans_found": "❌ No se encontraron clanes que coincidan con '{search_input}'.\n\nPrueba a usar un tag de clan completo (p. ej., #2C9UR9GJY) para obtenerlo de la API de CoC.",
       "all_matches_already_added": "✅ Todos los clanes coincidentes ya están disponibles en esta vista de {list_name}.",
-      "error_toggling_role_system": "❌ Error al alternar el sistema de roles: {error}",
+      "error_toggling_role_system": "❌ Error al activar o desactivar los Roles Simples: {error}",
       "error_saving_configuration": "❌ Error al guardar la configuración: {error}",
       "error_saving_family": "❌ Error al guardar la familia: {error}",
       "invalid_user_id_format": "❌ Formato de ID de usuario de Discord no válido. Introduce un ID numérico.",
@@ -1044,9 +1044,9 @@
       "newbie_role_not_configured": "❌ Rol de Novato no configurado",
       "member_role_not_configured": "❌ Rol de Miembro no configurado",
       "member_clans_families_not_configured": "❌ Clanes/Familias Miembro no configurados",
-      "role_system_config_incomplete": "⚠️ **Configuración del Sistema de Roles Incompleta**\n\n{missing_items}\n\nConfigura estos ajustes en el modo **Configuración Básica del Servidor** antes de activar el sistema de roles.",
+      "role_system_config_incomplete": "⚠️ **Los Roles Simples aún no se pueden activar — falta:**\n\n{missing_items}\n\nLuego vuelve a hacer clic en **{enable_button}**.",
       "permission_admin_only": "🔒 Solo los administradores del servidor pueden usar los controles de gestión de clan.",
-      "member_role_system_disabled": "⚠️ **Sistema de Rol de Miembro Desactivado**\n\nEl sistema de concesión del rol de miembro se ha desactivado automáticamente porque eliminaste todos los clanes y familias configurados.\n\nPara volver a usarlo, añade clanes o familias en **Gestionar Clanes y Familias Miembro**, y luego activa manualmente el sistema de roles en **Gestionar Roles del Servidor**.",
+      "member_role_system_disabled": "⚠️ **Roles Simples desactivados automáticamente**\n\nHas quitado todos los clanes y familias miembro. Los Roles Simples necesitan al menos uno para saber quién recibe el rol de miembro, así que se han desactivado.\n\n**Para volver a activarlos:**\n1. {mode_config} → **{member_clans}**: añade al menos un clan o una familia\n2. {mode_roles} → haz clic en **{enable_button}**",
       "family_will_affect_guilds": "⚠️ Esto afectará a {count} servidor(es):",
       "no_other_guilds_using_family": "**Ningún otro servidor está usando actualmente esta familia.**",
       "delete_family_title": "**Eliminar Familia: {family_name}**",
@@ -1079,7 +1079,10 @@
       "admin_override_cancelled": "❌ **Cancelado** - No se hicieron cambios.",
       "import_cancelled": "❌ **Importación cancelada** - No se hicieron cambios.",
       "unlink_player_success": "✅ Se desvinculó a **{player_name} ({player_tag})** de <@{discord_user_id}>.",
-      "role_system_auto_disabled": "⚠️ **Sistema de Roles Auto-Desactivado**\n\nEl sistema de roles se ha desactivado automáticamente porque se borró {reason}.\n\n**Para volver a activar el sistema de roles:**\n1. Configura todos los ajustes necesarios:\n   • Rol de novato\n   • Rol de miembro\n   • Al menos un clan o familia\n2. Haz clic en el botón **Activar Roles Simples**"
+      "role_system_auto_disabled": "⚠️ **Roles Simples desactivados automáticamente**\n\n{reason} Los Roles Simples necesitan ambos roles, así que se han desactivado.\n\n**Para volver a activarlos:**\n1. {mode_roles} → **{configure_roles}**: establece el rol de novato y el rol de miembro\n2. Haz clic en **{enable_button}**",
+      "role_system_reason_both_removed": "Has quitado el rol de novato y el rol de miembro.",
+      "role_system_reason_newbie_removed": "Has quitado el rol de novato.",
+      "role_system_reason_member_removed": "Has quitado el rol de miembro."
     },
     "prompts": {
       "link_account_header": "**Vincular Cuenta de Jugador**\n\nSelecciona un jugador a vincular, elige los ajustes de notificación, y selecciona el usuario de Discord.",
@@ -1430,7 +1433,7 @@
     }
   },
   "permissions": {
-    "warning_header": "⚠️ **Guardado, pero a ClashControl le faltan permisos, así que todavía no funcionará:**",
+    "warning_header": "⚠️ **Guardado, pero aún no funcionará. Corrige lo siguiente en el servidor:**",
     "warning_fix_channel": "Un administrador del servidor puede corregir los permisos de canal que faltan en los ajustes del canal (Editar canal → Permisos → añadir ClashControl).",
     "warning_fix_manage_roles": "Un administrador del servidor puede activar «Gestionar roles» en Ajustes del servidor → Roles → rol de ClashControl → Permisos.",
     "warning_footer": "Funcionará en cuanto esté solucionado; no hace falta volver a configurarlo.",

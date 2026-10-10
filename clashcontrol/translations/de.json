@@ -1036,7 +1036,7 @@
       "clan_not_found_api": "❌ Clan {clan_tag} wurde in der CoC API nicht gefunden.",
       "no_clans_found": "❌ Keine Clans gefunden für '{search_input}'.\n\nVersuche es mit einem vollständigen Clan-Tag (z.B. #2C9UR9GJY), um von der CoC API abzurufen.",
       "all_matches_already_added": "✅ Alle passenden Clans sind in dieser {list_name}-Ansicht bereits verfügbar.",
-      "error_toggling_role_system": "❌ Fehler beim Umschalten des Rollensystems: {error}",
+      "error_toggling_role_system": "❌ Fehler beim Ein-/Ausschalten der Einfachen Rollen: {error}",
       "error_saving_configuration": "❌ Fehler beim Speichern der Konfiguration: {error}",
       "error_saving_family": "❌ Fehler beim Speichern der Familie: {error}",
       "invalid_user_id_format": "❌ Ungültiges Discord-Benutzer-ID-Format. Bitte gib eine numerische ID ein.",
@@ -1045,9 +1045,9 @@
       "newbie_role_not_configured": "❌ Anfänger-Rolle nicht konfiguriert",
       "member_role_not_configured": "❌ Mitgliedsrolle nicht konfiguriert",
       "member_clans_families_not_configured": "❌ Mitglieds-Clans/Familien nicht konfiguriert",
-      "role_system_config_incomplete": "⚠️ **Rollensystem-Konfiguration unvollständig**\n\n{missing_items}\n\nBitte konfiguriere diese Einstellungen im Modus **Grundlegende Serverkonfiguration**, bevor du das Rollensystem aktivierst.",
+      "role_system_config_incomplete": "⚠️ **Einfache Rollen können noch nicht eingeschaltet werden — es fehlt:**\n\n{missing_items}\n\nDanach erneut auf **{enable_button}** klicken.",
       "permission_admin_only": "🔒 Nur Server-Administratoren können Clan-Verwaltungssteuerungen verwenden.",
-      "member_role_system_disabled": "⚠️ **Rollensystem für Mitglieder deaktiviert**\n\nDas System zur Vergabe von Mitgliedsrollen wurde automatisch deaktiviert, da du alle konfigurierten Clans und Familien entfernt hast.\n\nUm es erneut zu verwenden, füge Clans oder Familien unter **Manage Member Clans & Families** hinzu und aktiviere dann das Rollensystem manuell unter **Manage Server Roles**.",
+      "member_role_system_disabled": "⚠️ **Einfache Rollen automatisch ausgeschaltet**\n\nDu hast alle Mitglieds-Clans und -Familien entfernt. Einfache Rollen brauchen mindestens einen davon, um zu wissen, wer die Mitgliedsrolle bekommt, deshalb wurden sie ausgeschaltet.\n\n**So schaltest du sie wieder ein:**\n1. {mode_config} → **{member_clans}**: mindestens einen Clan oder eine Familie hinzufügen\n2. {mode_roles} → auf **{enable_button}** klicken",
       "family_will_affect_guilds": "⚠️ Das betrifft {count} Server:",
       "no_other_guilds_using_family": "**Kein anderer Server verwendet derzeit diese Familie.**",
       "delete_family_title": "**Familie löschen: {family_name}**",
@@ -1080,7 +1080,10 @@
       "admin_override_cancelled": "❌ **Abgebrochen** - Keine Änderungen vorgenommen.",
       "import_cancelled": "❌ **Import abgebrochen** - Keine Änderungen vorgenommen.",
       "unlink_player_success": "✅ **{player_name} ({player_tag})** wurde von <@{discord_user_id}> entkoppelt.",
-      "role_system_auto_disabled": "⚠️ **Rollensystem automatisch deaktiviert**\n\nDas Rollensystem wurde automatisch deaktiviert, da {reason} gelöscht wurde.\n\n**Um das Rollensystem erneut zu aktivieren:**\n1. Konfiguriere alle erforderlichen Einstellungen:\n   • Neuling-Rolle\n   • Mitglieds-Rolle\n   • Mindestens einen Clan oder eine Familie\n2. Klicke auf die Schaltfläche **Einfache Rollen aktivieren**"
+      "role_system_auto_disabled": "⚠️ **Einfache Rollen automatisch ausgeschaltet**\n\n{reason} Einfache Rollen brauchen beide Rollen, deshalb wurden sie ausgeschaltet.\n\n**So schaltest du sie wieder ein:**\n1. {mode_roles} → **{configure_roles}**: Neulings- und Mitgliedsrolle festlegen\n2. Auf **{enable_button}** klicken",
+      "role_system_reason_both_removed": "Du hast die Neulings- und die Mitgliedsrolle entfernt.",
+      "role_system_reason_newbie_removed": "Du hast die Neulingsrolle entfernt.",
+      "role_system_reason_member_removed": "Du hast die Mitgliedsrolle entfernt."
     },
     "prompts": {
       "link_account_header": "**Spielerkonto verknüpfen**\n\nWähle einen Spieler zum Verknüpfen, wähle Benachrichtigungseinstellungen und wähle den Discord-Benutzer aus.",
@@ -1431,7 +1434,7 @@
     }
   },
   "permissions": {
-    "warning_header": "⚠️ **Gespeichert — aber ClashControl fehlen Berechtigungen, daher funktioniert das noch nicht:**",
+    "warning_header": "⚠️ **Gespeichert — aber das funktioniert noch nicht. Folgendes muss auf dem Server angepasst werden:**",
     "warning_fix_channel": "Fehlende Kanalberechtigungen behebt ein Server-Admin in den Kanaleinstellungen (Kanal bearbeiten → Berechtigungen → ClashControl hinzufügen).",
     "warning_fix_manage_roles": "„Rollen verwalten“ aktiviert ein Server-Admin unter Servereinstellungen → Rollen → ClashControl-Rolle → Berechtigungen.",
     "warning_footer": "Es funktioniert, sobald das behoben ist — eine erneute Einrichtung ist nicht nötig.",

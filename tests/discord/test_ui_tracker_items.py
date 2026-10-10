@@ -1527,8 +1527,12 @@ async def test_post_test_cases_growing_past_one_message_deletes_the_old_single_m
 async def test_post_test_cases_shrinking_back_to_one_message_deletes_all_old_overflow(db, monkeypatch):
     """The inverse of the growth case: a case list that shrinks back under the limit must clean
     up EVERY previously-tracked message (primary and overflow), not just leave the overflow ones
-    orphaned in the channel."""
+    orphaned in the channel.
+
+    Since tracker #0150 post_test_cases() only APPENDS, so the list shrinks through
+    remove_test_cases() (obsolete cases) — which re-renders through the same chunking path."""
     from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_tracker import remove_test_cases
     CACHE.tracker_settings[TRACKER_SETTING_TEST_CHANNEL] = "1"
     channel = _fake_channel()
     channel.id = 1
@@ -1538,12 +1542,17 @@ async def test_post_test_cases_shrinking_back_to_one_message_deletes_all_old_ove
     channel.send = AsyncMock(side_effect=[overflow_msg, primary_msg])
     _wire_bot(monkeypatch, channel=channel)
     item_number = await _make_item(db)
-    await post_test_cases(item_number, [_long_case(i) for i in range(10)], actor_id="1")
+    await post_test_cases(
+        item_number, [_long_case(i) for i in range(10)] + [{"environment": "DEV", "description": "small now"}],
+        actor_id="1",
+    )
     assert overflow_msg.delete.await_count == 0  # sanity: nothing deleted yet on first post
 
     fresh_message = _fake_message(message_id=999)
     channel.send = AsyncMock(return_value=fresh_message)
-    item = await post_test_cases(item_number, [{"environment": "DEV", "description": "small now"}], actor_id="1")
+    long_ids = [c["id"] for c in await db.get_tracker_testcases(item_number) if c["description"] != "small now"]
+    await remove_test_cases(item_number, long_ids, "obsolete after a code change", actor_id="1")
+    item = await db.get_tracker_item(item_number)
 
     overflow_msg.delete.assert_awaited_once()
     primary_msg.delete.assert_awaited_once()

@@ -3732,13 +3732,38 @@ async def handle_post_tracker_testcases(request: web.Request) -> web.Response:
     except discord.HTTPException as e:
         # 2026-08-23, tracker #0028 — same reasoning as handle_post_tracker_comment above.
         # post_test_cases() itself now chunks (_post_or_refresh_testcase_message), so this is a
-        # genuine Discord-side failure rather than the routine case; note that set_tracker_
+        # genuine Discord-side failure rather than the routine case; note that add_tracker_
         # testcases() (the DB write) already committed by this point regardless of whether the
         # Discord post below it succeeds — a caller retrying on this error re-sends the same
-        # cases, which is safe (set_tracker_testcases replaces the full set, not appends).
+        # cases, which is safe: the append skips cases whose (environment, description)
+        # already exist (tracker #0150 — it used to REPLACE the full set).
         logging.error(f"[TRACKER] Discord rejected the test-case message for item #{item_number}: {e}")
         return web.json_response({"error": f"Discord rejected the test-case message: {e}"}, status=502)
     return web.json_response({"ok": True, "item": dict(item)})
+
+
+async def handle_post_tracker_testcases_remove(request: web.Request) -> web.Response:
+    """Remove specific test cases made obsolete by a code change (body: {testcase_ids, reason}).
+    The only way cases are removed — adding never replaces (tracker #0150)."""
+    if not _check_secret(request):
+        return web.json_response({"error": "forbidden"}, status=403)
+    from clashcontrol.ui_tracker import remove_test_cases
+
+    try:
+        item_number = int(request.match_info["item_number"])
+        body = await request.json()
+        ids = [int(i) for i in body.get("testcase_ids") or []]
+    except Exception:
+        return web.json_response({"error": "invalid body"}, status=400)
+    reason = str(body.get("reason") or "").strip()
+    if not ids or not reason:
+        return web.json_response({"error": "testcase_ids (non-empty) and reason are required"}, status=400)
+    try:
+        result = await remove_test_cases(item_number, ids, reason, actor_id=_tracker_admin_label(request))
+    except ValueError as e:
+        return web.json_response({"error": str(e)}, status=404)
+    testcases = await CACHE.db_manager.get_tracker_testcases(item_number)  # type: ignore[union-attr]
+    return web.json_response({"ok": True, **result, "testcases": [dict(c) for c in testcases]})
 
 
 async def handle_post_tracker_testcase_pass(request: web.Request) -> web.Response:
@@ -3903,6 +3928,7 @@ def create_app() -> web.Application:
     app.router.add_post("/api/tracker/items/{item_number}/reply-and-invite", handle_post_tracker_reply_and_invite)
     app.router.add_get("/api/tracker/items/{item_number}/thread", handle_get_tracker_thread)
     app.router.add_post("/api/tracker/items/{item_number}/testcases", handle_post_tracker_testcases)
+    app.router.add_post("/api/tracker/items/{item_number}/testcases/remove", handle_post_tracker_testcases_remove)
     app.router.add_post("/api/tracker/items/{item_number}/testcases/pass", handle_post_tracker_testcase_pass)
     app.router.add_post("/api/tracker/items/{item_number}/testcases/fail", handle_post_tracker_testcase_fail)
     app.router.add_post(

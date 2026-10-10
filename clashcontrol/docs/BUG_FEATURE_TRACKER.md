@@ -68,6 +68,17 @@ apply, but Rule 14 named-column access still does):
   `(item_number, environment)` pair. `priority` (HIGH/MEDIUM/LOW, default MEDIUM) is set
   per-row by whoever calls `tracker_add_testcases` (there is no Discord modal for composing
   test cases — see below) and shown next to each case in the posted test-case message.
+- **Adding appends, removing is explicit (2026-10-10, tracker #0150).** `tracker_add_testcases`
+  / `POST .../testcases` → `post_test_cases()` → `add_tracker_testcases()`: new cases are
+  appended (seq continues per environment), every existing case **and its pass/fail sign-off**
+  is kept, and a case whose `(environment, description)` already exists is skipped (so retrying
+  after a failed Discord post is safe). Before this it called `set_tracker_testcases()`, which
+  REPLACES the whole set — each new batch silently deleted the previous ones; on #0150 three
+  batches (16 cases) were lost that way. Cases a later code change made obsolete are removed
+  only through `tracker_remove_testcases` / `POST .../testcases/remove` `{testcase_ids, reason}`
+  → `remove_test_cases()`: ids must belong to the item (otherwise nothing is removed), the
+  posted message is re-rendered, and the reason plus the removed cases go into the item's thread.
+  `set_tracker_testcases()` (replace) remains only as a test fixture helper.
 
 There is no cap on how many open items one reporter can have — `/bug`/`/feature` always opens
 the modal (removed 2026-08-22 per the project owner's request; see `BUG_FEATURE_TRACKER_PLAN.md`

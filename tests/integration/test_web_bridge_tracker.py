@@ -523,7 +523,7 @@ async def test_post_testcases_reports_discord_failure_as_json_and_keeps_the_db_w
     set_tracker_testcases() (the DB write, which runs BEFORE the Discord post) had already
     committed successfully. Confirms both halves of the fix: a real JSON error comes back, AND
     the rows are there regardless -- a caller retrying the same cases after this error is safe
-    (set_tracker_testcases replaces the full set, it doesn't append)."""
+    (the append skips cases that already exist -- tracker #0150; it used to replace the set)."""
     from clashcontrol.cache_manager import CACHE
     from clashcontrol.ui_tracker import TRACKER_SETTING_TEST_CHANNEL
     CACHE.tracker_settings[TRACKER_SETTING_TEST_CHANNEL] = "1"
@@ -544,6 +544,71 @@ async def test_post_testcases_reports_discord_failure_as_json_and_keeps_the_db_w
     cases = await db.get_tracker_testcases(item_number)
     assert len(cases) == 1
     assert cases[0]["description"] == "run it"
+
+
+async def test_post_testcases_appends_and_a_retry_does_not_duplicate(client, db, monkeypatch):
+    """Tracker #0150: a second POST used to REPLACE the first batch (and its sign-offs). It now
+    adds; re-sending an identical case (a retry after a Discord error) is a no-op."""
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_tracker import TRACKER_SETTING_TEST_CHANNEL
+    CACHE.tracker_settings[TRACKER_SETTING_TEST_CHANNEL] = "1"
+    channel = _fake_channel()
+    channel.id = 1  # a second post re-reads the stored test_channel_id
+    channel.fetch_message = AsyncMock(return_value=channel.send.return_value)  # ...and edits its message
+    _wire_bot(monkeypatch, channel=channel)
+    item_number = await _make_item(db)
+    h = {"X-Bridge-Secret": SECRET}
+
+    await client.post(f"/api/tracker/items/{item_number}/testcases",
+                      json={"cases": [{"environment": "PROD", "description": "batch 1"}]}, headers=h)
+    first_id = (await db.get_tracker_testcases(item_number))[0]["id"]
+    await db.mark_tracker_testcase_passed(first_id, "qaplop")
+    resp = await client.post(f"/api/tracker/items/{item_number}/testcases",
+                             json={"cases": [{"environment": "PROD", "description": "batch 2"},
+                                             {"environment": "PROD", "description": "batch 1"}]}, headers=h)
+    assert resp.status == 200, await resp.text()
+
+    cases = await db.get_tracker_testcases(item_number)
+    assert [c["description"] for c in cases] == ["batch 1", "batch 2"]
+    assert cases[0]["passed"] == 1  # the sign-off survived
+
+
+async def test_remove_testcases_validates_and_removes_only_given_ids(client, db, monkeypatch):
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_tracker import TRACKER_SETTING_TEST_CHANNEL
+    CACHE.tracker_settings[TRACKER_SETTING_TEST_CHANNEL] = "1"
+    channel = _fake_channel()
+    channel.id = 1  # a second post re-reads the stored test_channel_id
+    channel.fetch_message = AsyncMock(return_value=channel.send.return_value)  # ...and edits its message
+    _wire_bot(monkeypatch, channel=channel)
+    item_number = await _make_item(db)
+    other = await _make_item(db)
+    h = {"X-Bridge-Secret": SECRET}
+    await client.post(f"/api/tracker/items/{item_number}/testcases",
+                      json={"cases": [{"environment": "PROD", "description": "old audit output"},
+                                      {"environment": "PROD", "description": "still valid"}]}, headers=h)
+    await db.add_tracker_testcases(other, [{"environment": "DEV", "description": "other item"}])
+    ids = {c["description"]: c["id"] for c in await db.get_tracker_testcases(item_number)}
+    other_id = (await db.get_tracker_testcases(other))[0]["id"]
+
+    # reason required
+    resp = await client.post(f"/api/tracker/items/{item_number}/testcases/remove",
+                             json={"testcase_ids": [ids["old audit output"]]}, headers=h)
+    assert resp.status == 400
+    # an id of another item -> refused, nothing removed
+    resp = await client.post(f"/api/tracker/items/{item_number}/testcases/remove",
+                             json={"testcase_ids": [ids["old audit output"], other_id], "reason": "x"}, headers=h)
+    assert resp.status == 404
+    assert len(await db.get_tracker_testcases(item_number)) == 2
+
+    resp = await client.post(f"/api/tracker/items/{item_number}/testcases/remove",
+                             json={"testcase_ids": [ids["old audit output"]], "reason": "Build 136 changed the audit output"},
+                             headers=h)
+    assert resp.status == 200
+    body = await resp.json()
+    assert body["removed"] == [ids["old audit output"]] and body["remaining"] == 1
+    assert [c["description"] for c in await db.get_tracker_testcases(item_number)] == ["still valid"]
+    assert len(await db.get_tracker_testcases(other)) == 1
 
 
 # -- create item (tracker item #0015) --------------------------------------

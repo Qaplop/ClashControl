@@ -3869,6 +3869,70 @@ class WarHistoryDB:
                 )
             await self._conn.commit()
 
+    async def add_tracker_testcases(self, item_number: int, cases: List[Dict[str, Any]]) -> int:
+        """APPEND test cases to an item, keeping every existing case and its pass/fail state.
+
+        What ``tracker_add_testcases`` / ``post_test_cases()`` use (2026-10-10, tracker #0150:
+        they used set_tracker_testcases() above, which REPLACES the whole set — each new batch
+        silently deleted the previous ones, including any sign-offs). seq continues per
+        environment after the item's current highest one. A case whose (environment,
+        description) already exists for the item is skipped, so a caller retrying after a
+        failed Discord post (the DB write commits first) does not duplicate cases.
+
+        Returns:
+            How many cases were actually added.
+        """
+        await self._ensure_connection()
+        async with self._write_lock:
+            cursor = await self._conn.execute(
+                "SELECT environment, MAX(seq) AS max_seq FROM tracker_testcases "
+                "WHERE item_number = ? GROUP BY environment",
+                (item_number,),
+            )
+            seq_by_env: Dict[str, int] = {row["environment"]: int(row["max_seq"] or 0) for row in await cursor.fetchall()}
+            cursor = await self._conn.execute(
+                "SELECT environment, description FROM tracker_testcases WHERE item_number = ?",
+                (item_number,),
+            )
+            existing = {(row["environment"], row["description"]) for row in await cursor.fetchall()}
+            rows = []
+            for case in cases:
+                env = case["environment"]
+                key = (env, case["description"])
+                if key in existing:
+                    continue
+                existing.add(key)
+                seq_by_env[env] = seq_by_env.get(env, 0) + 1
+                priority = str(case.get("priority") or "").strip().upper()
+                if priority not in ("HIGH", "MEDIUM", "LOW"):
+                    priority = "MEDIUM"
+                rows.append((item_number, env, seq_by_env[env], case["description"], priority))
+            if rows:
+                await self._conn.executemany(
+                    "INSERT INTO tracker_testcases (item_number, environment, seq, description, priority) "
+                    "VALUES (?, ?, ?, ?, ?)",
+                    rows,
+                )
+            await self._conn.commit()
+        return len(rows)
+
+    async def delete_tracker_testcases(self, item_number: int, testcase_ids: List[int]) -> int:
+        """Delete specific test cases of an item (ones made obsolete by later code changes).
+        Ids that don't belong to *item_number* are ignored. Returns how many were deleted."""
+        await self._ensure_connection()
+        ids = sorted({int(i) for i in testcase_ids})
+        if not ids:
+            return 0
+        placeholders = ",".join("?" for _ in ids)
+        async with self._write_lock:
+            cursor = await self._conn.execute(
+                f"DELETE FROM tracker_testcases WHERE item_number = ? AND id IN ({placeholders})",
+                (item_number, *ids),
+            )
+            deleted = cursor.rowcount or 0
+            await self._conn.commit()
+        return deleted
+
     async def get_tracker_testcases(self, item_number: int) -> List[Dict[str, Any]]:
         """Return every test case for an item, ordered by environment then seq."""
         await self._ensure_connection()

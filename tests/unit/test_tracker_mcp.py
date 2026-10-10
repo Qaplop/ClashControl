@@ -108,15 +108,16 @@ def test_tool_names_are_unique():
     assert len(names) == len(set(names))
 
 
-def test_write_tools_are_exactly_nine():
+def test_write_tools_are_exactly_ten():
     """Plan §6.6, extended by tracker item #0015 (create_item), the pass/fail follow-up
     (mark_testcase_passed/failed), the decoupling follow-up (move_testcases_done), tracker
-    item #0102 (reply_and_invite), and the 2026-09-05 follow-up (mark_testcase_result): these
-    nine are the only tools that change tracker state. Everything else is read-only."""
+    item #0102 (reply_and_invite), the 2026-09-05 follow-up (mark_testcase_result), and tracker
+    #0150 (remove_testcases — adding never replaces any more): these ten are the only tools that
+    change tracker state. Everything else is read-only."""
     write_tools = {
         "tracker_create_item", "tracker_set_status", "tracker_comment", "tracker_reply_and_invite",
-        "tracker_add_testcases", "tracker_mark_testcase_passed", "tracker_mark_testcase_failed",
-        "tracker_mark_testcase_result", "tracker_move_testcases_done",
+        "tracker_add_testcases", "tracker_remove_testcases", "tracker_mark_testcase_passed",
+        "tracker_mark_testcase_failed", "tracker_mark_testcase_result", "tracker_move_testcases_done",
     }
     read_tools = {"tracker_list_items", "tracker_get_item", "tracker_get_thread"}
     names = {t["name"] for t in tracker_mcp.TOOLS}

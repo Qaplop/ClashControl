@@ -1,6 +1,24 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-10 (4)
+- Fixed: adding tracker test cases REPLACED all existing ones. tracker_add_testcases ->
+  post_test_cases() called set_tracker_testcases(), which deletes the item's whole set first, so
+  every new batch silently dropped the previous ones and their pass/fail sign-offs (tracker
+  #0150 lost three batches, 16 cases, that way). It now appends via add_tracker_testcases():
+  seq continues per environment, existing cases and sign-offs are kept, an identical case
+  (environment + description) is skipped so retries are safe.
+- Added: tracker_remove_testcases MCP tool / POST /api/tracker/items/{n}/testcases/remove
+  {testcase_ids, reason} -> remove_test_cases(): the explicit way to drop cases a later code
+  change made obsolete. Ids must belong to the item; the reason and the removed cases are posted
+  to the item's thread. Build 137.
+  Files: clashcontrol/db_manager.py, clashcontrol/ui_tracker.py, clashcontrol/web_bridge.py,
+  clashcontrol/mcp/tracker_mcp.py, clashcontrol/mcp/tracker_bridge_client.py,
+  tests/unit/test_tracker_db.py, tests/unit/test_tracker_mcp.py,
+  tests/integration/test_web_bridge_tracker.py, tests/discord/test_ui_tracker_items.py,
+  clashcontrol/docs/BUG_FEATURE_TRACKER.md, .github/copilot-instructions.md, QBcore.py.
+  3726 tests pass.
+
 2026-10-10 (3)
 - Fixed (tracker #0150 follow-up): guilds the bot had been removed from kept being served every
   cycle -- the permission audit showed Odyssey COC and 1400585784347594882 with registration /

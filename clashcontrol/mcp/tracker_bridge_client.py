@@ -107,6 +107,12 @@ class TrackerBridgeClient:
     async def add_testcases(self, item_number: int, cases: List[Dict[str, str]]) -> Dict[str, Any]:
         return await self._post(f"/api/tracker/items/{item_number}/testcases", {"cases": cases})
 
+    async def remove_testcases(self, item_number: int, testcase_ids: List[int], reason: str) -> Dict[str, Any]:
+        return await self._post(
+            f"/api/tracker/items/{item_number}/testcases/remove",
+            {"testcase_ids": testcase_ids, "reason": reason},
+        )
+
     async def mark_testcase_passed(self, item_number: int, environment: str) -> Dict[str, Any]:
         return await self._post(f"/api/tracker/items/{item_number}/testcases/pass", {"environment": environment})
 

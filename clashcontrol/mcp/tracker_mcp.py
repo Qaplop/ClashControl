@@ -211,10 +211,13 @@ TOOLS: List[Dict[str, Any]] = [
     {
         "name": "tracker_add_testcases",
         "description": (
-            "Post manual test cases for a tracker item into the #cc-testing channel, "
-            "transitioning the item to 'testing'. Assign each case its own `priority` "
-            "(HIGH/MEDIUM/LOW) based on your judgment of how critical that specific case is to "
-            "verify — defaults to MEDIUM if omitted."
+            "ADD manual test cases to a tracker item and (re)post its test-case message in the "
+            "#cc-testing channel, transitioning the item to 'testing'. Appends: existing cases "
+            "and their pass/fail sign-offs are kept, and a case identical to an existing one "
+            "(same environment + description) is skipped. Pass only the NEW cases. To drop "
+            "cases a later code change made obsolete, use tracker_remove_testcases. Assign each "
+            "case its own `priority` (HIGH/MEDIUM/LOW) based on your judgment of how critical "
+            "that specific case is to verify — defaults to MEDIUM if omitted."
         ),
         "inputSchema": {
             "type": "object",
@@ -239,6 +242,27 @@ TOOLS: List[Dict[str, Any]] = [
                 "model": _MODEL_PARAM,
             },
             "required": ["item_number", "cases"],
+        },
+    },
+    {
+        "name": "tracker_remove_testcases",
+        "description": (
+            "Remove specific test cases of a tracker item that became OBSOLETE because of a "
+            "later code change (e.g. a case describing output that a newer build changed). The "
+            "only way to remove cases — tracker_add_testcases never replaces. Ids come from "
+            "tracker_get_item's test case list and must all belong to the item, otherwise "
+            "nothing is removed. The reason is posted into the item's discussion thread together "
+            "with the removed cases, so the removal stays traceable."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "item_number": {"type": "integer"},
+                "testcase_ids": {"type": "array", "items": {"type": "integer"}, "description": "Ids of the obsolete cases."},
+                "reason": {"type": "string", "description": "Which code change made them obsolete."},
+                "model": _MODEL_PARAM,
+            },
+            "required": ["item_number", "testcase_ids", "reason"],
         },
     },
     {
@@ -482,8 +506,18 @@ async def call_tool(name: str, arguments: Dict[str, Any]) -> str:
     if name == "tracker_add_testcases":
         result = await client.add_testcases(int(arguments["item_number"]), arguments["cases"])
         return (
-            f"Posted {len(arguments['cases'])} test case(s) for #{int(arguments['item_number']):04d} "
-            f"— status is now {result['item']['status']}."
+            f"Added {len(arguments['cases'])} test case(s) to #{int(arguments['item_number']):04d} "
+            f"(existing cases kept; exact duplicates skipped) — status is now {result['item']['status']}."
+        )
+
+    if name == "tracker_remove_testcases":
+        item_number = int(arguments["item_number"])
+        result = await client.remove_testcases(
+            item_number, [int(i) for i in arguments["testcase_ids"]], arguments["reason"]
+        )
+        return (
+            f"Removed test case(s) {result['removed']} from #{item_number:04d}; "
+            f"{result['remaining']} remaining. The reason was posted to the discussion thread."
         )
 
     if name == "tracker_mark_testcase_passed":

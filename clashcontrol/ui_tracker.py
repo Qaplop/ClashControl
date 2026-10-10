@@ -2400,11 +2400,16 @@ def build_tracker_testcase_view(item_number: int, testcases: List[Dict[str, Any]
 
 
 async def post_test_cases(item_number: int, cases: List[Dict[str, str]], actor_id: Optional[str] = None) -> Dict[str, Any]:
-    """Persist *cases* ({environment, description, priority?}) and (re)post the test-case message to
-    #cc-testing, transitioning the item to 'testing' the moment it posts (plan §2.4 point 4)
-    unless it's already testing/done. Shared by the Discord flow and the bridge/MCP
-    `tracker_add_testcases` tool — there is no native Discord UI for *composing* test cases,
-    only for signing them off (plan §2.3's "Test cases" button is a jump link, not an editor)."""
+    """APPEND *cases* ({environment, description, priority?}) to the item's test cases and
+    (re)post the test-case message to #cc-testing, transitioning the item to 'testing' the moment
+    it posts (plan §2.4 point 4) unless it's already testing/done. Shared by the Discord flow and
+    the bridge/MCP `tracker_add_testcases` tool — there is no native Discord UI for *composing*
+    test cases, only for signing them off (plan §2.3's "Test cases" button is a jump link, not an
+    editor).
+
+    Existing cases and their pass/fail state are kept (2026-10-10, tracker #0150: this used to
+    REPLACE the whole set, so every new batch silently deleted the previous one). Cases that a
+    later code change made obsolete are removed explicitly with remove_test_cases()."""
     from clashcontrol.cache_manager import CACHE
     import QBcore
 
@@ -2413,7 +2418,7 @@ async def post_test_cases(item_number: int, cases: List[Dict[str, str]], actor_i
     if item is None:
         raise ValueError(f"tracker item #{item_number} not found")
 
-    await db.set_tracker_testcases(item_number, cases)  # type: ignore[union-attr]
+    await db.add_tracker_testcases(item_number, cases)  # type: ignore[union-attr]
     testcases = await db.get_tracker_testcases(item_number)  # type: ignore[union-attr]
 
     channel_id_str = item.get("test_channel_id") or CACHE.tracker_settings.get(TRACKER_SETTING_TEST_CHANNEL)
@@ -2453,6 +2458,51 @@ async def post_test_cases(item_number: int, cases: List[Dict[str, str]], actor_i
     assert item is not None
     await _refresh_item_message(item)
     return item
+
+
+async def remove_test_cases(
+    item_number: int, testcase_ids: List[int], reason: str, actor_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Remove specific test cases that a later code change made obsolete, re-render the posted
+    test-case message, and record why in the item's discussion thread.
+
+    The ONLY way cases are removed (tracker #0150): post_test_cases() appends. Every id must
+    belong to *item_number* — anything else raises ValueError and nothing is deleted.
+
+    Returns:
+        ``{"removed": [ids], "remaining": n}``.
+    """
+    from clashcontrol.cache_manager import CACHE
+
+    db = CACHE.db_manager
+    item = await db.get_tracker_item(item_number)  # type: ignore[union-attr]
+    if item is None:
+        raise ValueError(f"tracker item #{item_number} not found")
+    if not reason or not reason.strip():
+        raise ValueError("a reason is required (which code change made the case(s) obsolete)")
+    current = {int(c["id"]): c for c in await db.get_tracker_testcases(item_number)}  # type: ignore[union-attr]
+    wanted = sorted({int(i) for i in testcase_ids})
+    unknown = [i for i in wanted if i not in current]
+    if not wanted or unknown:
+        raise ValueError(
+            f"test case id(s) {unknown or wanted} do not belong to item #{item_number}"
+            if unknown else "no test case ids given"
+        )
+    await db.delete_tracker_testcases(item_number, wanted)  # type: ignore[union-attr]
+    remaining = await db.get_tracker_testcases(item_number)  # type: ignore[union-attr]
+    await _refresh_testcase_message(item_number)
+
+    lines = "\n".join(
+        f"• [{current[i]['environment']} #{current[i]['seq']}] {str(current[i]['description'])[:150]}"
+        for i in wanted
+    )
+    note = f"🗑️ Removed {len(wanted)} obsolete test case(s) — {reason.strip()}\n{lines}"
+    try:
+        await post_comment(item_number, note[:1900], actor_id or "agent")
+    except Exception as e:
+        logging.warning(f"[TRACKER] Could not post the test-case removal note for item #{item_number}: {e}")
+    logging.info(f"[TRACKER] Removed test case(s) {wanted} from item #{item_number}: {reason.strip()}")
+    return {"removed": wanted, "remaining": len(remaining)}
 
 
 async def _move_test_message_to_done_testing_channel(item: Dict[str, Any]) -> bool:

@@ -270,6 +270,48 @@ async def test_set_tracker_testcases_replaces_existing_set(db):
 
 
 @pytest.mark.asyncio
+async def test_add_tracker_testcases_appends_and_keeps_signoffs(db):
+    """Tracker #0150: posting new cases must ADD them. post_test_cases() used the replacing
+    setter, so every new batch deleted the previous one (and its sign-offs)."""
+    item_number = await db.create_tracker_item(
+        item_type="bug", title="t", description="d", reporter_id="1", reporter_name="A"
+    )
+    assert await db.add_tracker_testcases(item_number, [
+        {"environment": "PROD", "description": "build 133 case"},
+        {"environment": "DEV", "description": "dev case"},
+    ]) == 2
+    first = next(c for c in await db.get_tracker_testcases(item_number) if c["description"] == "build 133 case")
+    await db.mark_tracker_testcase_passed(first["id"], "42")
+
+    assert await db.add_tracker_testcases(item_number, [
+        {"environment": "PROD", "description": "build 134 case", "priority": "HIGH"},
+        {"environment": "DEV", "description": "dev case"},  # exact duplicate -> skipped
+    ]) == 1
+
+    cases = await db.get_tracker_testcases(item_number)
+    assert [(c["environment"], c["seq"], c["description"]) for c in cases] == [
+        ("DEV", 1, "dev case"),
+        ("PROD", 1, "build 133 case"),
+        ("PROD", 2, "build 134 case"),
+    ]
+    kept = next(c for c in cases if c["description"] == "build 133 case")
+    assert kept["passed"] == 1 and kept["passed_by"] == "42"  # sign-off survived the second add
+
+
+@pytest.mark.asyncio
+async def test_delete_tracker_testcases_only_touches_that_item(db):
+    a = await db.create_tracker_item(item_type="bug", title="a", description="d", reporter_id="1", reporter_name="A")
+    b = await db.create_tracker_item(item_type="bug", title="b", description="d", reporter_id="1", reporter_name="A")
+    await db.add_tracker_testcases(a, [{"environment": "DEV", "description": "x"}, {"environment": "DEV", "description": "y"}])
+    await db.add_tracker_testcases(b, [{"environment": "DEV", "description": "z"}])
+    a_ids = [c["id"] for c in await db.get_tracker_testcases(a)]
+    b_id = (await db.get_tracker_testcases(b))[0]["id"]
+    assert await db.delete_tracker_testcases(a, [a_ids[0], b_id]) == 1  # b's id ignored
+    assert [c["description"] for c in await db.get_tracker_testcases(a)] == ["y"]
+    assert len(await db.get_tracker_testcases(b)) == 1
+
+
+@pytest.mark.asyncio
 async def test_mark_tracker_testcase_passed(db):
     item_number = await db.create_tracker_item(
         item_type="bug", title="t", description="d", reporter_id="1", reporter_name="A"

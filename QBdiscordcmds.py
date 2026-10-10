@@ -2789,9 +2789,13 @@ async def admin(
             )
             # Bot-admin diagnostic (English, like the other bot-admin actions): short summary
             # inline, the full per-guild report as a file — it easily exceeds 2000 chars.
+            from clashcontrol.guild_presence import absent_configured_guilds
+            _absent = len(absent_configured_guilds())
             summary = (
                 f"🔎 **Permission audit** — {len(QBcore.bot.guilds)} server(s), "
-                f"{guilds_with_issues} with issues, {total} issue(s) in total. Full report attached."
+                f"{guilds_with_issues} with issues, {total} issue(s) in total"
+                + (f"; {_absent} configured server(s) the bot is no longer in" if _absent else "")
+                + ". Full report attached."
             )
             await interaction.followup.send(
                 summary,

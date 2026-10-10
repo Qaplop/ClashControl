@@ -738,6 +738,20 @@ all rebuild/button-handler paths so the reference is never lost.
   before it reaches a tool result — bug/feature reports are arbitrary Discord-user text fed
   straight into an agent's context, a textbook prompt-injection surface.
 
+🟫 clashcontrol/guild_presence.py (tracker #0150 follow-up, Build 136)
+- Policy for guilds the bot is removed from: KEEP the stored config, PAUSE its automations, log
+  once. Re-adding the bot restores everything; deleting a guild's data is an explicit bot-owner
+  decision, never automatic.
+- `bot_guild_presence(gid)` -> True / False / None. None = not known yet (bot not ready: before
+  the guild list arrives, `get_guild()` is None for EVERY guild) — callers skip only on False.
+- `is_guild_absent(gid, context=)` — the skip check for loops over stored config (anchored
+  messages, war/raid reminders, raid tracking/routing); logs `[GUILD-ABSENT]` once per guild
+  per process. Leaderboards need no check (they already skip uncached channels).
+- `log_absent_configured_guilds()` — startup reconciliation (removals while offline); QBcore's
+  `on_guild_remove` / `on_guild_join` log removals/joins (join also logs Administrator yes/no
+  and re-arms the one-time log line).
+- `/admin Permission Audit` lists these guilds in its own section.
+
 🟫 clashcontrol/bot_permissions.py (tracker #0150 follow-up, Build 135)
 - Single source of what every automation needs from Discord:
   · `CHANNEL_FEATURES` — posting features -> required permissions (registration / CWL hubs /

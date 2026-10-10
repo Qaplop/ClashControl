@@ -1,6 +1,24 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-10 (3)
+- Fixed (tracker #0150 follow-up): guilds the bot had been removed from kept being served every
+  cycle -- the permission audit showed Odyssey COC and 1400585784347594882 with registration /
+  CWL hub / war reminders and leaderboard subscriptions still stored ("Could not reach ...
+  channel" daily). New clashcontrol/guild_presence.py: their config is KEPT (re-adding the bot
+  restores it) and their automations are paused -- anchored messages, war/raid reminders, raid
+  tracking/routing skip them with one [GUILD-ABSENT] line per guild. Presence "unknown" (bot not
+  ready yet) never counts as absent. New on_guild_remove / on_guild_join log removals and joins
+  (join also logs Administrator yes/no); a startup check lists removals that happened offline.
+- Changed: /admin Permission Audit lists configured servers the bot is no longer in, prints
+  channels/roles as #name (id) / @name (id) without Markdown, and shows server-level gaps with
+  readable permission names. Build 136.
+  Files: clashcontrol/guild_presence.py (new), clashcontrol/bot_permissions.py,
+  clashcontrol/log_throttle.py, ClashControl.py, QBcore.py, QBdiscordcmds.py,
+  clashcontrol/war_notifications.py, clashcontrol/QBdiscocmdshelper_cwl.py,
+  tests/unit/test_guild_presence.py (new), clashcontrol/docs/CODE_STRUCTURE.md,
+  .github/copilot-instructions.md. 3722 tests pass.
+
 2026-10-10 (2)
 - Added (tracker #0150 follow-up): bot permission checks for every automation that posts messages
   or manages roles. Two PROD guilds had set up channels the bot could not see/post in and got a

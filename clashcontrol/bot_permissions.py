@@ -262,18 +262,41 @@ def _perm_names(perms: Iterable[str], *, guild_id: Optional[int], user_id: Optio
     )
 
 
-def format_issue(issue: PermissionIssue, *, guild_id: Optional[int], user_id: Optional[str] = None) -> str:
-    """One bullet line for ``issue`` in the guild's (or user's) language."""
+def format_issue(
+    issue: PermissionIssue, *, guild_id: Optional[int], user_id: Optional[str] = None,
+    plain_guild: Optional[Any] = None,
+) -> str:
+    """One bullet line for ``issue`` in the guild's (or user's) language.
+
+    Discord messages get ``<#id>`` / ``<@&id>`` mentions and Markdown. For a plain-text file
+    (the audit report) pass ``plain_guild``: channels and roles are then written as
+    ``#name (id)`` / ``@name (id)`` resolved from that guild, and the ``**`` markers are dropped.
+    """
     from clashcontrol.i18n import t
 
     feature = t(f"permissions.feature.{issue.feature}", guild_id=guild_id, user_id=user_id)
-    channel = f"<#{issue.target_id}>" if issue.target_id else ""
-    role = f"<@&{issue.target_id}>" if issue.target_id else ""
+    if plain_guild is not None and issue.target_id:
+        ch = None
+        try:
+            ch = plain_guild.get_channel_or_thread(issue.target_id)
+        except Exception:
+            ch = None
+        rl = None
+        try:
+            rl = plain_guild.get_role(issue.target_id)
+        except Exception:
+            rl = None
+        channel = f"#{getattr(ch, 'name', '?')} ({issue.target_id})"
+        role = f"@{getattr(rl, 'name', '?')} ({issue.target_id})"
+    else:
+        channel = f"<#{issue.target_id}>" if issue.target_id else ""
+        role = f"<@&{issue.target_id}>" if issue.target_id else ""
     key = f"permissions.issue.{issue.kind}"
-    return t(
+    text = t(
         key, guild_id=guild_id, user_id=user_id, feature=feature, channel=channel, role=role,
         perms=_perm_names(issue.perms, guild_id=guild_id, user_id=user_id),
     )
+    return text.replace("**", "") if plain_guild is not None else text
 
 
 def format_issues_message(
@@ -387,9 +410,30 @@ def build_audit_report(guilds: Iterable[discord.Guild]) -> Tuple[str, int, int]:
             f"  |  configured: {'yes' if configured else 'no'}"
         )
         if missing_server_level:
-            out.append(f"   missing at server level: {', '.join(missing_server_level)}")
+            out.append(
+                f"   missing at server level: "
+                f"{_perm_names(missing_server_level, guild_id=None, user_id=None)}"
+            )
         for issue in issues:
-            out.append("   - " + format_issue(issue, guild_id=None))
-    summary = f"{guilds_with_issues} guild(s) with issues, {total} issue(s) in total."
+            out.append("   - " + format_issue(issue, guild_id=None, plain_guild=guild))
+
+    # (a) Configured guilds the bot is no longer in: their settings are kept but paused
+    # (clashcontrol/guild_presence.py). Listed so a stale config is visible here, not only as a
+    # log line. The bot cannot see these guilds any more, so there is no name or owner to show.
+    from clashcontrol.guild_presence import absent_configured_guilds, configured_guild_summary
+    present_ids = {str(g.id) for g in guilds}
+    absent = [g for g in absent_configured_guilds() if g not in present_ids]
+    if absent:
+        out.append(f"\n## Configured servers the bot is no longer in ({len(absent)}) — config kept, automations paused")
+        for gid in absent:
+            s = configured_guild_summary(gid)
+            out.append(
+                f"   - {gid}: enabled: {', '.join(s['enabled']) or 'nothing'}; "
+                f"{s['subscription_channels']} subscription channel(s)"
+            )
+    summary = (
+        f"{guilds_with_issues} guild(s) with issues, {total} issue(s) in total; "
+        f"{len(absent)} configured server(s) the bot is no longer in."
+    )
     report = "ClashControl permission audit\n" + summary + "\n" + "\n".join(out)
     return report, guilds_with_issues, total

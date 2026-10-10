@@ -1519,7 +1519,11 @@ async def _send_channel_war_notification(clan_tag: str, war_data: Dict[str, Any]
     war_id = _get_war_id(clan_tag, war_data)
     
     # For each subscribed guild, check if channel notifications are enabled
+    from clashcontrol.guild_presence import is_guild_absent
     for guild_id in subscribed_guilds:
+        # Removed from this guild: config kept, reminders paused (tracker #0150).
+        if is_guild_absent(guild_id, context=f"{kind} reminder"):
+            continue
         try:
             # Check if channel notification already sent for this war+guild combination
             if _is_channel_notification_sent(war_id, guild_id):

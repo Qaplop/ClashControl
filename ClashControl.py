@@ -4492,6 +4492,13 @@ async def _run_startup_initialization() -> None:
 
         logging.info(f"🎉 Bot fully initialized and logged in as {QBcore.bot.user} ({mode_str} mode)")
         logging.info(f"🏠 Connected to {len(QBcore.bot.guilds)} guild(s)")
+        # Tracker #0150: configured guilds the bot was removed from (also while it was offline,
+        # which on_guild_remove cannot see) — one line, config kept, automations paused.
+        try:
+            from clashcontrol.guild_presence import log_absent_configured_guilds
+            log_absent_configured_guilds()
+        except Exception as e:
+            logging.warning(f"[GUILD-ABSENT] Startup check failed: {e}")
         logging.info("=== Bot initialization completed successfully ===")
         
     except Exception as e:
@@ -5033,10 +5040,15 @@ async def repost_anchored_message(
         guilds_to_process = list(server_config.items())
         logging.debug(f"repost_anchored_message({log_label}) called, processing {len(guilds_to_process)} guilds")
 
+    from clashcontrol.guild_presence import is_guild_absent
     for guild_id_str, config in guilds_to_process:
         try:
             guild_id_int = int(guild_id_str)
         except (ValueError, TypeError):
+            continue
+        # Bot was removed from this guild: keep its config, don't try to serve it (tracker #0150 —
+        # "Could not reach ... channel" daily for a guild the bot had left).
+        if is_guild_absent(guild_id_int, context=f"{log_label} message"):
             continue
 
         message_enabled = config.get(enabled_key, False)

@@ -56,6 +56,12 @@ def reset_log_throttle() -> None:
     _last_logged.clear()
 
 
+def forget_log_throttle(key: Hashable) -> None:
+    """Forget one key, so its next occurrence logs at full level again (e.g. the condition was
+    resolved and may recur later)."""
+    _last_logged.pop(key, None)
+
+
 def find_discord_forbidden(exc: BaseException) -> Optional[discord.Forbidden]:
     """Return the ``discord.Forbidden`` that caused ``exc`` (itself, or anywhere in its
     ``__cause__``/``__context__`` chain), else None. Our wrappers (e.g. LeaderboardPostingError)

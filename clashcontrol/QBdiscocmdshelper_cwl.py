@@ -694,8 +694,11 @@ def all_member_clan_tags() -> List[str]:
     """Every guild's member clans (member_clans + member_family clans), deduplicated and sorted —
     resolve_guild_member_clan_tags() unioned over all guilds. The Clan Capital raid tracking set
     (tracker #0115): raids are tracked for member clans only, not for subscribed/guest clans."""
+    from clashcontrol.guild_presence import is_guild_absent
     tags: Set[str] = set()
     for guild_id in list(CACHE.server_config.keys()):
+        if is_guild_absent(guild_id, context="raid tracking"):
+            continue  # removed from that guild: its member clans no longer need raid polling (#0150)
         try:
             tags.update(resolve_guild_member_clan_tags(int(guild_id)))
         except (TypeError, ValueError):
@@ -706,8 +709,11 @@ def all_member_clan_tags() -> List[str]:
 def guild_ids_for_member_clan(clan_tag: str) -> List[str]:
     """Guild ids (as str) whose member clans — directly or via a member family — include
     *clan_tag*. Used to route Clan Capital raid channel reminders (tracker #0115)."""
+    from clashcontrol.guild_presence import is_guild_absent
     result: List[str] = []
     for guild_id in list(CACHE.server_config.keys()):
+        if is_guild_absent(guild_id, context="raid reminder routing"):
+            continue  # removed from that guild (#0150)
         try:
             if clan_tag in resolve_guild_member_clan_tags(int(guild_id)):
                 result.append(str(guild_id))

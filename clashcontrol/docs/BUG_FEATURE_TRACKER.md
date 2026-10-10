@@ -71,7 +71,10 @@ apply, but Rule 14 named-column access still does):
   number is never reused. Until 2026-10-10 `seq` restarted at 1 per environment ("DEV #1",
   "PROD #1"), which made "case #2" ambiguous; the migration that added `testcase_counter`
   renumbered existing cases once, in the order they were added, and the startup after it
-  refreshes the affected posted messages. `priority` (HIGH/MEDIUM/LOW, default MEDIUM) is set
+  refreshes the affected posted messages. **When reporting to people** (chat, comments, notes,
+  changelog), refer to a case as `#<ticket>-<number>`, e.g. `#150-6` = ticket #0150, case #6 as
+  shown in the testing channel's message — never by its database `id` (e.g. 439), which means
+  nothing to a reader. The `id` is only the handle the MCP/bridge tools take. `priority` (HIGH/MEDIUM/LOW, default MEDIUM) is set
   per-row by whoever calls `tracker_add_testcases` (there is no Discord modal for composing
   test cases — see below) and shown next to each case in the posted test-case message.
 - **Adding appends, removing is explicit (2026-10-10, tracker #0150).** `tracker_add_testcases`

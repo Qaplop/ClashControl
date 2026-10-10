@@ -1432,7 +1432,9 @@
   },
   "permissions": {
     "warning_header": "⚠️ **Gespeichert — aber ClashControl fehlen Berechtigungen, daher funktioniert das noch nicht:**",
-    "warning_footer": "Ein Server-Admin kann das in den Kanaleinstellungen beheben (Kanal bearbeiten → Berechtigungen → ClashControl hinzufügen) oder bei Rollen, indem er die ClashControl-Rolle unter Servereinstellungen → Rollen darüber zieht. Es funktioniert, sobald das behoben ist — eine erneute Einrichtung ist nicht nötig.",
+    "warning_fix_channel": "Fehlende Kanalberechtigungen behebt ein Server-Admin in den Kanaleinstellungen (Kanal bearbeiten → Berechtigungen → ClashControl hinzufügen).",
+    "warning_fix_manage_roles": "„Rollen verwalten“ aktiviert ein Server-Admin unter Servereinstellungen → Rollen → ClashControl-Rolle → Berechtigungen.",
+    "warning_footer": "Es funktioniert, sobald das behoben ist — eine erneute Einrichtung ist nicht nötig.",
     "warning_more": "… und {count} weitere.",
     "feature": {
       "registration": "Registrierungsnachricht",

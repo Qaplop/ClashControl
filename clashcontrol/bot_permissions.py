@@ -310,7 +310,17 @@ def format_issues_message(
     from clashcontrol.i18n import t
 
     header = t("permissions.warning_header", guild_id=guild_id, user_id=user_id)
-    footer = t("permissions.warning_footer", guild_id=guild_id, user_id=user_id)
+    # Fix hints only for the kinds actually listed (2026-10-10, qaplop: a role-only warning showed
+    # the channel-settings hint, which has nothing to do with roles). Role position, missing or
+    # managed roles and the system channel explain their fix in their own line.
+    kinds = {i.kind for i in issues}
+    footer_parts = []
+    if MISSING_CHANNEL_PERMS in kinds:
+        footer_parts.append(t("permissions.warning_fix_channel", guild_id=guild_id, user_id=user_id))
+    if MISSING_MANAGE_ROLES in kinds:
+        footer_parts.append(t("permissions.warning_fix_manage_roles", guild_id=guild_id, user_id=user_id))
+    footer_parts.append(t("permissions.warning_footer", guild_id=guild_id, user_id=user_id))
+    footer = " ".join(footer_parts)
     lines: List[str] = []
     budget = limit_chars - len(header) - len(footer) - 40
     for i, issue in enumerate(issues):

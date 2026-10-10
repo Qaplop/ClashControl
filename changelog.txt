@@ -1,6 +1,20 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-10 (14)
+- Changed (tracker #0150): the permission warning's footer now only gives fix hints for the
+  kinds of issue actually listed. Before, every warning showed the channel-settings hint (wrong
+  for a role-only warning) and a role-position hint that repeated the role line. Now:
+  - Missing channel permissions: the channel-settings hint (new key
+    permissions.warning_fix_channel).
+  - Missing Manage Roles: where to enable it (new key permissions.warning_fix_manage_roles; that
+    line used to have no fix at all).
+  - Always: "It starts working as soon as this is fixed — no need to set it up again".
+  Role position, missing or managed roles and the system channel explain their fix in their own
+  line. All 5 languages. Build 146.
+  Files: clashcontrol/bot_permissions.py, clashcontrol/translations/{de,en,es,la,zh}.json,
+  tests/unit/test_bot_permissions.py, QBcore.py. 3739 tests pass.
+
 2026-10-10 (13)
 - Changed (tracker #0150): the "role at or above the bot's highest role" warning now says
   plainly that the role's position in the server's role list is what matters. ClashControl can

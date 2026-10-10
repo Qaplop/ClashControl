@@ -158,6 +158,21 @@ class TestFormatting:
         )
         assert "Kriegserinnerungen" in msg and "Links einbetten" in msg
 
+    def test_footer_hints_only_for_listed_kinds(self):
+        """A role-position-only warning must not show the channel-settings hint (2026-10-10)."""
+        role_only = bp.format_issues_message(
+            [bp.PermissionIssue("role_system", bp.ROLE_ABOVE_BOT, 5)], guild_id=None,
+        )
+        assert "Edit Channel" not in role_only and "Manage Roles" not in role_only
+        assert "drag the ClashControl role above <@&5>" in role_only  # the fix, once, in its own line
+        assert role_only.count("Server Settings → Roles") == 1
+        assert "as soon as this is fixed" in role_only
+        mixed = bp.format_issues_message([
+            bp.PermissionIssue("leaderboard", bp.MISSING_CHANNEL_PERMS, 1, ("send_messages",)),
+            bp.PermissionIssue("role_system", bp.MISSING_MANAGE_ROLES, perms=("manage_roles",)),
+        ], guild_id=None)
+        assert "Edit Channel → Permissions" in mixed and "enable “Manage Roles”" in mixed
+
     def test_truncates_long_lists(self):
         issues = [bp.PermissionIssue("leaderboard", bp.MISSING_CHANNEL_PERMS, 10**17 + i, ("send_messages",)) for i in range(200)]
         assert len(bp.format_issues_message(issues, guild_id=None)) <= 2000

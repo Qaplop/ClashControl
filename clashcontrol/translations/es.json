@@ -1431,7 +1431,9 @@
   },
   "permissions": {
     "warning_header": "⚠️ **Guardado, pero a ClashControl le faltan permisos, así que todavía no funcionará:**",
-    "warning_footer": "Un administrador del servidor puede solucionarlo en los ajustes del canal (Editar canal → Permisos → añadir ClashControl) o, para los roles, arrastrando el rol de ClashControl por encima de ellos en Ajustes del servidor → Roles. Funcionará en cuanto esté solucionado; no hace falta volver a configurarlo.",
+    "warning_fix_channel": "Un administrador del servidor puede corregir los permisos de canal que faltan en los ajustes del canal (Editar canal → Permisos → añadir ClashControl).",
+    "warning_fix_manage_roles": "Un administrador del servidor puede activar «Gestionar roles» en Ajustes del servidor → Roles → rol de ClashControl → Permisos.",
+    "warning_footer": "Funcionará en cuanto esté solucionado; no hace falta volver a configurarlo.",
     "warning_more": "… y {count} más.",
     "feature": {
       "registration": "Mensaje de registro",

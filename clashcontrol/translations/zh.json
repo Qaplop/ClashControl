@@ -1431,7 +1431,9 @@
   },
   "permissions": {
     "warning_header": "⚠️ **已保存——但 ClashControl 缺少权限，因此暂时无法生效：**",
-    "warning_footer": "服务器管理员可以在频道设置中修复（编辑频道 → 权限 → 添加 ClashControl）；如果是身份组问题，请在 服务器设置 → 身份组 中把 ClashControl 的身份组拖到它们上方。修复后即可生效，无需重新设置。",
+    "warning_fix_channel": "缺少的频道权限可由服务器管理员在频道设置中修复（编辑频道 → 权限 → 添加 ClashControl）。",
+    "warning_fix_manage_roles": "服务器管理员可在 服务器设置 → 身份组 → ClashControl 身份组 → 权限 中开启“管理身份组”。",
+    "warning_footer": "修复后即可生效，无需重新设置。",
     "warning_more": "……还有 {count} 项。",
     "feature": {
       "registration": "注册消息",

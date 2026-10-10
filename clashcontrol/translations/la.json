@@ -1431,7 +1431,9 @@
   },
   "permissions": {
     "warning_header": "⚠️ **Servatum est — sed ClashControl permissionibus caret, itaque nondum operabitur:**",
-    "warning_footer": "Administrator servitoris hoc in optionibus canalis corrigere potest (Canalem emendare → Permissiones → ClashControl adde) aut, pro muneribus, munus ClashControl super ea trahendo (Optiones servitoris → Munera). Statim operabitur ubi hoc correctum erit — iterum constituere non oportet.",
+    "warning_fix_channel": "Permissiones canalis deficientes administrator servitoris in optionibus canalis corrigit (Canalem emendare → Permissiones → ClashControl adde).",
+    "warning_fix_manage_roles": "„Munera administrare“ administrator servitoris in Optionibus servitoris → Munera → munus ClashControl → Permissiones activat.",
+    "warning_footer": "Statim operabitur ubi hoc correctum erit — iterum constituere non oportet.",
     "warning_more": "… et {count} alia.",
     "feature": {
       "registration": "Nuntius inscriptionis",

@@ -92,6 +92,25 @@ class TestRetentionReport:
             del sys.modules[mod.__name__]
         assert "module fake_leaky_module_0150 globals ['LEAK']" in text
 
+    def test_names_holder_frozen_by_startup_gc_freeze(self):
+        """PROD 2026-10-10: startup gc.freeze() hides the long-lived caches from
+        gc.get_referrers(), so every chain stopped at 'no gc-tracked referrer'. The holder must
+        still be named (identity lookup in the named roots)."""
+        import gc
+        cache = _fake_cache()
+        holder: dict = {}
+        cache.temp_war_objects = holder  # created before the freeze, like CACHE's dicts
+        gc.freeze()
+        try:
+            baseline = dict_shape_census()
+            for i in range(300):
+                holder[f"#T{i}"] = _war_payload(i)  # payloads created after the freeze
+            text = "\n".join(build_retention_report(cache, shape_baseline=baseline, budget_s=30))
+        finally:
+            gc.unfreeze()
+        assert "CACHE.temp_war_objects ['#T" in text
+        assert "found by identity" in text
+
     def test_growth_section_ranks_new_shape_first(self):
         baseline = dict_shape_census()
         cache = _fake_cache()

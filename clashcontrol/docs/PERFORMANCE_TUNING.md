@@ -982,6 +982,14 @@ it is needed) and by `/admin Memory Profile`:
 A chain ending in "no gc-tracked referrer" is held from C code or by an untracked owner (e.g. a
 coc.py generator frame) — that ending is itself a finding.
 
+**Frozen holders (Build 139).** `gc.get_referrers()` does not search the permanent generation
+that startup's `gc.freeze()` creates, and the long-lived caches (`CACHE.temp_war_objects`,
+`temp_war_stats`, module globals) are exactly the containers frozen there. The first PROD profile
+(2026-10-10) therefore stopped every chain one step short of its holder. When no referrer is
+visible, the walk now looks the object up **by identity** in the named roots (CACHE attributes
+and their container sub-attributes, coc.py's cache, module globals) and marks that step "found
+by identity". Do not unfreeze to make referrers visible — see the GC policy above.
+
 **Census ordering fix (same change):** `save_memtrace_snapshot()` now takes the GC census *before*
 `tracemalloc.take_snapshot()`. The snapshot holds one tuple per traced block (13.7 M on
 2026-10-03); `gc.get_objects()` lists the youngest objects first, so a census after it hit the

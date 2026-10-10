@@ -185,6 +185,62 @@ def _named_roots(cache: Any, coc_client: Any) -> Dict[int, str]:
     return roots
 
 
+def _root_containers(cache: Any, coc_client: Any) -> List[Tuple[str, Any]]:
+    """(name, container) pairs to search BY IDENTITY when gc.get_referrers() finds nothing.
+
+    Why this exists (2026-10-10, first PROD profile with this report): startup calls
+    gc.freeze(), and frozen objects are invisible to gc.get_referrers() — it only scans the
+    three collectable generations. The long-lived holders this report most needs to name
+    (CACHE.temp_war_objects, CACHE.temp_war_stats, module globals) are exactly the containers
+    created before that freeze, so every chain stopped one step short with "no referrer".
+    Checking "is the object directly inside this named container?" works whether or not the
+    container is frozen. Includes container attributes one level down on CACHE's helper
+    objects (e.g. CACHE.coc_clan_cache.cache) and coc.py's HTTP response cache.
+    """
+    out: List[Tuple[str, Any]] = []
+    try:
+        for attr, value in vars(cache).items():
+            if isinstance(value, (dict, list, set, tuple)):
+                out.append((f"CACHE.{attr}", value))
+            elif hasattr(value, "__dict__") and not callable(value):
+                try:
+                    for sub, sub_value in vars(value).items():
+                        if isinstance(sub_value, (dict, list, set, tuple)):
+                            out.append((f"CACHE.{attr}.{sub}", sub_value))
+                except TypeError:
+                    pass
+    except Exception:
+        pass
+    try:
+        data = getattr(getattr(getattr(coc_client, "http", None), "cache", None), "data", None)
+        if isinstance(data, dict):
+            out.append(("coc.py HTTP response cache (client.http.cache.data)", data))
+    except Exception:
+        pass
+    for mod_name, mod in list(sys.modules.items()):
+        mod_dict = getattr(mod, "__dict__", None)
+        if isinstance(mod_dict, dict):
+            out.append((f"module {mod_name} globals", mod_dict))
+    return out
+
+
+def _find_in_root_containers(target: Any, containers: List[Tuple[str, Any]]) -> Optional[str]:
+    """``"<root name> <where>"`` for the first named container that directly holds ``target``."""
+    for name, container in containers:
+        try:
+            if isinstance(container, dict):
+                for k, v in container.items():
+                    if v is target:
+                        return f"{name} [{k!r}]"[:200]
+            else:
+                for i, v in enumerate(container):
+                    if v is target:
+                        return f"{name} [{i}]"
+        except Exception:
+            continue
+    return None
+
+
 def _slot_or_key(holder: Any, target: Any) -> str:
     """Where inside ``holder`` the reference to ``target`` sits (dict key / index / attribute)."""
     try:
@@ -293,7 +349,9 @@ def build_retention_report(
             f"  Referrer chains (sample -> holder -> ...; stops at a named holder, "
             f"budget {budget_s:.0f}s):"
         )
-        lines.extend(_walk_chains(samples, roots, t0, budget_s, max_depth))
+        lines.extend(_walk_chains(
+            samples, roots, t0, budget_s, max_depth, containers=_root_containers(cache, coc_client),
+        ))
     except Exception as exc:  # diagnostic only — never break the profile
         lines.append(f"  (retention analysis failed: {type(exc).__name__}: {exc})")
     lines.append(f"  (retention analysis took {time.monotonic() - t0:.1f}s)")
@@ -306,8 +364,13 @@ def _walk_chains(
     t0: float,
     budget_s: float,
     max_depth: int,
+    containers: Optional[List[Tuple[str, Any]]] = None,
 ) -> List[str]:
-    """Walk every sample's referrer chain level by level, one heap walk per level for all."""
+    """Walk every sample's referrer chain level by level, one heap walk per level for all.
+
+    When the collector reports no referrer, the current object is looked up by identity in the
+    named ``containers`` (see _root_containers: the startup gc.freeze() hides the long-lived
+    holders from gc.get_referrers())."""
     chains: List[Dict[str, Any]] = []
     for shape, objs in samples.items():
         for obj in objs:
@@ -355,7 +418,17 @@ def _walk_chains(
         for chain in active:
             ref = picked.get(id(chain))
             if ref is None:
-                chain["done"] = "(no gc-tracked referrer — held from C code or an untracked owner)"
+                found = _find_in_root_containers(chain["cur"], containers or [])
+                if found is not None:
+                    chain["steps"].append(f"{found} (frozen/untracked holder, found by identity)")
+                    chain["done"] = ""
+                    continue
+                chain["done"] = (
+                    "(no referrer visible — held from C code, by an untracked owner, or by a "
+                    "container frozen at startup that is not a named root)"
+                    if gc.get_freeze_count() else
+                    "(no gc-tracked referrer — held from C code or an untracked owner)"
+                )
                 continue
             where = _slot_or_key(ref, chain["cur"])
             name = roots.get(id(ref))

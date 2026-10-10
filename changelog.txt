@@ -1,6 +1,16 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-10 (6)
+- Fixed (tracker #0150, test case 439 failed): the memory profile's [RETENTION] referrer chains
+  never reached a named holder on PROD -- startup gc.freeze() hides the long-lived CACHE
+  containers and module globals from gc.get_referrers(), so every chain ended at "no
+  gc-tracked referrer" (manual profile 2026-10-10 11:23). When no referrer is visible, the walk
+  now finds the holder by identity in the named roots (CACHE attributes + their container
+  sub-attributes, coc.py's cache, module globals). Build 139.
+  Files: clashcontrol/mem_diagnostics.py, tests/unit/test_mem_diagnostics.py,
+  clashcontrol/docs/PERFORMANCE_TUNING.md, QBcore.py. 3729 tests pass.
+
 2026-10-10 (5)
 - Changed: tracker test cases are numbered uniquely PER TICKET (#1, #2, ... across all
   environments and test rounds) instead of restarting at 1 per environment ("DEV #1",

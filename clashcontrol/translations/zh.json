@@ -1431,7 +1431,7 @@
   },
   "permissions": {
     "warning_header": "⚠️ **已保存——但 ClashControl 缺少权限，因此暂时无法生效：**",
-    "warning_footer": "服务器管理员可以在频道设置中修复（编辑频道 → 权限 → 添加 ClashControl）；如果是身份组问题，请在 服务器设置 → 身份组 中把 ClashControl 的身份组拖到它们上方。授予权限后即可生效，无需重新设置。",
+    "warning_footer": "服务器管理员可以在频道设置中修复（编辑频道 → 权限 → 添加 ClashControl）；如果是身份组问题，请在 服务器设置 → 身份组 中把 ClashControl 的身份组拖到它们上方。修复后即可生效，无需重新设置。",
     "warning_more": "……还有 {count} 项。",
     "feature": {
       "registration": "注册消息",
@@ -1460,7 +1460,7 @@
       "channel_not_found": "**{feature}**：所设置的频道 {channel} 已不存在，或机器人无法看到它",
       "no_system_channel": "**{feature}**：服务器没有设置系统消息频道（服务器设置 → 概况 → 系统消息频道）",
       "missing_manage_roles": "**{feature}**：机器人缺少 **{perms}** 权限",
-      "role_above_bot": "**{feature}**：{role} 不低于机器人的最高身份组——请把 ClashControl 的身份组移到它上方",
+      "role_above_bot": "**{feature}**：在服务器的身份组列表中，{role} 不在 ClashControl 身份组的下方。ClashControl 只能分配在该列表中位于其自身身份组下方的身份组——请在 服务器设置 → 身份组 中把 ClashControl 的身份组拖到 {role} 上方",
       "role_managed": "**{feature}**：{role} 由 Discord 或某个集成管理，机器人无法分配",
       "role_not_found": "**{feature}**：所设置的身份组 {role} 已不存在"
     }

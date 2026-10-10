@@ -1431,7 +1431,7 @@
   },
   "permissions": {
     "warning_header": "⚠️ **Servatum est — sed ClashControl permissionibus caret, itaque nondum operabitur:**",
-    "warning_footer": "Administrator servitoris hoc in optionibus canalis corrigere potest (Canalem emendare → Permissiones → ClashControl adde) aut, pro muneribus, munus ClashControl super ea trahendo (Optiones servitoris → Munera). Statim operabitur ubi permissiones datae erunt — iterum constituere non oportet.",
+    "warning_footer": "Administrator servitoris hoc in optionibus canalis corrigere potest (Canalem emendare → Permissiones → ClashControl adde) aut, pro muneribus, munus ClashControl super ea trahendo (Optiones servitoris → Munera). Statim operabitur ubi hoc correctum erit — iterum constituere non oportet.",
     "warning_more": "… et {count} alia.",
     "feature": {
       "registration": "Nuntius inscriptionis",
@@ -1460,7 +1460,7 @@
       "channel_not_found": "**{feature}**: canalis constitutus {channel} non iam exstat aut automaton eum videre non potest",
       "no_system_channel": "**{feature}**: servitor canalem nuntiorum systematis non habet (Optiones servitoris → Conspectus → Canalis nuntiorum systematis)",
       "missing_manage_roles": "**{feature}**: automato deest permissio **{perms}**",
-      "role_above_bot": "**{feature}**: {role} par aut superius summo munere automati est — munus ClashControl super id move",
+      "role_above_bot": "**{feature}**: {role} in indice munerum servitoris non infra munus ClashControl est. ClashControl sola munera tribuere potest quae in eo indice infra suum munus sunt — in Optionibus servitoris → Munera munus ClashControl super {role} trahe",
       "role_managed": "**{feature}**: {role} a Discord aut integratione regitur nec ab automato tribui potest",
       "role_not_found": "**{feature}**: munus constitutum {role} non iam exstat"
     }

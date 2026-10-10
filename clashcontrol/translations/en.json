@@ -1432,7 +1432,7 @@
   },
   "permissions": {
     "warning_header": "⚠️ **Saved — but ClashControl is missing permissions, so this won't work yet:**",
-    "warning_footer": "A server admin can fix this in the channel's settings (Edit Channel → Permissions → add ClashControl) or, for roles, by dragging the ClashControl role above them under Server Settings → Roles. It starts working as soon as the permissions are granted — no need to set it up again.",
+    "warning_footer": "A server admin can fix this in the channel's settings (Edit Channel → Permissions → add ClashControl) or, for roles, by dragging the ClashControl role above them under Server Settings → Roles. It starts working as soon as this is fixed — no need to set it up again.",
     "warning_more": "… and {count} more.",
     "feature": {
       "registration": "Registration message",
@@ -1461,7 +1461,7 @@
       "channel_not_found": "**{feature}**: the configured channel {channel} no longer exists or the bot can't see it",
       "no_system_channel": "**{feature}**: the server has no system messages channel (Server Settings → Overview → System Messages Channel)",
       "missing_manage_roles": "**{feature}**: the bot is missing the **{perms}** permission",
-      "role_above_bot": "**{feature}**: {role} is at or above the bot's highest role — move the ClashControl role above it",
+      "role_above_bot": "**{feature}**: {role} is not below the ClashControl role in the server's role list. ClashControl can only assign roles that are below its own role in that list — under Server Settings → Roles, drag the ClashControl role above {role}",
       "role_managed": "**{feature}**: {role} is managed by Discord or an integration and can't be assigned by a bot",
       "role_not_found": "**{feature}**: the configured role {role} no longer exists"
     }

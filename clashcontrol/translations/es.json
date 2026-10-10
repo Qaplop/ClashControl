@@ -1431,7 +1431,7 @@
   },
   "permissions": {
     "warning_header": "⚠️ **Guardado, pero a ClashControl le faltan permisos, así que todavía no funcionará:**",
-    "warning_footer": "Un administrador del servidor puede solucionarlo en los ajustes del canal (Editar canal → Permisos → añadir ClashControl) o, para los roles, arrastrando el rol de ClashControl por encima de ellos en Ajustes del servidor → Roles. Funcionará en cuanto se concedan los permisos; no hace falta volver a configurarlo.",
+    "warning_footer": "Un administrador del servidor puede solucionarlo en los ajustes del canal (Editar canal → Permisos → añadir ClashControl) o, para los roles, arrastrando el rol de ClashControl por encima de ellos en Ajustes del servidor → Roles. Funcionará en cuanto esté solucionado; no hace falta volver a configurarlo.",
     "warning_more": "… y {count} más.",
     "feature": {
       "registration": "Mensaje de registro",
@@ -1460,7 +1460,7 @@
       "channel_not_found": "**{feature}**: el canal configurado {channel} ya no existe o el bot no puede verlo",
       "no_system_channel": "**{feature}**: el servidor no tiene canal de mensajes del sistema (Ajustes del servidor → Vista general → Canal de mensajes del sistema)",
       "missing_manage_roles": "**{feature}**: al bot le falta el permiso **{perms}**",
-      "role_above_bot": "**{feature}**: {role} está al nivel o por encima del rol más alto del bot; mueve el rol de ClashControl por encima",
+      "role_above_bot": "**{feature}**: {role} no está por debajo del rol de ClashControl en la lista de roles del servidor. ClashControl solo puede asignar roles que estén por debajo de su propio rol en esa lista; en Ajustes del servidor → Roles, arrastra el rol de ClashControl por encima de {role}",
       "role_managed": "**{feature}**: {role} lo gestiona Discord o una integración y un bot no puede asignarlo",
       "role_not_found": "**{feature}**: el rol configurado {role} ya no existe"
     }

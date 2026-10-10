@@ -148,6 +148,9 @@ def check_role_feature(guild: discord.Guild, feature: str, role_ids: Iterable[An
         elif role.managed or role.is_default():
             issues.append(PermissionIssue(feature, ROLE_MANAGED, rid))
         elif role >= me.top_role:
+            # Position in the server's role list, not permissions: Discord lets a bot assign only
+            # roles below its own highest role, even with Administrator (Discord docs, "Permission
+            # Hierarchy"; confirmed on DEV 2026-10-10: Administrator + one position below → 403).
             issues.append(PermissionIssue(feature, ROLE_ABOVE_BOT, rid))
     return issues
 

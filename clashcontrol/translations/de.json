@@ -1432,7 +1432,7 @@
   },
   "permissions": {
     "warning_header": "⚠️ **Gespeichert — aber ClashControl fehlen Berechtigungen, daher funktioniert das noch nicht:**",
-    "warning_footer": "Ein Server-Admin kann das in den Kanaleinstellungen beheben (Kanal bearbeiten → Berechtigungen → ClashControl hinzufügen) oder bei Rollen, indem er die ClashControl-Rolle unter Servereinstellungen → Rollen darüber zieht. Es funktioniert, sobald die Berechtigungen erteilt sind — eine erneute Einrichtung ist nicht nötig.",
+    "warning_footer": "Ein Server-Admin kann das in den Kanaleinstellungen beheben (Kanal bearbeiten → Berechtigungen → ClashControl hinzufügen) oder bei Rollen, indem er die ClashControl-Rolle unter Servereinstellungen → Rollen darüber zieht. Es funktioniert, sobald das behoben ist — eine erneute Einrichtung ist nicht nötig.",
     "warning_more": "… und {count} weitere.",
     "feature": {
       "registration": "Registrierungsnachricht",
@@ -1461,7 +1461,7 @@
       "channel_not_found": "**{feature}**: der eingestellte Kanal {channel} existiert nicht mehr oder ist für den Bot nicht sichtbar",
       "no_system_channel": "**{feature}**: der Server hat keinen Kanal für Systemnachrichten (Servereinstellungen → Übersicht → Kanal für Systemnachrichten)",
       "missing_manage_roles": "**{feature}**: dem Bot fehlt die Berechtigung **{perms}**",
-      "role_above_bot": "**{feature}**: {role} steht auf oder über der höchsten Rolle des Bots — verschiebe die ClashControl-Rolle darüber",
+      "role_above_bot": "**{feature}**: {role} steht in der Rollenliste des Servers nicht unter der ClashControl-Rolle. ClashControl kann nur Rollen vergeben, die in dieser Liste unter seiner eigenen Rolle stehen — ziehe unter Servereinstellungen → Rollen die ClashControl-Rolle über {role}",
       "role_managed": "**{feature}**: {role} wird von Discord oder einer Integration verwaltet und kann von Bots nicht vergeben werden",
       "role_not_found": "**{feature}**: die eingestellte Rolle {role} existiert nicht mehr"
     }

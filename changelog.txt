@@ -1,6 +1,19 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-11 (11)
+- Added (tracker #0151, Phase 3): /setup checks three more steps.
+  5 Registration: registration message on/channel/permissions; ⚠️ when neither @everyone nor
+  the newbie role (Simple Roles gives it on join) can see the channel; "X of Y accounts linked"
+  in the member clans (shown only when X > 0, ⚠️ only when nobody is linked, Q-6) plus the admin
+  linking tools. 9 Server roles: Simple/CoC/Clan Roles with their roles, ❌ permission or
+  hierarchy problems, ⚠️ Simple Roles without a role or a member clan without its clan role.
+  10 CWL settings: both hubs, retention, include-all, coordinator role, extended sign-up;
+  ⚠️ when members can't see the player hub or lack "Use Activities" there (the CWL Preferences
+  button opens an Activity). Every audited feature now belongs to a step, so step 1 is server
+  permissions only. /help text updated; permission names in the texts come from perm_label().
+  Files: clashcontrol/config_audit.py, translations (5), docs, tests. 3839 tests pass. Build 155.
+
 2026-10-11 (10)
 - Fixed: German channel-override label „Kanal anzeigen“ (was „Kanal ansehen“; the role
   settings keep „Kanäle ansehen“). en/es channel-override labels confirmed as set in Build 154 —

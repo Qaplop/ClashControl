@@ -301,7 +301,7 @@
       "setup": {
         "short": "Institutionem ClashControl in hoc servitore inspice (administratores)",
         "title": "🛠️ Mandatum Setup",
-        "detailed": "Indicem omnium quae ClashControl in hoc servitore requirit ostendit, cum statu cuiusque gradus: ✅ recte, ❌ emendandum, ⚠️ imperfectum, ⏸️ non adhibitum, 🔒 gradum priorem requirit, ⚪ nondum inspectum. Elige gradum ut singula videas: quid erret, cur referat et quomodo emendes.\n\n**Usus:**\n`/setup`\n\n**Adhuc inspectum:**\n• Permissiones automati — “Administrator”, quaeque permissio deficiens cum causa cur requiratur, et globulus ut automatum uno ictu iterum auctorizes\n• Lingua et zona horaria, gentes et familiae (cum commentariis belli privatis et gentibus a Supercell deletis), nuntius salutationis, monita belli et incursionum in canalibus, tabulae ordinum — quid institutum sit, et omnis canalis quo automatum uti non potest\n\nInscriptio, nuntiationes belli, munera servitoris et CWL in renovationibus posterioribus sequentur.\n\n**Notae:**\n• Solis administratoribus servitoris\n• Solus tu eventum vides\n• Nihil mutatur — «🔄 Iterum inspice» inspectiones repetit postquam aliquid emendasti"
+        "detailed": "Indicem omnium quae ClashControl in hoc servitore requirit ostendit, cum statu cuiusque gradus: ✅ recte, ❌ emendandum, ⚠️ imperfectum, ⏸️ non adhibitum, 🔒 gradum priorem requirit, ⚪ nondum inspectum. Elige gradum ut singula videas: quid erret, cur referat et quomodo emendes.\n\n**Usus:**\n`/setup`\n\n**Adhuc inspectum:**\n• Permissiones automati — “Administrator”, quaeque permissio deficiens cum causa cur requiratur, et globulus ut automatum uno ictu iterum auctorizes\n• Lingua et zona horaria, gentes et familiae (cum commentariis belli privatis et gentibus a Supercell deletis), nuntius salutationis, monita belli et incursionum in canalibus, tabulae ordinum\n• Inscriptio (an novi sodales eam videant, quot rationes iunctae sint), munera servitoris (Simplicia, CoC, gentis), optiones CWL (centra, optiones, an sodales praeferentias suas CWL aperire possint)\n\nNuntiationes belli, centrum «Praeferentiae Tuae CWL» et administratio temporis CWL in renovatione posteriore sequentur.\n\n**Notae:**\n• Solis administratoribus servitoris\n• Solus tu eventum vides\n• Nihil mutatur — «🔄 Iterum inspice» inspectiones repetit postquam aliquid emendasti"
       },
       "clan management": {
         "short": "Configuratio centralis servitoris et gentium",
@@ -1518,6 +1518,63 @@
       "how_title": "🔧 Quomodo operatur",
       "how": "In canali ubi tabula ordinum apparere debet, {subscribe} adhibe et gentem vel familiam et modum elige. {unsubscribe} subscriptionem removet, {subscriptions} eas enumerat."
     },
+    "visibility_title": "Quis id videre possit",
+    "on": "accensum",
+    "off": "exstinctum",
+    "registration": {
+      "summary_hub_off": "nuntius inscriptionis exstinctus",
+      "summary_no_channel": "accensus, sed nullus canalis",
+      "summary_hidden_from_newcomers": "novi sodales nuntium inscriptionis non vident",
+      "summary_nobody_linked": "nemo adhuc iunctus",
+      "summary_ok": "nuntius inscriptionis in {channel}",
+      "summary_ok_linked": "in {channel} · {linked} ex {total} rationibus iunctae",
+      "hub_title": "📝 Nuntius inscriptionis",
+      "hub_in": "Missus in {channel}: ibi sodales rationes suas Clash of Clans iungunt, monita belli constituunt et rationes suas vident.",
+      "hub_no_channel": "Accensus, sed nullus canalis constitutus — nihil mittitur.",
+      "hub_off": "Exstinctus — nullus nuntius inscriptionis in canali est.",
+      "command_hint": "Sodales eum etiam ipsi per {registration} aperire possunt, in servitore vel in nuntio privato cum automato.",
+      "hidden": "Neque @everyone neque munus tironum hunc canalem videre aut historiam eius legere potest, itaque novi sodales nuntium inscriptionis numquam vident. Ibi {view} et {history} pro @everyone permitte (vel pro munere tironum, si Ordines Simplices id ingredientibus dant).",
+      "coverage_title": "🔗 Rationes iunctae",
+      "coverage": "{linked} ex {total} rationibus in gentibus tuis sodalibus usori Discord iunctae sunt ({verified} signo API probatae).",
+      "nobody_linked": "Nulla ratio in gentibus tuis sodalibus adhuc iuncta est. A tua incipe: {registration} → {link_button}.",
+      "admin_tools_title": "🛠️ Iungere pro sodalibus",
+      "admin_tools": "Administratores rationes pro sodalibus iungere possunt: {path} → {link}, vel nexum per {unlink} removere."
+    },
+    "roles": {
+      "summary_off": "nulla munera automatica",
+      "summary_ok": "{systems}",
+      "summary_simple_roles_unset": "Ordines Simplices accensi, sed nullum munus electum",
+      "summary_clan_roles_missing": "{count} gens(tes) sodalis sine munere gentis",
+      "name_role_system": "Ordines Simplices",
+      "name_coc_roles": "Ordines CoC",
+      "name_clan_roles": "Ordines Gentis",
+      "not_set": "non constitutum",
+      "off": "exstinctum",
+      "simple_roles": "Tiro: {newbie} · Sodalis: {member}",
+      "coc_roles_auto": "Automatum quattuor munera CoC (Sodalis, Senior, Condux, Dux) ipsum creat.",
+      "clan_role_missing": "nullum munus gentis",
+      "clan_roles_missing_fix": "Automatum munus gentis omni genti sodali creat. Si aliquod deest (plerumque quia creari non potuit), munera gentis exstingue et per {button} iterum accende."
+    },
+    "cwl_settings": {
+      "summary_off": "nulla nuntia centralia CWL",
+      "summary_ok": "{parts}",
+      "summary_mgmt_no_channel": "centrum moderationis accensum, sed nullus canalis",
+      "summary_player_no_channel": "centrum lusorum accensum, sed nullus canalis",
+      "summary_player_hub_hidden": "sodales centrum lusorum non vident",
+      "summary_no_activities": "sodales fortasse praeferentias suas CWL aperire non possunt",
+      "part_mgmt": "centrum moderationis in {channel}",
+      "part_player": "centrum lusorum in {channel}",
+      "part_no_hubs": "munus coordinatoris iunctum",
+      "what": "Foedus Bellorum Gentium: Centrum Moderationis CWL administratorum, Centrum Optionum CWL Lusoris sodalium, et optiones CWL. CWL etiam sine nuntiis centralibus operatur — per /clan management.",
+      "hubs_title": "📌 Nuntia centralia",
+      "hubs": "Centrum Moderationis CWL: {mgmt}\nCentrum Optionum CWL Lusoris: {player}",
+      "hub_off": "exstinctum",
+      "hub_no_channel": "accensum, sed nullus canalis",
+      "coordinator_per_clan": "unum munus per gentem ({count} iuncta)",
+      "settings": "Retentio datorum: {retention}\nOmnes rationes nexas includere: {include_all}\nMunus coordinatoris: {coordinator}\nInscriptio ampliata (subsellium): {bench}",
+      "player_hub_hidden": "Nullum munerum sodalium tuorum (@everyone vel munera quae ClashControl tribuit) canalem centri lusorum videre aut historiam eius legere potest, itaque sodales centro lusorum uti non possunt.",
+      "no_activities": "Munera sodalium tuorum in canali centri lusorum {perm} non habent. Globulus {button} Activitatem Discord aperit, quae hac permissione egere potest — eam ibi pro @everyone permitte."
+    },
     "step": {
       "bot_permissions": { "title": "Permissiones automati", "desc": "Permissiones servitoris quibus ClashControl eget ut nuntia sua mittat et munera tribuat." },
       "basics": { "title": "Lingua et zona horaria", "desc": "Lingua servitoris omnibus nuntiis automati, et zona horaria temporibus CWL et monitis." },
@@ -1591,6 +1648,7 @@
       "create_public_threads": "Create Public Threads",
       "manage_threads": "Manage Threads",
       "create_instant_invite": "Create Invite",
+      "use_embedded_activities": "Use Activities",
       "manage_roles": "Manage Roles"
     },
     "why": {

@@ -301,7 +301,7 @@
       "setup": {
         "short": "Check ClashControl's setup on this server (admins)",
         "title": "🛠️ Setup Command",
-        "detailed": "Shows a checklist of everything ClashControl needs on this server, with a status for each step: ✅ OK, ❌ needs fixing, ⚠️ incomplete, ⏸️ not in use, 🔒 needs an earlier step, ⚪ not checked yet. Pick a step for the details: what is wrong, why it matters and how to fix it.\n\n**Usage:**\n`/setup`\n\n**Checked so far:**\n• Bot permissions — “Administrator”, every missing permission with the reason it is needed, and a button to re-authorize the bot in one click\n• Language & timezone, clans & families (incl. private war logs and clans deleted by Supercell), welcome message, war and raid reminders in channels, leaderboards — what is set up, and every channel the bot can't use\n\nRegistration, war notifications, server roles and CWL follow in later updates.\n\n**Notes:**\n• Server administrators only\n• Only you see the result\n• Nothing is changed — “🔄 Check again” re-runs the checks after you fixed something"
+        "detailed": "Shows a checklist of everything ClashControl needs on this server, with a status for each step: ✅ OK, ❌ needs fixing, ⚠️ incomplete, ⏸️ not in use, 🔒 needs an earlier step, ⚪ not checked yet. Pick a step for the details: what is wrong, why it matters and how to fix it.\n\n**Usage:**\n`/setup`\n\n**Checked so far:**\n• Bot permissions — “Administrator”, every missing permission with the reason it is needed, and a button to re-authorize the bot in one click\n• Language & timezone, clans & families (incl. private war logs and clans deleted by Supercell), welcome message, war and raid reminders in channels, leaderboards\n• Registration (can new members see it, how many accounts are linked), server roles (Simple, CoC and clan roles), CWL settings (hubs, options, can members open their CWL preferences)\n\nWar notifications, the “Your CWL Preferences” hub and CWL season management follow in a later update.\n\n**Notes:**\n• Server administrators only\n• Only you see the result\n• Nothing is changed — “🔄 Check again” re-runs the checks after you fixed something"
       },
       "clan management": {
         "short": "Central server and clan configuration",
@@ -1519,6 +1519,63 @@
       "how_title": "🔧 How it works",
       "how": "In the channel where a leaderboard should appear, use {subscribe} and pick the clan or family and a mode. {unsubscribe} removes a subscription, {subscriptions} lists them."
     },
+    "visibility_title": "Who can see it",
+    "on": "on",
+    "off": "off",
+    "registration": {
+      "summary_hub_off": "registration message off",
+      "summary_no_channel": "on, but no channel set",
+      "summary_hidden_from_newcomers": "new members can't see the registration message",
+      "summary_nobody_linked": "nobody is linked yet",
+      "summary_ok": "registration message in {channel}",
+      "summary_ok_linked": "in {channel} · {linked} of {total} accounts linked",
+      "hub_title": "📝 Registration message",
+      "hub_in": "Posted in {channel}: members link their Clash of Clans accounts there, set up war reminders and see their accounts.",
+      "hub_no_channel": "Switched on, but no channel is set — nothing is posted.",
+      "hub_off": "Off — there is no registration message in a channel.",
+      "command_hint": "Members can also open it themselves with {registration}, on the server or in a DM with the bot.",
+      "hidden": "Neither @everyone nor the newbie role can see this channel or read its history, so new members never see the registration message. Allow {view} and {history} there for @everyone (or for the newbie role, if Simple Roles gives it on join).",
+      "coverage_title": "🔗 Linked accounts",
+      "coverage": "{linked} of {total} accounts in your member clans are linked to a Discord user ({verified} verified with an API token).",
+      "nobody_linked": "None of the accounts in your member clans is linked yet. Start with your own: {registration} → {link_button}.",
+      "admin_tools_title": "🛠️ Linking for your members",
+      "admin_tools": "Admins can link accounts for members: {path} → {link}, or remove a link with {unlink}."
+    },
+    "roles": {
+      "summary_off": "no automatic roles",
+      "summary_ok": "{systems}",
+      "summary_simple_roles_unset": "Simple Roles on, but no role selected",
+      "summary_clan_roles_missing": "{count} member clan(s) without a clan role",
+      "name_role_system": "Simple Roles",
+      "name_coc_roles": "CoC Roles",
+      "name_clan_roles": "Clan Roles",
+      "not_set": "not set",
+      "off": "off",
+      "simple_roles": "Newbie: {newbie} · Member: {member}",
+      "coc_roles_auto": "The bot creates the four CoC roles (Member, Elder, Co-Leader, Leader) itself.",
+      "clan_role_missing": "no clan role",
+      "clan_roles_missing_fix": "The bot creates a clan role for every member clan. If one is missing (usually because it couldn't create it), switch clan roles off and on again with {button}."
+    },
+    "cwl_settings": {
+      "summary_off": "no CWL hub messages",
+      "summary_ok": "{parts}",
+      "summary_mgmt_no_channel": "management hub on, but no channel set",
+      "summary_player_no_channel": "player hub on, but no channel set",
+      "summary_player_hub_hidden": "members can't see the player hub",
+      "summary_no_activities": "members may not be able to open their CWL preferences",
+      "part_mgmt": "management hub in {channel}",
+      "part_player": "player hub in {channel}",
+      "part_no_hubs": "coordinator role linked",
+      "what": "Clan War League: the admins' CWL Management Hub, the members' Player CWL Settings Hub, and the CWL options. CWL works without the hub messages too — through /clan management.",
+      "hubs_title": "📌 Hub messages",
+      "hubs": "CWL Management Hub: {mgmt}\nPlayer CWL Settings Hub: {player}",
+      "hub_off": "off",
+      "hub_no_channel": "on, but no channel set",
+      "coordinator_per_clan": "one role per clan ({count} linked)",
+      "settings": "Data Retention: {retention}\nInclude All Linked Accounts: {include_all}\nCoordinator Role: {coordinator}\nExtended Sign-up (Bench): {bench}",
+      "player_hub_hidden": "None of the roles your members have (@everyone or the roles ClashControl assigns) can see the player hub's channel or read its history, so members can't use the player hub.",
+      "no_activities": "Your members' roles don't have {perm} in the player hub's channel. The {button} button opens a Discord Activity, which may need that permission — allow it for @everyone in that channel."
+    },
     "step": {
       "bot_permissions": { "title": "Bot permissions", "desc": "The server permissions ClashControl needs to post its messages and assign roles." },
       "basics": { "title": "Language & timezone", "desc": "The server's language for all bot messages, and the timezone for CWL times and reminders." },
@@ -1592,6 +1649,7 @@
       "create_public_threads": "Create Public Threads",
       "manage_threads": "Manage Threads",
       "create_instant_invite": "Create Invite",
+      "use_embedded_activities": "Use Activities",
       "manage_roles": "Manage Roles"
     },
     "why": {

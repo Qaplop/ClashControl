@@ -301,7 +301,7 @@
       "setup": {
         "short": "Einrichtung von ClashControl auf diesem Server prüfen (Admins)",
         "title": "🛠️ Setup-Befehl",
-        "detailed": "Zeigt eine Checkliste mit allem, was ClashControl auf diesem Server braucht, mit einem Status je Schritt: ✅ OK, ❌ muss behoben werden, ⚠️ unvollständig, ⏸️ nicht genutzt, 🔒 braucht einen früheren Schritt, ⚪ noch nicht geprüft. Wähle einen Schritt für die Details: was nicht stimmt, warum es wichtig ist und wie du es behebst.\n\n**Verwendung:**\n`/setup`\n\n**Bisher geprüft:**\n• Bot-Berechtigungen — „Administrator“, jede fehlende Berechtigung mit dem Grund, warum sie gebraucht wird, und ein Button, um den Bot mit einem Klick neu zu autorisieren\n• Sprache & Zeitzone, Clans & Familien (inkl. privater Kriegsprotokolle und von Supercell gelöschter Clans), Willkommensnachricht, Kriegs- und Raid-Erinnerungen im Kanal, Bestenlisten — was eingerichtet ist und jeder Kanal, den der Bot nicht nutzen kann\n\nRegistrierung, Kriegs-Erinnerungen per DM, Server-Rollen und CWL folgen in späteren Updates.\n\n**Hinweise:**\n• Nur für Server-Administratoren\n• Nur du siehst das Ergebnis\n• Es wird nichts geändert — „🔄 Erneut prüfen“ prüft noch einmal, nachdem du etwas behoben hast"
+        "detailed": "Zeigt eine Checkliste mit allem, was ClashControl auf diesem Server braucht, mit einem Status je Schritt: ✅ OK, ❌ muss behoben werden, ⚠️ unvollständig, ⏸️ nicht genutzt, 🔒 braucht einen früheren Schritt, ⚪ noch nicht geprüft. Wähle einen Schritt für die Details: was nicht stimmt, warum es wichtig ist und wie du es behebst.\n\n**Verwendung:**\n`/setup`\n\n**Bisher geprüft:**\n• Bot-Berechtigungen — „Administrator“, jede fehlende Berechtigung mit dem Grund, warum sie gebraucht wird, und ein Button, um den Bot mit einem Klick neu zu autorisieren\n• Sprache & Zeitzone, Clans & Familien (inkl. privater Kriegsprotokolle und von Supercell gelöschter Clans), Willkommensnachricht, Kriegs- und Raid-Erinnerungen im Kanal, Bestenlisten\n• Registrierung (sehen neue Mitglieder sie, wie viele Accounts sind verknüpft), Server-Rollen (Einfache, CoC- und Clan-Rollen), CWL-Einstellungen (Hubs, Optionen, können Mitglieder ihre CWL-Einstellungen öffnen)\n\nKriegs-Erinnerungen per DM, der Hub „Deine CWL-Einstellungen“ und die CWL-Saisonverwaltung folgen in einem späteren Update.\n\n**Hinweise:**\n• Nur für Server-Administratoren\n• Nur du siehst das Ergebnis\n• Es wird nichts geändert — „🔄 Erneut prüfen“ prüft noch einmal, nachdem du etwas behoben hast"
       },
       "clan management": {
         "short": "Zentrale Server- und Clan-Konfiguration",
@@ -1519,6 +1519,63 @@
       "how_title": "🔧 So funktioniert es",
       "how": "Nutze im Kanal, in dem eine Bestenliste erscheinen soll, {subscribe} und wähle den Clan oder die Familie und einen Modus. {unsubscribe} entfernt ein Abonnement, {subscriptions} listet sie auf."
     },
+    "visibility_title": "Wer es sehen kann",
+    "on": "an",
+    "off": "aus",
+    "registration": {
+      "summary_hub_off": "Registrierungsnachricht aus",
+      "summary_no_channel": "an, aber kein Kanal gesetzt",
+      "summary_hidden_from_newcomers": "neue Mitglieder sehen die Registrierungsnachricht nicht",
+      "summary_nobody_linked": "noch niemand verknüpft",
+      "summary_ok": "Registrierungsnachricht in {channel}",
+      "summary_ok_linked": "in {channel} · {linked} von {total} Accounts verknüpft",
+      "hub_title": "📝 Registrierungsnachricht",
+      "hub_in": "Gepostet in {channel}: Dort verknüpfen Mitglieder ihre Clash of Clans Accounts, richten Kriegs-Erinnerungen ein und sehen ihre Accounts.",
+      "hub_no_channel": "Eingeschaltet, aber kein Kanal gesetzt — es wird nichts gepostet.",
+      "hub_off": "Aus — es gibt keine Registrierungsnachricht in einem Kanal.",
+      "command_hint": "Mitglieder können sie auch selbst mit {registration} öffnen, auf dem Server oder in einer DM mit dem Bot.",
+      "hidden": "Weder @everyone noch die Neuling-Rolle kann diesen Kanal sehen oder seinen Verlauf lesen, daher sehen neue Mitglieder die Registrierungsnachricht nie. Erlaube dort {view} und {history} für @everyone (oder für die Neuling-Rolle, wenn Einfache Rollen sie beim Beitritt vergibt).",
+      "coverage_title": "🔗 Verknüpfte Accounts",
+      "coverage": "{linked} von {total} Accounts in deinen Mitglieds-Clans sind mit einem Discord-Benutzer verknüpft ({verified} per API-Token verifiziert).",
+      "nobody_linked": "Noch keiner der Accounts in deinen Mitglieds-Clans ist verknüpft. Fang mit deinem eigenen an: {registration} → {link_button}.",
+      "admin_tools_title": "🛠️ Verknüpfen für deine Mitglieder",
+      "admin_tools": "Admins können Accounts für Mitglieder verknüpfen: {path} → {link}, oder eine Verknüpfung mit {unlink} entfernen."
+    },
+    "roles": {
+      "summary_off": "keine automatischen Rollen",
+      "summary_ok": "{systems}",
+      "summary_simple_roles_unset": "Einfache Rollen an, aber keine Rolle gewählt",
+      "summary_clan_roles_missing": "{count} Mitglieds-Clan(s) ohne Clan-Rolle",
+      "name_role_system": "Einfache Rollen",
+      "name_coc_roles": "CoC-Rollen",
+      "name_clan_roles": "Clan-Rollen",
+      "not_set": "nicht gesetzt",
+      "off": "aus",
+      "simple_roles": "Neuling: {newbie} · Mitglied: {member}",
+      "coc_roles_auto": "Der Bot legt die vier CoC-Rollen (Mitglied, Ältester, Vize-Anführer, Anführer) selbst an.",
+      "clan_role_missing": "keine Clan-Rolle",
+      "clan_roles_missing_fix": "Der Bot legt für jeden Mitglieds-Clan eine Clan-Rolle an. Fehlt eine (meist, weil er sie nicht anlegen konnte), schalte die Clan-Rollen aus und mit {button} wieder an."
+    },
+    "cwl_settings": {
+      "summary_off": "keine CWL-Hub-Nachrichten",
+      "summary_ok": "{parts}",
+      "summary_mgmt_no_channel": "Verwaltungs-Hub an, aber kein Kanal gesetzt",
+      "summary_player_no_channel": "Spieler-Hub an, aber kein Kanal gesetzt",
+      "summary_player_hub_hidden": "Mitglieder sehen den Spieler-Hub nicht",
+      "summary_no_activities": "Mitglieder können ihre CWL-Einstellungen evtl. nicht öffnen",
+      "part_mgmt": "Verwaltungs-Hub in {channel}",
+      "part_player": "Spieler-Hub in {channel}",
+      "part_no_hubs": "Koordinatoren-Rolle verknüpft",
+      "what": "Clankriegsliga: der CWL-Verwaltungs-Hub der Admins, der Persönliche CWL-Einstellungs-Hub der Mitglieder und die CWL-Optionen. CWL funktioniert auch ohne die Hub-Nachrichten — über /clan management.",
+      "hubs_title": "📌 Hub-Nachrichten",
+      "hubs": "CWL-Verwaltungs-Hub: {mgmt}\nPersönlicher CWL-Einstellungs-Hub: {player}",
+      "hub_off": "aus",
+      "hub_no_channel": "an, aber kein Kanal gesetzt",
+      "coordinator_per_clan": "eine Rolle pro Clan ({count} verknüpft)",
+      "settings": "Datenaufbewahrung: {retention}\nAlle verknüpften Accounts einbeziehen: {include_all}\nKoordinatoren-Rolle: {coordinator}\nErweiterte Anmeldung (Ersatzbank): {bench}",
+      "player_hub_hidden": "Keine der Rollen deiner Mitglieder (@everyone oder die Rollen, die ClashControl vergibt) kann den Kanal des Spieler-Hubs sehen oder seinen Verlauf lesen, daher können Mitglieder den Spieler-Hub nicht nutzen.",
+      "no_activities": "Die Rollen deiner Mitglieder haben im Kanal des Spieler-Hubs kein {perm}. Der Button {button} öffnet eine Discord-Aktivität, die diese Berechtigung brauchen kann — erlaube sie dort für @everyone."
+    },
     "step": {
       "bot_permissions": { "title": "Bot-Berechtigungen", "desc": "Die Server-Berechtigungen, die ClashControl braucht, um seine Nachrichten zu posten und Rollen zu vergeben." },
       "basics": { "title": "Sprache & Zeitzone", "desc": "Die Sprache des Servers für alle Bot-Nachrichten und die Zeitzone für CWL-Zeiten und Erinnerungen." },
@@ -1592,6 +1649,7 @@
       "create_public_threads": "Öffentliche Threads erstellen",
       "manage_threads": "Threads verwalten",
       "create_instant_invite": "Einladung erstellen",
+      "use_embedded_activities": "Aktivitäten nutzen",
       "manage_roles": "Rollen verwalten"
     },
     "why": {

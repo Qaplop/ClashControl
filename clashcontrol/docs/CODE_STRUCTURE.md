@@ -787,9 +787,16 @@ all rebuild/button-handler paths so the reference is never lost.
   there, not as a second list.
 - `permission_features` on a step: the `bot_permissions` feature keys whose channel/role
   problems that step reports. Step 1 lists only problems of features no implemented step owns,
-  so one problem shows red once. Steps with a check so far (Build 152): 1 bot permissions,
+  so one problem shows red once. Steps with a check so far (Build 155): 1 bot permissions,
   2 language/timezone, 3 clans (deleted / private war log from `CACHE.clan_name_cache`),
-  4 welcome, 7 channel war reminders, 8 raid reminders, 13 leaderboards. A step that is OFF is
+  4 welcome, 5 registration, 7 channel war reminders, 8 raid reminders, 9 server roles,
+  10 CWL settings, 13 leaderboards. Since Phase 3 every audited feature belongs to a step, so
+  step 1 is server-level permissions only.
+- Member-side checks (Phase 3): `_any_role_can(channel, roles, *perms)` over `_newcomer_roles()`
+  (@everyone + the newbie role Simple Roles gives on join) for the registration hub and
+  `_member_roles()` (@everyone + every role ClashControl assigns) for the player hub, incl.
+  "Use Activities" for the CWL Preferences Activity. `link_coverage(guild)` counts linked vs.
+  all accounts in the member clans from `CACHE.user_accounts` (UNASSIGNED = not linked). A step that is OFF is
   never turned into BLOCKED. Fix hints name the real menu path via `_ui_path()` (translated
   labels of /clan management), so they follow label changes.
 - `ui_config_audit.SetupView` — one ephemeral message: overview ⇄ step detail via a select,

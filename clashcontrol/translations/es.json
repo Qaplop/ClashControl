@@ -301,7 +301,7 @@
       "setup": {
         "short": "Comprobar la configuración de ClashControl en este servidor (administradores)",
         "title": "🛠️ Comando Setup",
-        "detailed": "Muestra una lista de todo lo que ClashControl necesita en este servidor, con un estado por paso: ✅ OK, ❌ hay que corregirlo, ⚠️ incompleto, ⏸️ no se usa, 🔒 requiere un paso anterior, ⚪ aún no comprobado. Elige un paso para ver los detalles: qué falla, por qué importa y cómo solucionarlo.\n\n**Uso:**\n`/setup`\n\n**Comprobado hasta ahora:**\n• Permisos del bot — «Administrador», cada permiso que falta con el motivo por el que se necesita, y un botón para volver a autorizar el bot con un clic\n• Idioma y zona horaria, clanes y familias (incl. registros de guerra privados y clanes eliminados por Supercell), mensaje de bienvenida, recordatorios de guerra e incursiones en canales, clasificaciones — qué está configurado y cada canal que el bot no puede usar\n\nEl registro, las notificaciones de guerra, los roles del servidor y la LGC llegarán en próximas actualizaciones.\n\n**Notas:**\n• Solo para administradores del servidor\n• Solo tú ves el resultado\n• No se cambia nada — «🔄 Comprobar de nuevo» repite las comprobaciones cuando hayas corregido algo"
+        "detailed": "Muestra una lista de todo lo que ClashControl necesita en este servidor, con un estado por paso: ✅ OK, ❌ hay que corregirlo, ⚠️ incompleto, ⏸️ no se usa, 🔒 requiere un paso anterior, ⚪ aún no comprobado. Elige un paso para ver los detalles: qué falla, por qué importa y cómo solucionarlo.\n\n**Uso:**\n`/setup`\n\n**Comprobado hasta ahora:**\n• Permisos del bot — «Administrador», cada permiso que falta con el motivo por el que se necesita, y un botón para volver a autorizar el bot con un clic\n• Idioma y zona horaria, clanes y familias (incl. registros de guerra privados y clanes eliminados por Supercell), mensaje de bienvenida, recordatorios de guerra e incursiones en canales, clasificaciones\n• Registro (si los nuevos miembros lo ven, cuántas cuentas están vinculadas), roles del servidor (Simples, de CoC y de Clan), ajustes de la LGC (hubs, opciones, si los miembros pueden abrir sus preferencias de LGC)\n\nLas notificaciones de guerra, el hub «Tus Preferencias de LGC» y la gestión de la temporada de LGC llegarán en una próxima actualización.\n\n**Notas:**\n• Solo para administradores del servidor\n• Solo tú ves el resultado\n• No se cambia nada — «🔄 Comprobar de nuevo» repite las comprobaciones cuando hayas corregido algo"
       },
       "clan management": {
         "short": "Configuración central del servidor y de los clanes",
@@ -1518,6 +1518,63 @@
       "how_title": "🔧 Cómo funciona",
       "how": "En el canal donde deba aparecer una clasificación, usa {subscribe} y elige el clan o la familia y un modo. {unsubscribe} quita una suscripción, {subscriptions} las muestra."
     },
+    "visibility_title": "Quién puede verlo",
+    "on": "activado",
+    "off": "desactivado",
+    "registration": {
+      "summary_hub_off": "mensaje de registro desactivado",
+      "summary_no_channel": "activado, pero sin canal",
+      "summary_hidden_from_newcomers": "los nuevos miembros no ven el mensaje de registro",
+      "summary_nobody_linked": "aún no hay nadie vinculado",
+      "summary_ok": "mensaje de registro en {channel}",
+      "summary_ok_linked": "en {channel} · {linked} de {total} cuentas vinculadas",
+      "hub_title": "📝 Mensaje de registro",
+      "hub_in": "Publicado en {channel}: allí los miembros vinculan sus cuentas de Clash of Clans, configuran recordatorios de guerra y ven sus cuentas.",
+      "hub_no_channel": "Activado, pero sin canal — no se publica nada.",
+      "hub_off": "Desactivado — no hay mensaje de registro en ningún canal.",
+      "command_hint": "Los miembros también pueden abrirlo con {registration}, en el servidor o en un MD con el bot.",
+      "hidden": "Ni @everyone ni el rol de novato pueden ver este canal ni leer su historial, así que los nuevos miembros nunca ven el mensaje de registro. Permite allí {view} y {history} para @everyone (o para el rol de novato, si Roles Simples lo asigna al entrar).",
+      "coverage_title": "🔗 Cuentas vinculadas",
+      "coverage": "{linked} de {total} cuentas de tus clanes miembro están vinculadas a un usuario de Discord ({verified} verificadas con un token de la API).",
+      "nobody_linked": "Aún no hay ninguna cuenta de tus clanes miembro vinculada. Empieza por la tuya: {registration} → {link_button}.",
+      "admin_tools_title": "🛠️ Vincular para tus miembros",
+      "admin_tools": "Los administradores pueden vincular cuentas para los miembros: {path} → {link}, o quitar un vínculo con {unlink}."
+    },
+    "roles": {
+      "summary_off": "sin roles automáticos",
+      "summary_ok": "{systems}",
+      "summary_simple_roles_unset": "Roles Simples activado, pero sin rol elegido",
+      "summary_clan_roles_missing": "{count} clan(es) miembro sin rol de clan",
+      "name_role_system": "Roles Simples",
+      "name_coc_roles": "Roles de CoC",
+      "name_clan_roles": "Roles de Clan",
+      "not_set": "sin configurar",
+      "off": "desactivado",
+      "simple_roles": "Novato: {newbie} · Miembro: {member}",
+      "coc_roles_auto": "El bot crea él mismo los cuatro roles de CoC (Miembro, Veterano, Colíder, Líder).",
+      "clan_role_missing": "sin rol de clan",
+      "clan_roles_missing_fix": "El bot crea un rol de clan para cada clan miembro. Si falta alguno (normalmente porque no pudo crearlo), desactiva los roles de clan y vuelve a activarlos con {button}."
+    },
+    "cwl_settings": {
+      "summary_off": "sin mensajes hub de la LGC",
+      "summary_ok": "{parts}",
+      "summary_mgmt_no_channel": "centro de gestión activado, pero sin canal",
+      "summary_player_no_channel": "centro de jugadores activado, pero sin canal",
+      "summary_player_hub_hidden": "los miembros no ven el centro de jugadores",
+      "summary_no_activities": "puede que los miembros no puedan abrir sus preferencias de LGC",
+      "part_mgmt": "centro de gestión en {channel}",
+      "part_player": "centro de jugadores en {channel}",
+      "part_no_hubs": "rol de coordinador vinculado",
+      "what": "Liga de Guerras de Clanes: el Centro de Gestión de LGC de los administradores, el Centro de Ajustes de LGC para jugadores y las opciones de la LGC. La LGC también funciona sin los mensajes hub — desde /clan management.",
+      "hubs_title": "📌 Mensajes hub",
+      "hubs": "Centro de Gestión de LGC: {mgmt}\nCentro de Ajustes de LGC para jugadores: {player}",
+      "hub_off": "desactivado",
+      "hub_no_channel": "activado, pero sin canal",
+      "coordinator_per_clan": "un rol por clan ({count} vinculados)",
+      "settings": "Retención de datos: {retention}\nIncluir todas las cuentas vinculadas: {include_all}\nRol de coordinador: {coordinator}\nInscripción ampliada (banquillo): {bench}",
+      "player_hub_hidden": "Ninguno de los roles de tus miembros (@everyone o los roles que asigna ClashControl) puede ver el canal del centro de jugadores ni leer su historial, así que los miembros no pueden usarlo.",
+      "no_activities": "Los roles de tus miembros no tienen {perm} en el canal del centro de jugadores. El botón {button} abre una Actividad de Discord, que puede necesitar ese permiso — permítelo para @everyone en ese canal."
+    },
     "step": {
       "bot_permissions": { "title": "Permisos del bot", "desc": "Los permisos del servidor que ClashControl necesita para publicar sus mensajes y asignar roles." },
       "basics": { "title": "Idioma y zona horaria", "desc": "El idioma del servidor para todos los mensajes del bot y la zona horaria para las horas de la LGC y los recordatorios." },
@@ -1591,6 +1648,7 @@
       "create_public_threads": "Crear hilos públicos",
       "manage_threads": "Gestionar hilos",
       "create_instant_invite": "Crear invitación",
+      "use_embedded_activities": "Usar Actividades",
       "manage_roles": "Gestionar roles"
     },
     "why": {

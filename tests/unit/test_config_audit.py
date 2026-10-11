@@ -50,16 +50,31 @@ def _channel(cid: int, **perms: bool) -> MagicMock:
     return ch
 
 
+EVERYONE = FakeRole(GID, 0)
+
+
 def _guild(perms: Optional[discord.Permissions], channels: Optional[Dict[int, MagicMock]] = None,
-           system_channel: Optional[MagicMock] = None) -> SimpleNamespace:
+           system_channel: Optional[MagicMock] = None, roles: Optional[Dict[int, FakeRole]] = None) -> SimpleNamespace:
     me = None if perms is None else SimpleNamespace(guild_permissions=perms, top_role=FakeRole(1, 10))
     channels = channels or {}
+    roles = roles or {}
     return SimpleNamespace(
         id=GID, name="Test Server", owner_id=7, me=me, system_channel=system_channel,
+        default_role=EVERYONE,
         get_channel_or_thread=lambda cid: channels.get(cid),
         get_channel=lambda cid: channels.get(cid),
-        get_role=lambda rid: None,
+        get_role=lambda rid: roles.get(rid),
     )
+
+
+def _channel_by_role(cid: int, by_role: Dict[object, Dict[str, bool]], bot: Dict[str, bool]) -> MagicMock:
+    """A channel whose permissions differ per role: ``by_role`` maps a role to its permissions
+    there; anything else (the bot's own member) gets ``bot``."""
+    ch = MagicMock(spec=discord.TextChannel)
+    ch.id = cid
+    ch.name = f"ch{cid}"
+    ch.permissions_for = MagicMock(side_effect=lambda who: discord.Permissions(**by_role.get(who, bot)))
+    return ch
 
 
 def _all_but(*missing: str) -> discord.Permissions:
@@ -73,6 +88,7 @@ def _isolate(monkeypatch):
     monkeypatch.setattr(CACHE, "clan_name_cache", {})
     monkeypatch.setattr(CACHE, "clan_families", {})
     monkeypatch.setattr(CACHE, "guild_guest_clans", {})
+    monkeypatch.setattr(CACHE, "user_accounts", {})
     monkeypatch.setattr(QBcore, "bot", SimpleNamespace(application_id=1234))
 
 
@@ -123,12 +139,16 @@ class TestStepBotPermissions:
             "send_messages", "manage_threads",
         ]
 
-    def test_feature_problems_are_broken_even_with_administrator(self):
-        # Administrator, but the configured registration channel is gone.
+    def test_feature_problems_show_under_their_own_step(self):
+        # Administrator, but the configured registration channel is gone: step 5 reports it, step 1
+        # does not (every audited feature belongs to a step since Phase 3).
         CACHE.server_config[str(GID)] = {"registration_message_enabled": True, "registration_channel_id": "555"}
-        r = ca.check_bot_permissions(_guild(discord.Permissions(administrator=True)))
-        assert r.status == AuditStatus.BROKEN
-        assert [f.code for f in r.findings] == ["feature_issue"]
+        guild = _guild(discord.Permissions(administrator=True))
+        assert ca.check_bot_permissions(guild).status == AuditStatus.OK
+        assert ca.check_registration(guild).status == AuditStatus.BROKEN
+        owned = {f for st in ca.STEPS if st.check is not None for f in st.permission_features}
+        assert set(bp.CHANNEL_FEATURES) - {"clan_management"} <= owned
+        assert set(bp.ROLE_FEATURES) <= owned
 
     def test_bot_not_cached_yet_is_info(self):
         assert ca.check_bot_permissions(_guild(None)).status == AuditStatus.INFO
@@ -147,8 +167,8 @@ class TestRegistry:
         assert [s.id for s in ca.STEPS if results[s.id].status == AuditStatus.PENDING] == [
             s.id for s in ca.STEPS if s.check is None
         ]
-        assert {s.id for s in ca.STEPS if s.check is None} == {  # Phase 3/4
-            "registration", "war_notifications", "roles", "cwl_settings", "cwl_player_hub", "cwl_season",
+        assert {s.id for s in ca.STEPS if s.check is None} == {  # Phase 4
+            "war_notifications", "cwl_player_hub", "cwl_season",
         }
 
     def test_switched_off_feature_is_not_blocked(self):
@@ -471,3 +491,116 @@ class TestPermissionNames:
                         bad.append((path, name))
                     start = i + len(name)
         assert not bad, bad
+
+
+VIEW_READ = dict(view_channel=True, read_message_history=True)
+
+
+def _accounts(**players_by_user):
+    CACHE.user_accounts.update({u: {"players": ps} for u, ps in players_by_user.items()})
+
+
+class TestStepRegistration:
+    def test_link_coverage_counts_accounts_in_member_clans(self):
+        _cfg(member_clans=["#A"])
+        _accounts(
+            UNASSIGNED=[{"player_tag": "#1", "current_clan_tag": "#A"}, {"player_tag": "#2", "current_clan_tag": "#A"}],
+            u1=[{"player_tag": "#3", "current_clan_tag": "#A", "verified": True}],
+            u2=[{"player_tag": "#4", "current_clan_tag": "#OTHER"}],
+        )
+        assert ca.link_coverage(_guild(ADMIN)) == (1, 3, 1)
+
+    def test_hub_off_is_incomplete(self):
+        r = ca.check_registration(_guild(ADMIN))
+        assert r.status == AuditStatus.INCOMPLETE and r.summary_key.endswith("summary_hub_off")
+
+    def test_ok_with_coverage_only_when_someone_is_linked(self):
+        _cfg(member_clans=["#A"], registration_message_enabled=True, registration_channel_id="30")
+        ch = _channel_by_role(30, {EVERYONE: VIEW_READ}, ALL_PERMS)
+        guild = _guild(ADMIN, {30: ch})
+        assert ca.check_registration(guild).summary_key.endswith("summary_ok")          # no data: no number
+        _accounts(UNASSIGNED=[{"player_tag": "#1", "current_clan_tag": "#A"}])
+        r = ca.check_registration(guild)                                                   # Q-6: nobody linked
+        assert r.status == AuditStatus.INCOMPLETE and r.summary_key.endswith("summary_nobody_linked")
+        _accounts(u1=[{"player_tag": "#3", "current_clan_tag": "#A"}])
+        r = ca.check_registration(guild)
+        assert r.status == AuditStatus.OK and r.summary_params == {"channel": "#ch30", "linked": 1, "total": 2}
+
+    def test_hidden_from_newcomers_unless_the_newbie_role_sees_it(self):
+        newbie = FakeRole(77, 2)
+        ch = _channel_by_role(30, {EVERYONE: {}, newbie: VIEW_READ}, ALL_PERMS)
+        guild = _guild(ADMIN, {30: ch}, roles={77: newbie})
+        _cfg(registration_message_enabled=True, registration_channel_id="30")
+        r = ca.check_registration(guild)
+        assert r.status == AuditStatus.INCOMPLETE and r.summary_key.endswith("summary_hidden_from_newcomers")
+        body = _body(ca.detail_registration(guild, r, GID, "1"))
+        assert "“View Channel”" in body and "“Read Message History”" in body
+        _cfg(registration_message_enabled=True, registration_channel_id="30",
+             role_system_enabled=True, newbie_role_id="77")
+        assert ca.check_registration(guild).status == AuditStatus.OK
+
+
+class TestStepRoles:
+    def test_off(self):
+        assert ca.check_roles(_guild(ADMIN)).status == AuditStatus.OFF
+
+    def test_simple_roles_without_roles_is_incomplete(self):
+        _cfg(role_system_enabled=True)
+        r = ca.check_roles(_guild(ADMIN))
+        assert r.status == AuditStatus.INCOMPLETE and r.summary_key.endswith("summary_simple_roles_unset")
+
+    def test_member_clan_without_clan_role(self):
+        _cfg(member_clans=["#A", "#B"], clan_role_enabled=True, clan_roles={"#A": "5"})
+        r = ca.check_roles(_guild(_all_but(), roles={5: FakeRole(5, 3)}))  # incl. Manage Roles
+        assert r.status == AuditStatus.INCOMPLETE and r.summary_params == {"count": 1}
+        assert r.data["missing_clan_roles"] == ["#B"]
+
+    def test_missing_manage_roles_is_broken_and_ok_lists_systems(self):
+        _cfg(coc_role_enabled=True)
+        assert ca.check_roles(_guild(_all_but("manage_roles"))).status == AuditStatus.BROKEN
+        r = ca.check_roles(_guild(_all_but()))
+        assert r.status == AuditStatus.OK and r.summary_params == {"systems": "CoC Roles"}
+
+
+class TestStepCwlSettings:
+    def test_off(self):
+        assert ca.check_cwl_settings(_guild(ADMIN)).status == AuditStatus.OFF
+
+    def test_player_hub_visibility_and_activities(self):
+        _cfg(cwl_player_hub_message_enabled=True, cwl_player_hub_channel_id="40")
+        hidden = _channel_by_role(40, {EVERYONE: {}}, ALL_PERMS)
+        r = ca.check_cwl_settings(_guild(ADMIN, {40: hidden}))
+        assert r.summary_key.endswith("summary_player_hub_hidden")
+        no_act = _channel_by_role(40, {EVERYONE: VIEW_READ}, ALL_PERMS)
+        r = ca.check_cwl_settings(_guild(ADMIN, {40: no_act}))
+        assert r.status == AuditStatus.INCOMPLETE and r.summary_key.endswith("summary_no_activities")
+        ok = _channel_by_role(40, {EVERYONE: dict(VIEW_READ, use_embedded_activities=True)}, ALL_PERMS)
+        r = ca.check_cwl_settings(_guild(ADMIN, {40: ok}))
+        assert r.status == AuditStatus.OK and "#ch40" in r.summary_params["parts"]
+
+    def test_hub_without_channel_is_incomplete(self):
+        _cfg(cwl_management_message_enabled=True)
+        r = ca.check_cwl_settings(_guild(ADMIN))
+        assert r.status == AuditStatus.INCOMPLETE and r.summary_key.endswith("summary_mgmt_no_channel")
+
+
+class TestRenderingPhase3:
+    @pytest.mark.parametrize("lang", LANGS)
+    def test_steps_5_9_10_render_in_every_language(self, lang):
+        from clashcontrol.ui_config_audit import build_step_embed
+        newbie, member = FakeRole(77, 2), FakeRole(78, 3)
+        ch = _channel_by_role(30, {EVERYONE: {}}, ALL_PERMS)                  # hidden + no activities
+        guild = _guild(ADMIN, {30: ch}, roles={77: newbie, 78: member})
+        _cfg(language=lang, member_clans=["#A", "#B"], registration_message_enabled=True,
+             registration_channel_id="30", role_system_enabled=True, newbie_role_id="77",
+             member_role_id="78", coc_role_enabled=True, clan_role_enabled=True, clan_roles={"#A": "78"},
+             cwl_management_message_enabled=True, cwl_player_hub_message_enabled=True,
+             cwl_player_hub_channel_id="30", cwl_retention_months=6, cwl_signup_mode="extended")
+        _accounts(UNASSIGNED=[{"player_tag": "#1", "current_clan_tag": "#A"}])
+        results = ca.run_audit(guild)
+        for sid in ("registration", "roles", "cwl_settings"):
+            assert results[sid].status not in (AuditStatus.PENDING, AuditStatus.INFO), (sid, results[sid])
+            e = build_step_embed(guild, "1", sid, results[sid])
+            texts = [e.title or "", e.description or ""] + [f.name for f in e.fields] + [f.value for f in e.fields]
+            assert not any(k in x for x in texts for k in ("config_audit.", "permissions.", "ui_components.", "cwl.")), texts
+            assert all(len(f.value) <= 1024 for f in e.fields)

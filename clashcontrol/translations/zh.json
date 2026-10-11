@@ -301,7 +301,7 @@
       "setup": {
         "short": "检查 ClashControl 在此服务器上的设置（管理员）",
         "title": "🛠️ Setup 命令",
-        "detailed": "显示 ClashControl 在此服务器上所需一切的检查清单，每个步骤都有状态：✅ 正常、❌ 需要修复、⚠️ 不完整、⏸️ 未使用、🔒 需要先完成前面的步骤、⚪ 尚未检查。选择一个步骤查看详情：哪里有问题、为什么重要以及如何修复。\n\n**用法：**\n`/setup`\n\n**目前已检查：**\n• 机器人权限——“管理员”权限、每个缺少的权限及其用途，以及一键重新授权机器人的按钮\n• 语言和时区、部落和家族（包括私密战争日志和被 Supercell 删除的部落）、欢迎消息、频道中的战争和突袭提醒、排行榜——哪些已设置，以及机器人无法使用的每个频道\n\n注册、战争通知、服务器身份组和部落战联赛将在后续更新中提供。\n\n**注意：**\n• 仅限服务器管理员\n• 只有你能看到结果\n• 不会更改任何内容——修复问题后，「🔄 重新检查」会再次运行检查"
+        "detailed": "显示 ClashControl 在此服务器上所需一切的检查清单，每个步骤都有状态：✅ 正常、❌ 需要修复、⚠️ 不完整、⏸️ 未使用、🔒 需要先完成前面的步骤、⚪ 尚未检查。选择一个步骤查看详情：哪里有问题、为什么重要以及如何修复。\n\n**用法：**\n`/setup`\n\n**目前已检查：**\n• 机器人权限——“管理员”权限、每个缺少的权限及其用途，以及一键重新授权机器人的按钮\n• 语言和时区、部落和家族（包括私密战争日志和被 Supercell 删除的部落）、欢迎消息、频道中的战争和突袭提醒、排行榜\n• 注册（新成员能否看到、已绑定多少账号）、服务器身份组（简单、部落冲突和部落身份组）、部落战联赛设置（中心消息、选项、成员能否打开部落战联赛偏好）\n\n战争通知、「你的部落战联赛偏好」中心和部落战联赛赛季管理将在后续更新中提供。\n\n**注意：**\n• 仅限服务器管理员\n• 只有你能看到结果\n• 不会更改任何内容——修复问题后，「🔄 重新检查」会再次运行检查"
       },
       "clan management": {
         "short": "服务器与部落的集中配置",
@@ -1518,6 +1518,63 @@
       "how_title": "🔧 使用方法",
       "how": "在需要显示排行榜的频道中使用 {subscribe}，选择部落或家族以及模式。{unsubscribe} 用于移除订阅，{subscriptions} 用于列出订阅。"
     },
+    "visibility_title": "谁能看到",
+    "on": "开启",
+    "off": "关闭",
+    "registration": {
+      "summary_hub_off": "注册消息已关闭",
+      "summary_no_channel": "已开启，但未设置频道",
+      "summary_hidden_from_newcomers": "新成员看不到注册消息",
+      "summary_nobody_linked": "尚无人绑定",
+      "summary_ok": "注册消息在 {channel}",
+      "summary_ok_linked": "在 {channel} · {total} 个账号中已绑定 {linked} 个",
+      "hub_title": "📝 注册消息",
+      "hub_in": "发布在 {channel}：成员在这里绑定 Clash of Clans 账号、设置战争提醒并查看自己的账号。",
+      "hub_no_channel": "已开启，但未设置频道——不会发布任何内容。",
+      "hub_off": "已关闭——没有任何频道中的注册消息。",
+      "command_hint": "成员也可以在服务器上或与机器人的私信中使用 {registration} 自行打开。",
+      "hidden": "@everyone 和新人身份组都无法查看此频道或阅读其历史记录，因此新成员永远看不到注册消息。请在该频道为 @everyone（或为新人身份组，如果简单身份组在加入时分配它）允许{view}和{history}。",
+      "coverage_title": "🔗 已绑定账号",
+      "coverage": "你的成员部落中 {total} 个账号里有 {linked} 个已绑定到 Discord 用户（其中 {verified} 个已通过 API 令牌验证）。",
+      "nobody_linked": "你的成员部落中还没有任何账号被绑定。从你自己的账号开始：{registration} → {link_button}。",
+      "admin_tools_title": "🛠️ 为成员绑定",
+      "admin_tools": "管理员可以为成员绑定账号：{path} → {link}，或用 {unlink} 解除绑定。"
+    },
+    "roles": {
+      "summary_off": "没有自动身份组",
+      "summary_ok": "{systems}",
+      "summary_simple_roles_unset": "简单身份组已开启，但未选择身份组",
+      "summary_clan_roles_missing": "{count} 个成员部落没有部落身份组",
+      "name_role_system": "简单身份组",
+      "name_coc_roles": "部落冲突身份组",
+      "name_clan_roles": "部落身份组",
+      "not_set": "未设置",
+      "off": "已关闭",
+      "simple_roles": "新人：{newbie} · 成员：{member}",
+      "coc_roles_auto": "机器人会自行创建四个部落冲突身份组（成员、长老、副首领、首领）。",
+      "clan_role_missing": "没有部落身份组",
+      "clan_roles_missing_fix": "机器人会为每个成员部落创建一个部落身份组。如果缺少某个（通常是因为无法创建），请关闭部落身份组，再用 {button} 重新开启。"
+    },
+    "cwl_settings": {
+      "summary_off": "没有部落战联赛中心消息",
+      "summary_ok": "{parts}",
+      "summary_mgmt_no_channel": "管理中心已开启，但未设置频道",
+      "summary_player_no_channel": "玩家中心已开启，但未设置频道",
+      "summary_player_hub_hidden": "成员看不到玩家中心",
+      "summary_no_activities": "成员可能无法打开自己的部落战联赛偏好",
+      "part_mgmt": "管理中心在 {channel}",
+      "part_player": "玩家中心在 {channel}",
+      "part_no_hubs": "已绑定协调员身份组",
+      "what": "部落战联赛：管理员的部落战联赛管理中心、成员的玩家部落战联赛设置中心，以及部落战联赛选项。没有中心消息时，也可以通过 /clan management 使用部落战联赛。",
+      "hubs_title": "📌 中心消息",
+      "hubs": "部落战联赛管理中心：{mgmt}\n玩家部落战联赛设置中心：{player}",
+      "hub_off": "已关闭",
+      "hub_no_channel": "已开启，但未设置频道",
+      "coordinator_per_clan": "每个部落一个身份组（已绑定 {count} 个）",
+      "settings": "数据保留：{retention}\n纳入所有已绑定账号：{include_all}\n协调员身份组：{coordinator}\n扩展报名（替补）：{bench}",
+      "player_hub_hidden": "你的成员所拥有的身份组（@everyone 或 ClashControl 分配的身份组）都无法查看玩家中心所在频道或阅读其历史记录，因此成员无法使用玩家中心。",
+      "no_activities": "你的成员的身份组在玩家中心所在频道中没有 {perm}。{button} 按钮会打开一个 Discord 小活动，可能需要该权限——请在该频道为 @everyone 允许它。"
+    },
     "step": {
       "bot_permissions": { "title": "机器人权限", "desc": "ClashControl 发布消息和分配身份组所需的服务器权限。" },
       "basics": { "title": "语言和时区", "desc": "服务器上所有机器人消息使用的语言，以及部落战联赛时间和提醒使用的时区。" },
@@ -1591,6 +1648,7 @@
       "create_public_threads": "创建公共子区",
       "manage_threads": "管理子区",
       "create_instant_invite": "创建邀请",
+      "use_embedded_activities": "使用小活动",
       "manage_roles": "管理身份组"
     },
     "why": {

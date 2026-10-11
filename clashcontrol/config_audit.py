@@ -661,6 +661,382 @@ def detail_leaderboards(guild: discord.Guild, result: StepResult, guild_id: Opti
 
 
 # ---------------------------------------------------------------------------------------------
+# Member-side visibility (Phase 3): can the people a hub is for actually see it?
+# ---------------------------------------------------------------------------------------------
+
+def _role(guild: discord.Guild, role_id: Any) -> Optional[discord.Role]:
+    try:
+        return guild.get_role(int(role_id))
+    except (TypeError, ValueError):
+        return None
+
+
+def _newcomer_roles(guild: discord.Guild, config: Dict[str, Any]) -> List[discord.Role]:
+    """Roles a brand-new server member has: @everyone, plus the newbie role when Simple Roles
+    gives it on join (on_member_join → assign_newbie_role)."""
+    roles = [guild.default_role]
+    if config.get("role_system_enabled"):
+        newbie = _role(guild, config.get("newbie_role_id"))
+        if newbie is not None:
+            roles.append(newbie)
+    return roles
+
+
+def _member_roles(guild: discord.Guild, config: Dict[str, Any]) -> List[discord.Role]:
+    """Roles a clan member typically has: @everyone plus every role ClashControl assigns
+    (Simple Roles member role, CoC roles, clan roles)."""
+    roles = [guild.default_role]
+    ids: List[Any] = []
+    if config.get("role_system_enabled"):
+        ids.append(config.get("member_role_id"))
+    if config.get("coc_role_enabled"):
+        ids += [config.get(k) for k in ("coc_role_member_id", "coc_role_elder_id",
+                                        "coc_role_coleader_id", "coc_role_leader_id")]
+    if config.get("clan_role_enabled"):
+        ids += list((config.get("clan_roles") or {}).values())
+    for rid in ids:
+        role = _role(guild, rid) if rid else None
+        if role is not None and role not in roles:
+            roles.append(role)
+    return roles
+
+
+def _channel(guild: discord.Guild, channel_id: Any) -> Any:
+    try:
+        cid = int(channel_id)
+    except (TypeError, ValueError):
+        return None
+    getter = getattr(guild, "get_channel_or_thread", None) or guild.get_channel
+    return getter(cid)
+
+
+def _any_role_can(channel: Any, roles: List[discord.Role], *perms: str) -> bool:
+    """True when at least one of ``roles`` has every permission in ``perms`` in ``channel``
+    (role permissions + that channel's overrides, as Discord resolves them)."""
+    for role in roles:
+        try:
+            p = channel.permissions_for(role)
+        except Exception:
+            continue
+        if all(getattr(p, name, False) for name in perms):
+            return True
+    return False
+
+
+# ---------------------------------------------------------------------------------------------
+# Step 5: player registration
+# ---------------------------------------------------------------------------------------------
+
+def link_coverage(guild: discord.Guild) -> Tuple[int, int, int]:
+    """(linked, total, verified) player accounts currently in this server's member clans.
+
+    Every member of a tracked clan sits in some account — a Discord user's or the UNASSIGNED pool
+    (coc_cache.update_player_info_in_user_accounts) — with ``current_clan_tag`` kept current, so
+    this needs no API call. Counts accounts, not people: one member with three accounts counts
+    three times, as in Manage Registrations.
+    """
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_guild_member_clan_tags
+
+    tags = set(resolve_guild_member_clan_tags(guild.id))
+    linked = total = verified = 0
+    if not tags:
+        return 0, 0, 0
+    for user_id, account in CACHE.user_accounts.items():
+        for player in (account or {}).get("players", []) or []:
+            if player.get("current_clan_tag") not in tags:
+                continue
+            total += 1
+            if user_id != "UNASSIGNED":
+                linked += 1
+                if player.get("verified"):
+                    verified += 1
+    return linked, total, verified
+
+
+def check_registration(guild: discord.Guild) -> StepResult:
+    config = _config(guild)
+    linked, total, verified = link_coverage(guild)
+    data: Dict[str, Any] = {"linked": linked, "total": total, "verified": verified, "issues": []}
+    findings: List[Finding] = []
+    enabled = bool(config.get("registration_message_enabled"))
+    channel_id = config.get("registration_channel_id")
+    data["channel_id"] = channel_id if enabled else None
+    if not enabled:
+        findings.append(Finding(AuditStatus.INCOMPLETE, "hub_off"))
+    elif not channel_id:
+        findings.append(Finding(AuditStatus.INCOMPLETE, "no_channel"))
+    else:
+        issues = _permission_issues(guild, {"registration"})
+        data["issues"] = issues
+        findings += [Finding(AuditStatus.BROKEN, "permission", (("kind", i.kind),)) for i in issues]
+        channel = _channel(guild, channel_id)
+        if channel is not None and not _any_role_can(channel, _newcomer_roles(guild, config),
+                                                     "view_channel", "read_message_history"):
+            findings.append(Finding(AuditStatus.INCOMPLETE, "hidden_from_newcomers"))
+    if total and not linked:
+        findings.append(Finding(AuditStatus.INCOMPLETE, "nobody_linked"))  # Q-6: only when nobody
+
+    broken = [f for f in findings if f.status == AuditStatus.BROKEN]
+    if broken:
+        return StepResult(AuditStatus.BROKEN, "config_audit.summary_permission_problems",
+                          {"count": len(broken)}, findings, data)
+    incomplete = [f for f in findings if f.status == AuditStatus.INCOMPLETE]
+    if incomplete:
+        return StepResult(AuditStatus.INCOMPLETE, f"config_audit.registration.summary_{incomplete[0].code}",
+                          findings=findings, data=data)
+    if linked:
+        return StepResult(AuditStatus.OK, "config_audit.registration.summary_ok_linked",
+                          {"channel": _channel_name(guild, channel_id), "linked": linked, "total": total},
+                          findings, data)
+    return StepResult(AuditStatus.OK, "config_audit.registration.summary_ok",
+                      {"channel": _channel_name(guild, channel_id)}, findings, data)
+
+
+def detail_registration(guild: discord.Guild, result: StepResult, guild_id: Optional[int],
+                        user_id: Optional[str]) -> StepDetail:
+    from clashcontrol.QBdiscocmdshelper import command_mention
+    tr = _translator(guild_id, user_id)
+    codes = {f.code for f in result.findings}
+    registration = command_mention("registration")
+    sections: List[Tuple[str, str]] = []
+    if result.data.get("channel_id"):
+        hub = tr("config_audit.registration.hub_in", channel=f"<#{result.data['channel_id']}>")
+    elif "no_channel" in codes:
+        hub = tr("config_audit.registration.hub_no_channel")
+    else:
+        hub = tr("config_audit.registration.hub_off")
+    sections.append((tr("config_audit.registration.hub_title"),
+                     hub + "\n" + tr("config_audit.registration.command_hint", registration=registration)))
+    if "hidden_from_newcomers" in codes:
+        sections.append(("⚠️ " + tr("config_audit.visibility_title"), tr(
+            "config_audit.registration.hidden",
+            view=bp.perm_label("view_channel", guild_id=guild_id, user_id=user_id),
+            history=bp.perm_label("read_message_history", guild_id=guild_id, user_id=user_id))))
+    linked, total, verified = result.data["linked"], result.data["total"], result.data["verified"]
+    if linked:
+        sections.append((tr("config_audit.registration.coverage_title"), tr(
+            "config_audit.registration.coverage", linked=linked, total=total, verified=verified)))
+    elif total:
+        sections.append((tr("config_audit.registration.coverage_title"),
+                         tr("config_audit.registration.nobody_linked", registration=registration,
+                            link_button=tr("playerregistration.button_link_account"))))
+    issues: List[bp.PermissionIssue] = result.data.get("issues", [])
+    if issues:
+        sections.append(_issues_section(tr, issues, guild_id, user_id))
+    sections.append((tr("config_audit.registration.admin_tools_title"), tr(
+        "config_audit.registration.admin_tools",
+        path=_ui_path(tr, "ui_components.clan_management.mode_registrations_label"),
+        link=tr("ui_components.clan_management.button_link_accounts"),
+        unlink=tr("ui_components.clan_management.button_unlink_player"))))
+    sections.append(_where_section(
+        tr,
+        _ui_path(tr, _BASIC, "ui_components.basic_config.button_select_channels"),
+        _ui_path(tr, _BASIC, "ui_components.basic_config.button_activate_registration"),
+    ))
+    return StepDetail(sections)
+
+
+# ---------------------------------------------------------------------------------------------
+# Step 9: server roles
+# ---------------------------------------------------------------------------------------------
+
+_ROLE_SYSTEMS = (("role_system", "role_system_enabled"), ("coc_roles", "coc_role_enabled"),
+                 ("clan_roles", "clan_role_enabled"))
+
+
+def check_roles(guild: discord.Guild) -> StepResult:
+    """Simple Roles, CoC roles, clan roles: OFF when none is on. Permission/hierarchy problems
+    (bot_permissions) → BROKEN; Simple Roles without any role, or a member clan without its clan
+    role (creation failed) → INCOMPLETE."""
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_guild_member_clan_tags
+    config = _config(guild)
+    active = [name for name, flag in _ROLE_SYSTEMS if config.get(flag)]
+    if not active:
+        return StepResult(AuditStatus.OFF, "config_audit.roles.summary_off")
+    issues = _permission_issues(guild, set(active))
+    findings = [Finding(AuditStatus.BROKEN, "permission", (("kind", i.kind),)) for i in issues]
+    if "role_system" in active and not (config.get("newbie_role_id") or config.get("member_role_id")):
+        findings.append(Finding(AuditStatus.INCOMPLETE, "simple_roles_unset"))
+    missing_clan_roles: List[str] = []
+    if "clan_roles" in active:
+        mapped = config.get("clan_roles") or {}
+        missing_clan_roles = [t for t in resolve_guild_member_clan_tags(guild.id) if not mapped.get(t)]
+        if missing_clan_roles:
+            findings.append(Finding(AuditStatus.INCOMPLETE, "clan_roles_missing", (("count", len(missing_clan_roles)),)))
+    data = {"active": active, "issues": issues, "missing_clan_roles": missing_clan_roles}
+    broken = [f for f in findings if f.status == AuditStatus.BROKEN]
+    if broken:
+        return StepResult(AuditStatus.BROKEN, "config_audit.summary_permission_problems",
+                          {"count": len(broken)}, findings, data)
+    incomplete = [f for f in findings if f.status == AuditStatus.INCOMPLETE]
+    if incomplete:
+        return StepResult(AuditStatus.INCOMPLETE, f"config_audit.roles.summary_{incomplete[0].code}",
+                          dict(incomplete[0].params), findings, data)
+    tr = _translator(guild.id, None)
+    return StepResult(AuditStatus.OK, "config_audit.roles.summary_ok",
+                      {"systems": ", ".join(tr(f"config_audit.roles.name_{n}") for n in active)}, findings, data)
+
+
+def detail_roles(guild: discord.Guild, result: StepResult, guild_id: Optional[int],
+                 user_id: Optional[str]) -> StepDetail:
+    tr = _translator(guild_id, user_id)
+    config = _config(guild)
+    active: List[str] = result.data.get("active", [])
+
+    def mention(rid: Any) -> str:
+        return f"<@&{rid}>" if rid else tr("config_audit.roles.not_set")
+
+    sections: List[Tuple[str, str]] = []
+    for name, _flag in _ROLE_SYSTEMS:
+        title = tr(f"config_audit.roles.name_{name}")
+        if name not in active:
+            sections.append((f"⏸️ {title}", tr("config_audit.roles.off")))
+            continue
+        if name == "role_system":
+            body = tr("config_audit.roles.simple_roles", newbie=mention(config.get("newbie_role_id")),
+                      member=mention(config.get("member_role_id")))
+        elif name == "coc_roles":
+            ids = [config.get(k) for k in ("coc_role_member_id", "coc_role_elder_id",
+                                           "coc_role_coleader_id", "coc_role_leader_id")]
+            body = (" ".join(f"<@&{i}>" for i in ids if i) if any(ids)
+                    else tr("config_audit.roles.coc_roles_auto"))
+        else:
+            mapped = config.get("clan_roles") or {}
+            lines = [f"{_clan_name(t)}: <@&{rid}>" for t, rid in mapped.items() if rid]
+            lines += [f"{_clan_name(t)}: ⚠️ " + tr("config_audit.roles.clan_role_missing")
+                      for t in result.data.get("missing_clan_roles", [])]
+            body = _join_limited(lines, 1024, lambda n: tr("permissions.warning_more", count=n)) or tr("config_audit.roles.not_set")
+        sections.append((f"✅ {title}", body))
+    if result.data.get("missing_clan_roles"):
+        sections.append(("", tr("config_audit.roles.clan_roles_missing_fix",
+                                button=tr("ui_components.clan_management.button_toggle_clan_roles_enable"))))
+    issues: List[bp.PermissionIssue] = result.data.get("issues", [])
+    if issues:
+        sections.append(_issues_section(tr, issues, guild_id, user_id))
+    me = bp._me(guild)  # pyright: ignore[reportPrivateUsage]
+    if active and me is not None:
+        sections.append((tr("config_audit.bot_permissions.role_title"),
+                         tr("config_audit.bot_permissions.role_position", role=me.top_role.mention)))
+    sections.append(_where_section(
+        tr,
+        _ui_path(tr, "ui_components.clan_management.mode_roles_label"),
+        _ui_path(tr, "ui_components.clan_management.mode_roles_label", "ui_components.clan_management.button_configure_roles"),
+    ))
+    return StepDetail(sections)
+
+
+# ---------------------------------------------------------------------------------------------
+# Step 10: CWL settings
+# ---------------------------------------------------------------------------------------------
+
+def check_cwl_settings(guild: discord.Guild) -> StepResult:
+    """The CWL Settings screen top to bottom. OFF when neither hub message is on and no
+    coordinator role is linked (CWL can still be run from /clan management). Hub without channel,
+    or a player hub members can't see / can't open the Activity from → INCOMPLETE."""
+    from clashcontrol.guild_role_manager import cwl_coordinator_role_targets
+    config = _config(guild)
+    mgmt_on = bool(config.get("cwl_management_message_enabled"))
+    player_on = bool(config.get("cwl_player_hub_message_enabled"))
+    try:
+        coordinator_roles = list(cwl_coordinator_role_targets(config).keys())
+    except Exception:
+        coordinator_roles = []
+    data: Dict[str, Any] = {"mgmt_on": mgmt_on, "player_on": player_on, "issues": [],
+                            "coordinator_roles": coordinator_roles}
+    if not (mgmt_on or player_on or coordinator_roles):
+        return StepResult(AuditStatus.OFF, "config_audit.cwl_settings.summary_off", data=data)
+    findings: List[Finding] = []
+    if mgmt_on and not config.get("cwl_management_channel_id"):
+        findings.append(Finding(AuditStatus.INCOMPLETE, "mgmt_no_channel"))
+    if player_on and not config.get("cwl_player_hub_channel_id"):
+        findings.append(Finding(AuditStatus.INCOMPLETE, "player_no_channel"))
+    issues = _permission_issues(guild, {"cwl_management", "cwl_player_hub", "cwl_coordinator_role"})
+    data["issues"] = issues
+    findings += [Finding(AuditStatus.BROKEN, "permission", (("kind", i.kind),)) for i in issues]
+    player_channel = _channel(guild, config.get("cwl_player_hub_channel_id")) if player_on else None
+    if player_channel is not None:
+        members = _member_roles(guild, config)
+        if not _any_role_can(player_channel, members, "view_channel", "read_message_history"):
+            findings.append(Finding(AuditStatus.INCOMPLETE, "player_hub_hidden"))
+        elif not _any_role_can(player_channel, members, "view_channel", "use_embedded_activities"):
+            findings.append(Finding(AuditStatus.INCOMPLETE, "no_activities"))
+    broken = [f for f in findings if f.status == AuditStatus.BROKEN]
+    if broken:
+        return StepResult(AuditStatus.BROKEN, "config_audit.summary_permission_problems",
+                          {"count": len(broken)}, findings, data)
+    incomplete = [f for f in findings if f.status == AuditStatus.INCOMPLETE]
+    if incomplete:
+        return StepResult(AuditStatus.INCOMPLETE, f"config_audit.cwl_settings.summary_{incomplete[0].code}",
+                          findings=findings, data=data)
+    tr = _translator(guild.id, None)
+    parts = []
+    if mgmt_on:
+        parts.append(tr("config_audit.cwl_settings.part_mgmt", channel=_channel_name(guild, config.get("cwl_management_channel_id"))))
+    if player_on:
+        parts.append(tr("config_audit.cwl_settings.part_player", channel=_channel_name(guild, config.get("cwl_player_hub_channel_id"))))
+    if not parts:
+        parts.append(tr("config_audit.cwl_settings.part_no_hubs"))
+    return StepResult(AuditStatus.OK, "config_audit.cwl_settings.summary_ok", {"parts": " · ".join(parts)},
+                      findings, data)
+
+
+def detail_cwl_settings(guild: discord.Guild, result: StepResult, guild_id: Optional[int],
+                        user_id: Optional[str]) -> StepDetail:
+    tr = _translator(guild_id, user_id)
+    config = _config(guild)
+    codes = {f.code for f in result.findings}
+
+    def hub(on: bool, channel_key: str) -> str:
+        if not on:
+            return tr("config_audit.cwl_settings.hub_off")
+        cid = config.get(channel_key)
+        return f"<#{cid}>" if cid else tr("config_audit.cwl_settings.hub_no_channel")
+
+    sections: List[Tuple[str, str]] = [("", tr("config_audit.cwl_settings.what"))]
+    sections.append((tr("config_audit.cwl_settings.hubs_title"), tr(
+        "config_audit.cwl_settings.hubs",
+        mgmt=hub(result.data.get("mgmt_on", False), "cwl_management_channel_id"),
+        player=hub(result.data.get("player_on", False), "cwl_player_hub_channel_id"))))
+
+    months = int(config.get("cwl_retention_months") or 0)
+    retention = (tr("cwl.settings.retention_months", months=months) if months
+                 else tr("cwl.settings.retention_never"))
+    mode = config.get("cwl_coordinator_role_mode") or "single"
+    if mode == "per_clan":
+        count = len([r for r in (config.get("cwl_clan_coordinator_roles") or {}).values() if r])
+        coordinator = tr("config_audit.cwl_settings.coordinator_per_clan", count=count)
+    elif config.get("cwl_coordinator_role_id"):
+        coordinator = f"<@&{config.get('cwl_coordinator_role_id')}>"
+    else:
+        coordinator = tr("config_audit.roles.not_set")
+    on_off = {True: tr("config_audit.on"), False: tr("config_audit.off")}
+    sections.append((tr("config_audit.settings_title"), tr(
+        "config_audit.cwl_settings.settings", retention=retention,
+        include_all=on_off[bool(config.get("cwl_enrollment_include_all_linked_accounts"))],
+        coordinator=coordinator,
+        bench=on_off[(config.get("cwl_signup_mode") or "standard") == "extended"])))
+    if "player_hub_hidden" in codes:
+        sections.append(("⚠️ " + tr("config_audit.visibility_title"), tr("config_audit.cwl_settings.player_hub_hidden")))
+    if "no_activities" in codes:
+        sections.append(("⚠️ " + tr("config_audit.visibility_title"), tr(
+            "config_audit.cwl_settings.no_activities", perm=bp.perm_label(
+                "use_embedded_activities", guild_id=guild_id, user_id=user_id),
+            button=tr("cwl.player_hub.button_preferences"))))
+    issues: List[bp.PermissionIssue] = result.data.get("issues", [])
+    if issues:
+        sections.append(_issues_section(tr, issues, guild_id, user_id))
+    cwl = "ui_components.clan_management.mode_cwl_settings_label"
+    sections.append(_where_section(
+        tr,
+        _ui_path(tr, cwl, "cwl.settings.button_configure_channels"),
+        _ui_path(tr, cwl, "cwl.settings.button_activate_hub"),
+        _ui_path(tr, cwl, "cwl.settings.button_activate_player_hub"),
+    ))
+    return StepDetail(sections)
+
+
+# ---------------------------------------------------------------------------------------------
 # Registry (plan §3). Every step is listed so the checklist shows the whole structure; a step
 # whose check comes in a later phase reports PENDING until then.
 # ---------------------------------------------------------------------------------------------
@@ -671,7 +1047,9 @@ STEPS: Tuple[AuditStep, ...] = (
     AuditStep("clans", 3, "admin", check=check_clans, detail=detail_clans),
     AuditStep("welcome", 4, "admin", check=check_welcome, detail=detail_welcome,
               permission_features=("welcome",)),
-    AuditStep("registration", 5, "both", requires=("clans",)),
+    AuditStep("registration", 5, "both", requires=("clans",),
+              check=check_registration, detail=detail_registration,
+              permission_features=("registration",)),
     AuditStep("war_notifications", 6, "both", requires=("clans",)),
     AuditStep("channel_war_notifications", 7, "admin", requires=("clans",),
               check=check_channel_war_notifications, detail=detail_channel_war_notifications,
@@ -679,8 +1057,11 @@ STEPS: Tuple[AuditStep, ...] = (
     AuditStep("raid_reminders", 8, "admin", requires=("clans",),
               check=check_raid_reminders, detail=detail_raid_reminders,
               permission_features=("raid_notifications",)),
-    AuditStep("roles", 9, "admin", requires=("clans",)),
-    AuditStep("cwl_settings", 10, "admin", requires=("clans",)),
+    AuditStep("roles", 9, "admin", requires=("clans",), check=check_roles, detail=detail_roles,
+              permission_features=("role_system", "coc_roles", "clan_roles")),
+    AuditStep("cwl_settings", 10, "admin", requires=("clans",),
+              check=check_cwl_settings, detail=detail_cwl_settings,
+              permission_features=("cwl_management", "cwl_player_hub", "cwl_coordinator_role")),
     AuditStep("cwl_player_hub", 11, "both", requires=("cwl_settings",)),
     AuditStep("cwl_season", 12, "admin", requires=("cwl_settings",)),
     # No prerequisite: any clan can be subscribed, member clan or not.

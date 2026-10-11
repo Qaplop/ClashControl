@@ -105,6 +105,10 @@ so upcoming features work without re-authorizing".
   mode `clan_link` needs ≥1 welcome clan/family; apply mode needs an apply channel.
 
 ### 5. Player registration — Phase 3
+- **Changed 2026-10-11 (qaplop, Build 160):** step 5 is the registration MESSAGE only
+  (Open settings → Basic Configuration); link coverage and the admin linking tools moved to
+  a new last step 14 "Linked accounts". All step pages are problem-first: one dominant
+  "what's wrong → numbered fix" block, information below.
 - Registration hub: enabled, channel set, bot permissions (existing check).
 - **Member visibility (new check type):** can `@everyone` (or the member role) *view* the hub
   channel and read its history? A hub nobody can see is the most common silent failure that

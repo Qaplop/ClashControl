@@ -72,6 +72,9 @@ class StepDetail:
     """The rendered detail page of one step."""
     sections: List[Tuple[str, str]]             # (heading, body); heading "" = no heading
     links: List[Tuple[str, str]] = field(default_factory=list)   # (button label, url)
+    #: (heading, body) of the dominant "what's wrong → how to fix" block (problem-first layout);
+    #: None when the step is fine.
+    problem: Optional[Tuple[str, str]] = None
 
 
 CheckFn = Callable[[discord.Guild], StepResult]
@@ -164,12 +167,9 @@ def _join_limited(lines: List[str], limit: int, more_line: Callable[[int], str])
 def detail_bot_permissions(
     guild: discord.Guild, result: StepResult, guild_id: Optional[int], user_id: Optional[str],
 ) -> StepDetail:
-    """Detail page of step 1: Administrator, each missing permission with why it is needed,
-    problems of configured features, the bot's role position, and how to fix."""
-    from clashcontrol.i18n import t
-
-    def tr(key: str, **kw: Any) -> str:
-        return t(key, guild_id=guild_id, user_id=user_id, **kw)
+    """Step 1: missing permissions (with why) or Administrator as the problem block; the
+    Administrator explanation and the role position as information."""
+    tr = _translator(guild_id, user_id)
 
     def perm_name(p: str) -> str:
         return bp.perm_label(p, guild_id=guild_id, user_id=user_id, scope="server")
@@ -180,43 +180,32 @@ def detail_bot_permissions(
     admin: bool = result.data.get("administrator", False)
     missing: Tuple[str, ...] = result.data.get("missing", ())
     issues: List[bp.PermissionIssue] = result.data.get("issues", [])
+    fix = tr("config_audit.bot_permissions.fix_text", button=tr("config_audit.bot_permissions.button_reauthorize"))
+    problem: Optional[Tuple[str, str]] = None
     sections: List[Tuple[str, str]] = []
-
-    # Administrator
+    if missing:
+        lines = [f"❌ **{perm_name(p)}** — {tr(f'permissions.why.{p}')}" for p in missing]
+        problem = (tr("config_audit.bot_permissions.missing_title", count=len(missing)),
+                   "\n".join(lines) + f"\n\n**{tr('config_audit.bot_permissions.fix_title')}**\n{fix}")
+    elif issues:
+        problem = _permission_problem(tr, issues, guild_id, user_id)
+    elif not admin:
+        problem = (f"⚠️ {perm_name('administrator')}",
+                   tr("config_audit.bot_permissions.admin_missing")
+                   + f"\n\n**{tr('config_audit.bot_permissions.fix_title')}**\n{fix}")
     if admin:
         sections.append((f"✅ {perm_name('administrator')}", tr("config_audit.bot_permissions.admin_granted")))
-    else:
+    elif missing or issues:
         sections.append((f"⚠️ {perm_name('administrator')}", tr("config_audit.bot_permissions.admin_missing")))
-
-    # The other install permissions (only meaningful without Administrator)
-    if not admin:
-        if missing:
-            lines = [f"❌ **{perm_name(p)}** — {tr(f'permissions.why.{p}')}" for p in missing]
-            body = _join_limited(lines, 1024, lambda n: tr("permissions.warning_more", count=n))
-            sections.append((tr("config_audit.bot_permissions.missing_title", count=len(missing)), body))
-        else:
-            sections.append(("", tr("config_audit.bot_permissions.all_present")))
-
-    # Problems of configured features (channel overrides, role hierarchy, deleted targets)
-    if issues:
-        lines = ["• " + bp.format_issue(i, guild_id=guild_id, user_id=user_id) for i in issues]
-        body = _join_limited(lines, 1024, lambda n: tr("permissions.warning_more", count=n))
-        sections.append((tr("config_audit.bot_permissions.issues_title", count=len(issues)), body))
-
-    # The bot's role position — always relevant for role automations
+    if not admin and not missing:
+        sections.append(("", tr("config_audit.bot_permissions.all_present")))
     me = bp._me(guild)  # pyright: ignore[reportPrivateUsage]
     if me is not None:
-        sections.append((
-            tr("config_audit.bot_permissions.role_title"),
-            tr("config_audit.bot_permissions.role_position", role=me.top_role.mention),
-        ))
+        sections.append((tr("config_audit.bot_permissions.role_title"),
+                         tr("config_audit.bot_permissions.role_position", role=me.top_role.mention)))
 
     links: List[Tuple[str, str]] = []
     if missing or not admin:
-        sections.append((
-            tr("config_audit.bot_permissions.fix_title"),
-            tr("config_audit.bot_permissions.fix_text", button=tr("config_audit.bot_permissions.button_reauthorize")),
-        ))
         try:
             import QBcore
             from clashcontrol.constants import bot_install_url
@@ -226,7 +215,7 @@ def detail_bot_permissions(
             ))
         except Exception as e:  # never let a missing app id break the page
             logging.info(f"[SETUP] No re-authorize link for guild {guild.id}: {e}")
-    return StepDetail(sections, links)
+    return StepDetail(sections, links, problem)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -274,25 +263,47 @@ def _clan_name(tag: str) -> str:
     return CACHE.get_clan_name(tag, tag)  # tag as fallback, never "Unknown" (Pitfall 39)
 
 
-def _ui_path(tr: Tr, *label_keys: str) -> str:
-    """'/clan management → ⚙️ Basic Configuration → …' from the real (translated) labels, so the
-    hint can never drift from what the admin sees."""
-    from clashcontrol.QBdiscocmdshelper import command_mention
-    return " → ".join([command_mention("clan management"), *(tr(k) for k in label_keys)])
-
-
-def _where_section(tr: Tr, *paths: str) -> Tuple[str, str]:
-    return (tr("config_audit.where_title"), "\n".join(f"• {p}" for p in paths))
-
-
-def _issues_section(tr: Tr, issues: List[bp.PermissionIssue], guild_id: Optional[int],
-                    user_id: Optional[str]) -> Tuple[str, str]:
-    lines = ["• " + bp.format_issue(i, guild_id=guild_id, user_id=user_id) for i in issues]
-    body = _join_limited(lines, 1024, lambda n: tr("permissions.warning_more", count=n))
-    return (tr("config_audit.permission_issues_title", count=len(issues)), body)
-
-
 _BASIC = "ui_components.clan_management.mode_config_label"
+
+# ---------------------------------------------------------------------------------------------
+# Problem-first page layout (qaplop, 2026-10-11): a step with a problem opens with ONE dominant
+# block — what's wrong, then numbered fix steps — and only then the information about the step.
+# ---------------------------------------------------------------------------------------------
+
+def _open_path(tr: "Tr", *label_keys: str) -> str:
+    """'**⚙️ Open settings** → 🌐 Select Channels' — the path from /setup's own button, which
+    already opens the right /clan management screen (so its mode label is not repeated)."""
+    return " → ".join([f"**{tr('config_audit.button_open_settings')}**", *(tr(k) for k in label_keys)])
+
+
+def _problem(tr: "Tr", heading: str, what: str, fixes: List[str], either: bool = False) -> Tuple[str, str]:
+    """(heading, body) for StepDetail.problem: the explanation, then the numbered fix steps and
+    "then click Check again". ``either``: the fixes are alternatives, not a sequence."""
+    title = tr("config_audit.fix_title_either" if either else "config_audit.fix_title")
+    lines = [what.strip(), "", f"**{title}**"] if what else [f"**{title}**"]
+    lines += [f"{n}. {fix}" for n, fix in enumerate(fixes, 1)]
+    lines.append(tr("config_audit.fix_recheck", button=tr("config_audit.button_recheck")))
+    return heading, "\n".join(lines)
+
+
+def _issue_lines(issues: List[bp.PermissionIssue], guild_id: Optional[int], user_id: Optional[str]) -> str:
+    return "\n".join("• " + bp.format_issue(i, guild_id=guild_id, user_id=user_id) for i in issues)
+
+
+def _permission_problem(tr: "Tr", issues: List[bp.PermissionIssue], guild_id: Optional[int],
+                        user_id: Optional[str]) -> Tuple[str, str]:
+    """The shared ❌ block for a feature whose channel/role the bot can't use."""
+    kinds = {i.kind for i in issues}
+    fixes = []
+    if bp.MISSING_CHANNEL_PERMS in kinds:
+        fixes.append(tr("config_audit.fix.channel_perms"))
+    if bp.MISSING_MANAGE_ROLES in kinds:
+        fixes.append(tr("permissions.warning_fix_manage_roles"))
+    if kinds - {bp.MISSING_CHANNEL_PERMS, bp.MISSING_MANAGE_ROLES}:
+        fixes.append(tr("config_audit.fix.see_lines"))
+    return _problem(tr, tr("config_audit.permission_issues_title", count=len(issues)),
+                    _issue_lines(issues, guild_id, user_id), fixes)
+
 
 
 # ---------------------------------------------------------------------------------------------
@@ -326,14 +337,12 @@ def detail_basics(guild: discord.Guild, result: StepResult, guild_id: Optional[i
     timezone = tr("config_audit.basics.timezone_text", timezone=result.data["timezone"])
     if "default_timezone" in codes:
         timezone += "\n" + tr("config_audit.basics.timezone_utc_hint")
+    change = tr("config_audit.change_line", path=_open_path(
+        tr, "ui_components.basic_config.button_select_language") + " · " + tr("ui_components.basic_config.button_select_timezone"))
     return StepDetail([
         (tr("config_audit.basics.language_title"), language),
         (tr("config_audit.basics.timezone_title"), timezone),
-        _where_section(
-            tr,
-            _ui_path(tr, _BASIC, "ui_components.basic_config.button_select_language"),
-            _ui_path(tr, _BASIC, "ui_components.basic_config.button_select_timezone"),
-        ),
+        ("", change),
     ])
 
 
@@ -380,18 +389,30 @@ def detail_clans(guild: discord.Guild, result: StepResult, guild_id: Optional[in
                  user_id: Optional[str]) -> StepDetail:
     from clashcontrol.cache_manager import CACHE
     tr = _translator(guild_id, user_id)
-    sections: List[Tuple[str, str]] = []
     clans: List[Tuple[str, str]] = result.data.get("clans", [])
+    member_clans = "ui_components.clan_management.button_member_clans"
+    problem: Optional[Tuple[str, str]] = None
     if not clans:
-        sections.append(("", tr("config_audit.clans.none_text")))
+        problem = _problem(tr, tr("config_audit.fix.clans_none_title"), tr("config_audit.clans.none_text"), [
+            tr("config_audit.fix.clans_add", path=_open_path(tr, member_clans)),
+            tr("config_audit.fix.clans_family", families=tr("ui_components.clan_management.mode_families_label")),
+        ])
     else:
+        bad = [(t, s) for t, s in clans if s in ("deleted", "warlog_private")]
+        if bad:
+            lines = [f"❌ **{_clan_name(t)}** `{t}` — {tr(f'config_audit.clans.state_{s}')}" for t, s in bad]
+            fixes = []
+            if any(s == "warlog_private" for _, s in bad):
+                fixes.append(tr("config_audit.clans.warlog_fix"))
+            if any(s == "deleted" for _, s in bad):
+                fixes.append(tr("config_audit.fix.clans_remove_deleted", path=_open_path(tr, member_clans)))
+            problem = _problem(tr, tr("config_audit.fix.clans_bad_title", count=len(bad)),
+                               _join_limited(lines, 1500, lambda n: tr("permissions.warning_more", count=n)), fixes)
+    sections: List[Tuple[str, str]] = []
+    if clans:
         icon = {"ok": "✅", "deleted": "❌", "warlog_private": "❌", "no_data": "ℹ️"}
-        lines = []
-        for tag, state in clans:
-            line = f"{icon[state]} **{_clan_name(tag)}** `{tag}`"
-            if state != "ok":
-                line += " — " + tr(f"config_audit.clans.state_{state}")
-            lines.append(line)
+        lines = [f"{icon[s]} **{_clan_name(t)}** `{t}`" + (" — " + tr("config_audit.clans.state_no_data") if s == "no_data" else "")
+                 for t, s in clans]
         sections.append((tr("config_audit.clans.list_title", count=len(clans)),
                          _join_limited(lines, 1024, lambda n: tr("permissions.warning_more", count=n))))
     families = result.data.get("families", [])
@@ -403,14 +424,7 @@ def detail_clans(guild: discord.Guild, result: StepResult, guild_id: Optional[in
     guests = result.data.get("guests", [])
     if guests:
         sections.append(("", tr("config_audit.clans.guests", count=len(guests))))
-    if any(state == "warlog_private" for _, state in clans):
-        sections.append((tr("config_audit.clans.warlog_fix_title"), tr("config_audit.clans.warlog_fix")))
-    sections.append(_where_section(
-        tr,
-        _ui_path(tr, _BASIC, "ui_components.clan_management.button_member_clans"),
-        _ui_path(tr, "ui_components.clan_management.mode_families_label"),
-    ))
-    return StepDetail(sections)
+    return StepDetail(sections, problem=problem)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -461,13 +475,21 @@ def detail_welcome(guild: discord.Guild, result: StepResult, guild_id: Optional[
                    user_id: Optional[str]) -> StepDetail:
     tr = _translator(guild_id, user_id)
     config = _config(guild)
-    where = _where_section(
-        tr,
-        _ui_path(tr, _BASIC, "ui_components.basic_config.button_activate_welcome_message"),
-        _ui_path(tr, _BASIC, "ui_components.basic_config.button_configure_welcome_message"),
-    )
     if result.status == AuditStatus.OFF:
-        return StepDetail([("", tr("config_audit.welcome.off_text")), where])
+        return StepDetail([("", tr("config_audit.welcome.off_text")), ("", tr("config_audit.change_line", path=_open_path(
+            tr, "ui_components.basic_config.button_activate_welcome_message")))])
+    issues: List[bp.PermissionIssue] = result.data.get("issues", [])
+    codes = {f.code for f in result.findings}
+    configure = _open_path(tr, "ui_components.basic_config.button_configure_welcome_message")
+    problem: Optional[Tuple[str, str]] = None
+    if issues:
+        problem = _permission_problem(tr, issues, guild_id, user_id)
+    elif "apply_channel_missing" in codes:
+        problem = _problem(tr, tr("config_audit.fix.welcome_apply_missing_title"), tr("config_audit.welcome.mode_apply_missing"),
+                           [tr("config_audit.fix.welcome_apply", path=configure)])
+    elif "no_apply_channel" in codes:
+        problem = _problem(tr, tr("config_audit.fix.welcome_apply_unset_title"), tr("config_audit.welcome.mode_apply_unset"),
+                           [tr("config_audit.fix.welcome_apply", path=configure)])
     sections: List[Tuple[str, str]] = []
     system_channel = guild.system_channel
     if system_channel is not None:
@@ -475,24 +497,17 @@ def detail_welcome(guild: discord.Guild, result: StepResult, guild_id: Optional[
                          tr("config_audit.welcome.posts_in", channel=system_channel.mention)))
     if result.data.get("mode") == "apply_channel":
         apply_channel = config.get("welcome_apply_channel_id")
-        if not apply_channel:
-            text = tr("config_audit.welcome.mode_apply_unset")
-        elif not _channel_exists(guild, apply_channel):
-            text = tr("config_audit.welcome.mode_apply_missing")
-        else:
-            text = tr("config_audit.welcome.mode_apply", channel=f"<#{apply_channel}>")
+        if apply_channel and _channel_exists(guild, apply_channel):
+            sections.append((tr("config_audit.welcome.content_title"),
+                             tr("config_audit.welcome.mode_apply", channel=f"<#{apply_channel}>")))
     else:
         tags = _welcome_clan_tags(config)
-        text = (tr("config_audit.welcome.mode_clan_link", clans=", ".join(_clan_name(t) for t in tags))
-                if tags else tr("config_audit.welcome.mode_clan_link_none"))
-    sections.append((tr("config_audit.welcome.content_title"), text))
-    issues: List[bp.PermissionIssue] = result.data.get("issues", [])
-    if issues:
-        sections.append(_issues_section(tr, issues, guild_id, user_id))
+        sections.append((tr("config_audit.welcome.content_title"),
+                         tr("config_audit.welcome.mode_clan_link", clans=", ".join(_clan_name(t) for t in tags))
+                         if tags else tr("config_audit.welcome.mode_clan_link_none")))
     if not config.get("registration_message_enabled"):
         sections.append(("", tr("config_audit.welcome.registration_hint")))
-    sections.append(where)
-    return StepDetail(sections)
+    return StepDetail(sections, problem=problem)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -524,22 +539,25 @@ def detail_channel_war_notifications(guild: discord.Guild, result: StepResult, g
     from clashcontrol.ui_clan_management import format_war_threshold_label
     tr = _translator(guild_id, user_id)
     config = _config(guild)
+    issues: List[bp.PermissionIssue] = result.data.get("issues", [])
+    problem: Optional[Tuple[str, str]] = None
+    if issues:
+        problem = _permission_problem(tr, issues, guild_id, user_id)
+    elif any(f.code == "no_channel" for f in result.findings):
+        problem = _problem(tr, tr("config_audit.fix.no_channel_title"), "", [tr(
+            "config_audit.fix.pick_channel", path=_open_path(tr, "ui_components.basic_config.button_select_channels"))])
     sections: List[Tuple[str, str]] = [("", tr("config_audit.channel_war.what"))]
     if result.status != AuditStatus.OFF and result.data.get("channel_id"):
         hours = float(config.get("war_notification_threshold_hours", 2.0) or 2.0)
         sections.append((tr("config_audit.settings_title"), tr(
             "config_audit.channel_war.settings", channel=f"<#{result.data['channel_id']}>",
             time=format_war_threshold_label(hours, guild_id, user_id))))
-    issues: List[bp.PermissionIssue] = result.data.get("issues", [])
-    if issues:
-        sections.append(_issues_section(tr, issues, guild_id, user_id))
-    sections.append(_where_section(
-        tr,
-        _ui_path(tr, _BASIC, "ui_components.basic_config.button_select_channels"),
-        _ui_path(tr, _BASIC, "ui_components.basic_config.button_select_notification_time"),
-        _ui_path(tr, _BASIC, "ui_components.basic_config.button_activate_channel_notifications"),
-    ))
-    return StepDetail(sections)
+    if result.status in (AuditStatus.OFF, AuditStatus.OK):
+        sections.append(("", tr("config_audit.change_line", path=_open_path(
+            tr, "ui_components.basic_config.button_select_channels") + " · " + tr(
+            "ui_components.basic_config.button_select_notification_time") + " · " + tr(
+            "ui_components.basic_config.button_activate_channel_notifications"))))
+    return StepDetail(sections, problem=problem)
 
 
 def _raid_channel(config: Dict[str, Any]) -> Tuple[Optional[str], bool]:
@@ -582,6 +600,13 @@ def detail_raid_reminders(guild: discord.Guild, result: StepResult, guild_id: Op
                           user_id: Optional[str]) -> StepDetail:
     tr = _translator(guild_id, user_id)
     config = _config(guild)
+    issues: List[bp.PermissionIssue] = result.data.get("issues", [])
+    problem: Optional[Tuple[str, str]] = None
+    if issues:
+        problem = _permission_problem(tr, issues, guild_id, user_id)
+    elif any(f.code == "no_channel" for f in result.findings):
+        problem = _problem(tr, tr("config_audit.fix.no_channel_title"), "", [tr(
+            "config_audit.fix.pick_channel", path=_open_path(tr, "ui_components.basic_config.button_select_channels"))])
     sections: List[Tuple[str, str]] = [("", tr("config_audit.raid.what"))]
     channel_id, fallback = _raid_channel(config)
     if result.status != AuditStatus.OFF and channel_id:
@@ -589,16 +614,12 @@ def detail_raid_reminders(guild: discord.Guild, result: StepResult, guild_id: Op
         if fallback:
             text += "\n" + tr("config_audit.raid.fallback_hint")
         sections.append((tr("config_audit.settings_title"), text))
-    issues: List[bp.PermissionIssue] = result.data.get("issues", [])
-    if issues:
-        sections.append(_issues_section(tr, issues, guild_id, user_id))
-    sections.append(_where_section(
-        tr,
-        _ui_path(tr, _BASIC, "ui_components.basic_config.button_select_channels"),
-        _ui_path(tr, _BASIC, "ui_components.basic_config.button_select_notification_time"),
-        _ui_path(tr, _BASIC, "ui_components.basic_config.button_activate_raid_notifications"),
-    ))
-    return StepDetail(sections)
+    if result.status in (AuditStatus.OFF, AuditStatus.OK):
+        sections.append(("", tr("config_audit.change_line", path=_open_path(
+            tr, "ui_components.basic_config.button_select_channels") + " · " + tr(
+            "ui_components.basic_config.button_select_notification_time") + " · " + tr(
+            "ui_components.basic_config.button_activate_raid_notifications"))))
+    return StepDetail(sections, problem=problem)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -641,29 +662,28 @@ def detail_leaderboards(guild: discord.Guild, result: StepResult, guild_id: Opti
                         user_id: Optional[str]) -> StepDetail:
     from clashcontrol.QBdiscocmdshelper import command_mention
     tr = _translator(guild_id, user_id)
+    issues: List[bp.PermissionIssue] = result.data.get("issues", [])
+    deleted: List[str] = result.data.get("deleted", [])
+    problem: Optional[Tuple[str, str]] = None
+    if issues:
+        problem = _permission_problem(tr, issues, guild_id, user_id)
+    elif deleted:
+        problem = _problem(tr, tr("config_audit.fix.leaderboards_deleted_title", count=len(deleted)), tr(
+            "config_audit.leaderboards.deleted", clans=", ".join(f"{_clan_name(t)} `{t}`" for t in deleted),
+            unsubscribe=command_mention("unsubscribe")), [])
     sections: List[Tuple[str, str]] = []
     subs: Dict[str, List[Dict[str, Any]]] = result.data.get("subs", {})
     if not subs:
         sections.append(("", tr("config_audit.leaderboards.off_text")))
     else:
-        lines = []
-        for channel_id, lst in sorted(subs.items()):
-            entries = ", ".join(f"{_clan_name(s['clan_tag'])} ({s.get('mode') or '?'})" for s in lst)
-            lines.append(f"<#{channel_id}>: {entries}")
+        lines = [f"<#{cid}>: " + ", ".join(f"{_clan_name(s['clan_tag'])} ({s.get('mode') or '?'})" for s in lst)
+                 for cid, lst in sorted(subs.items())]
         sections.append((tr("config_audit.leaderboards.list_title", count=len(subs)),
                          _join_limited(lines, 1024, lambda n: tr("permissions.warning_more", count=n))))
-    issues: List[bp.PermissionIssue] = result.data.get("issues", [])
-    if issues:
-        sections.append(_issues_section(tr, issues, guild_id, user_id))
-    deleted: List[str] = result.data.get("deleted", [])
-    if deleted:
-        sections.append(("", tr("config_audit.leaderboards.deleted",
-                                clans=", ".join(f"{_clan_name(t)} `{t}`" for t in deleted),
-                                unsubscribe=command_mention("unsubscribe"))))
     sections.append((tr("config_audit.leaderboards.how_title"), tr(
         "config_audit.leaderboards.how", subscribe=command_mention("subscribe"),
         unsubscribe=command_mention("unsubscribe"), subscriptions=command_mention("subscriptions"))))
-    return StepDetail(sections)
+    return StepDetail(sections, problem=problem)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -761,13 +781,14 @@ def link_coverage(guild: discord.Guild) -> Tuple[int, int, int]:
 
 
 def check_registration(guild: discord.Guild) -> StepResult:
+    """The registration message only (qaplop 2026-10-11: linking accounts is step 14): on, a
+    channel, the bot can post there, and new members can see it."""
     config = _config(guild)
-    linked, total, verified = link_coverage(guild)
-    data: Dict[str, Any] = {"linked": linked, "total": total, "verified": verified, "issues": []}
+    data: Dict[str, Any] = {"issues": []}
     findings: List[Finding] = []
     enabled = bool(config.get("registration_message_enabled"))
     channel_id = config.get("registration_channel_id")
-    data["channel_id"] = channel_id if enabled else None
+    data["channel_id"] = channel_id
     if not enabled:
         findings.append(Finding(AuditStatus.INCOMPLETE, "hub_off"))
     elif not channel_id:
@@ -777,24 +798,16 @@ def check_registration(guild: discord.Guild) -> StepResult:
         data["issues"] = issues
         findings += [Finding(AuditStatus.BROKEN, "permission", (("kind", i.kind),)) for i in issues]
         channel = _channel(guild, channel_id)
-        if channel is not None and not _any_role_can(channel, _newcomer_roles(guild, config),
-                                                     "view_channel", "read_message_history"):
+        if not issues and channel is not None and not _any_role_can(
+                channel, _newcomer_roles(guild, config), "view_channel", "read_message_history"):
             findings.append(Finding(AuditStatus.INCOMPLETE, "hidden_from_newcomers"))
-    if total and not linked:
-        findings.append(Finding(AuditStatus.INCOMPLETE, "nobody_linked"))  # Q-6: only when nobody
-
     broken = [f for f in findings if f.status == AuditStatus.BROKEN]
     if broken:
         return StepResult(AuditStatus.BROKEN, "config_audit.summary_permission_problems",
                           {"count": len(broken)}, findings, data)
-    incomplete = [f for f in findings if f.status == AuditStatus.INCOMPLETE]
-    if incomplete:
-        return StepResult(AuditStatus.INCOMPLETE, f"config_audit.registration.summary_{incomplete[0].code}",
+    if findings:
+        return StepResult(AuditStatus.INCOMPLETE, f"config_audit.registration.summary_{findings[0].code}",
                           findings=findings, data=data)
-    if linked:
-        return StepResult(AuditStatus.OK, "config_audit.registration.summary_ok_linked",
-                          {"channel": _channel_name(guild, channel_id), "linked": linked, "total": total},
-                          findings, data)
     return StepResult(AuditStatus.OK, "config_audit.registration.summary_ok",
                       {"channel": _channel_name(guild, channel_id)}, findings, data)
 
@@ -804,43 +817,35 @@ def detail_registration(guild: discord.Guild, result: StepResult, guild_id: Opti
     from clashcontrol.QBdiscocmdshelper import command_mention
     tr = _translator(guild_id, user_id)
     codes = {f.code for f in result.findings}
-    registration = command_mention("registration")
-    sections: List[Tuple[str, str]] = []
-    if result.data.get("channel_id"):
-        hub = tr("config_audit.registration.hub_in", channel=f"<#{result.data['channel_id']}>")
-    elif "no_channel" in codes:
-        hub = tr("config_audit.registration.hub_no_channel")
-    else:
-        hub = tr("config_audit.registration.hub_off")
-    sections.append((tr("config_audit.registration.hub_title"),
-                     hub + "\n" + tr("config_audit.registration.command_hint", registration=registration)))
-    if "hidden_from_newcomers" in codes:
-        sections.append(("⚠️ " + tr("config_audit.visibility_title"), tr(
-            "config_audit.registration.hidden",
-            view=bp.perm_label("view_channel", guild_id=guild_id, user_id=user_id),
-            history=bp.perm_label("read_message_history", guild_id=guild_id, user_id=user_id))))
-    linked, total, verified = result.data["linked"], result.data["total"], result.data["verified"]
-    if linked:
-        sections.append((tr("config_audit.registration.coverage_title"), tr(
-            "config_audit.registration.coverage", linked=linked, total=total, verified=verified)))
-    elif total:
-        sections.append((tr("config_audit.registration.coverage_title"),
-                         tr("config_audit.registration.nobody_linked", registration=registration,
-                            link_button=tr("playerregistration.button_link_account"))))
     issues: List[bp.PermissionIssue] = result.data.get("issues", [])
+    registration = command_mention("registration")
+    channel_id = result.data.get("channel_id")
+    select = _open_path(tr, "ui_components.basic_config.button_select_channels")
+    activate = _open_path(tr, "ui_components.basic_config.button_activate_registration")
+    problem: Optional[Tuple[str, str]] = None
     if issues:
-        sections.append(_issues_section(tr, issues, guild_id, user_id))
-    sections.append((tr("config_audit.registration.admin_tools_title"), tr(
-        "config_audit.registration.admin_tools",
-        path=_ui_path(tr, "ui_components.clan_management.mode_registrations_label"),
-        link=tr("ui_components.clan_management.button_link_accounts"),
-        unlink=tr("ui_components.clan_management.button_unlink_player"))))
-    sections.append(_where_section(
-        tr,
-        _ui_path(tr, _BASIC, "ui_components.basic_config.button_select_channels"),
-        _ui_path(tr, _BASIC, "ui_components.basic_config.button_activate_registration"),
-    ))
-    return StepDetail(sections)
+        problem = _permission_problem(tr, issues, guild_id, user_id)
+    elif "hub_off" in codes:
+        problem = _problem(tr, tr("config_audit.fix.registration_off_title"),
+                           tr("config_audit.fix.registration_off", registration=registration),
+                           [tr("config_audit.fix.registration_pick", path=select),
+                            tr("config_audit.fix.registration_activate", path=activate)])
+    elif "no_channel" in codes:
+        problem = _problem(tr, tr("config_audit.fix.no_channel_title"), "",
+                           [tr("config_audit.fix.registration_pick", path=select)])
+    elif "hidden_from_newcomers" in codes:
+        channel = f"<#{channel_id}>"
+        problem = _problem(tr, tr("config_audit.fix.registration_hidden_title"),
+                           tr("config_audit.fix.registration_hidden", channel=channel), [
+            tr("config_audit.fix.registration_move", path=select),
+            tr("config_audit.fix.allow_everyone", channel=channel,
+               view=bp.perm_label("view_channel", guild_id=guild_id, user_id=user_id),
+               history=bp.perm_label("read_message_history", guild_id=guild_id, user_id=user_id)),
+        ], either=True)
+    about = (tr("config_audit.registration.hub_in", channel=f"<#{channel_id}>")
+             if channel_id and "hub_off" not in codes else tr("config_audit.registration.hub_off"))
+    about += "\n" + tr("config_audit.registration.command_hint", registration=registration)
+    return StepDetail([("", about)], problem=problem)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -889,6 +894,21 @@ def detail_roles(guild: discord.Guild, result: StepResult, guild_id: Optional[in
     tr = _translator(guild_id, user_id)
     config = _config(guild)
     active: List[str] = result.data.get("active", [])
+    issues: List[bp.PermissionIssue] = result.data.get("issues", [])
+    codes = {f.code for f in result.findings}
+    missing_clan_roles: List[str] = result.data.get("missing_clan_roles", [])
+    configure = _open_path(tr, "ui_components.clan_management.button_configure_roles")
+    problem: Optional[Tuple[str, str]] = None
+    if issues:
+        problem = _permission_problem(tr, issues, guild_id, user_id)
+    elif "simple_roles_unset" in codes:
+        problem = _problem(tr, tr("config_audit.fix.simple_roles_title"), "",
+                           [tr("config_audit.fix.simple_roles", path=configure)])
+    elif missing_clan_roles:
+        problem = _problem(tr, tr("config_audit.roles.summary_clan_roles_missing", count=len(missing_clan_roles)),
+                           ", ".join(_clan_name(t) for t in missing_clan_roles),
+                           [tr("config_audit.roles.clan_roles_missing_fix",
+                               button=tr("ui_components.clan_management.button_toggle_clan_roles_enable"))])
 
     def mention(rid: Any) -> str:
         return f"<@&{rid}>" if rid else tr("config_audit.roles.not_set")
@@ -905,31 +925,16 @@ def detail_roles(guild: discord.Guild, result: StepResult, guild_id: Optional[in
         elif name == "coc_roles":
             ids = [config.get(k) for k in ("coc_role_member_id", "coc_role_elder_id",
                                            "coc_role_coleader_id", "coc_role_leader_id")]
-            body = (" ".join(f"<@&{i}>" for i in ids if i) if any(ids)
-                    else tr("config_audit.roles.coc_roles_auto"))
+            body = " ".join(f"<@&{i}>" for i in ids if i) if any(ids) else tr("config_audit.roles.coc_roles_auto")
         else:
-            mapped = config.get("clan_roles") or {}
-            lines = [f"{_clan_name(t)}: <@&{rid}>" for t, rid in mapped.items() if rid]
-            lines += [f"{_clan_name(t)}: ⚠️ " + tr("config_audit.roles.clan_role_missing")
-                      for t in result.data.get("missing_clan_roles", [])]
+            lines = [f"{_clan_name(t)}: <@&{rid}>" for t, rid in (config.get("clan_roles") or {}).items() if rid]
             body = _join_limited(lines, 1024, lambda n: tr("permissions.warning_more", count=n)) or tr("config_audit.roles.not_set")
         sections.append((f"✅ {title}", body))
-    if result.data.get("missing_clan_roles"):
-        sections.append(("", tr("config_audit.roles.clan_roles_missing_fix",
-                                button=tr("ui_components.clan_management.button_toggle_clan_roles_enable"))))
-    issues: List[bp.PermissionIssue] = result.data.get("issues", [])
-    if issues:
-        sections.append(_issues_section(tr, issues, guild_id, user_id))
     me = bp._me(guild)  # pyright: ignore[reportPrivateUsage]
     if active and me is not None:
         sections.append((tr("config_audit.bot_permissions.role_title"),
                          tr("config_audit.bot_permissions.role_position", role=me.top_role.mention)))
-    sections.append(_where_section(
-        tr,
-        _ui_path(tr, "ui_components.clan_management.mode_roles_label"),
-        _ui_path(tr, "ui_components.clan_management.mode_roles_label", "ui_components.clan_management.button_configure_roles"),
-    ))
-    return StepDetail(sections)
+    return StepDetail(sections, problem=problem)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -992,6 +997,28 @@ def detail_cwl_settings(guild: discord.Guild, result: StepResult, guild_id: Opti
     tr = _translator(guild_id, user_id)
     config = _config(guild)
     codes = {f.code for f in result.findings}
+    issues: List[bp.PermissionIssue] = result.data.get("issues", [])
+    channels = _open_path(tr, "cwl.settings.button_configure_channels")
+    player_channel = f"<#{config.get('cwl_player_hub_channel_id')}>"
+    problem: Optional[Tuple[str, str]] = None
+    if issues:
+        problem = _permission_problem(tr, issues, guild_id, user_id)
+    elif codes & {"mgmt_no_channel", "player_no_channel"}:
+        problem = _problem(tr, tr("config_audit.fix.no_channel_title"), "",
+                           [tr("config_audit.fix.pick_channel", path=channels)])
+    elif "player_hub_hidden" in codes:
+        problem = _problem(tr, tr("config_audit.fix.player_hub_hidden_title"),
+                           tr("config_audit.cwl_settings.player_hub_hidden"), [
+            tr("config_audit.fix.player_hub_move", path=channels),
+            tr("config_audit.fix.allow_everyone", channel=player_channel,
+               view=bp.perm_label("view_channel", guild_id=guild_id, user_id=user_id),
+               history=bp.perm_label("read_message_history", guild_id=guild_id, user_id=user_id)),
+        ], either=True)
+    elif "no_activities" in codes:
+        perm = bp.perm_label("use_embedded_activities", guild_id=guild_id, user_id=user_id)
+        problem = _problem(tr, tr("config_audit.fix.no_activities_title"), tr(
+            "config_audit.cwl_settings.no_activities", perm=perm, button=tr("cwl.player_hub.button_preferences")),
+            [tr("config_audit.fix.allow_activities", channel=player_channel, perm=perm)])
 
     def hub(on: bool, channel_key: str) -> str:
         if not on:
@@ -999,17 +1026,9 @@ def detail_cwl_settings(guild: discord.Guild, result: StepResult, guild_id: Opti
         cid = config.get(channel_key)
         return f"<#{cid}>" if cid else tr("config_audit.cwl_settings.hub_no_channel")
 
-    sections: List[Tuple[str, str]] = [("", tr("config_audit.cwl_settings.what"))]
-    sections.append((tr("config_audit.cwl_settings.hubs_title"), tr(
-        "config_audit.cwl_settings.hubs",
-        mgmt=hub(result.data.get("mgmt_on", False), "cwl_management_channel_id"),
-        player=hub(result.data.get("player_on", False), "cwl_player_hub_channel_id"))))
-
     months = int(config.get("cwl_retention_months") or 0)
-    retention = (tr("cwl.settings.retention_months", months=months) if months
-                 else tr("cwl.settings.retention_never"))
-    mode = config.get("cwl_coordinator_role_mode") or "single"
-    if mode == "per_clan":
+    retention = tr("cwl.settings.retention_months", months=months) if months else tr("cwl.settings.retention_never")
+    if (config.get("cwl_coordinator_role_mode") or "single") == "per_clan":
         count = len([r for r in (config.get("cwl_clan_coordinator_roles") or {}).values() if r])
         coordinator = tr("config_audit.cwl_settings.coordinator_per_clan", count=count)
     elif config.get("cwl_coordinator_role_id"):
@@ -1017,29 +1036,18 @@ def detail_cwl_settings(guild: discord.Guild, result: StepResult, guild_id: Opti
     else:
         coordinator = tr("config_audit.roles.not_set")
     on_off = {True: tr("config_audit.on"), False: tr("config_audit.off")}
-    sections.append((tr("config_audit.settings_title"), tr(
-        "config_audit.cwl_settings.settings", retention=retention,
-        include_all=on_off[bool(config.get("cwl_enrollment_include_all_linked_accounts"))],
-        coordinator=coordinator,
-        bench=on_off[(config.get("cwl_signup_mode") or "standard") == "extended"])))
-    if "player_hub_hidden" in codes:
-        sections.append(("⚠️ " + tr("config_audit.visibility_title"), tr("config_audit.cwl_settings.player_hub_hidden")))
-    if "no_activities" in codes:
-        sections.append(("⚠️ " + tr("config_audit.visibility_title"), tr(
-            "config_audit.cwl_settings.no_activities", perm=bp.perm_label(
-                "use_embedded_activities", guild_id=guild_id, user_id=user_id),
-            button=tr("cwl.player_hub.button_preferences"))))
-    issues: List[bp.PermissionIssue] = result.data.get("issues", [])
-    if issues:
-        sections.append(_issues_section(tr, issues, guild_id, user_id))
-    cwl = "ui_components.clan_management.mode_cwl_settings_label"
-    sections.append(_where_section(
-        tr,
-        _ui_path(tr, cwl, "cwl.settings.button_configure_channels"),
-        _ui_path(tr, cwl, "cwl.settings.button_activate_hub"),
-        _ui_path(tr, cwl, "cwl.settings.button_activate_player_hub"),
-    ))
-    return StepDetail(sections)
+    return StepDetail([
+        ("", tr("config_audit.cwl_settings.what")),
+        (tr("config_audit.cwl_settings.hubs_title"), tr(
+            "config_audit.cwl_settings.hubs",
+            mgmt=hub(result.data.get("mgmt_on", False), "cwl_management_channel_id"),
+            player=hub(result.data.get("player_on", False), "cwl_player_hub_channel_id"))),
+        (tr("config_audit.settings_title"), tr(
+            "config_audit.cwl_settings.settings", retention=retention,
+            include_all=on_off[bool(config.get("cwl_enrollment_include_all_linked_accounts"))],
+            coordinator=coordinator,
+            bench=on_off[(config.get("cwl_signup_mode") or "standard") == "extended"])),
+    ], problem=problem)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -1089,21 +1097,23 @@ def detail_war_notifications(guild: discord.Guild, result: StepResult, guild_id:
     from clashcontrol.QBdiscocmdshelper import command_mention
     tr = _translator(guild_id, user_id)
     d = result.data
+    members_how = tr("config_audit.war_notifications.members_how", registration=command_mention("registration"),
+                     button=tr("playerregistration.button_war_notifications"))
+    problem: Optional[Tuple[str, str]] = None
+    if result.status == AuditStatus.INCOMPLETE:
+        problem = _problem(tr, tr("config_audit.fix.no_reminders_title"), tr(
+            "config_audit.war_notifications.coverage", members=d["members"], war_on=d["war_on"], raid_on=d["raid_on"]), [
+            tr("config_audit.fix.reminders_members", how=members_how),
+            tr("config_audit.fix.reminders_admins", path=_open_path(tr, "ui_components.clan_management.button_clan_notifications")),
+        ])
     sections: List[Tuple[str, str]] = [("", tr("config_audit.war_notifications.what"))]
-    if d["members"]:
+    if d["members"] and result.status != AuditStatus.INCOMPLETE:
         sections.append((tr("config_audit.war_notifications.coverage_title"), tr(
-            "config_audit.war_notifications.coverage", members=d["members"], war_on=d["war_on"],
-            raid_on=d["raid_on"])))
-    else:
+            "config_audit.war_notifications.coverage", members=d["members"], war_on=d["war_on"], raid_on=d["raid_on"])))
+    elif not d["members"]:
         sections.append(("", tr("config_audit.war_notifications.nobody_linked")))
-    sections.append((tr("config_audit.war_notifications.members_title"), tr(
-        "config_audit.war_notifications.members_how", registration=command_mention("registration"),
-        button=tr("playerregistration.button_war_notifications"))))
-    sections.append((tr("config_audit.registration.admin_tools_title"), tr(
-        "config_audit.war_notifications.admin_tools",
-        path=_ui_path(tr, "ui_components.clan_management.mode_notifications_label"),
-        clan=tr("ui_components.clan_management.button_clan_notifications"),
-        user=tr("ui_components.clan_management.button_user_notifications"))))
+    if result.status != AuditStatus.INCOMPLETE:
+        sections.append((tr("config_audit.war_notifications.members_title"), members_how))
     custodians: Dict[str, List[Any]] = d.get("custodians", {})
     lines = [f"{_clan_name(t)}: " + " ".join(f"<@{u}>" for u in ids) for t, ids in custodians.items()]
     sections.append((tr("config_audit.war_notifications.custodians_title"), tr(
@@ -1111,7 +1121,7 @@ def detail_war_notifications(guild: discord.Guild, result: StepResult, guild_id:
         button=tr("ui_components.clan_management.button_custodians")) + "\n" + (
         _join_limited(lines, 800, lambda n: tr("permissions.warning_more", count=n)) if lines
         else tr("config_audit.war_notifications.custodians_none"))))
-    return StepDetail(sections)
+    return StepDetail(sections, problem=problem)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -1134,17 +1144,15 @@ def detail_cwl_player_hub(guild: discord.Guild, result: StepResult, guild_id: Op
     from clashcontrol.QBdiscocmdshelper import command_mention
     tr = _translator(guild_id, user_id)
     preferences = command_mention("cwl preferences")
-    button = tr("cwl.player_hub.button_preferences")
     channel_id = result.data.get("channel_id")
-    how = (tr("config_audit.cwl_player_hub.how_hub", channel=f"<#{channel_id}>", button=button, preferences=preferences)
+    how = (tr("config_audit.cwl_player_hub.how_hub", channel=f"<#{channel_id}>",
+              button=tr("cwl.player_hub.button_preferences"), preferences=preferences)
            if channel_id else tr("config_audit.cwl_player_hub.how_command", preferences=preferences))
     return StepDetail([
         ("", tr("config_audit.cwl_player_hub.what")),
         (tr("config_audit.cwl_player_hub.how_title"), how),
         (tr("config_audit.cwl_player_hub.admin_title"), tr(
-            "config_audit.cwl_player_hub.admin",
-            path=_ui_path(tr, "ui_components.clan_management.mode_cwl_settings_label",
-                          "cwl.settings.button_activate_player_hub"))),
+            "config_audit.cwl_player_hub.admin", path=_open_path(tr, "cwl.settings.button_activate_player_hub"))),
     ])
 
 
@@ -1220,16 +1228,30 @@ def detail_cwl_season(guild: discord.Guild, result: StepResult, guild_id: Option
                       user_id: Optional[str]) -> StepDetail:
     tr = _translator(guild_id, user_id)
     d = result.data
+    codes = {f.code for f in result.findings}
+    season = str((d.get("event") or {}).get("cwl_season") or d.get("next_season") or "")[:7]
+    clans_path = _open_path(tr, "cwl.management.button_configure_clans")
+    problem: Optional[Tuple[str, str]] = None
+    if "season_missing" in codes:
+        problem = _problem(tr, tr("config_audit.fix.season_missing_title", season=season), "", [
+            tr("config_audit.fix.season_new", path=_open_path(tr, "cwl.management.button_add_season")),
+            tr("config_audit.fix.season_clans", path=clans_path),
+        ])
+    elif "no_clans" in codes:
+        problem = _problem(tr, tr("config_audit.fix.season_no_clans_title", season=season), "",
+                           [tr("config_audit.fix.season_clans", path=clans_path)])
+    elif "no_start_time" in codes:
+        problem = _problem(tr, tr("config_audit.cwl_season.summary_no_start", season=season,
+                                  count=result.summary_params.get("count", 0)), "",
+                           [tr("config_audit.fix.season_start", path=clans_path)])
     sections: List[Tuple[str, str]] = [("", tr("config_audit.cwl_season.what"))]
     if d.get("event"):
-        lines = []
-        for c in d.get("clans", []):
-            start = c.get("cwl_start_at")
-            lines.append(f"{_clan_name(c['clan_tag'])}: " + (start.replace("T", " ") + " UTC" if start
-                                                              else "⚠️ " + tr("config_audit.cwl_season.no_start_time")))
-        body = "\n".join(lines) or tr("config_audit.cwl_season.no_clans")
-        sections.append((tr("config_audit.cwl_season.season_title", season=str(d["event"].get("cwl_season", ""))[:7]),
-                         _join_limited(lines, 1024, lambda n: tr("permissions.warning_more", count=n)) if lines else body))
+        lines = [f"{_clan_name(c['clan_tag'])}: " + (str(c['cwl_start_at']).replace("T", " ") + " UTC"
+                 if c.get("cwl_start_at") else "⚠️ " + tr("config_audit.cwl_season.no_start_time"))
+                 for c in d.get("clans", [])]
+        sections.append((tr("config_audit.cwl_season.season_title", season=season),
+                         _join_limited(lines, 1024, lambda n: tr("permissions.warning_more", count=n))
+                         if lines else tr("config_audit.cwl_season.no_clans")))
     sections.append((tr("config_audit.cwl_season.workflow_title"), tr(
         "config_audit.cwl_season.workflow",
         new=tr("cwl.management.button_add_season"), clans=tr("cwl.management.button_configure_clans"),
@@ -1238,12 +1260,49 @@ def detail_cwl_season(guild: discord.Guild, result: StepResult, guild_id: Option
     sections.append((tr("config_audit.cwl_season.coordinators_title"), tr(
         "config_audit.cwl_season.coordinators", count=d.get("coordinated", 0),
         button=tr("cwl.management.button_manage_coordinators"))))
-    sections.append(_where_section(
-        tr,
-        _ui_path(tr, "ui_components.clan_management.mode_cwl_management_label"),
-        tr("config_audit.cwl_season.where_hub", hub=tr("permissions.feature.cwl_management")),
-    ))
-    return StepDetail(sections)
+    return StepDetail(sections, problem=problem)
+
+
+# ---------------------------------------------------------------------------------------------
+# Step 14: linked accounts (moved out of step 5 — ongoing work, not configuration)
+# ---------------------------------------------------------------------------------------------
+
+def check_linked_accounts(guild: discord.Guild) -> StepResult:
+    """How many accounts in the member clans are linked (Q-6: the number when > 0, ⚠️ only when
+    nobody is linked; ℹ️ while the clans' members are not known yet)."""
+    linked, total, verified = link_coverage(guild)
+    data = {"linked": linked, "total": total, "verified": verified}
+    if not total:
+        return StepResult(AuditStatus.INFO, "config_audit.linked_accounts.summary_no_data", data=data)
+    if not linked:
+        return StepResult(AuditStatus.INCOMPLETE, "config_audit.linked_accounts.summary_nobody",
+                          {"total": total}, [Finding(AuditStatus.INCOMPLETE, "nobody_linked")], data)
+    return StepResult(AuditStatus.OK, "config_audit.linked_accounts.summary_ok",
+                      {"linked": linked, "total": total}, data=data)
+
+
+def detail_linked_accounts(guild: discord.Guild, result: StepResult, guild_id: Optional[int],
+                           user_id: Optional[str]) -> StepDetail:
+    from clashcontrol.QBdiscocmdshelper import command_mention
+    tr = _translator(guild_id, user_id)
+    d = result.data
+    link = tr("ui_components.clan_management.button_link_accounts")
+    unlink = tr("ui_components.clan_management.button_unlink_player")
+    problem: Optional[Tuple[str, str]] = None
+    if result.status == AuditStatus.INCOMPLETE:
+        problem = _problem(tr, tr("config_audit.fix.nobody_linked_title"),
+                           tr("config_audit.fix.nobody_linked", total=d["total"]), [
+            tr("config_audit.fix.link_own", registration=command_mention("registration"),
+               button=tr("playerregistration.button_link_account")),
+            tr("config_audit.fix.link_members", path=_open_path(tr, "ui_components.clan_management.button_link_accounts")),
+        ])
+    sections: List[Tuple[str, str]] = [("", tr("config_audit.linked_accounts.what"))]
+    if d["linked"]:
+        sections.append((tr("config_audit.registration.coverage_title"), tr(
+            "config_audit.registration.coverage", linked=d["linked"], total=d["total"], verified=d["verified"])))
+    sections.append((tr("config_audit.registration.admin_tools_title"), tr(
+        "config_audit.linked_accounts.admin_tools", path=_open_path(tr), link=link, unlink=unlink)))
+    return StepDetail(sections, problem=problem)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -1254,13 +1313,6 @@ def detail_cwl_season(guild: discord.Guild, result: StepResult, guild_id: Option
 def _CONFIG(result: StepResult) -> Optional[str]:
     """Settings live in /clan management → ⚙️ Basic Configuration."""
     return "config"
-
-
-def _registration_fix_mode(result: StepResult) -> Optional[str]:
-    """Hub off / no channel → Basic Configuration (activate it); otherwise Manage Registrations
-    (linking accounts for members)."""
-    codes = {f.code for f in result.findings}
-    return "config" if codes & {"hub_off", "no_channel"} else "registrations"
 
 
 STEPS: Tuple[AuditStep, ...] = (
@@ -1274,7 +1326,7 @@ STEPS: Tuple[AuditStep, ...] = (
               permission_features=("welcome",), fix_mode=_CONFIG),
     AuditStep("registration", 5, "both", requires=("clans",),
               check=check_registration, detail=detail_registration,
-              permission_features=("registration",), fix_mode=_registration_fix_mode),
+              permission_features=("registration",), fix_mode=_CONFIG),
     AuditStep("war_notifications", 6, "both", requires=("clans",),
               check=check_war_notifications, detail=detail_war_notifications,
               fix_mode=lambda r: "notifications"),
@@ -1298,6 +1350,10 @@ STEPS: Tuple[AuditStep, ...] = (
     # No prerequisite: any clan can be subscribed, member clan or not.
     AuditStep("leaderboards", 13, "admin", check=check_leaderboards, detail=detail_leaderboards,
               permission_features=("leaderboard",)),
+    # Linking members' accounts is ongoing work, not configuration — so it comes last, after the
+    # roles and reminders it feeds (qaplop 2026-10-11, split out of step 5).
+    AuditStep("linked_accounts", 14, "admin", requires=("clans",), check=check_linked_accounts,
+              detail=detail_linked_accounts, fix_mode=lambda r: "registrations", dismissable=False),
 )
 
 STEPS_BY_ID: Dict[str, AuditStep] = {s.id: s for s in STEPS}

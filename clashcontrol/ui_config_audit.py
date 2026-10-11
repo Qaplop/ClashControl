@@ -66,9 +66,17 @@ def build_step_embed(guild: discord.Guild, user_id: str, step_id: str, result: S
         embed.description = (f"{_tr(gid, user_id, step.desc_key)}\n\n**{summary}**")[:_EMBED_DESCRIPTION_LIMIT]
         return embed
     detail = step.detail(guild, result, gid, user_id)
-    embed.description = f"**{summary}**"
+    if detail.problem is not None:
+        # Problem first (qaplop 2026-10-11): the dominant block at the top — what's wrong and the
+        # numbered fix — and the information about the step below it.
+        heading, body = detail.problem
+        embed.description = f"## {heading}\n{body}"[:_EMBED_DESCRIPTION_LIMIT]
+        if detail.sections:
+            embed.add_field(name="\u200b", value=f"**{_tr(gid, user_id, 'config_audit.about_title')}**", inline=False)
+    else:
+        embed.description = f"**{summary}**"
     for heading, body in detail.sections:
-        embed.add_field(name=(heading or "​")[:256], value=(body or "​")[:1024], inline=False)
+        embed.add_field(name=(heading or "\u200b")[:256], value=(body or "\u200b")[:1024], inline=False)
     return embed
 
 
@@ -161,11 +169,11 @@ class SetupView(discord.ui.View):
                                 value=_tr(gid, self.user_id, f"config_audit.guided.member_view_{self.selected}")[:1024],
                                 inline=False)
             if result.status == AuditStatus.OK:
-                embed.add_field(name="​", value=_tr(gid, self.user_id, "config_audit.guided.ok_next")[:1024],
+                embed.add_field(name="\u200b", value=_tr(gid, self.user_id, "config_audit.guided.ok_next")[:1024],
                                 inline=False)
             if self._tutorial_hint:
                 from clashcontrol.QBdiscocmdshelper import command_mention
-                embed.add_field(name="​", value=_tr(gid, self.user_id, "config_audit.guided.tutorial_hint",
+                embed.add_field(name="\u200b", value=_tr(gid, self.user_id, "config_audit.guided.tutorial_hint",
                                                           tutorial=command_mention("tutorial"))[:1024], inline=False)
         return embed
 

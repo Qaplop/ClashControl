@@ -1,6 +1,19 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-11 (16)
+- Changed (tracker #0151, qaplop): /setup step pages are problem-first. A step with a problem
+  opens with ONE dominant block (Discord heading): what's wrong, then numbered fix steps that say
+  where and how ("⚙️ Open settings → 🌐 Select Channels …", alternatives marked "one of these"),
+  then "click Check again"; the information about the step follows under "ℹ️ About this step".
+  The separate "Where to change it" lists are gone. Step 5 is now "Registration message" only
+  (Open settings always → Basic Configuration; e.g. "move it to a channel new members can see,
+  or allow View Channel + Read Message History there"). Linked-account coverage and the admin
+  linking tools moved to a new last step 14 "Linked accounts" (Open settings → Manage
+  Registrations). Unused texts removed. Also: literal zero-width spaces from earlier shell edits
+  turned back into "\u200b" escapes in ui_config_audit.py.
+  Files: config_audit.py, ui_config_audit.py, translations (5), docs, tests. 3895 tests pass. Build 160.
+
 2026-10-11 (15)
 - Added (tracker #0121, /setup Phase 7): /tutorial — an interactive member tutorial in 9 pages:
   welcome → /help → link your account → My Accounts → war reminders → /whois → /leaderboard →

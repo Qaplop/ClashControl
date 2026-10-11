@@ -789,11 +789,13 @@ all rebuild/button-handler paths so the reference is never lost.
   problems that step reports. Step 1 lists only problems of features no implemented step owns,
   so one problem shows red once. All 13 steps have a check since Build 156 (Phase 4):
   1 bot permissions, 2 language/timezone, 3 clans (deleted / private war log from
-  `CACHE.clan_name_cache`), 4 welcome, 5 registration, 6 DM war reminders
+  `CACHE.clan_name_cache`), 4 welcome, 5 registration message, 6 DM war reminders
   (`notification_coverage()`, custodians), 7 channel war reminders, 8 raid reminders, 9 server
   roles, 10 CWL settings, 11 "Your CWL Preferences" (always ℹ️ — player-hub problems are step
   10's), 12 CWL season (`cwl_events` via the sync DB helpers + `resolve_cwl_phase()`; from the
-  20th next month's season must exist with clans and start times), 13 leaderboards. Every
+  20th next month's season must exist with clans and start times), 13 leaderboards,
+  14 linked accounts (`link_coverage()`; split out of step 5 on 2026-10-11 — ongoing work, not
+  configuration, so it comes last). Every
   audited feature belongs to a step, so step 1 is server-level permissions only.
 - Member-side checks (Phase 3): `_any_role_can(channel, roles, *perms)` over `_newcomer_roles()`
   (@everyone + the newbie role Simple Roles gives on join) for the registration hub and
@@ -802,6 +804,12 @@ all rebuild/button-handler paths so the reference is never lost.
   all accounts in the member clans from `CACHE.user_accounts` (UNASSIGNED = not linked). A step that is OFF is
   never turned into BLOCKED. Fix hints name the real menu path via `_ui_path()` (translated
   labels of /clan management), so they follow label changes.
+- Problem-first pages (qaplop, 2026-10-11): `StepDetail.problem` = (heading, body) of ONE
+  dominant block — what's wrong, then numbered fix steps (`_problem()`, paths from
+  `_open_path()` = "⚙️ Open settings → …") and "then click Check again" — rendered as the
+  embed's `##` description; the step's information follows as fields under "ℹ️ About this
+  step". `_permission_problem()` is the shared ❌ block for channel/role problems. No separate
+  "where to change it" list any more: the fix steps say where.
 - `ui_config_audit.SetupView` — one ephemeral message: overview ⇄ step detail via a select,
   Back, Re-check, plus the link buttons a detail page offers. Read-only, so no double-click claim.
 - "⚙️ Open settings" (Phase 5, Build 157): `AuditStep.fix_mode(result)` names the /clan

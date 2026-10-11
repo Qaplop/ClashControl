@@ -1,6 +1,11 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-11 (6)
+- Fixed: Chinese permission labels now match the Discord client (qaplop's screenshots):
+  发送消息与创建帖子, 在子区和帖子中发送消息, 创建公共子区, 添加附件, 管理子区和帖子,
+  阅读消息历史. The other six confirmed. Translations (zh) + tests only, no build change.
+
 2026-10-11 (5)
 - Fixed: Spanish permission labels now match the Discord client (qaplop's screenshots):
   «Enviar mensajes y crear publicaciones», «Enviar mensajes en hilos y publicaciones»,

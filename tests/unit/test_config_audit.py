@@ -397,7 +397,7 @@ class TestPermissionNames:
 
     @pytest.mark.parametrize("lang, expected", [
         ("en", "“Send Messages”"), ("de", "„Nachrichten senden“"), ("es", "«Enviar mensajes y crear publicaciones»"),
-        ("zh", "“发送消息”"), ("la", "“Send Messages”"),
+        ("zh", "“发送消息与创建帖子”"), ("la", "“Send Messages”"),
     ])
     def test_quoted_in_every_language(self, lang, expected):
         CACHE.server_config[str(GID)] = {"language": lang}
@@ -444,6 +444,11 @@ class TestPermissionNames:
             ("de", "ui_components.clan_management.mode_roles_label"),
             ("zh", "ui_components.tracker.grant_access_invite_failed"),     # verb "无法创建邀请"; permission quoted later
             ("zh", "ui_components.tracker.grant_access_invite_dm_failed"),  # verb "已创建邀请"
+            # 添加附件 ("add attachments") = the tracker's own upload button, not the permission
+            ("zh", "commands.help.bug.detailed"),
+            ("zh", "commands.help.feature.detailed"),
+            ("zh", "ui_components.tracker.button_add_attachments"),
+            ("zh", "ui_components.tracker.upload_window_expired"),
         }
         bad = []
         for path, text in strings(d):

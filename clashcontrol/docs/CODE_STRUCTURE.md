@@ -771,6 +771,22 @@ all rebuild/button-handler paths so the reference is never lost.
   automation or sets its channel/role (`tests/unit/test_bot_permissions.py` lists them).
 - `build_audit_report(guilds)` — `/admin Permission Audit` (bot admin): per guild Administrator
   yes/no, the bot's top role, server-level gaps and every issue, as a text file.
+- `INSTALL_PERMISSIONS` / `install_permissions()` / `missing_install_permissions(guild)` (tracker
+  #0151) — the server-level set the bot is installed with (must match the Developer Portal's
+  guild install settings); used by `/setup` step 1 and its re-authorize link
+  (`constants.bot_install_url(app_id, guild_id, permissions)`).
+
+🟫 clashcontrol/config_audit.py + clashcontrol/ui_config_audit.py (tracker #0151, Build 151)
+- `/setup` — the server configuration checklist (server admins, ephemeral). Plan and the full
+  13-step list: `plans/tracker-0151-setup-config-audit.md`.
+- `config_audit.STEPS` — the step registry: id, order, audience, `requires` (prerequisite steps),
+  a cache-only `check(guild) -> StepResult` (status + machine-readable findings) and a `detail`
+  renderer for the step's page. `run_audit(guild)` runs every step and turns a step whose
+  prerequisite is INCOMPLETE/BLOCKED into BLOCKED. A step without a check reports PENDING.
+  The planned guided setup and the tutorials (#0121) walk the same registry — add new checks
+  there, not as a second list.
+- `ui_config_audit.SetupView` — one ephemeral message: overview ⇄ step detail via a select,
+  Back, Re-check, plus the link buttons a detail page offers. Read-only, so no double-click claim.
 
 🟫 clashcontrol/log_throttle.py (tracker #0150)
 - `log_throttled(level, key, message, interval_s=DAY_S)` — log a recurring failure once per

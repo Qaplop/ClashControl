@@ -248,7 +248,7 @@
     },
     "status": {},
     "about": {
-      "fallback": "**ClashControl** — die Kommandozentrale für deinen Clash of Clans Clan.\n\n➕ Zu deinem Server hinzufügen: {install_url}\n👤 Schon auf deinem Server? Starte mit {registration} (Accounts verknüpfen), {cwl_preferences} und {help}.\n💬 Fragen? Komm in unseren Support-Kanal: {support_url}"
+      "fallback": "**ClashControl** — die Kommandozentrale für deinen Clash of Clans Clan.\n\n➕ Zu deinem Server hinzufügen: {install_url}\n👤 Schon auf deinem Server? Starte mit {registration} (Accounts verknüpfen), {cwl_preferences} und {help}.\n🛠️ Server-Admin? {setup} zeigt, was eingerichtet ist und was als Nächstes zu tun ist.\n💬 Fragen? Komm in unseren Support-Kanal: {support_url}"
     },
     "help": {
       "list_title": "ClashControl Befehle",
@@ -297,6 +297,11 @@
         "short": "Aufstellung eines CWL-Gegner-Clans analysieren",
         "title": "🛡️ Analyse CWL-Gegner Befehl",
         "detailed": "Analysiere die Aufstellung eines CWL-Gegner-Clans: Skill-, Zuverlässigkeits- und Aktivitätswerte je Spieler.\n\n**Verwendung:**\n`/analyse cwl_opponent clan:<clan_tag_oder_name>`\n\n**Parameter:**\n• `clan` - Dein Clan-Tag oder -Name, um die CWL-Gruppe nachzuschlagen\n\n**Ablauf:**\n1. Ermittelt die aktuelle (oder letzte) CWL-Gruppe deines Clans\n2. Zeigt eine ephemere Auswahlliste mit bis zu 7 Gegner-Clans der Gruppe\n3. Wähle einen Gegner-Clan, um eine Spieler-Statistiktabelle zu erhalten\n\n**Angezeigte Werte (je Spieler, verlinkt zum Ingame-Profil):**\n• CWL-Angriffs-Skill = (3★ − 1★) / Angriffe × 100%\n• CW-Angriffs-Skill = gleiche Formel für reguläre CW-Kriege\n• Zuverlässigkeit = genutzte Angriffe / maximale Angriffe × 100%\n• Aktivität = zeitnormierte Angriffsbeteiligung\n\n**Hinweis:**\nDie Aufstellung stammt aus der aktuellen Kriegsaufstellung, falls verfügbar, oder als Fallback aus den zuletzt archivierten Kriegs-/Saisondaten.\n\n**Beispiel:**\n`/analyse cwl_opponent clan:#L2J0C0PY`"
+      },
+      "setup": {
+        "short": "Einrichtung von ClashControl auf diesem Server prüfen (Admins)",
+        "title": "🛠️ Setup-Befehl",
+        "detailed": "Zeigt eine Checkliste mit allem, was ClashControl auf diesem Server braucht, mit einem Status je Schritt: ✅ OK, ❌ muss behoben werden, ⚠️ unvollständig, ⏸️ nicht genutzt, 🔒 braucht einen früheren Schritt, ⚪ noch nicht geprüft. Wähle einen Schritt für die Details: was nicht stimmt, warum es wichtig ist und wie du es behebst.\n\n**Verwendung:**\n`/setup`\n\n**Bisher geprüft:**\n• Bot-Berechtigungen — Administrator, jede fehlende Berechtigung mit dem Grund, warum sie gebraucht wird, Probleme bei eingerichteten Kanälen und Rollen, und ein Button, um den Bot mit einem Klick neu zu autorisieren\n\nDie weiteren Schritte (Sprache, Clans, Registrierung, Erinnerungen, Rollen, CWL, Bestenlisten) folgen in späteren Updates.\n\n**Hinweise:**\n• Nur für Server-Administratoren\n• Nur du siehst das Ergebnis\n• Es wird nichts geändert — „🔄 Erneut prüfen“ prüft noch einmal, nachdem du etwas behoben hast"
       },
       "clan management": {
         "short": "Zentrale Server- und Clan-Konfiguration",
@@ -458,6 +463,8 @@
     },
     "dm": {
       "fallback_reply": "👋 Ich verstehe keine Freitext-Nachrichten — probiere `/help`, um zu sehen, was ich kann, oder nutze direkt hier in der DM einen Slash-Befehl.",
+      "fallback_setup_hint": "🛠️ Server-Admin? Nutze {setup} auf deinem Server, um die Einrichtung von ClashControl dort zu prüfen.",
+      "setup_welcome": "👋 Danke, dass du ClashControl zu **{guild}** hinzugefügt hast!\n🛠️ Nächster Schritt: Nutze {setup} auf diesem Server. Es prüft die Berechtigungen des Bots und zeigt Schritt für Schritt, was eingerichtet ist und was noch fehlt.\n📖 {help} listet alle Befehle.",
       "fallback_tracker_hint": "🐞 Melde Fehler mit {bug} oder wenn du einen Verbesserungsvorschlag hast, schlage ihn mit {feature} vor, direkt hier im Chat.",
       "guild_picker_prompt": "Du bist mit Accounts auf mehreren Servern verknüpft. Für welchen Server soll das gelten?",
       "guild_picker_placeholder": "Server auswählen...",
@@ -1426,6 +1433,7 @@
       "members_help": "alles, was ClashControl kann",
       "admins_title": "Server-Admins: richte deinen Clan ein",
       "admins_subscribe": "beginne mit der Verfolgung deines Clans und poste eine Bestenliste in diesem Kanal",
+      "admins_setup": "prüfen, was auf deinem Server eingerichtet ist und was als Nächstes zu tun ist",
       "admins_management": "Sprache, Kanal für Kriegsbenachrichtigungen, Auto-Rollen und Clan-Familien",
       "support_title": "Brauchst du Hilfe?",
       "support_text": "Stell deine Fragen in unserem öffentlichen Support-Kanal auf dem Server The QCrew.",
@@ -1433,11 +1441,55 @@
       "footer": "Fehler gefunden oder eine Idee? Nutze /bug oder /feature."
     }
   },
+  "config_audit": {
+    "overview_title": "🛠️ Server-Einrichtung — {guild}",
+    "overview_intro": "Alles, was ClashControl auf diesem Server braucht, Schritt für Schritt. Wähle unten einen Schritt für die Details und wie du ihn behebst.",
+    "legend": "✅ OK · ❌ muss behoben werden · ⚠️ unvollständig · ⏸️ nicht genutzt · 🔒 braucht einen früheren Schritt · ℹ️ Info · ⚪ noch nicht geprüft",
+    "select_placeholder": "Details zu einem Schritt anzeigen…",
+    "button_back": "◀ Übersicht",
+    "button_recheck": "🔄 Erneut prüfen",
+    "summary_pending": "noch nicht geprüft — kommt in einem späteren Update",
+    "summary_check_failed": "konnte gerade nicht geprüft werden — versuche es erneut",
+    "summary_blocked": "richte zuerst Schritt {steps} ein",
+    "step": {
+      "bot_permissions": { "title": "Bot-Berechtigungen", "desc": "Die Server-Berechtigungen, die ClashControl braucht, um seine Nachrichten zu posten und Rollen zu vergeben." },
+      "basics": { "title": "Sprache & Zeitzone", "desc": "Die Sprache des Servers für alle Bot-Nachrichten und die Zeitzone für CWL-Zeiten und Erinnerungen." },
+      "clans": { "title": "Clans & Familien", "desc": "Die Clans (und Clan-Familien), zu denen dieser Server gehört. Fast alles andere baut darauf auf." },
+      "welcome": { "title": "Willkommensnachricht", "desc": "Eine Begrüßung für neue Server-Mitglieder mit einem Link zu deinem Clan." },
+      "registration": { "title": "Spieler-Registrierung", "desc": "Der Registrierungs-Hub, in dem Mitglieder ihre Clash of Clans Accounts verknüpfen, und die Admin-Werkzeuge, um Accounts für sie zu verknüpfen." },
+      "war_notifications": { "title": "Kriegs-Erinnerungen", "desc": "Persönliche DM-Erinnerungen an offene Kriegsangriffe — von den Mitgliedern selbst eingestellt oder von Admins unter „⚔️ Kriegs-Erinnerungen verwalten“." },
+      "channel_war_notifications": { "title": "Kriegs-Erinnerungen im Kanal", "desc": "Kriegs-Erinnerungen, die in einen Kanal gepostet werden." },
+      "raid_reminders": { "title": "Raid-Erinnerungen", "desc": "Erinnerungen an das Clanstadt-Raid-Wochenende, die in einen Kanal gepostet werden." },
+      "roles": { "title": "Server-Rollen", "desc": "Automatische Rollen: Neuling-/Mitglieder-Rollen, Clash of Clans Ingame-Rollen und Clan-Rollen." },
+      "cwl_settings": { "title": "CWL-Einstellungen", "desc": "Kanäle und Optionen für die Clankriegsliga: die Hub-Nachrichten, Datenaufbewahrung, Koordinator-Rolle und Anmeldemodus." },
+      "cwl_player_hub": { "title": "Hub „Deine CWL-Einstellungen“", "desc": "Hier sagen Mitglieder ihren Anführern, ob und wie sie in der CWL spielen wollen." },
+      "cwl_season": { "title": "CWL-Saisonverwaltung", "desc": "Eine CWL-Saison durchführen: teilnehmende Clans, Anmeldung, Teams und Vorbereitung." },
+      "leaderboards": { "title": "Bestenlisten", "desc": "Bestenlisten, die in abonnierten Kanälen automatisch gepostet und aktuell gehalten werden (/subscribe, /unsubscribe)." }
+    },
+    "bot_permissions": {
+      "summary_ok": "alle Berechtigungen erteilt (Administrator)",
+      "summary_no_admin": "alle Berechtigungen erteilt, aber kein Administrator",
+      "summary_problems": "{count} Problem(e) gefunden",
+      "summary_not_ready": "noch nicht prüfbar — der Bot startet gerade",
+      "not_ready": "Der Bot hat diesen Server noch nicht fertig geladen. Versuche es in einer Minute mit „🔄 Erneut prüfen“.",
+      "admin_granted": "Erteilt. Berechtigungs-Überschreibungen in Kanälen betreffen ClashControl nicht, daher funktioniert jede Funktion in jedem Kanal, den du wählst. Für die Rollenvergabe zählt nur noch die Position der ClashControl-Rolle (siehe unten).",
+      "admin_missing": "Nicht erteilt. Alle Funktionen von ClashControl funktionieren auch ohne — aber dann braucht der Bot in jedem einzelnen Kanal, den er nutzt, die passenden Berechtigungen, und die Berechtigungs-Überschreibungen eines Kanals (zum Beispiel bei privaten Kanälen) können ihn blockieren. Du müsstest die Berechtigungen für ClashControl in jedem dieser Kanäle ausdrücklich einstellen — das ist Aufwand und fehleranfällig.\nMit Administrator entfällt all das, und es ist sicher: ClashControl tut nur, was seine Funktionen tun, missbraucht die Berechtigung nie und ist eine von Discord verifizierte App.",
+      "missing_title": "❌ Fehlende Berechtigungen ({count})",
+      "all_present": "✅ Alle anderen benötigten Berechtigungen sind auf Server-Ebene erteilt.",
+      "issues_title": "❌ Probleme bei eingerichteten Funktionen ({count})",
+      "role_title": "🎭 Die Rolle von ClashControl",
+      "role_position": "Der Bot kann nur Rollen vergeben, die unter Servereinstellungen → Rollen **unter** seiner eigenen höchsten Rolle ({role}) stehen. Halte diese Rolle über allen Rollen, die ClashControl vergeben soll.",
+      "fix_title": "🔧 So behebst du es",
+      "fix_text": "**Am einfachsten:** Klicke unten auf **{button}** und bestätige — Discord erteilt dem Bot dann in einem Schritt seine Standard-Berechtigungen auf diesem Server.\n**Von Hand:** Servereinstellungen → Rollen → ClashControl → Berechtigungen, und schalte ein, was fehlt.\nKlicke danach auf „🔄 Erneut prüfen“.",
+      "button_reauthorize": "ClashControl neu autorisieren"
+    }
+  },
   "permissions": {
     "warning_header": "⚠️ **Gespeichert — aber das funktioniert noch nicht. Folgendes muss auf dem Server angepasst werden:**",
     "warning_fix_channel": "Fehlende Kanalberechtigungen behebt ein Server-Admin in den Kanaleinstellungen (Kanal bearbeiten → Berechtigungen → ClashControl hinzufügen).",
     "warning_fix_manage_roles": "„Rollen verwalten“ aktiviert ein Server-Admin unter Servereinstellungen → Rollen → ClashControl-Rolle → Berechtigungen.",
     "warning_footer": "Es funktioniert, sobald das behoben ist — eine erneute Einrichtung ist nicht nötig.",
+    "warning_setup_hint": "🛠️ Komplette Übersicht, was fehlt und wie du es behebst: {setup}",
     "warning_more": "… und {count} weitere.",
     "feature": {
       "registration": "Registrierungsnachricht",
@@ -1459,7 +1511,26 @@
       "send_messages_in_threads": "Nachrichten in Threads senden",
       "embed_links": "Links einbetten",
       "read_message_history": "Nachrichtenverlauf anzeigen",
+      "administrator": "Administrator",
+      "attach_files": "Dateien anhängen",
+      "use_external_emojis": "Externe Emojis verwenden",
+      "create_public_threads": "Öffentliche Threads erstellen",
+      "manage_threads": "Threads verwalten",
+      "create_instant_invite": "Soforteinladung erstellen",
       "manage_roles": "Rollen verwalten"
+    },
+    "why": {
+      "view_channel": "die Kanäle sehen, in die er postet — ohne sie sind diese Kanäle für den Bot unsichtbar.",
+      "send_messages": "die Registrierungs- und CWL-Hubs, Kriegs- und Raid-Erinnerungen, Bestenlisten und Willkommensnachrichten posten.",
+      "send_messages_in_threads": "dasselbe, wenn einer dieser Kanäle ein Thread ist.",
+      "embed_links": "die meisten Bot-Nachrichten sind Embeds (Hubs, Erinnerungen, Clan-Management) — ohne die Berechtigung kommen sie leer an.",
+      "attach_files": "Bilder und Dateien senden, z. B. CWL-Gruppen- und Analyse-Diagramme.",
+      "read_message_history": "seine eigenen früheren Nachrichten finden, um sie zu ersetzen — so bleiben die Hubs unten im Kanal, und Bestenlisten werden aktualisiert statt neu gestapelt.",
+      "use_external_emojis": "die eigenen Icons von ClashControl (Rathäuser, Ligen, Status-Icons) in seinen Nachrichten zeigen.",
+      "manage_roles": "die automatischen Rollen vergeben (Neuling-/Mitglieder-Rollen, Ingame-Rollen, Clan-Rollen, CWL-Koordinator-Rollen).",
+      "create_public_threads": "wird noch von keiner Funktion auf deinem Server genutzt — angefragt, damit kommende Funktionen ohne neue Autorisierung funktionieren.",
+      "manage_threads": "wird noch von keiner Funktion auf deinem Server genutzt — angefragt, damit kommende Funktionen ohne neue Autorisierung funktionieren.",
+      "create_instant_invite": "wird noch von keiner Funktion auf deinem Server genutzt — angefragt, damit kommende Funktionen ohne neue Autorisierung funktionieren."
     },
     "issue": {
       "missing_channel_perms": "**{feature}** in {channel}: es fehlt {perms}",

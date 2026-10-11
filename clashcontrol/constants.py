@@ -15,7 +15,7 @@ Usage:
         # Split message
         pass
 """
-from typing import Tuple
+from typing import Optional, Tuple
 
 # ============================================================================
 # ClashControl links
@@ -26,15 +26,31 @@ SUPPORT_INVITE_URL = "https://discord.gg/Eg3f7VQA2T"
 follow-up). Same link as SUPPORT_URL in activity/client/src/landingPage.ts."""
 
 
-def bot_install_url(application_id: object) -> str:
+def bot_install_url(
+    application_id: object, guild_id: Optional[int] = None, permissions: Optional[int] = None,
+) -> str:
     """The "Add to server" link for this bot (Discord's OAuth2 install page, which applies the
     install settings from the Developer Portal). Shared by /about's fallback text and the greeting
     DM (tracker #0141) so the link is built in one place.
 
+    With ``guild_id`` it is the *re-authorize* link of /setup (tracker #0151): that server is
+    preselected and locked, and ``permissions`` (an int) is requested explicitly. Re-adding a bot
+    that is already on the server updates the permissions of its own managed role, so a missing
+    install permission is fixed with one click.
+
     Args:
         application_id: The bot's application id (client.application_id).
+        guild_id: Server to preselect, or None for the plain install link.
+        permissions: Permission bit field to request (``bot_permissions.install_permissions().value``);
+            only used together with ``guild_id``.
     """
-    return f"https://discord.com/oauth2/authorize?client_id={application_id}"
+    url = f"https://discord.com/oauth2/authorize?client_id={application_id}"
+    if guild_id is not None:
+        url += (
+            f"&scope=bot+applications.commands&permissions={int(permissions or 0)}"
+            f"&integration_type=0&guild_id={guild_id}&disable_guild_select=true"
+        )
+    return url
 
 # ============================================================================
 # Discord API Limits

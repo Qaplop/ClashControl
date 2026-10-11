@@ -1153,6 +1153,7 @@ def _landing_fallback_text(interaction: discord.Interaction) -> str:
         registration=command_mention("registration"),
         cwl_preferences=command_mention("cwl preferences"),
         help=command_mention("help"),
+        setup=command_mention("setup"),
         support_url=SUPPORT_INVITE_URL,
     )
 

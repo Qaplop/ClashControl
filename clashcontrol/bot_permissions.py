@@ -57,6 +57,49 @@ CHANNEL_FEATURES: Dict[str, Tuple[str, ...]] = {
 #: Role automations (feature keys used in messages).
 ROLE_FEATURES: Tuple[str, ...] = ("role_system", "coc_roles", "clan_roles", "cwl_coordinator_role")
 
+#: The server-level permission set the bot asks for when it is installed — must match the guild
+#: install settings in the Developer Portal (Installation → Default Install Settings). /setup
+#: step 1 (tracker #0151) reports each one missing, and the re-authorize link requests exactly
+#: these. Display order. Manage Messages and Use Application Commands were removed from the
+#: Portal set on 2026-10-11 (nothing uses them); the thread and invite permissions stay required
+#: for upcoming features (qaplop).
+INSTALL_PERMISSIONS: Tuple[str, ...] = (
+    "administrator",
+    "view_channel",
+    "send_messages",
+    "send_messages_in_threads",
+    "embed_links",
+    "attach_files",
+    "read_message_history",
+    "use_external_emojis",
+    "manage_roles",
+    "create_public_threads",
+    "manage_threads",
+    "create_instant_invite",
+)
+
+
+def install_permissions() -> discord.Permissions:
+    """``INSTALL_PERMISSIONS`` as a ``discord.Permissions`` (its ``.value`` goes into the
+    re-authorize URL)."""
+    return discord.Permissions(**{name: True for name in INSTALL_PERMISSIONS})
+
+
+def missing_install_permissions(guild: Any) -> Optional[Tuple[str, ...]]:
+    """Install permissions (other than Administrator) the bot lacks at server level in ``guild``.
+
+    Returns None while the bot's own member is not cached yet (nothing can be said), and an empty
+    tuple when the bot has Administrator — Discord then grants every permission. Server level
+    only: channel overrides are what ``audit_guild()`` checks per configured feature.
+    """
+    me = _me(guild)
+    if me is None:
+        return None
+    gp = me.guild_permissions
+    if gp.administrator:
+        return ()
+    return tuple(p for p in INSTALL_PERMISSIONS if p != "administrator" and not getattr(gp, p, False))
+
 # Issue kinds
 MISSING_CHANNEL_PERMS = "missing_channel_perms"   # perms: the missing permission names
 CHANNEL_NOT_FOUND = "channel_not_found"           # configured channel is not in the guild
@@ -320,7 +363,11 @@ def format_issues_message(
     if MISSING_MANAGE_ROLES in kinds:
         footer_parts.append(t("permissions.warning_fix_manage_roles", guild_id=guild_id, user_id=user_id))
     footer_parts.append(t("permissions.warning_footer", guild_id=guild_id, user_id=user_id))
-    footer = " ".join(footer_parts)
+    # Tracker #0151: /setup shows every permission gap of the server, with the why and the fix.
+    from clashcontrol.QBdiscocmdshelper import command_mention
+    footer = " ".join(footer_parts) + "\n" + t(
+        "permissions.warning_setup_hint", guild_id=guild_id, user_id=user_id, setup=command_mention("setup"),
+    )
     lines: List[str] = []
     budget = limit_chars - len(header) - len(footer) - 40
     for i, issue in enumerate(issues):

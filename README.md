@@ -208,6 +208,10 @@ action. There is no separate `/clans`, `/list_families`, `/list_players`, `/list
 - `/feature` - Request a feature, incl. additional languages (opens a modal); same availability as `/bug`.
 
 ### Admin Commands
+- `/setup` - Server configuration checklist for this server (server admins, ephemeral): every
+  setup step with a status (✅/❌/⚠️/⏸️/🔒/⚪) and a detail page explaining what is wrong and how to
+  fix it. Phase 1 checks the bot's permissions (incl. a one-click re-authorize link); the other
+  steps follow (tracker #0151, `plans/tracker-0151-setup-config-audit.md`).
 - `/admin` - Administrative diagnostic actions and utilities; pick an `action` (permission scope
   noted per action — "admin" = server admin, "bot admin" = bot's configured `SERVER_ADMIN` only):
   - **CLEANUP_MESSAGES** - Clean up orphaned messages in current channel (admin)
@@ -319,6 +323,13 @@ migration job moves data older than the retention window from hot to history —
 - Used for live bot deployment
 - Registers global commands for all servers (when `DISCORD_GUILD_ID` = 0)
 - On startup: Uses DEV token to clear guild commands from test server (cleanup for when not actively developing)
+
+#### Install permissions (both apps):
+The guild install permissions in the Developer Portal (Installation → Default Install Settings)
+must match `INSTALL_PERMISSIONS` in `clashcontrol/bot_permissions.py`: Administrator, View Channels,
+Send Messages, Send Messages in Threads, Embed Links, Attach Files, Read Message History, Use External
+Emojis, Manage Roles, Create Public Threads, Manage Threads, Create Invite. `/setup` reports each
+missing one, and its re-authorize link requests exactly that set.
 
 #### Why This Matters:
 - Prevents command conflicts when switching between DEV and PROD modes

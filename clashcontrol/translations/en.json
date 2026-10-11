@@ -248,7 +248,7 @@
     },
     "status": {},
     "about": {
-      "fallback": "**ClashControl** — your clan's command center for Clash of Clans.\n\n➕ Add it to your server: {install_url}\n👤 Already on your server? Start with {registration} (link your accounts), {cwl_preferences} and {help}.\n💬 Questions? Join our support channel: {support_url}"
+      "fallback": "**ClashControl** — your clan's command center for Clash of Clans.\n\n➕ Add it to your server: {install_url}\n👤 Already on your server? Start with {registration} (link your accounts), {cwl_preferences} and {help}.\n🛠️ Server admin? Run {setup} to see what's set up and what to do next.\n💬 Questions? Join our support channel: {support_url}"
     },
     "help": {
       "list_title": "ClashControl Commands",
@@ -297,6 +297,11 @@
         "short": "Analyse a CWL opponent clan's roster",
         "title": "🛡️ Analyse CWL Opponent Command",
         "detailed": "Analyse a CWL opponent clan's roster: per-player skill, reliability, and activity stats.\n\n**Usage:**\n`/analyse cwl_opponent clan:<clan_tag_or_name>`\n\n**Parameters:**\n• `clan` - Your clan tag or name to look up the CWL league group for\n\n**Flow:**\n1. Resolves your clan's current (or most recent) CWL league group\n2. Shows an ephemeral dropdown listing the up to 7 opponent clans in the group\n3. Select an opponent clan to see a per-player stats table\n\n**Stats Displayed (per player, linked to in-game profile):**\n• CWL Attack Skill = (3★ − 1★) / attacks × 100%\n• CW Attack Skill = same formula for regular CW wars\n• Reliability = attacks used / max attacks × 100%\n• Activity = time-normalised attack participation rate\n\n**Note:**\nRoster is sourced from the live war lineup when available, or the most recent archived war/season data as a fallback.\n\n**Example:**\n`/analyse cwl_opponent clan:#L2J0C0PY`"
+      },
+      "setup": {
+        "short": "Check ClashControl's setup on this server (admins)",
+        "title": "🛠️ Setup Command",
+        "detailed": "Shows a checklist of everything ClashControl needs on this server, with a status for each step: ✅ OK, ❌ needs fixing, ⚠️ incomplete, ⏸️ not in use, 🔒 needs an earlier step, ⚪ not checked yet. Pick a step for the details: what is wrong, why it matters and how to fix it.\n\n**Usage:**\n`/setup`\n\n**Checked so far:**\n• Bot permissions — Administrator, every missing permission with the reason it is needed, problems with configured channels and roles, and a button to re-authorize the bot in one click\n\nThe other steps (language, clans, registration, notifications, roles, CWL, leaderboards) follow in later updates.\n\n**Notes:**\n• Server administrators only\n• Only you see the result\n• Nothing is changed — “🔄 Check again” re-runs the checks after you fixed something"
       },
       "clan management": {
         "short": "Central server and clan configuration",
@@ -458,6 +463,8 @@
     },
     "dm": {
       "fallback_reply": "👋 I don't understand free text messages — try `/help` to see what I can do, or use a slash command right here in this DM.",
+      "fallback_setup_hint": "🛠️ Server admin? Run {setup} on your server to check ClashControl's setup there.",
+      "setup_welcome": "👋 Thanks for adding ClashControl to **{guild}**!\n🛠️ Next step: run {setup} on that server. It checks the bot's permissions and shows step by step what is set up and what is still missing.\n📖 {help} lists every command.",
       "fallback_tracker_hint": "🐞 Report bugs with {bug}, or if you have an idea for an improvement, suggest it with {feature}, right here in the chat.",
       "guild_picker_prompt": "You're linked to accounts in more than one server. Which server should this apply to?",
       "guild_picker_placeholder": "Select a server...",
@@ -1426,6 +1433,7 @@
       "members_help": "see everything ClashControl can do",
       "admins_title": "Server admins: set up your clan",
       "admins_subscribe": "start tracking your clan and post a leaderboard in this channel",
+      "admins_setup": "check what is set up on your server and what to do next",
       "admins_management": "language, war notification channel, auto roles and clan families",
       "support_title": "Need help?",
       "support_text": "Ask your questions in our public support channel on The QCrew server.",
@@ -1433,11 +1441,55 @@
       "footer": "Found a bug or have an idea? Use /bug or /feature."
     }
   },
+  "config_audit": {
+    "overview_title": "🛠️ Server setup — {guild}",
+    "overview_intro": "Everything ClashControl needs on this server, step by step. Pick a step below for details and how to fix it.",
+    "legend": "✅ OK · ❌ needs fixing · ⚠️ incomplete · ⏸️ not in use · 🔒 needs an earlier step · ℹ️ info · ⚪ not checked yet",
+    "select_placeholder": "Show details for a step…",
+    "button_back": "◀ Overview",
+    "button_recheck": "🔄 Check again",
+    "summary_pending": "not checked yet — coming in a later update",
+    "summary_check_failed": "could not be checked right now — try again",
+    "summary_blocked": "set up step {steps} first",
+    "step": {
+      "bot_permissions": { "title": "Bot permissions", "desc": "The server permissions ClashControl needs to post its messages and assign roles." },
+      "basics": { "title": "Language & timezone", "desc": "The server's language for all bot messages, and the timezone for CWL times and reminders." },
+      "clans": { "title": "Clans & families", "desc": "The clans (and clan families) this server belongs to. Almost everything else builds on them." },
+      "welcome": { "title": "Welcome message", "desc": "A greeting for new server members with a link to your clan." },
+      "registration": { "title": "Player registration", "desc": "The registration hub where members link their Clash of Clans accounts, and the admin tools to link accounts for them." },
+      "war_notifications": { "title": "War notifications", "desc": "Personal DM reminders for open war attacks — set by the members themselves, or by admins under “⚔️ Manage War Notifications”." },
+      "channel_war_notifications": { "title": "Channel war notifications", "desc": "War reminders posted into a channel." },
+      "raid_reminders": { "title": "Raid reminders", "desc": "Clan Capital raid weekend reminders posted into a channel." },
+      "roles": { "title": "Server roles", "desc": "Automatic roles: newbie/member roles, Clash of Clans in-game roles and clan roles." },
+      "cwl_settings": { "title": "CWL settings", "desc": "Channels and options for Clan War League: the hub messages, data retention, coordinator role and sign-up mode." },
+      "cwl_player_hub": { "title": "“Your CWL Preferences” hub", "desc": "Where members tell their leaders whether and how they want to play CWL." },
+      "cwl_season": { "title": "CWL season management", "desc": "Running a CWL season: participating clans, enrollment, teams and preparation." },
+      "leaderboards": { "title": "Leaderboards", "desc": "Leaderboards posted and kept up to date in subscribed channels (/subscribe, /unsubscribe)." }
+    },
+    "bot_permissions": {
+      "summary_ok": "all permissions granted (Administrator)",
+      "summary_no_admin": "all permissions granted, but not Administrator",
+      "summary_problems": "{count} problem(s) found",
+      "summary_not_ready": "can't be checked yet — the bot is still starting",
+      "not_ready": "The bot hasn't finished loading this server yet. Try again in a minute with “🔄 Check again”.",
+      "admin_granted": "Granted. Channel permission overrides don't affect ClashControl, so every feature works in every channel you pick. Only the position of the ClashControl role still matters for assigning roles (see below).",
+      "admin_missing": "Not granted. Every ClashControl feature works without it — but then the bot needs the right permissions in every single channel it uses, and a channel's permission overrides (private channels, for example) can block it. You'd have to set ClashControl's permissions explicitly in each of those channels, which is effort and easy to get wrong.\nGranting Administrator saves all of that, and it is safe: ClashControl only ever does what its features do, never misuses the permission, and is an app verified by Discord.",
+      "missing_title": "❌ Missing permissions ({count})",
+      "all_present": "✅ All other required permissions are granted at server level.",
+      "issues_title": "❌ Problems with configured features ({count})",
+      "role_title": "🎭 ClashControl's role",
+      "role_position": "The bot can only assign roles that are **below** its own highest role ({role}) in Server Settings → Roles. Keep that role above every role ClashControl should assign.",
+      "fix_title": "🔧 How to fix",
+      "fix_text": "**Easiest:** click **{button}** below and confirm — Discord then grants the bot its standard permissions on this server in one step.\n**Manually:** Server Settings → Roles → ClashControl → Permissions, and switch on what's missing.\nThen click “🔄 Check again”.",
+      "button_reauthorize": "Re-authorize ClashControl"
+    }
+  },
   "permissions": {
     "warning_header": "⚠️ **Saved — but this won't work yet. Fix the following on the server:**",
     "warning_fix_channel": "A server admin can fix missing channel permissions in the channel's settings (Edit Channel → Permissions → add ClashControl).",
     "warning_fix_manage_roles": "A server admin can enable “Manage Roles” under Server Settings → Roles → ClashControl role → Permissions.",
     "warning_footer": "It starts working as soon as this is fixed — no need to set it up again.",
+    "warning_setup_hint": "🛠️ Full overview of what's missing, and how to fix it: {setup}",
     "warning_more": "… and {count} more.",
     "feature": {
       "registration": "Registration message",
@@ -1459,7 +1511,26 @@
       "send_messages_in_threads": "Send Messages in Threads",
       "embed_links": "Embed Links",
       "read_message_history": "Read Message History",
+      "administrator": "Administrator",
+      "attach_files": "Attach Files",
+      "use_external_emojis": "Use External Emojis",
+      "create_public_threads": "Create Public Threads",
+      "manage_threads": "Manage Threads",
+      "create_instant_invite": "Create Invite",
       "manage_roles": "Manage Roles"
+    },
+    "why": {
+      "view_channel": "see the channels it posts in — without it, those channels are invisible to the bot.",
+      "send_messages": "post the registration and CWL hubs, war and raid reminders, leaderboards and welcome messages.",
+      "send_messages_in_threads": "the same, when one of those channels is a thread.",
+      "embed_links": "most bot messages are embeds (hubs, reminders, clan management) — without it they arrive empty.",
+      "attach_files": "send images and files, e.g. CWL group and analysis charts.",
+      "read_message_history": "find its own earlier messages to replace them — keeps the hubs at the bottom of their channel and updates leaderboards instead of piling up new ones.",
+      "use_external_emojis": "show ClashControl's own icons (town halls, leagues, status icons) in its messages.",
+      "manage_roles": "assign the automatic roles (newbie/member roles, in-game roles, clan roles, CWL coordinator roles).",
+      "create_public_threads": "not used by a feature on your server yet — requested so upcoming features work without re-authorizing.",
+      "manage_threads": "not used by a feature on your server yet — requested so upcoming features work without re-authorizing.",
+      "create_instant_invite": "not used by a feature on your server yet — requested so upcoming features work without re-authorizing."
     },
     "issue": {
       "missing_channel_perms": "**{feature}** in {channel}: missing {perms}",

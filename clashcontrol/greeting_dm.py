@@ -130,3 +130,32 @@ async def send_greeting_dm(
     _sent, outcome = await CACHE.send_user_dm_detailed(user_id, "", view=view, embed=embed, sent_message_out=sent_out)
     logging.info(f"[GREETING-DM] user={user_id} guild={guild_id} outcome={outcome}")
     return outcome, (sent_out[0] if sent_out else None)
+
+
+async def send_setup_welcome_dm(guild: discord.Guild) -> DmOutcome:
+    """Tracker #0151: when the bot joins a server, DM whoever added it (the server owner when the
+    audit log can't tell) a pointer to /setup — the checklist of what to configure next.
+
+    Args:
+        guild: The server the bot was just added to.
+
+    Returns:
+        send_user_dm_detailed()'s outcome ("sent", "blocked", "no_mutual_guild", "failed").
+    """
+    from clashcontrol.QBdiscocmdshelper import command_mention
+
+    inviter_id = await CACHE.get_bot_inviter_id(guild)
+    recipient = inviter_id or guild.owner_id
+    if recipient is None:
+        return "failed"
+    user_id = str(recipient)
+    text = t(
+        'commands.dm.setup_welcome', guild_id=guild.id, user_id=user_id, guild=guild.name,
+        setup=command_mention("setup"), help=command_mention("help"),
+    )
+    _sent, outcome = await CACHE.send_user_dm_detailed(user_id, text)
+    logging.info(
+        f"[GUILD-JOIN] /setup welcome DM for guild {guild.id} to "
+        f"{'inviter' if inviter_id else 'owner'} {user_id}: {outcome}"
+    )
+    return outcome

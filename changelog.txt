@@ -1,6 +1,23 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-11 (1)
+- Added (tracker #0151, Phase 1): /setup — server configuration checklist for server admins,
+  ephemeral, current server only. 13 setup steps with a status each (✅/❌/⚠️/⏸️/🔒/⚪) and a
+  detail page per step. Step 1 (bot permissions) works: Administrator (with why it saves a lot of
+  per-channel setup and is safe), every missing install permission with why it is needed,
+  problems of configured channels/roles (audit_guild), the bot's role position, and a
+  re-authorize link that requests the install set for this server in one click. Steps 2–13 show
+  "not checked yet". Install set = Developer Portal set (Manage Messages / Use Slash Commands
+  removed there): bot_permissions.INSTALL_PERMISSIONS. /setup is pointed to from the permission
+  warnings, a new DM to whoever adds the bot (audit log, else owner), /help, /about and the DM
+  free-text reply; the Activity landing page lists it first for admins (client deploy needed).
+  Plan: plans/tracker-0151-setup-config-audit.md. Version 1.3.43.
+  Files: clashcontrol/config_audit.py, clashcontrol/ui_config_audit.py (new), bot_permissions.py,
+  constants.py, cache_manager.py, greeting_dm.py, ui_cwl_roster.py, QBdiscordcmds.py,
+  ClashControl.py, QBcore.py, translations (5), activity/client/src/landingPage.ts, docs.
+  3786 tests pass. Build 151.
+
 2026-10-10 (18)
 - Fixed (/clan management showing no buttons or selects until Ctrl+R): the command sent the embed
   first and added the view with a second edit. Discord stored every component (Build 149 log,

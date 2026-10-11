@@ -1059,6 +1059,7 @@ def _get_help_command_dm_status() -> Dict[str, bool]:
         "highlightme": highlightme.guild_only,
         "analyse cwl_league_group": analyse_leaguegroup.guild_only,
         "analyse cwl_opponent": analyse_cwlopponent.guild_only,
+        "setup": setup_command.guild_only,
         "clan management": clan_management.guild_only,
         "cwl preferences": cwl_preferences.guild_only,
         "dm me": dm_me.guild_only,
@@ -1088,7 +1089,7 @@ def _get_help_command_names() -> List[str]:
     names = [
         "registration", "cwl preferences", "dm me",
         "subscribe", "unsubscribe", "subscriptions", "leaderboard", "highlightme", "analyse cwl_league_group",
-        "analyse cwl_opponent", "clan management", "admin", "list", "whois", "link clan", "link player",
+        "analyse cwl_opponent", "setup", "clan management", "admin", "list", "whois", "link clan", "link player",
         "help", "about", "status", "ping"
     ]
     if CONFIG.tracker_enabled:
@@ -1181,7 +1182,7 @@ async def help(interaction: discord.Interaction, command: Optional[str] = None):
         t('commands.help.category_player_setup', user_id=user_id, guild_id=guild_id): ["registration", "cwl preferences", "dm me"],
         t('commands.help.category_leaderboards', user_id=user_id, guild_id=guild_id): ["subscribe", "unsubscribe", "subscriptions", "leaderboard", "highlightme"],
         t('commands.help.category_clan_player_info', user_id=user_id, guild_id=guild_id): ["analyse cwl_league_group", "analyse cwl_opponent", "whois", "link clan", "link player"],
-        t('commands.help.category_administration', user_id=user_id, guild_id=guild_id): ["clan management", "admin", "list"],
+        t('commands.help.category_administration', user_id=user_id, guild_id=guild_id): ["setup", "clan management", "admin", "list"],
         t('commands.help.category_bot_info', user_id=user_id, guild_id=guild_id): ["help", "about", "status", "ping"],
     }
     if CONFIG.tracker_enabled:
@@ -3620,6 +3621,41 @@ async def cwl_preferences(interaction: discord.Interaction) -> None:
             pass
 
     await _prompt_dm_guild_picker(interaction, guild_ids, on_pick=_on_pick)
+
+
+@app_commands.command(name="setup", description=dev_mode+"Server admins: check ClashControl's setup on this server and what is left to do.")
+# Top-level command, so guild_only() really takes effect here (Pitfall 40) — /setup audits the
+# server it is used in. The DM guard below is only a safety net.
+@app_commands.guild_only()
+@app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
+async def setup_command(interaction: discord.Interaction) -> None:
+    """Tracker #0151 (plans/tracker-0151-setup-config-audit.md): the server configuration
+    checklist — every setup area with ✅/❌/⚠️/⏸️ status and a detail page that explains what is
+    wrong and how to fix it. Ephemeral, current server only, server admins only (Administrator or
+    the bot admin, like /clan management). Phase 1: step 1 (bot permissions) is checked, the
+    other steps are listed as "not checked yet".
+
+    Named setup_command, not setup: a module-level ``setup`` is what discord.py's extension
+    loader would call."""
+    user_id = str(interaction.user.id)
+    if interaction.guild is None:
+        await interaction.response.send_message(
+            t('commands.help.server_only_detail_note', user_id=user_id, marker=HELP_SERVER_ONLY_MARKER),
+            ephemeral=True,
+        )
+        return
+    if not await check_admin_permissions(interaction, SERVER_ADMIN):
+        await interaction.response.send_message(
+            t('ui_components.errors.permission_admin_only', user_id=user_id, guild_id=interaction.guild.id),
+            ephemeral=True,
+        )
+        return
+    if not await _safe_defer(interaction, thinking=True, ephemeral=True):
+        return
+    _log_cmd(interaction, "setup")
+    from clashcontrol.ui_config_audit import send_setup_overview
+    await send_setup_overview(interaction)
+    _log_cmd_done(interaction, "setup")
 
 
 @app_commands.command(name="registration", description=dev_mode+"Open the registration hub to link and manage your Clash of Clans accounts.")

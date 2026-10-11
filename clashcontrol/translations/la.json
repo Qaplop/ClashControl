@@ -248,7 +248,7 @@
     },
     "status": {},
     "about": {
-      "fallback": "**ClashControl** — arx imperii gentis tuae in Clash of Clans.\n\n➕ Adde eum servitori tuo: {install_url}\n👤 Iam in servitore tuo est? Incipe cum {registration} (rationes tuas iunge), {cwl_preferences} et {help}.\n💬 Quaestiones? Veni in canalem auxilii nostrum: {support_url}"
+      "fallback": "**ClashControl** — arx imperii gentis tuae in Clash of Clans.\n\n➕ Adde eum servitori tuo: {install_url}\n👤 Iam in servitore tuo est? Incipe cum {registration} (rationes tuas iunge), {cwl_preferences} et {help}.\n🛠️ Administrator servitoris? {setup} ostendit quid institutum sit et quid deinde agendum.\n💬 Quaestiones? Veni in canalem auxilii nostrum: {support_url}"
     },
     "help": {
       "list_title": "Mandata ClashControl",
@@ -297,6 +297,11 @@
         "short": "Analyza ordinem gentis adversariae CWL",
         "title": "🛡️ Mandatum Analyse CWL Opponent",
         "detailed": "Analyza ordinem gentis adversariae CWL: statisticas peritiae, fidelitatis, et industriae per lusorem.\n\n**Usus:**\n`/analyse cwl_opponent clan:<nota_vel_nomen_gentis>`\n\n**Parametri:**\n• `clan` - Nota vel nomen gentis tuae ad coetum ligae CWL eius inveniendum\n\n**Cursus:**\n1. Coetum ligae CWL currentem (vel recentissimum) gentis tuae solvit\n2. Indicem temporarium ostendit usque ad 7 gentes adversarias in coetu enumerans\n3. Elige gentem adversariam ut tabulam statisticarum per lusorem videas\n\n**Statisticae Ostensae (per lusorem, ad profilum in ludo nexae):**\n• Peritia Impetus CWL = (3★ − 1★) / impetus × 100%\n• Peritia Impetus CW = eadem formula pro bellis CW ordinariis\n• Fidelitas = impetus usi / impetus maximi × 100%\n• Industria = rate participationis impetuum tempore normalizata\n\n**Nota:**\nOrdo ex ordinatione belli viva fontatur cum praesto est, vel ex datis belli/temporis recentissimis archivatis ut subsidium.\n\n**Exemplum:**\n`/analyse cwl_opponent clan:#L2J0C0PY`"
+      },
+      "setup": {
+        "short": "Institutionem ClashControl in hoc servitore inspice (administratores)",
+        "title": "🛠️ Mandatum Setup",
+        "detailed": "Indicem omnium quae ClashControl in hoc servitore requirit ostendit, cum statu cuiusque gradus: ✅ recte, ❌ emendandum, ⚠️ imperfectum, ⏸️ non adhibitum, 🔒 gradum priorem requirit, ⚪ nondum inspectum. Elige gradum ut singula videas: quid erret, cur referat et quomodo emendes.\n\n**Usus:**\n`/setup`\n\n**Adhuc inspectum:**\n• Permissiones automati — Administrator, quaeque permissio deficiens cum causa cur requiratur, difficultates canalium et munerum constitutorum, et globulus ut automatum uno ictu iterum auctorizes\n\nCeteri gradus (lingua, gentes, inscriptio, nuntiationes, munera, CWL, tabulae ordinum) in renovationibus posterioribus sequentur.\n\n**Notae:**\n• Solis administratoribus servitoris\n• Solus tu eventum vides\n• Nihil mutatur — «🔄 Iterum inspice» inspectiones repetit postquam aliquid emendasti"
       },
       "clan management": {
         "short": "Configuratio centralis servitoris et gentium",
@@ -458,6 +463,8 @@
     },
     "dm": {
       "fallback_reply": "👋 Nuntia textus liberi non intellego — `/help` conare ut videas quid facere possim, vel mandato barrae hic in hoc nuntio privato directe utere.",
+      "fallback_setup_hint": "🛠️ Administrator servitoris? {setup} in servitore tuo adhibe ut institutionem ClashControl ibi inspicias.",
+      "setup_welcome": "👋 Gratias quod ClashControl ad **{guild}** addidisti!\n🛠️ Gradus proximus: {setup} in illo servitore adhibe. Permissiones automati inspicit et gradatim ostendit quid institutum sit et quid adhuc desit.\n📖 {help} omnia mandata enumerat.",
       "fallback_tracker_hint": "🐞 Vitia per {bug} nuntia, aut si emendationem proponere vis, eam per {feature} propone, hic in colloquio.",
       "guild_picker_prompt": "In pluribus quam uno servitore rationibus iunctus es. Cui servitori hoc applicari debet?",
       "guild_picker_placeholder": "Elige servitorem...",
@@ -1425,6 +1432,7 @@
       "members_help": "omnia quae ClashControl facere potest",
       "admins_title": "Administratores servitoris: gentem tuam constituite",
       "admins_subscribe": "gentem tuam observare incipe et tabulam principum in hoc canali propone",
+      "admins_setup": "inspice quid in servitore tuo institutum sit et quid deinde agendum",
       "admins_management": "lingua, canalis nuntiorum belli, munera automatica et familiae gentium",
       "support_title": "Auxilio eges?",
       "support_text": "Quaestiones tuas in canali auxilii publico nostro in servitore The QCrew pone.",
@@ -1432,11 +1440,55 @@
       "footer": "Errorem invenisti aut consilium habes? Utere /bug vel /feature."
     }
   },
+  "config_audit": {
+    "overview_title": "🛠️ Institutio servitoris — {guild}",
+    "overview_intro": "Omnia quae ClashControl in hoc servitore requirit, gradatim. Elige gradum infra ut singula videas et quomodo emendes.",
+    "legend": "✅ recte · ❌ emendandum · ⚠️ imperfectum · ⏸️ non adhibitum · 🔒 gradum priorem requirit · ℹ️ notitia · ⚪ nondum inspectum",
+    "select_placeholder": "Singula gradus ostende…",
+    "button_back": "◀ Conspectus",
+    "button_recheck": "🔄 Iterum inspice",
+    "summary_pending": "nondum inspectum — in renovatione posteriore veniet",
+    "summary_check_failed": "nunc inspici non potuit — iterum conare",
+    "summary_blocked": "prius gradum {steps} institue",
+    "step": {
+      "bot_permissions": { "title": "Permissiones automati", "desc": "Permissiones servitoris quibus ClashControl eget ut nuntia sua mittat et munera tribuat." },
+      "basics": { "title": "Lingua et zona horaria", "desc": "Lingua servitoris omnibus nuntiis automati, et zona horaria temporibus CWL et monitis." },
+      "clans": { "title": "Gentes et familiae", "desc": "Gentes (et familiae gentium) ad quas hic servitor pertinet. Fere omnia alia his nituntur." },
+      "welcome": { "title": "Nuntius salutationis", "desc": "Salutatio novis sodalibus servitoris cum nexu ad gentem tuam." },
+      "registration": { "title": "Inscriptio lusorum", "desc": "Centrum inscriptionis ubi sodales rationes suas Clash of Clans iungunt, et instrumenta administratorum ut rationes pro eis iungant." },
+      "war_notifications": { "title": "Nuntiationes belli", "desc": "Monita privata de impetibus belli apertis — ab ipsis sodalibus constituta, aut ab administratoribus sub «⚔️ Moderare Nuntiationes Belli»." },
+      "channel_war_notifications": { "title": "Nuntiationes belli in canali", "desc": "Monita belli in canalem missa." },
+      "raid_reminders": { "title": "Monita incursionum", "desc": "Monita de fine hebdomadis incursionum Capitis Gentis in canalem missa." },
+      "roles": { "title": "Munera servitoris", "desc": "Munera automatica: munera tironum/sodalium, munera in ludo Clash of Clans et munera gentium." },
+      "cwl_settings": { "title": "Optiones CWL", "desc": "Canales et optiones Foederis Bellorum Gentium: nuntia centralia, retentio datorum, munus coordinatoris et modus inscriptionis." },
+      "cwl_player_hub": { "title": "Centrum «Praeferentiae Tuae CWL»", "desc": "Ubi sodales ducibus suis dicunt an et quomodo in CWL ludere velint." },
+      "cwl_season": { "title": "Administratio temporis CWL", "desc": "Tempus CWL gerere: gentes participantes, inscriptio, turmae et praeparatio." },
+      "leaderboards": { "title": "Tabulae ordinum", "desc": "Tabulae ordinum in canalibus subscriptis sponte missae et renovatae (/subscribe, /unsubscribe)." }
+    },
+    "bot_permissions": {
+      "summary_ok": "omnes permissiones datae (Administrator)",
+      "summary_no_admin": "omnes permissiones datae, sed non Administrator",
+      "summary_problems": "{count} difficultas(es) inventa(e)",
+      "summary_not_ready": "nondum inspici potest — automatum adhuc incipit",
+      "not_ready": "Automatum hunc servitorem nondum totum legit. Post minutum iterum conare per «🔄 Iterum inspice».",
+      "admin_granted": "Data. Permissionum exceptiones canalium ClashControl non afficiunt, itaque omnis functio in omni canali quem eligis operatur. Ad munera tribuenda sola positio muneris ClashControl refert (vide infra).",
+      "admin_missing": "Non data. Omnes functiones ClashControl sine ea operantur — sed tum automatum in omni singulo canali quo utitur permissiones aptas requirit, et exceptiones permissionum canalis (exempli gratia in canalibus privatis) id impedire possunt. Permissiones ClashControl in unoquoque horum canalium expresse constituere deberes, quod laboriosum est et facile erratur.\nAdministratorem dare haec omnia vitat, et tutum est: ClashControl nihil agit nisi quod functiones eius agunt, permissione numquam abutitur, et applicatio a Discord probata est.",
+      "missing_title": "❌ Permissiones deficientes ({count})",
+      "all_present": "✅ Omnes ceterae permissiones necessariae in gradu servitoris datae sunt.",
+      "issues_title": "❌ Difficultates functionum constitutarum ({count})",
+      "role_title": "🎭 Munus ClashControl",
+      "role_position": "Automatum sola munera tribuere potest quae **infra** suum summum munus ({role}) sunt in Optionibus servitoris → Munera. Id munus supra omnia munera tene quae ClashControl tribuere debet.",
+      "fix_title": "🔧 Quomodo emendes",
+      "fix_text": "**Facillime:** preme **{button}** infra et confirma — Discord tum automato permissiones eius solitas in hoc servitore uno gradu dat.\n**Manu:** Optiones servitoris → Munera → ClashControl → Permissiones, et quod deest accende.\nDeinde preme «🔄 Iterum inspice».",
+      "button_reauthorize": "ClashControl iterum auctoriza"
+    }
+  },
   "permissions": {
     "warning_header": "⚠️ **Servatum — sed nondum operabitur. Haec in servitore corrige:**",
     "warning_fix_channel": "Permissiones canalis deficientes administrator servitoris in optionibus canalis corrigit (Canalem emendare → Permissiones → ClashControl adde).",
     "warning_fix_manage_roles": "„Munera administrare“ administrator servitoris in Optionibus servitoris → Munera → munus ClashControl → Permissiones activat.",
     "warning_footer": "Statim operabitur ubi hoc correctum erit — iterum constituere non oportet.",
+    "warning_setup_hint": "🛠️ Conspectus plenus eorum quae desunt et quomodo emendes: {setup}",
     "warning_more": "… et {count} alia.",
     "feature": {
       "registration": "Nuntius inscriptionis",
@@ -1458,7 +1510,26 @@
       "send_messages_in_threads": "Nuntios in filis mittere",
       "embed_links": "Nexus inserere",
       "read_message_history": "Historiam nuntiorum legere",
+      "administrator": "Administrator",
+      "attach_files": "Fasciculos adiungere",
+      "use_external_emojis": "Emoticis externis uti",
+      "create_public_threads": "Fila publica creare",
+      "manage_threads": "Fila moderari",
+      "create_instant_invite": "Invitationem creare",
       "manage_roles": "Munera moderari"
+    },
+    "why": {
+      "view_channel": "canales videre in quos mittit — sine ea hi canales automato invisibiles sunt.",
+      "send_messages": "centra inscriptionis et CWL, monita belli et incursionum, tabulas ordinum et nuntia salutationis mittere.",
+      "send_messages_in_threads": "idem, cum unus horum canalium filum est.",
+      "embed_links": "pleraque nuntia automati inclusa sunt (centra, monita, administratio gentis) — sine ea vacua adveniunt.",
+      "attach_files": "imagines et fasciculos mittere, e.g. diagrammata gregis CWL et analyseos.",
+      "read_message_history": "sua nuntia priora invenire ut ea substituat — sic centra in imo canalis manent, et tabulae ordinum renovantur pro novis cumulandis.",
+      "use_external_emojis": "icones proprias ClashControl (curias, foedera, signa status) in nuntiis suis ostendere.",
+      "manage_roles": "munera automatica tribuere (munera tironum/sodalium, munera in ludo, munera gentium, munera coordinatorum CWL).",
+      "create_public_threads": "nulla functio in servitore tuo ea adhuc utitur — petita ut functiones futurae sine nova auctorizatione operentur.",
+      "manage_threads": "nulla functio in servitore tuo ea adhuc utitur — petita ut functiones futurae sine nova auctorizatione operentur.",
+      "create_instant_invite": "nulla functio in servitore tuo ea adhuc utitur — petita ut functiones futurae sine nova auctorizatione operentur."
     },
     "issue": {
       "missing_channel_perms": "**{feature}** in {channel}: deest {perms}",

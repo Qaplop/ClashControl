@@ -29,6 +29,7 @@ export const FALLBACK_STRINGS: Record<string, string> = {
   members_cwl: 'tell your clan leaders whether you want to play CWL',
   members_help: 'see everything ClashControl can do',
   admins_title: 'Server admins: set up your clan',
+  admins_setup: 'check what is set up on your server and what to do next',
   admins_subscribe: 'start tracking your clan and post a leaderboard in this channel',
   admins_management: 'language, war notification channel, auto roles and clan families',
   support_title: 'Need help?',
@@ -52,6 +53,7 @@ const MEMBER_STEPS: [string, string][] = [
   ['/help', 'members_help'],
 ]
 const ADMIN_STEPS: [string, string][] = [
+  ['/setup', 'admins_setup'],
   ['/subscribe clan:#TAG', 'admins_subscribe'],
   ['/clan management', 'admins_management'],
 ]

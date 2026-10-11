@@ -248,7 +248,7 @@
     },
     "status": {},
     "about": {
-      "fallback": "**ClashControl** — el centro de mando de tu clan en Clash of Clans.\n\n➕ Añádelo a tu servidor: {install_url}\n👤 ¿Ya está en tu servidor? Empieza con {registration} (vincula tus cuentas), {cwl_preferences} y {help}.\n💬 ¿Preguntas? Únete a nuestro canal de soporte: {support_url}"
+      "fallback": "**ClashControl** — el centro de mando de tu clan en Clash of Clans.\n\n➕ Añádelo a tu servidor: {install_url}\n👤 ¿Ya está en tu servidor? Empieza con {registration} (vincula tus cuentas), {cwl_preferences} y {help}.\n🛠️ ¿Administras un servidor? {setup} muestra qué está configurado y qué hacer a continuación.\n💬 ¿Preguntas? Únete a nuestro canal de soporte: {support_url}"
     },
     "help": {
       "list_title": "Comandos de ClashControl",
@@ -297,6 +297,11 @@
         "short": "Analizar la alineación de un clan rival de LGC",
         "title": "🛡️ Comando Analyse CWL Opponent",
         "detailed": "Analiza la alineación de un clan rival de LGC: estadísticas de habilidad, fiabilidad y actividad por jugador.\n\n**Uso:**\n`/analyse cwl_opponent clan:<tag_o_nombre_del_clan>`\n\n**Parámetros:**\n• `clan` - Tag o nombre de tu clan para buscar su grupo de liga de LGC\n\n**Flujo:**\n1. Resuelve el grupo de liga de LGC actual (o más reciente) de tu clan\n2. Muestra un desplegable efímero con hasta 7 clanes rivales del grupo\n3. Selecciona un clan rival para ver una tabla de estadísticas por jugador\n\n**Estadísticas Mostradas (por jugador, enlazado a su perfil en el juego):**\n• Habilidad de Ataque LGC = (3★ − 1★) / ataques × 100%\n• Habilidad de Ataque GC = misma fórmula para guerras normales GC\n• Fiabilidad = ataques usados / ataques máximos × 100%\n• Actividad = tasa de participación en ataques normalizada por tiempo\n\n**Nota:**\nLa alineación se obtiene de la formación de guerra en vivo cuando está disponible, o de los datos de guerra/temporada archivados más recientes como respaldo.\n\n**Ejemplo:**\n`/analyse cwl_opponent clan:#L2J0C0PY`"
+      },
+      "setup": {
+        "short": "Comprobar la configuración de ClashControl en este servidor (administradores)",
+        "title": "🛠️ Comando Setup",
+        "detailed": "Muestra una lista de todo lo que ClashControl necesita en este servidor, con un estado por paso: ✅ OK, ❌ hay que corregirlo, ⚠️ incompleto, ⏸️ no se usa, 🔒 requiere un paso anterior, ⚪ aún no comprobado. Elige un paso para ver los detalles: qué falla, por qué importa y cómo solucionarlo.\n\n**Uso:**\n`/setup`\n\n**Comprobado hasta ahora:**\n• Permisos del bot — Administrador, cada permiso que falta con el motivo por el que se necesita, problemas con canales y roles configurados, y un botón para volver a autorizar el bot con un clic\n\nLos demás pasos (idioma, clanes, registro, notificaciones, roles, LGC, clasificaciones) llegarán en próximas actualizaciones.\n\n**Notas:**\n• Solo para administradores del servidor\n• Solo tú ves el resultado\n• No se cambia nada — «🔄 Comprobar de nuevo» repite las comprobaciones cuando hayas corregido algo"
       },
       "clan management": {
         "short": "Configuración central del servidor y de los clanes",
@@ -458,6 +463,8 @@
     },
     "dm": {
       "fallback_reply": "👋 No entiendo mensajes de texto libre — prueba `/help` para ver qué puedo hacer, o usa un comando de barra aquí mismo en este MD.",
+      "fallback_setup_hint": "🛠️ ¿Administras un servidor? Usa {setup} en tu servidor para comprobar allí la configuración de ClashControl.",
+      "setup_welcome": "👋 ¡Gracias por añadir ClashControl a **{guild}**!\n🛠️ Siguiente paso: usa {setup} en ese servidor. Comprueba los permisos del bot y muestra paso a paso qué está configurado y qué falta todavía.\n📖 {help} muestra todos los comandos.",
       "fallback_tracker_hint": "🐞 Informa de errores con {bug} o, si tienes una sugerencia de mejora, propónla con {feature}, aquí mismo en el chat.",
       "guild_picker_prompt": "Estás vinculado a cuentas en más de un servidor. ¿A qué servidor debería aplicarse esto?",
       "guild_picker_placeholder": "Selecciona un servidor...",
@@ -1425,6 +1432,7 @@
       "members_help": "todo lo que ClashControl puede hacer",
       "admins_title": "Administradores: configura tu clan",
       "admins_subscribe": "empieza a seguir tu clan y publica una clasificación en este canal",
+      "admins_setup": "comprueba qué está configurado en tu servidor y qué hacer a continuación",
       "admins_management": "idioma, canal de notificaciones de guerra, roles automáticos y familias de clanes",
       "support_title": "¿Necesitas ayuda?",
       "support_text": "Haz tus preguntas en nuestro canal de soporte público del servidor The QCrew.",
@@ -1432,11 +1440,55 @@
       "footer": "¿Encontraste un error o tienes una idea? Usa /bug o /feature."
     }
   },
+  "config_audit": {
+    "overview_title": "🛠️ Configuración del servidor — {guild}",
+    "overview_intro": "Todo lo que ClashControl necesita en este servidor, paso a paso. Elige un paso abajo para ver los detalles y cómo solucionarlo.",
+    "legend": "✅ OK · ❌ hay que corregirlo · ⚠️ incompleto · ⏸️ no se usa · 🔒 requiere un paso anterior · ℹ️ info · ⚪ aún no comprobado",
+    "select_placeholder": "Mostrar detalles de un paso…",
+    "button_back": "◀ Resumen",
+    "button_recheck": "🔄 Comprobar de nuevo",
+    "summary_pending": "aún no comprobado — llegará en una actualización posterior",
+    "summary_check_failed": "no se pudo comprobar ahora — inténtalo de nuevo",
+    "summary_blocked": "configura primero el paso {steps}",
+    "step": {
+      "bot_permissions": { "title": "Permisos del bot", "desc": "Los permisos del servidor que ClashControl necesita para publicar sus mensajes y asignar roles." },
+      "basics": { "title": "Idioma y zona horaria", "desc": "El idioma del servidor para todos los mensajes del bot y la zona horaria para las horas de la LGC y los recordatorios." },
+      "clans": { "title": "Clanes y familias", "desc": "Los clanes (y familias de clanes) a los que pertenece este servidor. Casi todo lo demás se basa en ellos." },
+      "welcome": { "title": "Mensaje de bienvenida", "desc": "Un saludo para los nuevos miembros del servidor con un enlace a tu clan." },
+      "registration": { "title": "Registro de jugadores", "desc": "El hub de registro donde los miembros vinculan sus cuentas de Clash of Clans, y las herramientas de administración para vincularlas por ellos." },
+      "war_notifications": { "title": "Notificaciones de guerra", "desc": "Recordatorios personales por MD de ataques de guerra pendientes — los configuran los propios miembros o los administradores en «⚔️ Gestionar Notificaciones de Guerra»." },
+      "channel_war_notifications": { "title": "Notificaciones de guerra en canal", "desc": "Recordatorios de guerra publicados en un canal." },
+      "raid_reminders": { "title": "Recordatorios de incursiones", "desc": "Recordatorios del fin de semana de incursiones de la Capital del Clan publicados en un canal." },
+      "roles": { "title": "Roles del servidor", "desc": "Roles automáticos: roles de novato/miembro, roles del juego de Clash of Clans y roles de clan." },
+      "cwl_settings": { "title": "Ajustes de la LGC", "desc": "Canales y opciones de la Liga de Guerras de Clanes: los mensajes hub, la retención de datos, el rol de coordinador y el modo de inscripción." },
+      "cwl_player_hub": { "title": "Hub «Tus Preferencias de LGC»", "desc": "Donde los miembros dicen a sus líderes si quieren jugar la LGC y cómo." },
+      "cwl_season": { "title": "Gestión de la temporada de LGC", "desc": "Llevar una temporada de LGC: clanes participantes, inscripción, equipos y preparación." },
+      "leaderboards": { "title": "Clasificaciones", "desc": "Clasificaciones publicadas y actualizadas automáticamente en los canales suscritos (/subscribe, /unsubscribe)." }
+    },
+    "bot_permissions": {
+      "summary_ok": "todos los permisos concedidos (Administrador)",
+      "summary_no_admin": "todos los permisos concedidos, pero no Administrador",
+      "summary_problems": "{count} problema(s) encontrado(s)",
+      "summary_not_ready": "aún no se puede comprobar — el bot se está iniciando",
+      "not_ready": "El bot aún no ha terminado de cargar este servidor. Inténtalo de nuevo en un minuto con «🔄 Comprobar de nuevo».",
+      "admin_granted": "Concedido. Las anulaciones de permisos de los canales no afectan a ClashControl, así que cada función trabaja en cualquier canal que elijas. Para asignar roles solo importa la posición del rol de ClashControl (ver abajo).",
+      "admin_missing": "No concedido. Todas las funciones de ClashControl funcionan sin él — pero entonces el bot necesita los permisos adecuados en cada canal que usa, y las anulaciones de permisos de un canal (por ejemplo, en canales privados) pueden bloquearlo. Tendrías que configurar los permisos de ClashControl explícitamente en cada uno de esos canales, lo que supone trabajo y es fácil equivocarse.\nConceder Administrador te ahorra todo eso, y es seguro: ClashControl solo hace lo que hacen sus funciones, nunca abusa del permiso y es una aplicación verificada por Discord.",
+      "missing_title": "❌ Permisos que faltan ({count})",
+      "all_present": "✅ Todos los demás permisos necesarios están concedidos a nivel de servidor.",
+      "issues_title": "❌ Problemas con funciones configuradas ({count})",
+      "role_title": "🎭 El rol de ClashControl",
+      "role_position": "El bot solo puede asignar roles que estén **por debajo** de su propio rol más alto ({role}) en Ajustes del servidor → Roles. Mantén ese rol por encima de todos los roles que ClashControl deba asignar.",
+      "fix_title": "🔧 Cómo solucionarlo",
+      "fix_text": "**Lo más fácil:** pulsa **{button}** abajo y confirma — Discord concede entonces al bot sus permisos estándar en este servidor en un solo paso.\n**A mano:** Ajustes del servidor → Roles → ClashControl → Permisos, y activa lo que falta.\nDespués pulsa «🔄 Comprobar de nuevo».",
+      "button_reauthorize": "Volver a autorizar ClashControl"
+    }
+  },
   "permissions": {
     "warning_header": "⚠️ **Guardado, pero aún no funcionará. Corrige lo siguiente en el servidor:**",
     "warning_fix_channel": "Un administrador del servidor puede corregir los permisos de canal que faltan en los ajustes del canal (Editar canal → Permisos → añadir ClashControl).",
     "warning_fix_manage_roles": "Un administrador del servidor puede activar «Gestionar roles» en Ajustes del servidor → Roles → rol de ClashControl → Permisos.",
     "warning_footer": "Funcionará en cuanto esté solucionado; no hace falta volver a configurarlo.",
+    "warning_setup_hint": "🛠️ Resumen completo de lo que falta y cómo solucionarlo: {setup}",
     "warning_more": "… y {count} más.",
     "feature": {
       "registration": "Mensaje de registro",
@@ -1458,7 +1510,26 @@
       "send_messages_in_threads": "Enviar mensajes en hilos",
       "embed_links": "Insertar enlaces",
       "read_message_history": "Leer el historial de mensajes",
+      "administrator": "Administrador",
+      "attach_files": "Adjuntar archivos",
+      "use_external_emojis": "Usar emojis externos",
+      "create_public_threads": "Crear hilos públicos",
+      "manage_threads": "Gestionar hilos",
+      "create_instant_invite": "Crear invitación",
       "manage_roles": "Gestionar roles"
+    },
+    "why": {
+      "view_channel": "ver los canales en los que publica — sin él, esos canales son invisibles para el bot.",
+      "send_messages": "publicar los hubs de registro y de LGC, los recordatorios de guerra e incursiones, las clasificaciones y los mensajes de bienvenida.",
+      "send_messages_in_threads": "lo mismo, cuando uno de esos canales es un hilo.",
+      "embed_links": "la mayoría de los mensajes del bot son embeds (hubs, recordatorios, gestión del clan) — sin él llegan vacíos.",
+      "attach_files": "enviar imágenes y archivos, p. ej. gráficos de grupo de LGC y de análisis.",
+      "read_message_history": "encontrar sus propios mensajes anteriores para reemplazarlos — así los hubs quedan al final de su canal y las clasificaciones se actualizan en vez de acumularse.",
+      "use_external_emojis": "mostrar los iconos propios de ClashControl (ayuntamientos, ligas, iconos de estado) en sus mensajes.",
+      "manage_roles": "asignar los roles automáticos (roles de novato/miembro, roles del juego, roles de clan, roles de coordinador de LGC).",
+      "create_public_threads": "aún no lo usa ninguna función en tu servidor — se solicita para que las próximas funciones trabajen sin volver a autorizar.",
+      "manage_threads": "aún no lo usa ninguna función en tu servidor — se solicita para que las próximas funciones trabajen sin volver a autorizar.",
+      "create_instant_invite": "aún no lo usa ninguna función en tu servidor — se solicita para que las próximas funciones trabajen sin volver a autorizar."
     },
     "issue": {
       "missing_channel_perms": "**{feature}** en {channel}: falta {perms}",

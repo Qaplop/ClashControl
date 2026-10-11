@@ -1672,6 +1672,24 @@ class CacheManager:
         sent, _outcome = await self.send_user_dm_detailed(user_id, message, view=view, embed=embed)
         return sent
 
+    async def get_bot_inviter_id(self, guild: 'discord.Guild') -> Optional[int]:
+        """Who added the bot to ``guild``: the newest "bot added" audit-log entry for the bot
+        itself (tracker #0151, the /setup greeting on join). Needs View Audit Log (Administrator
+        includes it); returns None without it or on any error — the caller falls back to the
+        server owner."""
+        import discord
+
+        me = guild.me
+        if me is None or not me.guild_permissions.view_audit_log:  # type: ignore[reportUnnecessaryComparison]
+            return None
+        try:
+            async for entry in guild.audit_logs(limit=5, action=discord.AuditLogAction.bot_add):
+                if entry.target is not None and entry.target.id == me.id and entry.user is not None:
+                    return entry.user.id
+        except discord.HTTPException as e:
+            logging.info(f"[GUILD-JOIN] Could not read the audit log of guild {guild.id}: {e}")
+        return None
+
     async def send_user_dm_detailed(
         self,
         user_id: str,

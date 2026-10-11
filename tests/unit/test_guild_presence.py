@@ -149,7 +149,10 @@ class TestReconciliationLogging:
         assert CACHE.server_config[str(GONE)] == {"registration_message_enabled": True}
 
     @pytest.mark.asyncio
-    async def test_on_guild_join_logs_administrator_and_restored_config(self, caplog):
+    async def test_on_guild_join_logs_administrator_and_restored_config(self, caplog, monkeypatch):
+        from clashcontrol import greeting_dm
+        welcome = AsyncMock(return_value="sent")
+        monkeypatch.setattr(greeting_dm, "send_setup_welcome_dm", welcome)
         CACHE.server_config[str(GONE)] = {"channel_war_notifications_enabled": True}
         me = SimpleNamespace(guild_permissions=discord.Permissions(administrator=True))
         guild = SimpleNamespace(id=GONE, name="Odyssey COC", owner_id=5, me=me)
@@ -157,6 +160,19 @@ class TestReconciliationLogging:
             await QBcore.on_guild_join(guild)
         msg = next(r.getMessage() for r in caplog.records if "[GUILD-JOIN]" in r.getMessage())
         assert "Administrator: yes" in msg and "active again" in msg and "war reminders" in msg
+        welcome.assert_awaited_once_with(guild)  # tracker #0151: points the inviter at /setup
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("inviter, expected", [(42, "42"), (None, "5")])
+    async def test_setup_welcome_dm_goes_to_inviter_else_owner(self, monkeypatch, inviter, expected):
+        from clashcontrol import greeting_dm
+        monkeypatch.setattr(CACHE, "get_bot_inviter_id", AsyncMock(return_value=inviter))
+        send = AsyncMock(return_value=(True, "sent"))
+        monkeypatch.setattr(CACHE, "send_user_dm_detailed", send)
+        guild = SimpleNamespace(id=GONE, name="Odyssey COC", owner_id=5)
+        assert await greeting_dm.send_setup_welcome_dm(guild) == "sent"
+        user_id, text = send.await_args.args
+        assert user_id == expected and "Odyssey COC" in text and "/setup" in text
 
 
 class TestAuditReport:

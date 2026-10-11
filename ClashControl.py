@@ -3694,6 +3694,7 @@ async def _setup_hook():
         QBdiscordcmds.admin,  # type: ignore[misc]
         QBdiscordcmds.whois_slash,  # type: ignore[misc]
         QBdiscordcmds.registration,  # type: ignore[misc]
+        QBdiscordcmds.setup_command,  # type: ignore[misc]
     ]
 
     # Bug/feature tracker (BUG_FEATURE_TRACKER_PLAN.md §3.1) — PROD-only, no env var: DEV must
@@ -4795,6 +4796,10 @@ async def on_message(message: discord.Message) -> None:
             from clashcontrol.QBdiscocmdshelper import command_mention
             reply += "\n" + t('commands.dm.fallback_tracker_hint', user_id=str(message.author.id),
                               bug=command_mention("bug"), feature=command_mention("feature"))
+        # Tracker #0151: server admins find the setup checklist from here too.
+        from clashcontrol.QBdiscocmdshelper import command_mention as _cmd_mention
+        reply += "\n" + t('commands.dm.fallback_setup_hint', user_id=str(message.author.id),
+                          setup=_cmd_mention("setup"))
         try:
             await message.channel.send(reply)
         except discord.Forbidden:

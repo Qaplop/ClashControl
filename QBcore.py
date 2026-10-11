@@ -81,13 +81,13 @@ _patch_coc_battle_modifiers()
 from clashcontrol.constants import SECONDS_PER_HOUR
 from clashcontrol.i18n import t  # type: ignore[attr-defined]
 
-BOT_VERSION: str = "1.3.42"
+BOT_VERSION: str = "1.3.43"
 
 # Incremented by exactly one on every code change — see the "Build number" section of
 # .github/copilot-instructions.md.  BOT_VERSION answers "which release is this?";
 # BOT_BUILD answers "which edit of it is actually running?", which is the question that
 # matters when reading the server-machine's log after a file-copy deploy.
-BOT_BUILD: int = 150
+BOT_BUILD: int = 151
 
 
 def source_fingerprint() -> str:
@@ -892,7 +892,8 @@ async def on_guild_remove(guild: discord.Guild) -> None:
 @bot.event
 async def on_guild_join(guild: discord.Guild) -> None:
     """The bot was added to a guild. Logs it (nothing did before), says whether stored config
-    from an earlier membership is active again, and re-arms the one-time "paused" log line."""
+    from an earlier membership is active again, and re-arms the one-time "paused" log line.
+    Then DMs whoever added the bot a pointer to /setup (tracker #0151)."""
     import logging
     try:
         from clashcontrol.guild_presence import configured_guild_summary, mark_guild_present
@@ -910,6 +911,13 @@ async def on_guild_join(guild: discord.Guild) -> None:
         )
     except Exception as e:
         logging.error(f"[GUILD-JOIN] Error handling join of guild {guild.id}: {e}")
+    # Tracker #0151: point whoever added the bot at /setup. Separate try: a failed DM must not
+    # hide the join log line above, and vice versa.
+    try:
+        from clashcontrol.greeting_dm import send_setup_welcome_dm
+        await send_setup_welcome_dm(guild)
+    except Exception as e:
+        logging.warning(f"[GUILD-JOIN] /setup welcome DM for guild {guild.id} failed: {e}")
 
 
 @bot.event

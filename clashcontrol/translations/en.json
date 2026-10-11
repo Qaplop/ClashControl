@@ -1579,15 +1579,15 @@
     },
     "perm": {
       "view_channel": "View Channel",
-      "send_messages": "Send Messages",
-      "send_messages_in_threads": "Send Messages in Threads",
+      "send_messages": "Send Messages and Create Posts",
+      "send_messages_in_threads": "Send Messages in Threads and Posts",
       "embed_links": "Embed Links",
       "read_message_history": "Read Message History",
       "administrator": "Administrator",
       "attach_files": "Attach Files",
       "use_external_emojis": "Use External Emojis",
       "create_public_threads": "Create Public Threads",
-      "manage_threads": "Manage Threads",
+      "manage_threads": "Manage Threads and Posts",
       "create_instant_invite": "Create Invite",
       "manage_roles": "Manage Roles"
     },

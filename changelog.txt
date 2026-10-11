@@ -1,6 +1,13 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-11 (8)
+- Fixed: English (and Latin, which uses the English labels) permission labels now match the
+  Discord client (qaplop's screenshots): “Send Messages and Create Posts”, “Send Messages in
+  Threads and Posts”, “Manage Threads and Posts”. The other nine confirmed. All four client
+  languages are now verified for every install permission. Translations + tests + playbook
+  only, no build change.
+
 2026-10-11 (7)
 - Fixed: German permission labels now match the Discord client (qaplop's screenshots):
   „Nachrichten versenden und Posts erstellen“, „Nachrichten in Threads und Posts senden“,

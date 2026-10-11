@@ -95,11 +95,12 @@ Token budget note (cl100k_base): keep this file ~≤3000 tokens.
   channel override "View Channel"); never hard-code a name. Discord's help center sometimes words
   them differently from the client — the client (Server Settings → Roles) is the reference, verified
   per language from screenshots. Since forum channels, the client names the send/thread permissions
-  with "posts" (de „Nachrichten versenden und Posts erstellen“, es «Enviar mensajes y crear
-  publicaciones», zh 发送消息与创建帖子), while older sources — Discord's help center and the
-  install-permission picker (de „Soforteinladung erstellen“ there vs „Einladung erstellen“ in the
-  client) — still show other names. Verified from client screenshots on 2026-10-11 for de, es, zh;
-  en still pending. Guarded by
+  with "posts" (en “Send Messages and Create Posts”, de „Nachrichten versenden und Posts
+  erstellen“, es «Enviar mensajes y crear publicaciones», zh 发送消息与创建帖子), while older
+  sources — Discord's help center and the install-permission picker in the Developer Portal (de
+  „Soforteinladung erstellen“ there vs „Einladung erstellen“ in the client) — still show other
+  names. All 12 install permissions verified from client screenshots for en, de, es, zh on
+  2026-10-11 (role level; the channel-override "View Channel" wording is not yet verified). Guarded by
   `tests/unit/test_config_audit.py::TestPermissionNames`.
 - WHY: Multi-language support.
 📖 Details: ../clashcontrol/docs/CODE_STRUCTURE.md § Discord.py Patterns

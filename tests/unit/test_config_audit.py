@@ -396,8 +396,8 @@ class TestPermissionNames:
     Latin uses the English labels (Discord has no Latin client)."""
 
     @pytest.mark.parametrize("lang, expected", [
-        ("en", "“Send Messages”"), ("de", "„Nachrichten versenden und Posts erstellen“"), ("es", "«Enviar mensajes y crear publicaciones»"),
-        ("zh", "“发送消息与创建帖子”"), ("la", "“Send Messages”"),
+        ("en", "“Send Messages and Create Posts”"), ("de", "„Nachrichten versenden und Posts erstellen“"), ("es", "«Enviar mensajes y crear publicaciones»"),
+        ("zh", "“发送消息与创建帖子”"), ("la", "“Send Messages and Create Posts”"),
     ])
     def test_quoted_in_every_language(self, lang, expected):
         CACHE.server_config[str(GID)] = {"language": lang}

@@ -410,7 +410,7 @@ class TestPermissionNames:
 
     def test_view_channel_differs_by_scope(self):
         CACHE.server_config[str(GID)] = {"language": "de"}
-        assert bp.perm_label("view_channel", guild_id=GID) == "„Kanal ansehen“"
+        assert bp.perm_label("view_channel", guild_id=GID) == "„Kanal anzeigen“"
         assert bp.perm_label("view_channel", guild_id=GID, scope="server") == "„Kanäle ansehen“"
 
     def test_latin_uses_the_english_discord_labels(self):

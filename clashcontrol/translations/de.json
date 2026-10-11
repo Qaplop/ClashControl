@@ -1581,7 +1581,7 @@
       "cwl_coordinator_role": "CWL-Koordinator-Rolle"
     },
     "perm": {
-      "view_channel": "Kanal ansehen",
+      "view_channel": "Kanal anzeigen",
       "send_messages": "Nachrichten senden",
       "send_messages_in_threads": "Nachrichten in Threads senden",
       "embed_links": "Links einbetten",

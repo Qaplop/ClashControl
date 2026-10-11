@@ -1,6 +1,13 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-11 (10)
+- Fixed: German channel-override label „Kanal anzeigen“ (was „Kanal ansehen“; the role
+  settings keep „Kanäle ansehen“). en/es channel-override labels confirmed as set in Build 154 —
+  all permission labels are now verified against the client in en, de, es, zh, at role level and
+  in a text channel's overrides (DISCORD_PERMISSION_LABELS.md). Translation (de) + test + docs
+  only, no build change.
+
 2026-10-11 (9)
 - Fixed: problems in a specific channel now name permissions as that channel's permission
   overrides do — Discord keeps the short names there (zh 发送消息, 在子区内发送消息, 管理子区;

@@ -45,16 +45,22 @@ Discord shows **four different sets** of names for the same permissions:
 
 ## 2. Text channel overrides (used by the bot for channel problems)
 
-Only the four permissions whose label differs from the role settings are listed; all others are
-the same as in table 1. zh verified 2026-10-11 from screenshots; en/de/es are the authorize-dialog
-names (identical to the overrides in zh) and still need verification.
+Verified for en, de, es, zh from client screenshots (2026-10-11). Only the permissions whose label
+differs from the role settings, plus two channel-only names worth knowing; all others are the same
+as in table 1.
 
-| Permission (API) | en (unverified) | de (unverified) | es (unverified) | zh |
+| Permission (API) | en | de | es | zh |
 |---|---|---|---|---|
-| view_channel | View Channel | Kanal ansehen | Ver canal | 查看频道 |
+| view_channel | View Channel | Kanal anzeigen | Ver canal | 查看频道 |
 | send_messages | Send Messages | Nachrichten senden | Enviar mensajes | 发送消息 |
 | send_messages_in_threads | Send Messages in Threads | Nachrichten in Threads senden | Enviar mensajes en los hilos | 在子区内发送消息 |
 | manage_threads | Manage Threads | Threads verwalten | Gestionar hilos | 管理子区 |
+| manage_roles (channel: overrides) | Manage Permissions | Berechtigungen verwalten | Gestionar permisos | 管理权限 |
+| use_embedded_activities | Use Activities | Aktivitäten nutzen | Usar Actividades | 使用小活动 |
+
+Note the German verb: role settings „Kanäle **ansehen**“, channel override „Kanal **anzeigen**“.
+"Use Activities" is what members need in the player-hub channel to open "Your CWL Preferences"
+(/setup Phase 3); not yet in the translations.
 
 ## 3. Authorize dialog (reference only)
 

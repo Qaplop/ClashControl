@@ -101,8 +101,8 @@ Token budget note (cl100k_base): keep this file ~≤3000 tokens.
   erstellen“, es «Enviar mensajes y crear publicaciones», zh 发送消息与创建帖子), while older
   sources — Discord's help center and the install-permission picker in the Developer Portal (de
   „Soforteinladung erstellen“ there vs „Einladung erstellen“ in the client) — still show other
-  names. All 12 install permissions verified from client screenshots for en, de, es, zh on
-  2026-10-11 (role level; the channel-override "View Channel" wording is not yet verified).
+  names. All install permissions verified from client screenshots for en, de, es, zh on
+  2026-10-11, at role level and in a text channel's overrides.
   📖 Verified label tables (role settings = what the bot uses; the authorize dialog's shorter names,
   only for a text that describes that dialog): ../clashcontrol/docs/DISCORD_PERMISSION_LABELS.md Guarded by
   `tests/unit/test_config_audit.py::TestPermissionNames`.

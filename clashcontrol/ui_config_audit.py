@@ -411,6 +411,11 @@ async def open_settings_panel(interaction: discord.Interaction, guild: discord.G
         content=_tr(gid, user_id, "config_audit.panel_hint"), embeds=embeds, view=panel,
         ephemeral=True, wait=True,
     )
+    # A follow-up comes from a partial webhook: discord.py gives it no guild (Pitfall 47). The
+    # panel's refresh rebuilds itself from sent_message.guild — without one, every CWL button
+    # vanished and the labels fell back to English (tracker #0153).
+    if getattr(message, "guild", None) is None:
+        message.guild = guild  # type: ignore[misc]
     panel.sent_message = message  # type: ignore[assignment]
     logging.info(f"[SETUP] Opened the {mode} panel for user {user_id} in guild {gid}")
 

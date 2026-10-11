@@ -1,6 +1,13 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-11 (23)
+- Fixed (tracker #0153, qaplop): in the CWL panel opened from /setup ("Open settings"), Refresh
+  removed the season select and every button, and the labels switched to English. The panel is
+  an ephemeral follow-up message, which discord.py creates without a guild; Refresh rebuilds the
+  view from sent_message.guild, so it built no CWL components and translated with no server.
+  open_settings_panel() now sets the guild on the message. Pitfall 47 added. Build 167.
+
 2026-10-11 (22)
 - Fixed (tracker #0152, qaplop): /setup mixed languages — with an English admin on a German
   server, step 7 read "2 Stunden before the war ends" (also steps 8, 9, 10 and 12: "Einfache

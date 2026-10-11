@@ -816,6 +816,34 @@ class TestOpenSettings:
         assert len(spawned) == 1
         spawned[0][1].close()                                          # don't sleep 14 minutes
 
+    @pytest.mark.asyncio
+    async def test_panel_message_knows_its_guild(self, monkeypatch):
+        """Tracker #0153: a follow-up message has no guild in discord.py; the panel's Refresh
+        rebuilt itself from it and lost every CWL button (and its language)."""
+        from clashcontrol import ui_clan_management, ui_config_audit as ui
+        panel = SimpleNamespace(sent_message=None)
+        monkeypatch.setattr(ui_clan_management, "build_clan_management_panel",
+                            AsyncMock(return_value=([discord.Embed(title="x")], panel)))
+        spawned = []
+        monkeypatch.setattr(QBcore, "spawn_tracked", lambda name, coro: spawned.append(coro))
+        state = MagicMock()
+        state._get_guild.return_value = None
+        channel = discord.PartialMessageable(state=state, id=5, guild_id=None)  # what a follow-up gets
+        message = discord.WebhookMessage(state=state, channel=channel, data={
+            "id": "9", "channel_id": "5", "type": 0, "content": "", "attachments": [], "embeds": [],
+            "mentions": [], "mention_roles": [], "pinned": False, "mention_everyone": False, "tts": False,
+            "timestamp": "2026-10-11T17:22:00+00:00", "edited_timestamp": None,
+            "author": {"id": "1", "username": "cc", "discriminator": "0", "avatar": None}})
+        assert message.guild is None
+        it = MagicMock()
+        it.user.id = 1
+        it.response.defer = AsyncMock()
+        it.followup.send = AsyncMock(return_value=message)
+        guild = _guild(ADMIN)
+        await ui.open_settings_panel(it, guild, "cwl_management")
+        assert panel.sent_message is message and message.guild is guild
+        spawned[0].close()
+
 
 class TestBuildClanManagementPanel:
     @pytest.mark.asyncio

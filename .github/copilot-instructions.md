@@ -442,6 +442,8 @@ All pitfalls: short snippets + details in ../clashcontrol/docs/COPILOT_PITFALLS_
 
 46) Checking a ROLE's permission in a text channel with discord.py (`channel.permissions_for(role)`) → `TextChannel.permissions_for()` clears every permission in `Permissions.voice()`, and discord.py still files **"Use Activities"** (`use_embedded_activities`) there — so it always reads False in a text channel, although Discord offers and honours it there (Activities launched from a button, e.g. "Your CWL Preferences"). Confirmed on the STAY server 2026-10-11: /setup warned that members couldn't open the Activity while all four CoC roles had the permission. Use `config_audit._channel_permissions(channel, role)` (base `GuildChannel.permissions_for`, before the voice strip; threads via their parent). Same trap for any other voice-classed flag you might check on a text channel.
 
+47) A message from `interaction.followup.send(..., wait=True)` has **no guild**: the follow-up webhook is partial, so discord.py builds the message on a `PartialMessageable` without `guild_id` and `message.guild` is `None` (`original_response()` is fine). A view that later rebuilds itself from `sent_message.guild` then silently loses everything guild-specific. Confirmed 2026-10-11 (tracker #0153): /setup's "Open settings" CWL panel lost its season select and every button on Refresh, and its labels fell back to English. Set `message.guild = guild` right after sending, as `ui_config_audit.open_settings_panel()` does.
+
 ---
 
 ## Implementation Workflow

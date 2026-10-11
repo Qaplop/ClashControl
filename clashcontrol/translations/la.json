@@ -467,7 +467,7 @@
       "dm_no_shared_server": "❌ Nullum servitorem communem inveni in quo gentes ad inscriptionem paratae sint. Primum servitori Discord gentis tuae adiunge, deinde `/registration` iterum age."
     },
     "dm": {
-      "fallback_reply": "👋 Nuntia textus liberi non intellego — `/help` conare ut videas quid facere possim, vel mandato barrae hic in hoc nuntio privato directe utere.",
+      "fallback_reply": "👋 Nuntia textus liberi non intellego — {help} conare ut videas quid facere possim, vel mandato barrae hic in hoc nuntio privato directe utere.",
       "fallback_tutorial_hint": "🎓 Novus hic? {tutorial} tibi omnia paucis gradibus ostendit.",
       "fallback_tutorial_continue_hint": "🎓 In gradu {step} ex {total} doctrinae es — {tutorial} pergit ubi desiisti.",
       "fallback_setup_hint": "🛠️ Administrator servitoris? {setup} in servitore tuo adhibe ut institutionem ClashControl ibi inspicias.",

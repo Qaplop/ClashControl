@@ -467,7 +467,7 @@
       "dm_no_shared_server": "❌ I couldn't find a server we're both in that has clans set up for registration. Join your clan's Discord server first, then run `/registration` again."
     },
     "dm": {
-      "fallback_reply": "👋 I don't understand free text messages — try `/help` to see what I can do, or use a slash command right here in this DM.",
+      "fallback_reply": "👋 I don't understand free text messages — try {help} to see what I can do, or use a slash command right here in this DM.",
       "fallback_tutorial_hint": "🎓 New here? {tutorial} shows you around in a few steps.",
       "fallback_tutorial_continue_hint": "🎓 You're at step {step} of {total} in the tutorial — {tutorial} continues where you left off.",
       "fallback_setup_hint": "🛠️ Server admin? Run {setup} on your server to check ClashControl's setup there.",

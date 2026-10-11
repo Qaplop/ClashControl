@@ -467,7 +467,7 @@
       "dm_no_shared_server": "❌ 我没有找到我们共同所在、且已设置部落用于注册的服务器。请先加入你部落的 Discord 服务器，然后再次运行 `/registration`。"
     },
     "dm": {
-      "fallback_reply": "👋 我无法理解自由文本消息——试试使用 `/help` 查看我能做什么，或在此私信中直接使用斜杠命令。",
+      "fallback_reply": "👋 我无法理解自由文本消息——试试使用 {help} 查看我能做什么，或在此私信中直接使用斜杠命令。",
       "fallback_tutorial_hint": "🎓 新来的？{tutorial} 会用几个步骤带你了解一切。",
       "fallback_tutorial_continue_hint": "🎓 你目前在教程的第 {step} 步（共 {total} 步）——{tutorial} 会从你上次停下的地方继续。",
       "fallback_setup_hint": "🛠️ 你是服务器管理员？在你的服务器上使用 {setup} 检查 ClashControl 在那里的设置。",

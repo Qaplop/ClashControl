@@ -1,6 +1,11 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-11 (32)
+- Fixed (qaplop): in the reply to a free-text DM, /help was plain text while /bug, /feature,
+  /tutorial and /setup below it were clickable. commands.dm.fallback_reply now takes {help}
+  (command_mention("help")) in all languages. Build 176.
+
 2026-10-11 (31)
 - Fixed (qaplop): raid weekend reminders (DM and channel) went out for a clan that skipped the
   raid weekend. The CoC API serves every clan's current weekend as 'ongoing', also when nobody

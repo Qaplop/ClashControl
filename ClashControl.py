@@ -4789,7 +4789,9 @@ async def on_message(message: discord.Message) -> None:
         from clashcontrol.i18n import t
 
         logging.debug(f"[DM] Received DM from user {message.author.id}: {message.content[:80]!r}")
-        reply = t('commands.dm.fallback_reply', user_id=str(message.author.id))
+        from clashcontrol.QBdiscocmdshelper import command_mention as _cmd_mention
+        # /help clickable like the lines below (qaplop 2026-10-11).
+        reply = t('commands.dm.fallback_reply', user_id=str(message.author.id), help=_cmd_mention("help"))
         # Tracker #0122: point at /bug and /feature — only where they're actually registered
         # (tracker_enabled is PROD-only), so DEV never advertises commands that don't exist there.
         if CONFIG.tracker_enabled:
@@ -4799,7 +4801,6 @@ async def on_message(message: discord.Message) -> None:
                               bug=command_mention("bug"), feature=command_mention("feature"))
         # Tracker #0122 part 2: the tutorial (#0121) — start / continue, nothing once finished.
         from clashcontrol.tutorial import dm_hint_key
-        from clashcontrol.QBdiscocmdshelper import command_mention as _cmd_mention
         hint = dm_hint_key(str(message.author.id))
         if hint is not None:
             key, params = hint

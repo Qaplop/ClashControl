@@ -467,7 +467,7 @@
       "dm_no_shared_server": "❌ Ich habe keinen gemeinsamen Server gefunden, auf dem Clans für die Registrierung eingerichtet sind. Tritt zuerst dem Discord-Server deines Clans bei und führe dann `/registration` erneut aus."
     },
     "dm": {
-      "fallback_reply": "👋 Ich verstehe keine Freitext-Nachrichten — probiere `/help`, um zu sehen, was ich kann, oder nutze direkt hier in der DM einen Slash-Befehl.",
+      "fallback_reply": "👋 Ich verstehe keine Freitext-Nachrichten — probiere {help}, um zu sehen, was ich kann, oder nutze direkt hier in der DM einen Slash-Befehl.",
       "fallback_tutorial_hint": "🎓 Neu hier? {tutorial} zeigt dir alles in ein paar Schritten.",
       "fallback_tutorial_continue_hint": "🎓 Du bist bei Schritt {step} von {total} im Tutorial — {tutorial} macht dort weiter, wo du aufgehört hast.",
       "fallback_setup_hint": "🛠️ Server-Admin? Nutze {setup} auf deinem Server, um die Einrichtung von ClashControl dort zu prüfen.",

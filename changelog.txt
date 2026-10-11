@@ -1,6 +1,13 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-11 (31)
+- Fixed (qaplop): raid weekend reminders (DM and channel) went out for a clan that skipped the
+  raid weekend. The CoC API serves every clan's current weekend as 'ongoing', also when nobody
+  in the clan takes part (The QCrew, 2026-10-09: 0 attacks — also on 10-02 and 09-18). Reminders
+  now need a started weekend: total_attacks > 0 (get_ongoing_capital_raid_candidates_sync, used
+  by both DM and channel reminders). COC_GAME_MECHANICS.md updated. Build 175.
+
 2026-10-11 (30)
 - Changed (tracker #0122 part 2, qaplop): the reply to a free-text DM points to the tutorial by
   where the user is: "New here? /tutorial …" before the first start, "You're at step N of 9 in the

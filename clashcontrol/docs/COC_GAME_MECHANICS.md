@@ -185,6 +185,10 @@ by the project owner in-game. Implementation plan: `../../plans/implemented/trac
 
 - **Clock:** one season per week, Fri 07:00 UTC → Mon 07:00 UTC (`startTime`/`endTime`).
   Participation is voluntary; a clan leader has to start the raid in-game during that window.
+  **The API doesn't show whether a clan took part:** it serves every clan's current weekend as
+  `state: "ongoing"`, also when the clan skips it (confirmed 2026-10-11, The QCrew: skipped
+  weekends with `totalAttacks: 0`). A weekend counts as started once `totalAttacks > 0`, and raid
+  reminders go out only then (`get_ongoing_capital_raid_candidates_sync`).
 - **Eligibility:** only players who were in the clan **before the season started** can raid
   for it. Anyone joining after Fri 07:00 can't participate that weekend and must never be
   counted as having missed it.

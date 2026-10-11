@@ -415,8 +415,21 @@ def _raid_user(discord_id: str, tag: str, *, hours: int = 24, scope: str = "not_
 
 async def _seed_ongoing(db) -> None:
     await db.snapshot_capital_raid_roster("#C", S2, E2, {"#A": "Alice", "#B": "Bob", "#F": "Full"}, 5)
-    await db.upsert_capital_raid_season("#C", S2, E2, "ongoing", {},
+    await db.upsert_capital_raid_season("#C", S2, E2, "ongoing", {"total_attacks": 9},
                                         [_member("#B", "Bob", 3, 30), _member("#F", "Full", 6, 60, bonus=1)], None)
+
+
+async def test_no_reminders_for_a_weekend_the_clan_skipped(cache):
+    """qaplop 2026-10-11: the API serves every clan's weekend as 'ongoing', also when the clan
+    doesn't take part (The QCrew: 0 attacks) — no reminders until the first attack."""
+    db = cache.db_manager
+    await db.snapshot_capital_raid_roster("#C", S2, E2, {"#A": "Alice", "#B": "Bob"}, 5)
+    await db.upsert_capital_raid_season("#C", S2, E2, "ongoing", {"total_attacks": 0}, [], None)
+    assert wn._get_active_raids(_utc("2026-09-20T20:00")) == []
+    await db.upsert_capital_raid_season("#C", S2, E2, "ongoing", {"total_attacks": 1},
+                                        [_member("#B", "Bob", 1, 10)], None)
+    (_, _key, data), = wn._get_active_raids(_utc("2026-09-20T20:00"))
+    assert {m["tag"] for m in data["clan"]["members"]} == {"#A", "#B"}
 
 
 async def test_get_active_raids_shape(cache):

@@ -12860,14 +12860,18 @@ class WarHistoryDB:
     def get_ongoing_capital_raid_candidates_sync(self, season_end_before: str) -> List[Dict[str, Any]]:
         """Reminder candidates (plan §5.2): every eligible player with attacks left in an
         'ongoing' season ending no later than *season_end_before* (ISO). Limit = attack_limit +
-        bonus_attack_limit (bonusAttackLimit is the EARNED bonus — plan §10 Q-A)."""
+        bonus_attack_limit (bonusAttackLimit is the EARNED bonus — plan §10 Q-A).
+
+        Only seasons the clan has actually started: the API serves EVERY clan's weekend as
+        'ongoing', also when the clan skips it (qaplop 2026-10-11: The QCrew skipped, 0 attacks,
+        members still got reminders). Started = at least one attack (total_attacks > 0)."""
         with self._sync_conn() as conn:
             rows = conn.execute(
                 "SELECT m.clan_tag, m.season_start, s.season_end, m.player_tag, m.player_name, m.attacks, "
                 "m.attack_limit + m.bonus_attack_limit AS attack_total_limit "
                 "FROM capital_raid_members m JOIN capital_raid_seasons s "
                 "ON s.clan_tag = m.clan_tag AND s.season_start = m.season_start "
-                "WHERE s.state = 'ongoing' AND s.season_end <= ? "
+                "WHERE s.state = 'ongoing' AND s.total_attacks > 0 AND s.season_end <= ? "
                 "AND m.attacks < m.attack_limit + m.bonus_attack_limit "
                 "ORDER BY m.clan_tag, m.player_name",
                 (season_end_before,),

@@ -395,7 +395,7 @@ def _get_active_wars() -> List[Tuple[str, str, Dict[str, Any]]]:
 def _get_active_raids(now: Optional[datetime] = None) -> List[Tuple[str, str, Dict[str, Any]]]:
     """Clan Capital raid seasons as reminder "wars" (tracker #0115, plan §5.2).
 
-    One (clan_tag, raid_key, war_data) per clan with an 'ongoing' season ending within
+    One (clan_tag, raid_key, war_data) per clan with a started (≥ 1 attack) 'ongoing' season ending within
     _RAID_REMINDER_MAX_HOURS, shaped like a war_data dict so _process_war_for_notifications()
     handles it unchanged: clan.members = every ELIGIBLE player (on the roster at season start)
     who still has attacks left, each with their own attack limit (5 + earned bonus). The

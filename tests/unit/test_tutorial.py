@@ -224,6 +224,7 @@ class TestSetupHint:
         CACHE.guild_setup_dismissed = {}
         guild = _guild(ADMIN)
         guild.id = GID
+        CACHE.server_config.setdefault(str(GID), {})["member_clans"] = ["#A"]   # tip needs a member clan
         view = ui.SetupView(guild, UID, ca.run_audit(guild))
         it = _click()
         await view._on_start_guided(it)

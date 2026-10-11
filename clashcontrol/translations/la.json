@@ -1677,7 +1677,6 @@
     "button_undismiss": "↩️ Tamen adhibere",
     "guided": {
       "tutorial_hint": "🎓 Consilium: fundamenta sodalium (rationem iungere, monita, praeferentiae CWL) gradatim in {tutorial} explicantur. Prius id fac si nondum fecisti — haec institutio in eo nititur.",
-      "tutorial_hint_no_clans": "🎓 Consilium: {tutorial} fundamenta sodalium (rationem conectere, admonitiones, optiones CWL) gradatim explicat, et hic dux in eo nititur. **Primum gentem sodalem adde (gradus 3)**: doctrina omnia per gentes tuas ostendit, itaque una eget. Eam sume, cum gens tua parata est.",
       "header": "🧭 Institutio ducta · gradus {n} ex {total}",
       "button_start": "🧭 Institutionem ductam incipe",
       "button_previous": "◀ Prior",

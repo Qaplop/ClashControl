@@ -1677,7 +1677,6 @@
     "button_undismiss": "↩️ Usarlo después de todo",
     "guided": {
       "tutorial_hint": "🎓 Consejo: lo básico para miembros (vincular una cuenta, recordatorios, preferencias de LGC) se explica paso a paso en {tutorial}. Hazlo primero si aún no lo has hecho — esta guía se basa en él.",
-      "tutorial_hint_no_clans": "🎓 Consejo: {tutorial} explica paso a paso lo básico para miembros (vincular una cuenta, recordatorios, preferencias de LGC), y esta guía se basa en él. **Añade primero un clan miembro (paso 3)**: el tutorial lo muestra todo con tus clanes, así que necesita uno. Hazlo cuando tu clan esté configurado.",
       "header": "🧭 Configuración guiada · paso {n} de {total}",
       "button_start": "🧭 Iniciar configuración guiada",
       "button_previous": "◀ Anterior",

@@ -1,6 +1,13 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-11 (41)
+- Changed (tracker #0151, qaplop): the guided setup's /tutorial tip never shows before step 3 is
+  done (no member clan → the tour has nothing to show). It waits and appears once on the first
+  guided page after a member clan exists (e.g. "Check again" on step 3), and goes away when the
+  admin moves on; still only for admins who haven't finished /tutorial. The "add a member clan
+  first" tip variant (config_audit.guided.tutorial_hint_no_clans) is gone. Build 185.
+
 2026-10-11 (40)
 - Changed (tracker #0151, qaplop): every /setup step page explains itself, in every state — also
   when everything is set up. One registry (config_audit.WHAT_KEYS / what_text()), shown by the

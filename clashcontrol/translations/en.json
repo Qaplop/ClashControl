@@ -1678,7 +1678,6 @@
     "button_undismiss": "↩️ Use it after all",
     "guided": {
       "tutorial_hint": "🎓 Tip: the member basics (linking an account, reminders, CWL preferences) are explained step by step in {tutorial}. Take it first if you haven't — this guide builds on it.",
-      "tutorial_hint_no_clans": "🎓 Tip: {tutorial} explains the member basics (linking an account, reminders, CWL preferences) step by step, and this guide builds on it. **Add a member clan first (step 3)**: the tutorial shows everything for your clans, so it needs one. Take it once your clan is set up.",
       "header": "🧭 Guided setup · step {n} of {total}",
       "button_start": "🧭 Start guided setup",
       "button_previous": "◀ Previous",

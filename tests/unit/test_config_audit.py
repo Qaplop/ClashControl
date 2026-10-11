@@ -1242,6 +1242,7 @@ class TestRegistrationWhyAndTipOnTop:
     @pytest.mark.asyncio
     async def test_tutorial_tip_is_at_the_end(self):
         from clashcontrol import ui_config_audit as ui
+        _cfg(member_clans=["#A"])                       # the tip needs a member clan
         guild = _guild(ADMIN)
         view = ui.SetupView(guild, "1", ca.run_audit(guild))
         await view._on_start_guided(_click_it())
@@ -1301,4 +1302,38 @@ class TestEveryStepExplainsItself:
             assert title in names, (step.id, names)
             value = e.fields[names.index(title)].value
             assert value and "{" not in value and "config_audit." not in value, (step.id, value)
+
+
+
+class TestTutorialTipNeedsAMemberClan:
+    """qaplop 2026-10-11: the /tutorial tip never shows before step 3 (a member clan) is done."""
+
+    @staticmethod
+    def _tip(view) -> bool:
+        return any(f.value.startswith("🎓") for f in view.current_embed().fields)
+
+    @pytest.mark.asyncio
+    async def test_waits_for_the_member_clan_then_shows_once(self, monkeypatch):
+        from clashcontrol import tutorial, ui_config_audit as ui
+        monkeypatch.setattr(tutorial, "is_finished", lambda uid: False)
+        guild = _guild(ADMIN)
+        view = ui.SetupView(guild, "1", ca.run_audit(guild))
+        await view._on_start_guided(_click_it())
+        assert view.selected == "clans" and not self._tip(view)          # no member clan yet
+        _cfg(member_clans=["#A"])                                         # step 3 done
+        assert self._tip(view)                                            # e.g. after Check again
+        await view._on_next(_click_it())
+        assert not self._tip(view)                                        # shown once, gone
+        view.stop()
+
+    @pytest.mark.asyncio
+    async def test_never_after_the_tutorial(self, monkeypatch):
+        from clashcontrol import tutorial, ui_config_audit as ui
+        monkeypatch.setattr(tutorial, "is_finished", lambda uid: True)
+        _cfg(member_clans=["#A"])
+        guild = _guild(ADMIN)
+        view = ui.SetupView(guild, "1", ca.run_audit(guild))
+        await view._on_start_guided(_click_it())
+        assert not self._tip(view)
+        view.stop()
 

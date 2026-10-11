@@ -1678,7 +1678,6 @@
     "button_undismiss": "↩️ Doch nutzen",
     "guided": {
       "tutorial_hint": "🎓 Tipp: Die Grundlagen für Mitglieder (Account verknüpfen, Erinnerungen, CWL-Einstellungen) erklärt {tutorial} Schritt für Schritt. Mach es zuerst, falls noch nicht geschehen — diese Anleitung baut darauf auf.",
-      "tutorial_hint_no_clans": "🎓 Tipp: {tutorial} erklärt die Grundlagen für Mitglieder (Account verknüpfen, Erinnerungen, CWL-Einstellungen) Schritt für Schritt, und diese Anleitung baut darauf auf. **Füge zuerst einen Mitglieds-Clan hinzu (Schritt 3)**: Das Tutorial zeigt alles anhand deiner Clans und braucht deshalb einen. Mach es, sobald dein Clan eingerichtet ist.",
       "header": "🧭 Geführte Einrichtung · Schritt {n} von {total}",
       "button_start": "🧭 Geführte Einrichtung starten",
       "button_previous": "◀ Zurück",

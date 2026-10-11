@@ -1,6 +1,10 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-11 (37)
+- Changed back (tracker #0151, qaplop): the guided setup's /tutorial tip is at the end of the
+  page again (Build 180 had moved it to the top). Step 5's "Why it matters" stays. Build 181.
+
 2026-10-11 (36)
 - Changed (tracker #0151, qaplop): /setup step 5 explains why registration matters — it links
   members' Clash accounts to Discord, the base for roles, war/raid reminders, CWL sign-ups and

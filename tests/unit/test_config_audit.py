@@ -1229,7 +1229,7 @@ class TestToggleStatusLine:
 
 
 class TestRegistrationWhyAndTipOnTop:
-    """qaplop 2026-10-11: step 5 says why registration matters; the /tutorial tip opens the page."""
+    """qaplop 2026-10-11: step 5 says why registration matters; the /tutorial tip stays last."""
 
     @pytest.mark.parametrize("lang", LANGS)
     def test_step_5_explains_why(self, lang):
@@ -1240,12 +1240,12 @@ class TestRegistrationWhyAndTipOnTop:
         assert heading.startswith("🔑") and "{" not in body and len(body) <= 1024
 
     @pytest.mark.asyncio
-    async def test_tutorial_tip_is_at_the_top(self):
+    async def test_tutorial_tip_is_at_the_end(self):
         from clashcontrol import ui_config_audit as ui
         guild = _guild(ADMIN)
         view = ui.SetupView(guild, "1", ca.run_audit(guild))
         await view._on_start_guided(_click_it())
         embed = view.current_embed()
-        assert view._tutorial_hint and embed.description.startswith("🎓")
-        assert not any(f.value.startswith("🎓") for f in embed.fields)
+        assert view._tutorial_hint and not embed.description.startswith("🎓")
+        assert embed.fields[-1].value.startswith("🎓")
         view.stop()

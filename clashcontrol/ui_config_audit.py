@@ -188,9 +188,9 @@ class SetupView(discord.ui.View):
                 # Without a member clan the tour has nothing to show yet: clan first (step 3).
                 key = ("config_audit.guided.tutorial_hint" if server_ready_for_tutorial(gid)
                        else "config_audit.guided.tutorial_hint_no_clans")
-                # At the top of the page (qaplop 2026-10-11) — read before the step, not after it.
-                tip = _tr(gid, self.user_id, key, tutorial=command_mention("tutorial"))
-                embed.description = f"{tip}\n\n{embed.description or ''}"[:_EMBED_DESCRIPTION_LIMIT]
+                # At the end of the page (qaplop tried the top on 2026-10-11 and preferred the end).
+                embed.add_field(name="\u200b", value=_tr(gid, self.user_id, key,
+                                                          tutorial=command_mention("tutorial"))[:1024], inline=False)
         return embed
 
     def _button(self, key: str, callback: Any, custom_id: str, row: int,

@@ -1236,8 +1236,8 @@ class TestRegistrationWhyAndTipOnTop:
         _cfg(language=lang)
         guild = _guild(ADMIN)
         detail = ca.detail_registration(guild, ca.check_registration(guild), GID, "1")
-        heading, body = detail.sections[0]
-        assert heading.startswith("🔑") and "{" not in body and len(body) <= 1024
+        body = ca.what_text("registration", GID, "1")
+        assert "{" not in body and len(body) <= 1024 and detail.sections
 
     @pytest.mark.asyncio
     async def test_tutorial_tip_is_at_the_end(self):
@@ -1274,6 +1274,31 @@ class TestClansExplained:
         _cfg(language=lang, member_clans=["#A"])
         guild = _guild(ADMIN)
         result = ca.StepResult(AuditStatus.OK, "x", data={"clans": [("#A", "ok")], "families": []})
-        heading, body = ca.detail_clans(guild, result, GID, "1").sections[0]
-        assert heading.startswith("💡") and "{" not in body and len(body) <= 1024
+        body = ca.what_text("clans", GID, "1")
+        assert "{" not in body and len(body) <= 1024 and ca.detail_clans(guild, result, GID, "1").sections
+
+
+
+class TestEveryStepExplainsItself:
+    """qaplop 2026-10-11: every step page opens its information with "💡 What this is" — in every
+    state, not only when something is missing."""
+
+    def test_registry_covers_every_step(self):
+        assert set(ca.WHAT_KEYS) == {s.id for s in ca.STEPS}
+
+    @pytest.mark.parametrize("lang", LANGS)
+    def test_every_page_shows_it(self, lang):
+        from clashcontrol.ui_config_audit import build_step_embed
+        _cfg(language=lang)
+        guild = _guild(ADMIN)
+        title = ca._translator(GID, None)("config_audit.what_title")
+        for step in ca.STEPS:
+            r = ca.run_step(step, guild)
+            if r.status == AuditStatus.BLOCKED:
+                continue
+            e = build_step_embed(guild, "1", step.id, r)
+            names = [f.name for f in e.fields]
+            assert title in names, (step.id, names)
+            value = e.fields[names.index(title)].value
+            assert value and "{" not in value and "config_audit." not in value, (step.id, value)
 

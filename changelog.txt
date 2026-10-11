@@ -1,6 +1,16 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-11 (40)
+- Changed (tracker #0151, qaplop): every /setup step page explains itself, in every state — also
+  when everything is set up. One registry (config_audit.WHAT_KEYS / what_text()), shown by the
+  page renderer as the first section "💡 What this is" (shared heading config_audit.what_title).
+  New explanations for steps 1 (bot permissions), 2 (language & timezone), 9 (role systems
+  overall) and 13 (leaderboards); step 4's text was only shown while off and now always (key
+  welcome.off_text -> welcome.what); the per-step "what" sections and step 5's own "Why it
+  matters" heading moved into the registry. A test checks every step page in every language.
+  Build 184.
+
 2026-10-11 (39)
 - Changed (tracker #0151, qaplop): /setup step 3 explains member clans and families also when
   they're set up ("💡 What this is": the server's own clans, tracked, deciding who counts as a

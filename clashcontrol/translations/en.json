@@ -1509,6 +1509,7 @@
     "permission_issues_title": "❌ Permission problems ({count})",
     "summary_permission_problems": "{count} problem(s) found",
     "basics": {
+      "what": "The two basics every server needs: the language ClashControl speaks here, and the timezone its times (such as CWL start times) are shown in.",
       "summary": "{lang_name} · {timezone}",
       "language_title": "🌍 Language",
       "language_text": "All bot messages on this server are in **{lang_name}**. Members can choose their own language for messages only they see.",
@@ -1522,7 +1523,6 @@
       "summary_ok": "{clans} clan(s), {families} famil(y/ies)",
       "summary_problems": "{count} problem(s) in {clans} clan(s)",
       "none_text": "No member clan yet. Member clans are the base for almost everything: registration, roles, war and raid reminders and CWL all work with the clans you add here.",
-      "what_title": "💡 What this is",
       "what": "**Member clans** are your server's own clans. ClashControl tracks their wars and raid weekends, and they decide who counts as a member here: registration, roles, war and raid reminders, CWL and the leaderboards all work with them. A **clan family** groups several clans so you can pick them together. Clans you only follow on a leaderboard ({subscribe}) don't have to be member clans.",
       "list_title": "⚔️ Member clans ({count})",
       "state_deleted": "deleted by Supercell — remove it from the member clans.",
@@ -1538,7 +1538,7 @@
       "summary_ok": "posts in {channel}",
       "summary_problems": "{count} problem(s) found",
       "summary_no_apply_channel": "apply channel not set",
-      "off_text": "When it is on, ClashControl greets every new member in the server's system messages channel, with links to your clans (or your apply channel) and to the registration hub.",
+      "what": "ClashControl greets every new member in the server's system messages channel, with links to your clans (or your apply channel) and to the registration hub.",
       "posts_title": "📍 Where it posts",
       "posts_in": "{channel} — the server's system messages channel (Server Settings → Overview → System Messages Channel).",
       "content_title": "📝 What it says",
@@ -1565,6 +1565,7 @@
       "fallback_hint": "No separate raid channel is set, so raid reminders go to the war reminder channel."
     },
     "leaderboards": {
+      "what": "Leaderboards rank the players of a clan or family — by war attacks, stars, defenses, raid loot and more — and ClashControl posts them into a channel and keeps them up to date. Any clan can be subscribed, member clan or not.",
       "summary_off": "no subscriptions",
       "summary_ok": "{count} subscription(s) in {channels} channel(s)",
       "off_text": "No channel has a leaderboard subscription yet.",
@@ -1577,7 +1578,6 @@
     "on": "on",
     "off": "off",
     "registration": {
-      "why_title": "🔑 Why it matters",
       "why": "Registration is the heart of ClashControl: it links each member's Clash of Clans accounts to their Discord user. Almost everything builds on that — automatic roles (member, CoC and clan roles), war and raid reminders by DM, CWL sign-ups and rosters, {whois}, and leaderboards with Discord names. The registration message is where new members do it themselves, so keep it on, in a channel they can see.",
       "summary_hub_off": "registration message off",
       "summary_no_channel": "on, but no channel set",
@@ -1591,6 +1591,7 @@
       "admin_tools_title": "🛠️ Linking for your members"
     },
     "roles": {
+      "what": "ClashControl can give your members Discord roles automatically, based on their linked accounts. There are three independent systems — use any combination.",
       "summary_off": "no automatic roles",
       "summary_ok": "{systems}",
       "summary_simple_roles_unset": "Simple Roles on, but no role selected",
@@ -1700,6 +1701,7 @@
     "fix_title_either": "🔧 How to fix — one of these:",
     "fix_recheck": "Then click {button}.",
     "about_title": "ℹ️ About this step",
+    "what_title": "💡 What this is",
     "change_line": "To change: {path}",
     "fix": {
       "channel_perms": "In that channel: Edit Channel → Permissions → ClashControl, and allow what is missing — or grant ClashControl “Administrator” (step 1).",
@@ -1767,6 +1769,7 @@
       "linked_accounts": { "title": "Linked accounts", "desc": "How many accounts in your member clans are linked to Discord, and how admins link accounts for members." }
     },
     "bot_permissions": {
+      "what": "ClashControl needs a few Discord permissions to do its job: post and update its messages, open threads, give roles. With {admin} it has all of them — also for features that come later. Without it, every missing permission is listed here with what it's needed for.",
       "summary_ok": "all permissions granted (“Administrator”)",
       "summary_no_admin": "all permissions granted, but not “Administrator”",
       "summary_problems": "{count} problem(s) found",

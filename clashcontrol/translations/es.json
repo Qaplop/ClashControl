@@ -1508,6 +1508,7 @@
     "permission_issues_title": "❌ Problemas de permisos ({count})",
     "summary_permission_problems": "{count} problema(s) encontrado(s)",
     "basics": {
+      "what": "Los dos ajustes básicos que todo servidor necesita: el idioma en que ClashControl habla aquí y la zona horaria en que muestra sus horas (como las horas de inicio de la LGC).",
       "summary": "{lang_name} · {timezone}",
       "language_title": "🌍 Idioma",
       "language_text": "Todos los mensajes del bot en este servidor están en **{lang_name}**. Los miembros pueden elegir su propio idioma para los mensajes que solo ven ellos.",
@@ -1521,7 +1522,6 @@
       "summary_ok": "{clans} clan(es), {families} familia(s)",
       "summary_problems": "{count} problema(s) en {clans} clan(es)",
       "none_text": "Aún no hay clan miembro. Los clanes miembro son la base de casi todo: el registro, los roles, los recordatorios de guerra e incursiones y la LGC funcionan con los clanes que añadas aquí.",
-      "what_title": "💡 De qué se trata",
       "what": "Los **clanes miembro** son los clanes propios de tu servidor. ClashControl sigue sus guerras y fines de semana de incursiones, y ellos deciden quién cuenta aquí como miembro: el registro, los roles, los recordatorios de guerra e incursiones, la LGC y las clasificaciones funcionan con ellos. Una **familia de clanes** agrupa varios clanes para que puedas elegirlos juntos. Los clanes que solo sigues en una clasificación ({subscribe}) no tienen que ser clanes miembro.",
       "list_title": "⚔️ Clanes miembro ({count})",
       "state_deleted": "eliminado por Supercell — quítalo de los clanes miembro.",
@@ -1537,7 +1537,7 @@
       "summary_ok": "publica en {channel}",
       "summary_problems": "{count} problema(s) encontrado(s)",
       "summary_no_apply_channel": "canal de solicitudes no configurado",
-      "off_text": "Cuando está activado, ClashControl saluda a cada nuevo miembro en el canal de mensajes del sistema del servidor, con enlaces a tus clanes (o a tu canal de solicitudes) y al hub de registro.",
+      "what": "ClashControl saluda a cada nuevo miembro en el canal de mensajes del sistema del servidor, con enlaces a tus clanes (o a tu canal de solicitudes) y al hub de registro.",
       "posts_title": "📍 Dónde publica",
       "posts_in": "{channel} — el canal de mensajes del sistema del servidor (Ajustes del servidor → Vista general → Canal de mensajes del sistema).",
       "content_title": "📝 Qué dice",
@@ -1564,6 +1564,7 @@
       "fallback_hint": "No hay un canal de incursiones propio, así que los recordatorios de incursiones van al canal de recordatorios de guerra."
     },
     "leaderboards": {
+      "what": "Las clasificaciones ordenan a los jugadores de un clan o familia — por ataques de guerra, estrellas, defensas, botín de incursiones y más — y ClashControl las publica en un canal y las mantiene al día. Se puede suscribir cualquier clan, sea clan miembro o no.",
       "summary_off": "sin suscripciones",
       "summary_ok": "{count} suscripción(es) en {channels} canal(es)",
       "off_text": "Ningún canal tiene todavía una suscripción de clasificación.",
@@ -1576,7 +1577,6 @@
     "on": "activado",
     "off": "desactivado",
     "registration": {
-      "why_title": "🔑 Por qué importa",
       "why": "El registro es el corazón de ClashControl: vincula las cuentas de Clash of Clans de cada miembro con su usuario de Discord. Casi todo se basa en eso: roles automáticos (de miembro, de CoC y de clan), recordatorios de guerra y de incursiones por MD, inscripciones y alineaciones de la LGC, {whois} y clasificaciones con nombres de Discord. El mensaje de registro es donde los nuevos miembros lo hacen por sí mismos, así que mantenlo activo, en un canal que puedan ver.",
       "summary_hub_off": "mensaje de registro desactivado",
       "summary_no_channel": "activado, pero sin canal",
@@ -1590,6 +1590,7 @@
       "admin_tools_title": "🛠️ Vincular para tus miembros"
     },
     "roles": {
+      "what": "ClashControl puede dar roles de Discord a tus miembros automáticamente, según sus cuentas vinculadas. Hay tres sistemas independientes: usa la combinación que quieras.",
       "summary_off": "sin roles automáticos",
       "summary_ok": "{systems}",
       "summary_simple_roles_unset": "Roles Simples activado, pero sin rol elegido",
@@ -1699,6 +1700,7 @@
     "fix_title_either": "🔧 Cómo solucionarlo — una de estas opciones:",
     "fix_recheck": "Después pulsa {button}.",
     "about_title": "ℹ️ Sobre este paso",
+    "what_title": "💡 De qué se trata",
     "change_line": "Para cambiarlo: {path}",
     "fix": {
       "channel_perms": "En ese canal: Editar canal → Permisos → ClashControl, y permite lo que falta — o concede a ClashControl «Administrador» (paso 1).",
@@ -1766,6 +1768,7 @@
       "linked_accounts": { "title": "Cuentas vinculadas", "desc": "Cuántas cuentas de tus clanes miembro están vinculadas a Discord, y cómo los administradores vinculan cuentas para los miembros." }
     },
     "bot_permissions": {
+      "what": "ClashControl necesita algunos permisos de Discord para hacer su trabajo: publicar y actualizar sus mensajes, abrir hilos, dar roles. Con {admin} los tiene todos, también para funciones futuras. Sin él, aquí se lista cada permiso que falta y para qué se necesita.",
       "summary_ok": "todos los permisos concedidos («Administrador»)",
       "summary_no_admin": "todos los permisos concedidos, pero no «Administrador»",
       "summary_problems": "{count} problema(s) encontrado(s)",

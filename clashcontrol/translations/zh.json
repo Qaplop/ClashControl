@@ -1508,6 +1508,7 @@
     "permission_issues_title": "❌ 权限问题（{count}）",
     "summary_permission_problems": "发现 {count} 个问题",
     "basics": {
+      "what": "每个服务器都需要的两项基础设置：ClashControl 在这里使用的语言，以及其时间（例如部落战联赛开始时间）显示所用的时区。",
       "summary": "{lang_name} · {timezone}",
       "language_title": "🌍 语言",
       "language_text": "此服务器上的所有机器人消息均使用 **{lang_name}**。成员可以为只有自己能看到的消息选择自己的语言。",
@@ -1521,7 +1522,6 @@
       "summary_ok": "{clans} 个部落，{families} 个家族",
       "summary_problems": "{clans} 个部落中有 {count} 个问题",
       "none_text": "尚无成员部落。成员部落几乎是一切的基础：注册、身份组、战争和突袭提醒以及部落战联赛都基于你在这里添加的部落。",
-      "what_title": "💡 这是什么",
       "what": "**成员部落**是你服务器自己的部落。ClashControl 会跟踪它们的部落战和突袭周末，并由它们决定谁在这里算作成员：注册、身份组、部落战和突袭提醒、部落战联赛以及排行榜都基于它们。**部落家族**把多个部落组合在一起，方便你一起选择。只在排行榜中关注的部落（{subscribe}）不必是成员部落。",
       "list_title": "⚔️ 成员部落（{count}）",
       "state_deleted": "已被 Supercell 删除——请将其从成员部落中移除。",
@@ -1537,7 +1537,7 @@
       "summary_ok": "发布在 {channel}",
       "summary_problems": "发现 {count} 个问题",
       "summary_no_apply_channel": "未设置申请频道",
-      "off_text": "开启后，ClashControl 会在服务器的系统消息频道中欢迎每位新成员，并附上你的部落（或申请频道）和注册中心的链接。",
+      "what": "ClashControl 会在服务器的系统消息频道中欢迎每位新成员，并附上你的部落（或申请频道）和注册中心的链接。",
       "posts_title": "📍 发布位置",
       "posts_in": "{channel}——服务器的系统消息频道（服务器设置 → 概况 → 系统消息频道）。",
       "content_title": "📝 消息内容",
@@ -1564,6 +1564,7 @@
       "fallback_hint": "未设置单独的突袭频道，因此突袭提醒会发送到战争提醒频道。"
     },
     "leaderboards": {
+      "what": "排行榜会对某个部落或家族的玩家进行排名——按部落战进攻、星数、防守、突袭战利品等——ClashControl 会把它发布到频道中并保持更新。任何部落都可以订阅，无论是否为成员部落。",
       "summary_off": "没有订阅",
       "summary_ok": "{channels} 个频道中有 {count} 个订阅",
       "off_text": "尚无频道订阅排行榜。",
@@ -1576,7 +1577,6 @@
     "on": "开启",
     "off": "关闭",
     "registration": {
-      "why_title": "🔑 为什么重要",
       "why": "注册是 ClashControl 的核心：它把每位成员的部落冲突账号与其 Discord 用户关联起来。几乎所有功能都以此为基础——自动身份组（成员、部落冲突和部落身份组）、通过私信发送的部落战和突袭提醒、部落战联赛报名和阵容、{whois}，以及显示 Discord 名称的排行榜。新成员在注册消息中自行完成注册，所以请保持开启，并放在他们能看到的频道中。",
       "summary_hub_off": "注册消息已关闭",
       "summary_no_channel": "已开启，但未设置频道",
@@ -1590,6 +1590,7 @@
       "admin_tools_title": "🛠️ 为成员绑定"
     },
     "roles": {
+      "what": "ClashControl 可以根据成员关联的账号自动为他们分配 Discord 身份组。共有三个相互独立的系统——可以任意组合使用。",
       "summary_off": "没有自动身份组",
       "summary_ok": "{systems}",
       "summary_simple_roles_unset": "简单身份组已开启，但未选择身份组",
@@ -1699,6 +1700,7 @@
     "fix_title_either": "🔧 修复方法——以下任选其一：",
     "fix_recheck": "然后点击 {button}。",
     "about_title": "ℹ️ 关于此步骤",
+    "what_title": "💡 这是什么",
     "change_line": "修改：{path}",
     "fix": {
       "channel_perms": "在该频道中：编辑频道 → 权限 → ClashControl，允许缺少的权限——或授予 ClashControl “管理员”权限（第 1 步）。",
@@ -1766,6 +1768,7 @@
       "linked_accounts": { "title": "已绑定账号", "desc": "你的成员部落中有多少账号已绑定到 Discord，以及管理员如何为成员绑定账号。" }
     },
     "bot_permissions": {
+      "what": "ClashControl 需要一些 Discord 权限来工作：发布和更新消息、创建子区、分配身份组。拥有 {admin} 即可获得全部权限——也包括以后新增的功能。否则，这里会列出每个缺少的权限及其用途。",
       "summary_ok": "已授予所有权限（“管理员”）",
       "summary_no_admin": "已授予所有权限，但没有“管理员”权限",
       "summary_problems": "发现 {count} 个问题",

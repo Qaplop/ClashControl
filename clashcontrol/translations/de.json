@@ -1509,6 +1509,7 @@
     "permission_issues_title": "❌ Berechtigungsprobleme ({count})",
     "summary_permission_problems": "{count} Problem(e) gefunden",
     "basics": {
+      "what": "Die zwei Grundeinstellungen, die jeder Server braucht: die Sprache, in der ClashControl hier spricht, und die Zeitzone, in der seine Zeiten (etwa CWL-Startzeiten) angezeigt werden.",
       "summary": "{lang_name} · {timezone}",
       "language_title": "🌍 Sprache",
       "language_text": "Alle Bot-Nachrichten auf diesem Server sind auf **{lang_name}**. Mitglieder können für Nachrichten, die nur sie sehen, ihre eigene Sprache wählen.",
@@ -1522,7 +1523,6 @@
       "summary_ok": "{clans} Clan(s), {families} Familie(n)",
       "summary_problems": "{count} Problem(e) bei {clans} Clan(s)",
       "none_text": "Noch kein Mitglieds-Clan. Mitglieds-Clans sind die Basis für fast alles: Registrierung, Rollen, Kriegs- und Raid-Erinnerungen und CWL arbeiten mit den Clans, die du hier hinzufügst.",
-      "what_title": "💡 Worum es geht",
       "what": "**Mitglieds-Clans** sind die eigenen Clans deines Servers. ClashControl verfolgt ihre Kriege und Raid-Wochenenden, und sie bestimmen, wer hier als Mitglied zählt: Registrierung, Rollen, Kriegs- und Raid-Erinnerungen, CWL und die Bestenlisten arbeiten mit ihnen. Eine **Clan-Familie** fasst mehrere Clans zusammen, damit du sie gemeinsam auswählen kannst. Clans, die du nur in einer Bestenliste verfolgst ({subscribe}), müssen keine Mitglieds-Clans sein.",
       "list_title": "⚔️ Mitglieds-Clans ({count})",
       "state_deleted": "von Supercell gelöscht — entferne ihn aus den Mitglieds-Clans.",
@@ -1538,7 +1538,7 @@
       "summary_ok": "postet in {channel}",
       "summary_problems": "{count} Problem(e) gefunden",
       "summary_no_apply_channel": "Bewerbungskanal nicht gesetzt",
-      "off_text": "Wenn sie an ist, begrüßt ClashControl jedes neue Mitglied im Systemnachrichten-Kanal des Servers, mit Links zu deinen Clans (oder deinem Bewerbungskanal) und zum Registrierungs-Hub.",
+      "what": "ClashControl begrüßt jedes neue Mitglied im Systemnachrichten-Kanal des Servers, mit Links zu deinen Clans (oder deinem Bewerbungskanal) und zum Registrierungs-Hub.",
       "posts_title": "📍 Wo sie gepostet wird",
       "posts_in": "{channel} — der Systemnachrichten-Kanal des Servers (Servereinstellungen → Übersicht → Kanal für Systemnachrichten).",
       "content_title": "📝 Was sie sagt",
@@ -1565,6 +1565,7 @@
       "fallback_hint": "Es ist kein eigener Raid-Kanal gesetzt, daher gehen Raid-Erinnerungen in den Kanal der Kriegs-Erinnerungen."
     },
     "leaderboards": {
+      "what": "Bestenlisten ordnen die Spieler eines Clans oder einer Familie — nach Kriegsangriffen, Sternen, Verteidigungen, Raid-Beute und mehr — und ClashControl postet sie in einen Kanal und hält sie aktuell. Jeder Clan kann abonniert werden, ob Mitglieds-Clan oder nicht.",
       "summary_off": "keine Abonnements",
       "summary_ok": "{count} Abonnement(s) in {channels} Kanal/Kanälen",
       "off_text": "Noch kein Kanal hat ein Bestenlisten-Abonnement.",
@@ -1577,7 +1578,6 @@
     "on": "an",
     "off": "aus",
     "registration": {
-      "why_title": "🔑 Warum das wichtig ist",
       "why": "Die Registrierung ist das Herz von ClashControl: Sie verknüpft die Clash-of-Clans-Accounts jedes Mitglieds mit seinem Discord-Benutzer. Fast alles baut darauf auf — automatische Rollen (Mitglieds-, CoC- und Clan-Rollen), Kriegs- und Raid-Erinnerungen per DM, CWL-Anmeldungen und Aufstellungen, {whois} und Bestenlisten mit Discord-Namen. In der Registrierungsnachricht erledigen neue Mitglieder das selbst — lass sie also aktiv, in einem Kanal, den sie sehen können.",
       "summary_hub_off": "Registrierungsnachricht aus",
       "summary_no_channel": "an, aber kein Kanal gesetzt",
@@ -1591,6 +1591,7 @@
       "admin_tools_title": "🛠️ Verknüpfen für deine Mitglieder"
     },
     "roles": {
+      "what": "ClashControl kann deinen Mitgliedern anhand ihrer verknüpften Accounts automatisch Discord-Rollen geben. Es gibt drei unabhängige Systeme — nutze sie in beliebiger Kombination.",
       "summary_off": "keine automatischen Rollen",
       "summary_ok": "{systems}",
       "summary_simple_roles_unset": "Einfache Rollen an, aber keine Rolle gewählt",
@@ -1700,6 +1701,7 @@
     "fix_title_either": "🔧 So behebst du es — eine dieser Möglichkeiten:",
     "fix_recheck": "Klicke danach auf {button}.",
     "about_title": "ℹ️ Über diesen Schritt",
+    "what_title": "💡 Worum es geht",
     "change_line": "Ändern: {path}",
     "fix": {
       "channel_perms": "In diesem Kanal: Kanal bearbeiten → Berechtigungen → ClashControl, und erlaube, was fehlt — oder gib ClashControl „Administrator“ (Schritt 1).",
@@ -1767,6 +1769,7 @@
       "linked_accounts": { "title": "Verknüpfte Accounts", "desc": "Wie viele Accounts in deinen Mitglieds-Clans mit Discord verknüpft sind, und wie Admins Accounts für Mitglieder verknüpfen." }
     },
     "bot_permissions": {
+      "what": "ClashControl braucht einige Discord-Berechtigungen für seine Arbeit: Nachrichten posten und aktualisieren, Threads öffnen, Rollen vergeben. Mit {admin} hat es alle — auch für Funktionen, die später dazukommen. Ohne wird hier jede fehlende Berechtigung mit ihrem Zweck aufgelistet.",
       "summary_ok": "alle Berechtigungen erteilt („Administrator“)",
       "summary_no_admin": "alle Berechtigungen erteilt, aber nicht „Administrator“",
       "summary_problems": "{count} Problem(e) gefunden",

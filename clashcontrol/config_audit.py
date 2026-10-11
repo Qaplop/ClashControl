@@ -431,11 +431,6 @@ def detail_clans(guild: discord.Guild, result: StepResult, guild_id: Optional[in
                                _join_limited(lines, 1500, lambda n: tr("permissions.warning_more", count=n)), fixes)
     sections: List[Tuple[str, str]] = []
     if clans:
-        # What member clans and families are (qaplop 2026-10-11) — without clans the problem
-        # block already says it (none_text), so only here.
-        from clashcontrol.QBdiscocmdshelper import command_mention
-        sections.append((tr("config_audit.clans.what_title"),
-                         tr("config_audit.clans.what", subscribe=command_mention("subscribe"))))
         icon = {"ok": "✅", "deleted": "❌", "warlog_private": "❌", "no_data": "ℹ️"}
         lines = [f"{icon[s]} **{_clan_name(t)}** `{t}`" + (" — " + tr("config_audit.clans.state_no_data") if s == "no_data" else "")
                  for t, s in clans]
@@ -502,7 +497,7 @@ def detail_welcome(guild: discord.Guild, result: StepResult, guild_id: Optional[
     tr = _translator(guild_id, user_id)
     config = _config(guild)
     if result.status == AuditStatus.OFF:
-        return StepDetail([("", tr("config_audit.welcome.off_text")), ("", tr("config_audit.change_line", path=_open_path(
+        return StepDetail([("", tr("config_audit.change_line", path=_open_path(
             tr, "ui_components.basic_config.button_activate_welcome_message")))])
     issues: List[bp.PermissionIssue] = result.data.get("issues", [])
     codes = {f.code for f in result.findings}
@@ -572,7 +567,7 @@ def detail_channel_war_notifications(guild: discord.Guild, result: StepResult, g
     elif any(f.code == "no_channel" for f in result.findings):
         problem = _problem(tr, tr("config_audit.fix.no_channel_title"), "", [tr(
             "config_audit.fix.pick_channel", path=_open_path(tr, "ui_components.basic_config.button_select_channels"))])
-    sections: List[Tuple[str, str]] = [("", tr("config_audit.channel_war.what"))]
+    sections: List[Tuple[str, str]] = []
     if result.status != AuditStatus.OFF and result.data.get("channel_id"):
         hours = float(config.get("war_notification_threshold_hours", 2.0) or 2.0)
         sections.append((tr("config_audit.settings_title"), tr(
@@ -635,7 +630,7 @@ def detail_raid_reminders(guild: discord.Guild, result: StepResult, guild_id: Op
     elif any(f.code == "no_channel" for f in result.findings):
         problem = _problem(tr, tr("config_audit.fix.no_channel_title"), "", [tr(
             "config_audit.fix.pick_channel", path=_open_path(tr, "ui_components.basic_config.button_select_channels"))])
-    sections: List[Tuple[str, str]] = [("", tr("config_audit.raid.what"))]
+    sections: List[Tuple[str, str]] = []
     channel_id, fallback = _raid_channel(config)
     if result.status != AuditStatus.OFF and channel_id:
         text = tr("config_audit.raid.settings", channel=f"<#{channel_id}>", **_raid_settings_params(config, tr))
@@ -897,9 +892,7 @@ def detail_registration(guild: discord.Guild, result: StepResult, guild_id: Opti
     about = (tr("config_audit.registration.hub_in", channel=f"<#{channel_id}>")
              if channel_id and "hub_off" not in codes else tr("config_audit.registration.hub_off"))
     about += "\n" + tr("config_audit.registration.command_hint", registration=registration)
-    # Why it matters (qaplop 2026-10-11): linked accounts are what almost every feature runs on.
-    why = tr("config_audit.registration.why", whois=command_mention("whois"))
-    return StepDetail([(tr("config_audit.registration.why_title"), why), ("", about)], problem=problem)
+    return StepDetail([("", about)], problem=problem)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -1113,7 +1106,6 @@ def detail_cwl_settings(guild: discord.Guild, result: StepResult, guild_id: Opti
         coordinator = tr("config_audit.roles.not_set")
     on_off = {True: tr("config_audit.on"), False: tr("config_audit.off")}
     return StepDetail([
-        ("", tr("config_audit.cwl_settings.what")),
         (tr("config_audit.cwl_settings.hubs_title"), tr(
             "config_audit.cwl_settings.hubs",
             mgmt=hub(result.data.get("mgmt_on", False), "cwl_management_channel_id"),
@@ -1182,7 +1174,7 @@ def detail_war_notifications(guild: discord.Guild, result: StepResult, guild_id:
             tr("config_audit.fix.reminders_members", how=members_how),
             tr("config_audit.fix.reminders_admins", path=_open_path(tr, "ui_components.clan_management.button_clan_notifications")),
         ])
-    sections: List[Tuple[str, str]] = [("", tr("config_audit.war_notifications.what"))]
+    sections: List[Tuple[str, str]] = []
     if d["members"] and result.status != AuditStatus.INCOMPLETE:
         sections.append((tr("config_audit.war_notifications.coverage_title"), tr(
             "config_audit.war_notifications.coverage", members=d["members"], war_on=d["war_on"], raid_on=d["raid_on"])))
@@ -1233,7 +1225,6 @@ def detail_cwl_player_hub(guild: discord.Guild, result: StepResult, guild_id: Op
               button=tr("cwl.player_hub.button_preferences"), preferences=preferences)
            if channel_id else tr("config_audit.cwl_player_hub.how_command", preferences=preferences))
     return StepDetail([
-        ("", tr("config_audit.cwl_player_hub.what")),
         (tr("config_audit.cwl_player_hub.how_title"), how),
         (tr("config_audit.cwl_player_hub.admin_title"), tr(
             "config_audit.cwl_player_hub.admin", path=_open_path(tr, "cwl.settings.button_activate_player_hub"))),
@@ -1348,7 +1339,7 @@ def detail_cwl_season(guild: discord.Guild, result: StepResult, guild_id: Option
         problem = _problem(tr, tr("config_audit.cwl_season.summary_no_start", season=season,
                                   count=result.summary_params.get("count", 0)), "",
                            [tr("config_audit.fix.season_start", path=clans_path)])
-    sections: List[Tuple[str, str]] = [("", tr("config_audit.cwl_season.what"))]
+    sections: List[Tuple[str, str]] = []
     if d.get("event"):
         lines = [f"{_clan_name(c['clan_tag'])}: " + (str(c['cwl_start_at']).replace("T", " ") + " UTC"
                  if c.get("cwl_start_at") else "⚠️ " + tr("config_audit.cwl_season.no_start_time"))
@@ -1400,7 +1391,7 @@ def detail_linked_accounts(guild: discord.Guild, result: StepResult, guild_id: O
                button=tr("playerregistration.button_link_account")),
             tr("config_audit.fix.link_members", path=_open_path(tr, "ui_components.clan_management.button_link_accounts")),
         ])
-    sections: List[Tuple[str, str]] = [("", tr("config_audit.linked_accounts.what"))]
+    sections: List[Tuple[str, str]] = []
     if d["linked"]:
         sections.append((tr("config_audit.registration.coverage_title"), tr(
             "config_audit.registration.coverage", linked=d["linked"], total=d["total"], verified=d["verified"])))
@@ -1462,6 +1453,37 @@ STEPS: Tuple[AuditStep, ...] = (
 )
 
 STEPS_BY_ID: Dict[str, AuditStep] = {s.id: s for s in STEPS}
+
+
+def _what_params(guild_id: Optional[int], user_id: Optional[str]) -> Dict[str, str]:
+    from clashcontrol.QBdiscocmdshelper import command_mention
+    return {"admin": bp.perm_label("administrator", guild_id=guild_id, user_id=user_id, scope="server"),
+            "subscribe": command_mention("subscribe"), "whois": command_mention("whois")}
+
+
+#: "💡 What this is" of every step — shown first on its page, whatever its state (qaplop
+#: 2026-10-11: also when everything is set up). Every step must have one (tested).
+WHAT_KEYS: Dict[str, str] = {
+    "bot_permissions": "config_audit.bot_permissions.what",
+    "basics": "config_audit.basics.what",
+    "clans": "config_audit.clans.what",
+    "welcome": "config_audit.welcome.what",
+    "registration": "config_audit.registration.why",
+    "war_notifications": "config_audit.war_notifications.what",
+    "channel_war_notifications": "config_audit.channel_war.what",
+    "raid_reminders": "config_audit.raid.what",
+    "roles": "config_audit.roles.what",
+    "cwl_settings": "config_audit.cwl_settings.what",
+    "cwl_player_hub": "config_audit.cwl_player_hub.what",
+    "cwl_season": "config_audit.cwl_season.what",
+    "leaderboards": "config_audit.leaderboards.what",
+    "linked_accounts": "config_audit.linked_accounts.what",
+}
+
+
+def what_text(step_id: str, guild_id: Optional[int], user_id: Optional[str]) -> str:
+    """The step's short explanation in the reader's language."""
+    return _translator(guild_id, user_id)(WHAT_KEYS[step_id], **_what_params(guild_id, user_id))
 
 
 def run_step(step: AuditStep, guild: discord.Guild) -> StepResult:

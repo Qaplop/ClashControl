@@ -1508,6 +1508,7 @@
     "permission_issues_title": "❌ Difficultates permissionum ({count})",
     "summary_permission_problems": "{count} difficultas(es) inventa(e)",
     "basics": {
+      "what": "Duae res fundamentales quas omnis servitor eget: lingua qua ClashControl hic loquitur, et zona horaria qua tempora eius (ut initia CWL) ostenduntur.",
       "summary": "{lang_name} · {timezone}",
       "language_title": "🌍 Lingua",
       "language_text": "Omnia nuntia automati in hoc servitore sunt lingua **{lang_name}**. Sodales linguam suam eligere possunt nuntiis quae soli vident.",
@@ -1521,7 +1522,6 @@
       "summary_ok": "{clans} gens(tes), {families} familia(e)",
       "summary_problems": "{count} difficultas(es) in {clans} gente(ibus)",
       "none_text": "Nulla gens sodalis adhuc. Gentes sodales fundamentum fere omnium sunt: inscriptio, munera, monita belli et incursionum et CWL cum gentibus quas hic addis operantur.",
-      "what_title": "💡 Quid hoc sit",
       "what": "**Gentes sodales** sunt gentes propriae servitoris tui. ClashControl bella et fines hebdomadis incursionum earum sequitur, et eae decernunt quis hic sodalis habeatur: inscriptio, munera, admonitiones belli et incursionum, CWL et tabulae cum eis operantur. **Familia gentium** plures gentes coniungit ut eas simul eligere possis. Gentes quas tantum in tabula sequeris ({subscribe}) gentes sodales esse non necesse est.",
       "list_title": "⚔️ Gentes sodales ({count})",
       "state_deleted": "a Supercell deleta — eam e gentibus sodalibus remove.",
@@ -1537,7 +1537,7 @@
       "summary_ok": "in {channel} mittit",
       "summary_problems": "{count} difficultas(es) inventa(e)",
       "summary_no_apply_channel": "canalis petitionum non constitutus",
-      "off_text": "Cum accensum est, ClashControl omnem novum sodalem in canali nuntiorum systematis salutat, cum nexibus ad gentes tuas (vel canalem petitionum) et ad centrum inscriptionis.",
+      "what": "ClashControl omnem novum sodalem in canali nuntiorum systematis salutat, cum nexibus ad gentes tuas (vel canalem petitionum) et ad centrum inscriptionis.",
       "posts_title": "📍 Ubi mittit",
       "posts_in": "{channel} — canalis nuntiorum systematis servitoris (Server Settings → Overview → System Messages Channel).",
       "content_title": "📝 Quid dicit",
@@ -1564,6 +1564,7 @@
       "fallback_hint": "Nullus canalis incursionum proprius constitutus est, itaque monita incursionum in canalem monitorum belli eunt."
     },
     "leaderboards": {
+      "what": "Tabulae lusores gentis vel familiae ordinant — secundum impetus belli, stellas, defensiones, praedam incursionum et alia — et ClashControl eas in canalem mittit et recentes servat. Quaelibet gens subscribi potest, sodalis an non.",
       "summary_off": "nullae subscriptiones",
       "summary_ok": "{count} subscriptio(nes) in {channels} canali(bus)",
       "off_text": "Nullus canalis adhuc tabulam ordinum subscriptam habet.",
@@ -1576,7 +1577,6 @@
     "on": "accensum",
     "off": "exstinctum",
     "registration": {
-      "why_title": "🔑 Cur magni momenti sit",
       "why": "Inscriptio cor ClashControl est: rationes Clash of Clans cuiusque sodalis cum usore Discord eius conectit. Fere omnia in eo nituntur — munera automatica (sodalium, CoC et gentium), admonitiones belli et incursionum per nuntium privatum, inscriptiones et ordines CWL, {whois}, et tabulae cum nominibus Discord. Nuntium inscriptionis est ubi novi sodales id ipsi faciunt, itaque accensum serva, in canali quem videre possunt.",
       "summary_hub_off": "nuntius inscriptionis exstinctus",
       "summary_no_channel": "accensus, sed nullus canalis",
@@ -1590,6 +1590,7 @@
       "admin_tools_title": "🛠️ Iungere pro sodalibus"
     },
     "roles": {
+      "what": "ClashControl sodalibus tuis munera Discord automatice dare potest, secundum rationes eorum conexas. Tria systemata independentia sunt — quamlibet coniunctionem adhibe.",
       "summary_off": "nulla munera automatica",
       "summary_ok": "{systems}",
       "summary_simple_roles_unset": "Ordines Simplices accensi, sed nullum munus electum",
@@ -1699,6 +1700,7 @@
     "fix_title_either": "🔧 Quomodo emendes — unum ex his:",
     "fix_recheck": "Deinde {button} preme.",
     "about_title": "ℹ️ De hoc gradu",
+    "what_title": "💡 Quid hoc sit",
     "change_line": "Ad mutandum: {path}",
     "fix": {
       "channel_perms": "In illo canali: Edit Channel → Permissions → ClashControl, et quod deest permitte — vel ClashControl “Administrator” da (gradus 1).",
@@ -1766,6 +1768,7 @@
       "linked_accounts": { "title": "Rationes iunctae", "desc": "Quot rationes in gentibus tuis sodalibus cum Discord iunctae sint, et quomodo administratores rationes pro sodalibus iungant." }
     },
     "bot_permissions": {
+      "what": "ClashControl aliquot permissiones Discord eget ut munus suum faciat: nuntia mittere et renovare, fila aperire, munera dare. Cum {admin} omnes habet — etiam ad facultates futuras. Sine eo, quaeque permissio deficiens hic cum usu suo enumeratur.",
       "summary_ok": "omnes permissiones datae (“Administrator”)",
       "summary_no_admin": "omnes permissiones datae, sed non “Administrator”",
       "summary_problems": "{count} difficultas(es) inventa(e)",

@@ -1,6 +1,12 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-11 (4)
+- Fixed: English/Latin permission label back to "Use External Emojis" — the Discord Windows
+  client uses the plural (qaplop's screenshot); entry (3)'s "Use External Emoji" was wrong.
+  German „Nachrichtenverlauf anzeigen“ confirmed by the client too. Translations only
+  (en, la), no build change.
+
 2026-10-11 (3)
 - Changed (tracker #0151, qaplop): Discord permission names in texts are always quoted and use
   Discord's exact client label per language — new bot_permissions.perm_label() renders every one

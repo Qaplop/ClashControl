@@ -235,6 +235,7 @@ _GUARDED_HANDLERS = {
     },
     "clashcontrol/ui_tracker.py": {"BotSetupView": ["_on_save"]},
     "clashcontrol/ui_config_audit.py": {"SetupView": ["_on_dismiss", "_on_undismiss"]},  # /setup (#0151)
+    "clashcontrol/ui_tutorial.py": {"TutorialView": ["_on_next", "_on_back", "_on_restart"]},  # /tutorial (#0121)
     "QBdiscordcmds.py": {"DmUserView": ["on_pick"]},  # /admin DM User (tracker #0119)
     "clashcontrol/ui_notifications.py": {
         "NotificationSettingsView": ["_on_apply"],

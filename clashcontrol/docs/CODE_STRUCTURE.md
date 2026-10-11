@@ -778,7 +778,7 @@ all rebuild/button-handler paths so the reference is never lost.
 
 🟫 clashcontrol/config_audit.py + clashcontrol/ui_config_audit.py (tracker #0151, Build 151)
 - `/setup` — the server configuration checklist (server admins, ephemeral). Plan and the full
-  13-step list: `plans/tracker-0151-setup-config-audit.md`.
+  13-step list: `plans/implemented/tracker-0151-setup-config-audit.md`.
 - `config_audit.STEPS` — the step registry: id, order, audience, `requires` (prerequisite steps),
   a cache-only `check(guild) -> StepResult` (status + machine-readable findings) and a `detail`
   renderer for the step's page. `run_audit(guild)` runs every step and turns a step whose
@@ -818,7 +818,24 @@ all rebuild/button-handler paths so the reference is never lost.
   ⏸️ while it would be ⏸️/⚠️, and the real status once it is ✅/❌. Steps 5, 6 and 11 offer the
   member side through `clashcontrol/tutorial_flows.py` — the registration hub's own button
   callbacks (behind `RegistrationView.interaction_check`) and the CWL preferences Activity —
-  shared with the planned /tutorial (#0121); never re-implement those screens.
+  shared with /tutorial (#0121); never re-implement those screens.
+
+🟫 clashcontrol/tutorial.py + clashcontrol/ui_tutorial.py (tracker #0121, Build 159)
+- `/tutorial` — the member tutorial. `tutorial.STEPS` is the storybook (welcome → /help → link
+  account → My Accounts → war reminders → /whois → /leaderboard → CWL preferences → done); a
+  step has an optional `command` (qualified name, completes the step when the user runs it),
+  `flows` (`tutorial_flows` functions = the real screens) and a `done_check` (state, e.g. an
+  account is linked). Texts: `tutorial.step.<id>.{title,text,task}`.
+- Progress per user and track in `user_tutorial_progress` / `CACHE.tutorial_progress`
+  (`save_progress()`); deleted with the user (`delete_user()` / `delete_user_account()`).
+- `tutorial.on_command_completed()` runs from `QBcore.on_app_command_completion`: when the
+  user's active step (≤ 7 days old) asks for exactly that command, the step is done, the
+  position moves on, and the bot answers in that command's conversation with a "Continue
+  tutorial" button (`ContinueTutorialView`). Never raises.
+- `ui_tutorial.TutorialView`: Back / Next / Start over persist the position (claim_action);
+  flow buttons resolve the server via `resolve_tutorial_guild()` (this server, the DM's
+  /registration pick, or the only shared server). /setup's guided setup suggests /tutorial to
+  admins who haven't finished it (the admin tutorial builds on the member one).
 
 🟫 clashcontrol/log_throttle.py (tracker #0150)
 - `log_throttled(level, key, message, interval_s=DAY_S)` — log a recurring failure once per

@@ -298,6 +298,11 @@
         "title": "🛡️ Mandatum Analyse CWL Opponent",
         "detailed": "Analyza ordinem gentis adversariae CWL: statisticas peritiae, fidelitatis, et industriae per lusorem.\n\n**Usus:**\n`/analyse cwl_opponent clan:<nota_vel_nomen_gentis>`\n\n**Parametri:**\n• `clan` - Nota vel nomen gentis tuae ad coetum ligae CWL eius inveniendum\n\n**Cursus:**\n1. Coetum ligae CWL currentem (vel recentissimum) gentis tuae solvit\n2. Indicem temporarium ostendit usque ad 7 gentes adversarias in coetu enumerans\n3. Elige gentem adversariam ut tabulam statisticarum per lusorem videas\n\n**Statisticae Ostensae (per lusorem, ad profilum in ludo nexae):**\n• Peritia Impetus CWL = (3★ − 1★) / impetus × 100%\n• Peritia Impetus CW = eadem formula pro bellis CW ordinariis\n• Fidelitas = impetus usi / impetus maximi × 100%\n• Industria = rate participationis impetuum tempore normalizata\n\n**Nota:**\nOrdo ex ordinatione belli viva fontatur cum praesto est, vel ex datis belli/temporis recentissimis archivatis ut subsidium.\n\n**Exemplum:**\n`/analyse cwl_opponent clan:#L2J0C0PY`"
       },
+      "tutorial": {
+        "short": "Peregrinatio gradatim per ClashControl",
+        "title": "🎓 Mandatum Tutorial",
+        "detailed": "Brevis peregrinatio interactiva pro sodalibus.\n\n**Usus:**\n`/tutorial`\n\n**Gradus:** /help → rationem iungere → Rationes Meae → monita belli → /whois → /leaderboard → praeferentiae CWL\n\n**Notae:**\n• Gradus qui mandatum rogat factus est simul ac id adhibes — automatum te tum pergere sinit\n• Quovis tempore desiste: /tutorial ibi pergit ubi desiisti; «🔄 Ab initio» de novo incipit\n• In servitore et in nuntio privato cum automato operatur\n• Administratores servitoris: /setup institutionem servitoris ductam habet"
+      },
       "setup": {
         "short": "Institutionem ClashControl in hoc servitore inspice (administratores)",
         "title": "🛠️ Mandatum Setup",
@@ -463,6 +468,7 @@
     },
     "dm": {
       "fallback_reply": "👋 Nuntia textus liberi non intellego — `/help` conare ut videas quid facere possim, vel mandato barrae hic in hoc nuntio privato directe utere.",
+      "fallback_tutorial_hint": "🎓 Novus hic? {tutorial} tibi omnia paucis gradibus ostendit.",
       "fallback_setup_hint": "🛠️ Administrator servitoris? {setup} in servitore tuo adhibe ut institutionem ClashControl ibi inspicias.",
       "setup_welcome": "👋 Gratias quod ClashControl ad **{guild}** addidisti!\n🛠️ Gradus proximus: {setup} in illo servitore adhibe. Permissiones automati inspicit et gradatim ostendit quid institutum sit et quid adhuc desit.\n📖 {help} omnia mandata enumerat.",
       "fallback_tracker_hint": "🐞 Vitia per {bug} nuntia, aut si emendationem proponere vis, eam per {feature} propone, hic in colloquio.",
@@ -1427,6 +1433,7 @@
       "install_button": "Adde servitori",
       "members_title": "Iam in servitore tuo est? Incipe sic",
       "members_text": "Haec mandata in servitore tuo vel in nuntio privato ad ClashControl scribe:",
+      "members_tutorial": "brevis peregrinatio: rationem iunge, monita, CWL et alia",
       "members_registration": "rationes tuas Clash of Clans iunge et admonitiones belli constitue",
       "members_cwl": "ducibus gentis tuae dic an CWL ludere velis",
       "members_help": "omnia quae ClashControl facere potest",
@@ -1438,6 +1445,35 @@
       "support_text": "Quaestiones tuas in canali auxilii publico nostro in servitore The QCrew pone.",
       "support_button": "Canalem auxilii aperi",
       "footer": "Errorem invenisti aut consilium habes? Utere /bug vel /feature."
+    }
+  },
+  "tutorial": {
+    "header": "🎓 Disciplina · gradus {n} ex {total}",
+    "welcome_back": "👋 Salve iterum — ad gradum {n} es.",
+    "task_title": "👉 Munus tuum",
+    "task_done": "✅ Factum — perge per Proximus.",
+    "step_completed": "🎓 Disciplina: ✅ **{title}** factum! Paratus ad gradum proximum?",
+    "button_back": "◀ Retro",
+    "button_next": "Proximus ▶",
+    "button_start": "Incipiamus ▶",
+    "button_finish": "Fini ▶",
+    "button_restart": "🔄 Ab initio",
+    "button_continue": "🎓 Disciplinam perge",
+    "button_link_account": "🔗 Rationem meam iunge",
+    "button_my_accounts": "📋 Rationes meae",
+    "button_war_reminders": "🔔 Monita belli mea",
+    "button_cwl_preferences": "🛡️ Praeferentiae meae CWL",
+    "pick_server": "Pro quo servitore? Semel hic in nuntio privato {registration} adhibe et servitorem elige — deinde iterum conare.",
+    "step": {
+      "welcome": { "title": "Salve in ClashControl", "text": "ClashControl rationes tuas Clash of Clans cum servitore Discord tuo coniungit: munera automatica, monita ante finem belli, inscriptiones CWL et tabulae ordinum.\n\nHaec peregrinatio 7 gradus breves habet. Quidam te rogant ut mandatum experiaris — automatum id animadvertit et te pergere sinit. Quovis tempore desistere potes: {tutorial} te eo reducit ubi eras." },
+      "help": { "title": "Omnia mandata: /help", "text": "{help} omnia mandata cum brevi descriptione enumerat; unum elige ut singula videas. In nuntio privato cum automato mandata quae solum in servitore operantur notantur.", "task": "Nunc {help} scribe — hic in nuntio privato vel in quovis canali." },
+      "link_account": { "title": "Rationem Clash tuam iunge", "text": "Rationem tuam Clash of Clans cum Discord iunge: servitor tuus tum munera apta tibi dare potest, et monita ad te perveniunt. Lusorem tuum per nomen vel signum invenis. Signum API ex optionibus ludi probat rationem tuam esse, ne quis alius eam vindicet.", "task": "Infra 🔗 Rationem meam iunge preme — vel {registration} → Iungere Rationes adhibe." },
+      "my_accounts": { "title": "Rationes tuae", "text": "Rationes Meae omnes rationes iunctas ostendunt: rationem principalem elige, unam signo API proba, vel nexum remove.", "task": "Infra 📋 Rationes meae aperi et inspice." },
+      "war_reminders": { "title": "Monita belli", "text": "ClashControl tibi ante finem belli nuntium privatum mittere potest dum impetus adhuc apertos habes — pro omnibus bellis vel solum CWL, semel vel saepius, et tu eligis quam mature. Monita incursionum eodem modo operantur.", "task": "Infra 🔔 Monita belli mea aperi et ea accende." },
+      "whois": { "title": "Quis sit quis: /whois", "text": "{whois} rationes Clash sodalis Discord ostendit — vel historiam bellorum lusoris. Utile ad cognoscendum quis post rationem lateat.", "task": "{whois} scribe et te ipsum ut usorem elige." },
+      "leaderboard": { "title": "Tabulae ordinum", "text": "{leaderboard} statisticas gentis ostendit: stellas, medios impetus, impetus omissos, CWL et alia. Canales etiam tabulis ordinum se ipsas renovantibus subscribere possunt ({subscriptions} eas enumerat).", "task": "{leaderboard} in canali servitoris tui scribe et gentem tuam elige." },
+      "cwl_preferences": { "title": "Praeferentiae tuae CWL", "text": "Ante omne Foedus Bellorum Gentium duces tui quaerunt quis ludere velit. Semel responde: gradum foederis praelatum, et an semper ludere, numquam ludere, an quoque tempore decernere velis — pro unaquaque ratione tua.", "task": "{cwl_preferences} scribe, vel infra 🛡️ Praeferentiae meae CWL adhibe." },
+      "done": { "title": "Omnia parata", "text": "🎉 Praecipua nosti. {help} cetera omnia habet, {about} ostendit quid ClashControl facere possit, et {tutorial} hanc peregrinationem quovis tempore reducit (🔄 Ab initio iterum a gradu 1 incipit)." }
     }
   },
   "config_audit": {
@@ -1626,6 +1662,7 @@
     "button_dismiss": "🚫 Hoc non adhibemus",
     "button_undismiss": "↩️ Tamen adhibere",
     "guided": {
+      "tutorial_hint": "🎓 Consilium: fundamenta sodalium (rationem iungere, monita, praeferentiae CWL) gradatim in {tutorial} explicantur. Prius id fac si nondum fecisti — haec institutio in eo nititur.",
       "header": "🧭 Institutio ducta · gradus {n} ex {total}",
       "button_start": "🧭 Institutionem ductam incipe",
       "button_previous": "◀ Prior",

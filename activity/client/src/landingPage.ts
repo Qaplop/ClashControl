@@ -25,6 +25,7 @@ export const FALLBACK_STRINGS: Record<string, string> = {
   install_button: 'Add to server',
   members_title: 'Already on your server? Get started',
   members_text: 'Type these commands in your server, or in a DM with ClashControl:',
+  members_tutorial: 'a short tour: link your account, reminders, CWL and more',
   members_registration: 'link your Clash of Clans accounts and set up war reminders',
   members_cwl: 'tell your clan leaders whether you want to play CWL',
   members_help: 'see everything ClashControl can do',
@@ -48,6 +49,7 @@ const FEATURES: [string, string][] = [
 ]
 // Slash command names are not localized on Discord's side, so they stay literal here.
 const MEMBER_STEPS: [string, string][] = [
+  ['/tutorial', 'members_tutorial'],
   ['/registration', 'members_registration'],
   ['/cwl preferences', 'members_cwl'],
   ['/help', 'members_help'],

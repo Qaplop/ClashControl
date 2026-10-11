@@ -5,7 +5,7 @@ a cache-only ``check`` that returns a ``StepResult`` (status + findings) and a `
 for the step's own page. ``/setup`` shows the checklist and the detail pages
 (``clashcontrol/ui_config_audit.py``); the guided setup and the tutorials of tracker #0121 are
 planned to walk the same registry, so a step is defined once and every surface agrees on whether
-it is done. Plan: plans/tracker-0151-setup-config-audit.md.
+it is done. Plan: plans/implemented/tracker-0151-setup-config-audit.md.
 
 Checks never call an API (same rule as ``bot_permissions.audit_guild``): they read the bot's own
 cached guild state and CACHE. A step whose check is not implemented yet reports ``PENDING``.

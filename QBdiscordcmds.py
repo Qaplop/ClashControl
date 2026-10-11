@@ -1060,6 +1060,7 @@ def _get_help_command_dm_status() -> Dict[str, bool]:
         "analyse cwl_league_group": analyse_leaguegroup.guild_only,
         "analyse cwl_opponent": analyse_cwlopponent.guild_only,
         "setup": setup_command.guild_only,
+        "tutorial": tutorial.guild_only,
         "clan management": clan_management.guild_only,
         "cwl preferences": cwl_preferences.guild_only,
         "dm me": dm_me.guild_only,
@@ -1087,7 +1088,7 @@ def _get_help_command_names() -> List[str]:
     """Every command /help knows about, in listing order — shared by help() and its
     autocomplete so the two can't disagree. bug/feature only exist where the tracker is on."""
     names = [
-        "registration", "cwl preferences", "dm me",
+        "tutorial", "registration", "cwl preferences", "dm me",
         "subscribe", "unsubscribe", "subscriptions", "leaderboard", "highlightme", "analyse cwl_league_group",
         "analyse cwl_opponent", "setup", "clan management", "admin", "list", "whois", "link clan", "link player",
         "help", "about", "status", "ping"
@@ -1179,7 +1180,7 @@ async def help(interaction: discord.Interaction, command: Optional[str] = None):
     # Organize commands by category (reorganized per user request)
     categories = {
         # Top-most (2026-09-24, qaplop): what every player sets up first — before any other block.
-        t('commands.help.category_player_setup', user_id=user_id, guild_id=guild_id): ["registration", "cwl preferences", "dm me"],
+        t('commands.help.category_player_setup', user_id=user_id, guild_id=guild_id): ["tutorial", "registration", "cwl preferences", "dm me"],
         t('commands.help.category_leaderboards', user_id=user_id, guild_id=guild_id): ["subscribe", "unsubscribe", "subscriptions", "leaderboard", "highlightme"],
         t('commands.help.category_clan_player_info', user_id=user_id, guild_id=guild_id): ["analyse cwl_league_group", "analyse cwl_opponent", "whois", "link clan", "link player"],
         t('commands.help.category_administration', user_id=user_id, guild_id=guild_id): ["setup", "clan management", "admin", "list"],
@@ -3595,7 +3596,7 @@ async def cwl_preferences(interaction: discord.Interaction) -> None:
 @app_commands.guild_only()
 @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
 async def setup_command(interaction: discord.Interaction) -> None:
-    """Tracker #0151 (plans/tracker-0151-setup-config-audit.md): the server configuration
+    """Tracker #0151 (plans/implemented/tracker-0151-setup-config-audit.md): the server configuration
     checklist — every setup area with ✅/❌/⚠️/⏸️ status and a detail page that explains what is
     wrong and how to fix it. Ephemeral, current server only, server admins only (Administrator or
     the bot admin, like /clan management). Phase 1: step 1 (bot permissions) is checked, the
@@ -3622,6 +3623,20 @@ async def setup_command(interaction: discord.Interaction) -> None:
     from clashcontrol.ui_config_audit import send_setup_overview
     await send_setup_overview(interaction)
     _log_cmd_done(interaction, "setup")
+
+
+@app_commands.command(name="tutorial", description=dev_mode+"A step-by-step tour of ClashControl: link your account, reminders, CWL and more.")
+# DM-invokable (top-level, no guild_only): the member flows pick the server like /registration does.
+@app_commands.checks.cooldown(1, 5.0, key=lambda i: i.user.id)
+async def tutorial(interaction: discord.Interaction) -> None:
+    """Tracker #0121: the member tutorial — a storybook of steps from /help to linking an account
+    to CWL preferences (clashcontrol/tutorial.py). Opens where the user left off; a step that asks
+    for a command completes when the user runs it (QBcore.on_app_command_completion). Ephemeral.
+    Must answer with send_message (the tutorial is the interaction's first response)."""
+    _log_cmd(interaction, "tutorial")
+    from clashcontrol.ui_tutorial import send_tutorial
+    await send_tutorial(interaction)
+    _log_cmd_done(interaction, "tutorial")
 
 
 @app_commands.command(name="registration", description=dev_mode+"Open the registration hub to link and manage your Clash of Clans accounts.")

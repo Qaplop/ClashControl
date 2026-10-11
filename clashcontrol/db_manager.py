@@ -1897,6 +1897,10 @@ class WarHistoryDB:
         logging.info("[DB-SCHEMA] Verifying guild setup dismissals table...")
         await self._create_guild_setup_dismissed_schema()
 
+        # /tutorial progress per user (tracker #0121)
+        logging.info("[DB-SCHEMA] Verifying user tutorial progress table...")
+        await self._create_user_tutorial_progress_schema()
+
         # Bot-level tester list (DM-testing allowlist, global — not per-guild)
         logging.info("[DB-SCHEMA] Verifying bot testers table...")
         await self._create_bot_testers_schema()
@@ -3404,6 +3408,75 @@ class WarHistoryDB:
             )
         """)
         await self._conn.commit()
+
+    async def _create_user_tutorial_progress_schema(self) -> None:
+        """Create user_tutorial_progress (idempotent): where a user is in /tutorial (tracker #0121).
+        One row per (user, track); ``done_steps`` is a comma-separated list of step ids. Hot DB
+        only. No FK to users: a member can take the tutorial before linking any account — so
+        delete_user() removes the row explicitly."""
+        await self._ensure_connection()
+        await self._conn.execute("""
+            CREATE TABLE IF NOT EXISTS user_tutorial_progress (
+                discord_id TEXT NOT NULL,
+                track      TEXT NOT NULL,
+                step_id    TEXT NOT NULL,
+                done_steps TEXT NOT NULL DEFAULT '',
+                updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+                PRIMARY KEY (discord_id, track)
+            )
+        """)
+        await self._conn.commit()
+
+    def get_all_tutorial_progress_sync(self) -> Dict[str, Dict[str, Dict[str, Any]]]:
+        """Every user's tutorial progress: discord_id -> track -> {step, done, updated_at}."""
+        import sqlite3
+
+        if not self.db_path:
+            raise RuntimeError("Database not initialized. Call initialize() first.")
+        result: Dict[str, Dict[str, Dict[str, Any]]] = {}
+        with self._sync_conn() as conn:
+            try:
+                rows = conn.execute(
+                    "SELECT discord_id, track, step_id, done_steps, updated_at FROM user_tutorial_progress"
+                ).fetchall()
+            except sqlite3.Error as e:
+                logging.error(f"[DB-QUERY-SYNC] get_all_tutorial_progress_sync failed: {e}")
+                return result
+        for row in rows:
+            result.setdefault(row["discord_id"], {})[row["track"]] = {
+                "step": row["step_id"],
+                "done": {x for x in str(row["done_steps"] or "").split(",") if x},
+                "updated_at": row["updated_at"],
+            }
+        return result
+
+    def set_tutorial_progress_sync(self, discord_id: str, track: str, step_id: str,
+                                   done_steps: Iterable[str], updated_at: str) -> bool:
+        """Upsert a user's tutorial position (idempotent)."""
+        import sqlite3
+
+        if not self.db_path:
+            raise RuntimeError("Database not initialized. Call initialize() first.")
+        with self._sync_conn() as conn:
+            try:
+                with self._sync_write_lock:
+                    conn.execute(
+                        """
+                        INSERT INTO user_tutorial_progress (discord_id, track, step_id, done_steps, updated_at)
+                        VALUES (?, ?, ?, ?, ?)
+                        ON CONFLICT(discord_id, track) DO UPDATE SET
+                            step_id = excluded.step_id, done_steps = excluded.done_steps,
+                            updated_at = excluded.updated_at
+                        """,
+                        (discord_id, track, step_id, ",".join(sorted(done_steps)), updated_at),
+                    )
+                    if self._should_commit():
+                        conn.commit()
+                return True
+            except sqlite3.Error as e:
+                logging.error(f"[DB-WRITE-SYNC] set_tutorial_progress_sync failed for user {discord_id}: {e}")
+                conn.rollback()
+                return False
 
     def get_all_guild_setup_dismissed_sync(self) -> Dict[str, Set[str]]:
         """Every dismissed /setup step, as guild_id -> {step_id} (CACHE load shape)."""
@@ -11455,6 +11528,10 @@ class WarHistoryDB:
             await self._conn.execute(
                 "DELETE FROM users WHERE discord_id = ?",
                 (discord_id,)
+            )
+            # No FK from user_tutorial_progress (a member can start /tutorial before linking).
+            await self._conn.execute(
+                "DELETE FROM user_tutorial_progress WHERE discord_id = ?", (discord_id,)
             )
             await self._conn.commit()
         finally:

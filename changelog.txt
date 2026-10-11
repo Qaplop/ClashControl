@@ -1,6 +1,22 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-11 (15)
+- Added (tracker #0121, /setup Phase 7): /tutorial — an interactive member tutorial in 9 pages:
+  welcome → /help → link your account → My Accounts → war reminders → /whois → /leaderboard →
+  CWL preferences → done. A step that asks for a command completes when the member runs it: the
+  bot answers in that command's conversation with "✅ done — Continue tutorial". Steps open the
+  real screens (registration hub, war reminders, CWL Activity) through tutorial_flows.py, shared
+  with /setup. Progress is stored per user (new table user_tutorial_progress, removed with the
+  user's account), so /tutorial continues where the member left off; "Start over" resets. Works
+  on a server and in the DM. /setup's guided setup suggests /tutorial to admins who haven't
+  finished it. Pointed to from /help, the greeting DM, the /about landing page and the DM
+  free-text reply. Privacy policy: tutorial progress listed, "Last updated" date added (the page
+  referred to a date it didn't show).
+  Files: tutorial.py, ui_tutorial.py (new), tutorial_flows.py, ui_config_audit.py, db_manager.py,
+  cache_manager.py, QBdiscordcmds.py, ClashControl.py, QBcore.py, greeting_dm.py,
+  translations (5), activity/client (landingPage.ts, privacy.html), docs, tests. 3888 tests pass. Build 159.
+
 2026-10-11 (14)
 - Added (tracker #0151, Phase 6): guided setup in /setup. "🧭 Start guided setup" walks all 13
   steps in order (Previous / Next / Check again / Overview), starting at the first step that

@@ -298,6 +298,11 @@
         "title": "🛡️ Analyse CWL-Gegner Befehl",
         "detailed": "Analysiere die Aufstellung eines CWL-Gegner-Clans: Skill-, Zuverlässigkeits- und Aktivitätswerte je Spieler.\n\n**Verwendung:**\n`/analyse cwl_opponent clan:<clan_tag_oder_name>`\n\n**Parameter:**\n• `clan` - Dein Clan-Tag oder -Name, um die CWL-Gruppe nachzuschlagen\n\n**Ablauf:**\n1. Ermittelt die aktuelle (oder letzte) CWL-Gruppe deines Clans\n2. Zeigt eine ephemere Auswahlliste mit bis zu 7 Gegner-Clans der Gruppe\n3. Wähle einen Gegner-Clan, um eine Spieler-Statistiktabelle zu erhalten\n\n**Angezeigte Werte (je Spieler, verlinkt zum Ingame-Profil):**\n• CWL-Angriffs-Skill = (3★ − 1★) / Angriffe × 100%\n• CW-Angriffs-Skill = gleiche Formel für reguläre CW-Kriege\n• Zuverlässigkeit = genutzte Angriffe / maximale Angriffe × 100%\n• Aktivität = zeitnormierte Angriffsbeteiligung\n\n**Hinweis:**\nDie Aufstellung stammt aus der aktuellen Kriegsaufstellung, falls verfügbar, oder als Fallback aus den zuletzt archivierten Kriegs-/Saisondaten.\n\n**Beispiel:**\n`/analyse cwl_opponent clan:#L2J0C0PY`"
       },
+      "tutorial": {
+        "short": "Eine Schritt-für-Schritt-Tour durch ClashControl",
+        "title": "🎓 Tutorial-Befehl",
+        "detailed": "Eine kurze, interaktive Tour für Mitglieder.\n\n**Verwendung:**\n`/tutorial`\n\n**Schritte:** /help → Account verknüpfen → Meine Accounts → Kriegs-Erinnerungen → /whois → /leaderboard → CWL-Einstellungen\n\n**Hinweise:**\n• Ein Schritt, der nach einem Befehl fragt, ist erledigt, sobald du ihn nutzt — der Bot lässt dich dann weitermachen\n• Jederzeit aufhören: /tutorial macht dort weiter, wo du warst; „🔄 Von vorn“ beginnt neu\n• Funktioniert auf einem Server und in einer DM mit dem Bot\n• Server-Admins: /setup hat die geführte Server-Einrichtung"
+      },
       "setup": {
         "short": "Einrichtung von ClashControl auf diesem Server prüfen (Admins)",
         "title": "🛠️ Setup-Befehl",
@@ -463,6 +468,7 @@
     },
     "dm": {
       "fallback_reply": "👋 Ich verstehe keine Freitext-Nachrichten — probiere `/help`, um zu sehen, was ich kann, oder nutze direkt hier in der DM einen Slash-Befehl.",
+      "fallback_tutorial_hint": "🎓 Neu hier? {tutorial} zeigt dir alles in ein paar Schritten.",
       "fallback_setup_hint": "🛠️ Server-Admin? Nutze {setup} auf deinem Server, um die Einrichtung von ClashControl dort zu prüfen.",
       "setup_welcome": "👋 Danke, dass du ClashControl zu **{guild}** hinzugefügt hast!\n🛠️ Nächster Schritt: Nutze {setup} auf diesem Server. Es prüft die Berechtigungen des Bots und zeigt Schritt für Schritt, was eingerichtet ist und was noch fehlt.\n📖 {help} listet alle Befehle.",
       "fallback_tracker_hint": "🐞 Melde Fehler mit {bug} oder wenn du einen Verbesserungsvorschlag hast, schlage ihn mit {feature} vor, direkt hier im Chat.",
@@ -1428,6 +1434,7 @@
       "install_button": "Zum Server hinzufügen",
       "members_title": "Schon auf deinem Server? So legst du los",
       "members_text": "Gib diese Befehle auf deinem Server oder in einer DM an ClashControl ein:",
+      "members_tutorial": "eine kurze Tour: Account verknüpfen, Erinnerungen, CWL und mehr",
       "members_registration": "verknüpfe deine Clash of Clans Accounts und richte Kriegserinnerungen ein",
       "members_cwl": "sag deinen Clan-Anführern, ob du CWL spielen möchtest",
       "members_help": "alles, was ClashControl kann",
@@ -1439,6 +1446,35 @@
       "support_text": "Stell deine Fragen in unserem öffentlichen Support-Kanal auf dem Server The QCrew.",
       "support_button": "Support-Kanal öffnen",
       "footer": "Fehler gefunden oder eine Idee? Nutze /bug oder /feature."
+    }
+  },
+  "tutorial": {
+    "header": "🎓 Tutorial · Schritt {n} von {total}",
+    "welcome_back": "👋 Willkommen zurück — du bist bei Schritt {n}.",
+    "task_title": "👉 Deine Aufgabe",
+    "task_done": "✅ Erledigt — weiter mit Weiter.",
+    "step_completed": "🎓 Tutorial: ✅ **{title}** erledigt! Bereit für den nächsten Schritt?",
+    "button_back": "◀ Zurück",
+    "button_next": "Weiter ▶",
+    "button_start": "Los geht's ▶",
+    "button_finish": "Abschließen ▶",
+    "button_restart": "🔄 Von vorn",
+    "button_continue": "🎓 Tutorial fortsetzen",
+    "button_link_account": "🔗 Meinen Account verknüpfen",
+    "button_my_accounts": "📋 Meine Accounts",
+    "button_war_reminders": "🔔 Meine Kriegs-Erinnerungen",
+    "button_cwl_preferences": "🛡️ Meine CWL-Einstellungen",
+    "pick_server": "Für welchen Server? Nutze hier in der DM einmal {registration} und wähle den Server — dann versuche es erneut.",
+    "step": {
+      "welcome": { "title": "Willkommen bei ClashControl", "text": "ClashControl verbindet deine Clash of Clans Accounts mit deinem Discord-Server: automatische Rollen, Erinnerungen vor Kriegsende, CWL-Anmeldungen und Bestenlisten.\n\nDiese Tour hat 7 kurze Schritte. Manche bitten dich, einen Befehl auszuprobieren — der Bot merkt das und lässt dich weitermachen. Du kannst jederzeit aufhören: {tutorial} bringt dich dorthin zurück, wo du warst." },
+      "help": { "title": "Alle Befehle: /help", "text": "{help} listet alle Befehle mit einer kurzen Beschreibung; wähle einen für die Details. In einer DM mit dem Bot sind die Befehle markiert, die nur auf einem Server funktionieren.", "task": "Gib jetzt {help} ein — hier in der DM oder in einem beliebigen Kanal." },
+      "link_account": { "title": "Verknüpfe deinen Clash-Account", "text": "Verknüpfe deinen Clash of Clans Account mit Discord: Dein Server kann dir dann die passenden Rollen geben, und Erinnerungen erreichen dich. Du findest deinen Spieler über Name oder Tag. Ein API-Token aus den Spiel-Einstellungen beweist, dass der Account dir gehört, damit ihn niemand sonst beanspruchen kann.", "task": "Klicke unten auf 🔗 Meinen Account verknüpfen — oder nutze {registration} → Konten verknüpfen." },
+      "my_accounts": { "title": "Deine Accounts", "text": "Meine Accounts zeigt alle verknüpften Accounts: Wähle deinen Haupt-Account, verifiziere einen per API-Token oder entferne eine Verknüpfung.", "task": "Öffne unten 📋 Meine Accounts und sieh dich um." },
+      "war_reminders": { "title": "Kriegs-Erinnerungen", "text": "ClashControl kann dir vor Kriegsende eine DM schicken, solange du noch Angriffe offen hast — für alle Kriege oder nur CWL, einmal oder wiederholt, und du legst fest, wie früh. Raid-Erinnerungen funktionieren genauso.", "task": "Öffne unten 🔔 Meine Kriegs-Erinnerungen und schalte sie ein." },
+      "whois": { "title": "Wer ist wer: /whois", "text": "{whois} zeigt die Clash-Accounts eines Discord-Mitglieds — oder die Kriegshistorie eines Spielers. Praktisch, um herauszufinden, wer hinter einem Account steckt.", "task": "Gib {whois} ein und wähle dich selbst als Benutzer." },
+      "leaderboard": { "title": "Bestenlisten", "text": "{leaderboard} zeigt die Statistiken eines Clans: Sterne, Angriffsschnitte, verpasste Angriffe, CWL und mehr. Kanäle können außerdem Bestenlisten abonnieren, die sich selbst aktuell halten ({subscriptions} listet sie auf).", "task": "Gib {leaderboard} in einem Kanal deines Servers ein und wähle deinen Clan." },
+      "cwl_preferences": { "title": "Deine CWL-Einstellungen", "text": "Vor jeder Clankriegsliga fragen deine Anführer, wer mitspielen will. Beantworte es einmal: eine bevorzugte Liga-Stufe, und ob du immer spielen, nie spielen oder jede Saison neu entscheiden willst — für jeden deiner Accounts.", "task": "Gib {cwl_preferences} ein oder nutze unten 🛡️ Meine CWL-Einstellungen." },
+      "done": { "title": "Alles bereit", "text": "🎉 Du kennst das Wichtigste. {help} hat alles Weitere, {about} zeigt, was ClashControl kann, und {tutorial} holt diese Tour jederzeit zurück (🔄 Von vorn beginnt wieder bei Schritt 1)." }
     }
   },
   "config_audit": {
@@ -1627,6 +1663,7 @@
     "button_dismiss": "🚫 Nutzen wir nicht",
     "button_undismiss": "↩️ Doch nutzen",
     "guided": {
+      "tutorial_hint": "🎓 Tipp: Die Grundlagen für Mitglieder (Account verknüpfen, Erinnerungen, CWL-Einstellungen) erklärt {tutorial} Schritt für Schritt. Mach es zuerst, falls noch nicht geschehen — diese Anleitung baut darauf auf.",
       "header": "🧭 Geführte Einrichtung · Schritt {n} von {total}",
       "button_start": "🧭 Geführte Einrichtung starten",
       "button_previous": "◀ Zurück",

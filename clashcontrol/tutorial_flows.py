@@ -64,4 +64,8 @@ async def open_cwl_preferences(interaction: discord.Interaction, guild_id: int) 
     from clashcontrol.ui_cwl_roster import _launch_cwl_activity  # pyright: ignore[reportPrivateUsage]  # shared on purpose
 
     logging.info(f"[TUTORIAL-FLOW] cwl_preferences user={interaction.user.id} guild={guild_id}")
+    if interaction.guild is None:
+        # In the DM the Activity has no server of its own; it fetches this one (GET
+        # /api/cwl/dm-guild), exactly as /cwl preferences records it there (#0128).
+        CACHE.pending_cwl_dm_guild[str(interaction.user.id)] = guild_id
     await _launch_cwl_activity(interaction, guild_id, "player_prefs")

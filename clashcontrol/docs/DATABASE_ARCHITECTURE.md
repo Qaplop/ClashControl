@@ -439,6 +439,12 @@ rebuilding `war_summary` in both DBs (Cardinal Rule 1). `/whois clan` reports th
   `UNIQUE(guild_id, step_id)`, undo deletes the row. No user column on purpose (no personal
   data). Config only: hot DB, no history mirror, no FK. Mirrored in `CACHE.guild_setup_dismissed`
   (guild_id -> {step_id}), written through `CACHE.set_setup_step_dismissed()`.
+- `user_tutorial_progress` - Where a user is in /tutorial (tracker #0121, 2026-10-11):
+  `discord_id`, `track` ('user'), `step_id`, `done_steps` (comma list), `updated_at`;
+  PK (discord_id, track). Personal data (listed in the privacy policy). No FK to `users` — a
+  member can start the tutorial before linking — so `delete_user()` deletes the row explicitly.
+  Hot DB only. Mirrored in `CACHE.tutorial_progress`, written through
+  `CACHE.set_tutorial_progress()`.
 - `guild_welcome_families` - Junction: guilds ↔ families selected (as a whole) for the welcome
   message's clan-link mode. Independent from `guild_member_families` (member-role granting).
 - `guild_welcome_clans` - Junction: guilds ↔ individually-selected clans for the welcome

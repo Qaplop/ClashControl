@@ -1,6 +1,6 @@
 # /setup (config audit + admin setup guide) and /tutorial (#0121): concept & stepped plan
 
-Status: **Concept agreed 2026-10-11. Phase 1 implemented 2026-10-11 (Build 151, v1.3.43), Phase 2 implemented 2026-10-11 (Build 152), Phase 3 implemented 2026-10-11 (Build 155), Phase 4 implemented 2026-10-11 (Build 156), Phase 5 implemented 2026-10-11 (Build 157), Phase 6 implemented 2026-10-11 (Build 158); Phase 7 (/tutorial, #0121) open.**
+Status: **Concept agreed 2026-10-11. Phase 1 implemented 2026-10-11 (Build 151, v1.3.43), Phase 2 implemented 2026-10-11 (Build 152), Phase 3 implemented 2026-10-11 (Build 155), Phase 4 implemented 2026-10-11 (Build 156), Phase 5 implemented 2026-10-11 (Build 157), Phase 6 implemented 2026-10-11 (Build 158), Phase 7 /tutorial implemented 2026-10-11 (Build 159). All phases implemented.**
 Tracker: #0151 (this feature), #0121 (tutorials). Owner: qaplop. Builds on `/admin Permission Audit` (Build 135, `clashcontrol/bot_permissions.py`)
 and is the foundation for tracker #0121 (tutorials).
 
@@ -231,6 +231,13 @@ class StepResult:
 - Progress for "where did I stop" = first non-OK step, recomputed — no cursor needed.
 
 ### 4.2 Shared user flows, and how layer C builds on it (Phase 7, #0121)
+- **As built (Build 159):** storybook of 9 pages in `clashcontrol/tutorial.py` (welcome, /help,
+  link account, My Accounts, war reminders, /whois, /leaderboard, CWL preferences, done).
+  Command steps complete via `on_app_command_completion` (active = touched within 7 days) and
+  answer with a "Continue tutorial" button. Table `user_tutorial_progress` (privacy policy
+  updated). Admin track = /setup guided setup (state from the config), which suggests
+  /tutorial to admins who haven't finished it. Entry points: /help, greeting DM, /about
+  landing page, DM free-text reply.
 - **`TutorialFlow` objects** (new `clashcontrol/tutorial_flows.py`) for the user-side
   experiences: `link_account` (opens the real registration flow), `war_notifications`,
   `cwl_preferences`. Each = howto pages + "try it now" action + per-user done-check. Defined

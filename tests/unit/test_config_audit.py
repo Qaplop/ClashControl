@@ -1,4 +1,4 @@
-"""/setup — server configuration audit, Phase 1 (tracker #0151, plans/tracker-0151-setup-config-audit.md).
+"""/setup — server configuration audit, Phase 1 (tracker #0151, plans/implemented/tracker-0151-setup-config-audit.md).
 
 Pins: the install permission set (must match the Developer Portal), step 1's classification
 (Administrator / missing permissions / feature problems / bot not ready), the registry and its
@@ -97,6 +97,11 @@ def _all_but(*missing: str) -> discord.Permissions:
 
 @pytest.fixture(autouse=True)
 def _isolate(monkeypatch):
+    # Fresh translations: other tests swap the shared manager's for fakes (see test_tutorial.py).
+    from clashcontrol import i18n
+    fresh = i18n.TranslationManager()
+    fresh.load_translations()
+    monkeypatch.setattr(i18n, "_translation_manager", fresh)
     monkeypatch.setattr(CACHE, "server_config", {})
     monkeypatch.setattr(CACHE, "subscriptions", {})
     monkeypatch.setattr(CACHE, "clan_name_cache", {})

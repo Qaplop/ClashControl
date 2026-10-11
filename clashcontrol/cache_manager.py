@@ -381,6 +381,9 @@ class CacheManager:
         # /setup steps a guild marked "we don't use this" (guild_setup_dismissed, tracker #0151):
         # guild_id -> {step_id}. Write-through via set_setup_step_dismissed().
         self.guild_setup_dismissed: Dict[str, Set[str]] = {}
+        # /tutorial progress (user_tutorial_progress, tracker #0121): discord_id -> track ->
+        # {"step", "done": set, "updated_at"}. Write-through via set_tutorial_progress().
+        self.tutorial_progress: Dict[str, Dict[str, Dict[str, Any]]] = {}
         # Bot-wide (not per-guild) DM-testing allowlist — Discord user IDs who receive DMs
         # alongside CONFIG.server_admin wherever a feature is gated behind a
         # cwl_dm_restrict_to_admin-style live-testing guard. Managed via /admin's
@@ -1438,6 +1441,9 @@ class CacheManager:
             # Remove from in-memory cache
             if discord_id in self.user_accounts:
                 del self.user_accounts[discord_id]
+            # db delete_user() removes the row too; getattr like guild_guest_clans (instances
+            # built without __init__ in tests)
+            getattr(self, "tutorial_progress", {}).pop(discord_id, None)
             
             # Immediately delete from database
             await self.db_manager.delete_user(discord_id)  # type: ignore[union-attr]
@@ -2774,6 +2780,28 @@ class CacheManager:
             (steps.add if dismissed else steps.discard)(step_id)
         return ok
 
+    async def load_tutorial_progress(self) -> None:
+        """Load every user's /tutorial progress (user_tutorial_progress)."""
+        if not self.db_manager:
+            return
+        self.tutorial_progress = await asyncio.to_thread(self.db_manager.get_all_tutorial_progress_sync)
+        logging.info(f"[DB-READ] Loaded /tutorial progress for {len(self.tutorial_progress)} user(s)")
+
+    async def set_tutorial_progress(self, discord_id: str, track: str, step_id: str, done: Set[str]) -> bool:
+        """Persist a user's tutorial position. Write-through: DB first, CACHE when it succeeded."""
+        if not self.db_manager:
+            return False
+        from datetime import datetime, timezone
+        updated_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        ok = await asyncio.to_thread(
+            self.db_manager.set_tutorial_progress_sync, discord_id, track, step_id, done, updated_at,
+        )
+        if ok:
+            self.tutorial_progress.setdefault(discord_id, {})[track] = {
+                "step": step_id, "done": set(done), "updated_at": updated_at,
+            }
+        return ok
+
     async def load_guild_guest_clans(self) -> None:
         """Load persisted CWL guest clans (guild_guest_clans) into self.guild_guest_clans."""
         if not self.db_manager:
@@ -2984,6 +3012,7 @@ class CacheManager:
         logging.info("Starting cache load_all() - loading CWL guest clans...")
         await self.load_guild_guest_clans()
         await self.load_guild_setup_dismissed()
+        await self.load_tutorial_progress()
         self._current_load_operation = "load_testers"
         logging.info("Starting cache load_all() - loading testers...")
         await self.load_testers()

@@ -298,6 +298,11 @@
         "title": "🛡️ Analyse CWL Opponent Command",
         "detailed": "Analyse a CWL opponent clan's roster: per-player skill, reliability, and activity stats.\n\n**Usage:**\n`/analyse cwl_opponent clan:<clan_tag_or_name>`\n\n**Parameters:**\n• `clan` - Your clan tag or name to look up the CWL league group for\n\n**Flow:**\n1. Resolves your clan's current (or most recent) CWL league group\n2. Shows an ephemeral dropdown listing the up to 7 opponent clans in the group\n3. Select an opponent clan to see a per-player stats table\n\n**Stats Displayed (per player, linked to in-game profile):**\n• CWL Attack Skill = (3★ − 1★) / attacks × 100%\n• CW Attack Skill = same formula for regular CW wars\n• Reliability = attacks used / max attacks × 100%\n• Activity = time-normalised attack participation rate\n\n**Note:**\nRoster is sourced from the live war lineup when available, or the most recent archived war/season data as a fallback.\n\n**Example:**\n`/analyse cwl_opponent clan:#L2J0C0PY`"
       },
+      "tutorial": {
+        "short": "A step-by-step tour of ClashControl",
+        "title": "🎓 Tutorial Command",
+        "detailed": "A short, interactive tour for members.\n\n**Usage:**\n`/tutorial`\n\n**Steps:** /help → link your account → My Accounts → war reminders → /whois → /leaderboard → CWL preferences\n\n**Notes:**\n• A step that asks for a command is done as soon as you run it — the bot then lets you continue\n• Stop any time: /tutorial continues where you left off; “🔄 Start over” begins again\n• Works on a server and in a DM with the bot\n• Server admins: /setup has the guided server setup"
+      },
       "setup": {
         "short": "Check ClashControl's setup on this server (admins)",
         "title": "🛠️ Setup Command",
@@ -463,6 +468,7 @@
     },
     "dm": {
       "fallback_reply": "👋 I don't understand free text messages — try `/help` to see what I can do, or use a slash command right here in this DM.",
+      "fallback_tutorial_hint": "🎓 New here? {tutorial} shows you around in a few steps.",
       "fallback_setup_hint": "🛠️ Server admin? Run {setup} on your server to check ClashControl's setup there.",
       "setup_welcome": "👋 Thanks for adding ClashControl to **{guild}**!\n🛠️ Next step: run {setup} on that server. It checks the bot's permissions and shows step by step what is set up and what is still missing.\n📖 {help} lists every command.",
       "fallback_tracker_hint": "🐞 Report bugs with {bug}, or if you have an idea for an improvement, suggest it with {feature}, right here in the chat.",
@@ -1428,6 +1434,7 @@
       "install_button": "Add to server",
       "members_title": "Already on your server? Get started",
       "members_text": "Type these commands in your server, or in a DM with ClashControl:",
+      "members_tutorial": "a short tour: link your account, reminders, CWL and more",
       "members_registration": "link your Clash of Clans accounts and set up war reminders",
       "members_cwl": "tell your clan leaders whether you want to play CWL",
       "members_help": "see everything ClashControl can do",
@@ -1439,6 +1446,35 @@
       "support_text": "Ask your questions in our public support channel on The QCrew server.",
       "support_button": "Open support channel",
       "footer": "Found a bug or have an idea? Use /bug or /feature."
+    }
+  },
+  "tutorial": {
+    "header": "🎓 Tutorial · step {n} of {total}",
+    "welcome_back": "👋 Welcome back — you're at step {n}.",
+    "task_title": "👉 Your task",
+    "task_done": "✅ Done — continue with Next.",
+    "step_completed": "🎓 Tutorial: ✅ **{title}** done! Ready for the next step?",
+    "button_back": "◀ Back",
+    "button_next": "Next ▶",
+    "button_start": "Let's go ▶",
+    "button_finish": "Finish ▶",
+    "button_restart": "🔄 Start over",
+    "button_continue": "🎓 Continue tutorial",
+    "button_link_account": "🔗 Link my account",
+    "button_my_accounts": "📋 My accounts",
+    "button_war_reminders": "🔔 My war reminders",
+    "button_cwl_preferences": "🛡️ My CWL preferences",
+    "pick_server": "Which server is this for? Run {registration} here in the DM once and pick the server — then try again.",
+    "step": {
+      "welcome": { "title": "Welcome to ClashControl", "text": "ClashControl connects your Clash of Clans accounts with your Discord server: automatic roles, reminders before a war ends, CWL sign-ups and leaderboards.\n\nThis tour has 7 short steps. Some ask you to try a command — the bot notices and lets you continue. You can stop any time: {tutorial} brings you back to where you were." },
+      "help": { "title": "All commands: /help", "text": "{help} lists every command with a short description; pick one for the details. In a DM with the bot, the commands that only work on a server are marked.", "task": "Type {help} now — here in the DM or in any channel." },
+      "link_account": { "title": "Link your Clash account", "text": "Link your Clash of Clans account to Discord: your server can then give you the right roles, and reminders reach you. You find your player by name or tag. An API token from the game's settings proves the account is yours, so nobody else can claim it.", "task": "Click 🔗 Link my account below — or use {registration} → Link Accounts." },
+      "my_accounts": { "title": "Your accounts", "text": "My Accounts shows every account you linked: pick your main account, verify one with an API token, or remove a link.", "task": "Open 📋 My accounts below and have a look." },
+      "war_reminders": { "title": "War reminders", "text": "ClashControl can DM you before a war ends while you still have attacks left — for all wars or CWL only, once or repeatedly, and you choose how early. Raid weekend reminders work the same way.", "task": "Open 🔔 My war reminders below and switch them on." },
+      "whois": { "title": "Who is who: /whois", "text": "{whois} shows the Clash accounts of a Discord member — or a player's war history. Handy to find out who is behind an account.", "task": "Type {whois} and pick yourself as the user." },
+      "leaderboard": { "title": "Leaderboards", "text": "{leaderboard} shows a clan's stats: stars, attack averages, missed attacks, CWL and more. Channels can also subscribe to leaderboards that keep themselves up to date ({subscriptions} lists them).", "task": "Type {leaderboard} in a channel of your server and pick your clan." },
+      "cwl_preferences": { "title": "Your CWL preferences", "text": "Before every Clan War League your leaders ask who wants to play. Answer it once: a preferred league tier, and whether you always want to play, never play, or decide each season — for each of your accounts.", "task": "Type {cwl_preferences}, or use 🛡️ My CWL preferences below." },
+      "done": { "title": "You're all set", "text": "🎉 You know the essentials. {help} has everything else, {about} shows what ClashControl can do, and {tutorial} brings this tour back any time (🔄 Start over begins again at step 1)." }
     }
   },
   "config_audit": {
@@ -1627,6 +1663,7 @@
     "button_dismiss": "🚫 We don't use this",
     "button_undismiss": "↩️ Use it after all",
     "guided": {
+      "tutorial_hint": "🎓 Tip: the member basics (linking an account, reminders, CWL preferences) are explained step by step in {tutorial}. Take it first if you haven't — this guide builds on it.",
       "header": "🧭 Guided setup · step {n} of {total}",
       "button_start": "🧭 Start guided setup",
       "button_previous": "◀ Previous",

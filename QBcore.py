@@ -87,7 +87,7 @@ BOT_VERSION: str = "1.3.43"
 # .github/copilot-instructions.md.  BOT_VERSION answers "which release is this?";
 # BOT_BUILD answers "which edit of it is actually running?", which is the question that
 # matters when reading the server-machine's log after a file-copy deploy.
-BOT_BUILD: int = 158
+BOT_BUILD: int = 159
 
 
 def source_fingerprint() -> str:
@@ -1013,6 +1013,12 @@ async def on_app_command_completion(interaction: discord.Interaction, command: a
         command_info = f"/{command.name}" if command else "Unknown"
         guild_info = f"in {interaction.guild.name}" if interaction.guild else "in DM"
         logging.debug(f"Command completed: {command_info} by {user_info} {guild_info}")
+    except Exception:
+        pass
+    # /tutorial (tracker #0121): a tutorial step that asked for this command reacts here.
+    try:
+        from clashcontrol.tutorial import on_command_completed
+        await on_command_completed(interaction, command)
     except Exception:
         pass
 

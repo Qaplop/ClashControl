@@ -192,6 +192,10 @@ action. There is no separate `/clans`, `/list_families`, `/list_players`, `/list
   a message)
 - `/link clan` / `/link player` - Post an in-game link (`Name: https://link.clashofclans.com/...`)
   to a clan or player profile; pick by tag or name substring like `/analyse` and `/whois`
+- `/tutorial` - A step-by-step tour for members (tracker #0121): /help, linking an account, My
+  Accounts, war reminders, /whois, /leaderboard, CWL preferences. Steps that ask for a command
+  complete when you run it; progress is kept, so /tutorial continues where you left off (or
+  “Start over”). Works on a server and in the DM.
 - `/registration` - Open the registration hub (link accounts, war notifications, API
   verification, my accounts), always ephemeral; in the bot DM for a server you share with the
   bot (server picker if several)
@@ -214,7 +218,7 @@ action. There is no separate `/clans`, `/list_families`, `/list_players`, `/list
   timezone, clans (private war log, deleted clans), welcome message, registration (visibility,
   linked accounts), DM war reminders, war and raid reminders in channels, server roles, CWL
   settings, "Your CWL Preferences", the CWL season against the calendar, leaderboards. The guided
-  setup on top of it follows (tracker #0151, `plans/tracker-0151-setup-config-audit.md`).
+  setup on top of it follows (tracker #0151, `plans/implemented/tracker-0151-setup-config-audit.md`).
 - `/admin` - Administrative diagnostic actions and utilities; pick an `action` (permission scope
   noted per action — "admin" = server admin, "bot admin" = bot's configured `SERVER_ADMIN` only):
   - **CLEANUP_MESSAGES** - Clean up orphaned messages in current channel (admin)

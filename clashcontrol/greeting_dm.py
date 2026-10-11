@@ -30,6 +30,7 @@ _FEATURE_KEYS = (
 
 # "Get started" commands for members, each paired with its landing-page description.
 _GET_STARTED = (
+    ("tutorial", "members_tutorial"),
     ("registration", "members_registration"),
     ("cwl preferences", "members_cwl"),
     ("help", "members_help"),

@@ -298,6 +298,11 @@
         "title": "🛡️ Comando Analyse CWL Opponent",
         "detailed": "Analiza la alineación de un clan rival de LGC: estadísticas de habilidad, fiabilidad y actividad por jugador.\n\n**Uso:**\n`/analyse cwl_opponent clan:<tag_o_nombre_del_clan>`\n\n**Parámetros:**\n• `clan` - Tag o nombre de tu clan para buscar su grupo de liga de LGC\n\n**Flujo:**\n1. Resuelve el grupo de liga de LGC actual (o más reciente) de tu clan\n2. Muestra un desplegable efímero con hasta 7 clanes rivales del grupo\n3. Selecciona un clan rival para ver una tabla de estadísticas por jugador\n\n**Estadísticas Mostradas (por jugador, enlazado a su perfil en el juego):**\n• Habilidad de Ataque LGC = (3★ − 1★) / ataques × 100%\n• Habilidad de Ataque GC = misma fórmula para guerras normales GC\n• Fiabilidad = ataques usados / ataques máximos × 100%\n• Actividad = tasa de participación en ataques normalizada por tiempo\n\n**Nota:**\nLa alineación se obtiene de la formación de guerra en vivo cuando está disponible, o de los datos de guerra/temporada archivados más recientes como respaldo.\n\n**Ejemplo:**\n`/analyse cwl_opponent clan:#L2J0C0PY`"
       },
+      "tutorial": {
+        "short": "Un recorrido paso a paso por ClashControl",
+        "title": "🎓 Comando Tutorial",
+        "detailed": "Un recorrido corto e interactivo para miembros.\n\n**Uso:**\n`/tutorial`\n\n**Pasos:** /help → vincular tu cuenta → Mis Cuentas → recordatorios de guerra → /whois → /leaderboard → preferencias de LGC\n\n**Notas:**\n• Un paso que pide un comando queda hecho en cuanto lo usas — el bot te deja continuar\n• Para cuando quieras: /tutorial sigue donde lo dejaste; «🔄 Empezar de nuevo» vuelve a empezar\n• Funciona en un servidor y en un MD con el bot\n• Administradores: /setup tiene la configuración guiada del servidor"
+      },
       "setup": {
         "short": "Comprobar la configuración de ClashControl en este servidor (administradores)",
         "title": "🛠️ Comando Setup",
@@ -463,6 +468,7 @@
     },
     "dm": {
       "fallback_reply": "👋 No entiendo mensajes de texto libre — prueba `/help` para ver qué puedo hacer, o usa un comando de barra aquí mismo en este MD.",
+      "fallback_tutorial_hint": "🎓 ¿Eres nuevo? {tutorial} te lo enseña todo en unos pocos pasos.",
       "fallback_setup_hint": "🛠️ ¿Administras un servidor? Usa {setup} en tu servidor para comprobar allí la configuración de ClashControl.",
       "setup_welcome": "👋 ¡Gracias por añadir ClashControl a **{guild}**!\n🛠️ Siguiente paso: usa {setup} en ese servidor. Comprueba los permisos del bot y muestra paso a paso qué está configurado y qué falta todavía.\n📖 {help} muestra todos los comandos.",
       "fallback_tracker_hint": "🐞 Informa de errores con {bug} o, si tienes una sugerencia de mejora, propónla con {feature}, aquí mismo en el chat.",
@@ -1427,6 +1433,7 @@
       "install_button": "Añadir al servidor",
       "members_title": "¿Ya está en tu servidor? Empieza así",
       "members_text": "Escribe estos comandos en tu servidor o en un MD con ClashControl:",
+      "members_tutorial": "un recorrido corto: vincula tu cuenta, recordatorios, LGC y más",
       "members_registration": "vincula tus cuentas de Clash of Clans y configura los recordatorios de guerra",
       "members_cwl": "indica a los líderes de tu clan si quieres jugar la CWL",
       "members_help": "todo lo que ClashControl puede hacer",
@@ -1438,6 +1445,35 @@
       "support_text": "Haz tus preguntas en nuestro canal de soporte público del servidor The QCrew.",
       "support_button": "Abrir canal de soporte",
       "footer": "¿Encontraste un error o tienes una idea? Usa /bug o /feature."
+    }
+  },
+  "tutorial": {
+    "header": "🎓 Tutorial · paso {n} de {total}",
+    "welcome_back": "👋 Bienvenido de nuevo — estás en el paso {n}.",
+    "task_title": "👉 Tu tarea",
+    "task_done": "✅ Hecho — continúa con Siguiente.",
+    "step_completed": "🎓 Tutorial: ✅ ¡**{title}** hecho! ¿Listo para el siguiente paso?",
+    "button_back": "◀ Atrás",
+    "button_next": "Siguiente ▶",
+    "button_start": "¡Vamos! ▶",
+    "button_finish": "Terminar ▶",
+    "button_restart": "🔄 Empezar de nuevo",
+    "button_continue": "🎓 Continuar tutorial",
+    "button_link_account": "🔗 Vincular mi cuenta",
+    "button_my_accounts": "📋 Mis cuentas",
+    "button_war_reminders": "🔔 Mis recordatorios de guerra",
+    "button_cwl_preferences": "🛡️ Mis preferencias de LGC",
+    "pick_server": "¿Para qué servidor? Usa una vez {registration} aquí en el MD y elige el servidor — luego inténtalo de nuevo.",
+    "step": {
+      "welcome": { "title": "Bienvenido a ClashControl", "text": "ClashControl conecta tus cuentas de Clash of Clans con tu servidor de Discord: roles automáticos, recordatorios antes de que termine una guerra, inscripciones a la LGC y clasificaciones.\n\nEste recorrido tiene 7 pasos cortos. Algunos te piden probar un comando — el bot lo nota y te deja continuar. Puedes parar cuando quieras: {tutorial} te devuelve a donde estabas." },
+      "help": { "title": "Todos los comandos: /help", "text": "{help} muestra todos los comandos con una breve descripción; elige uno para ver los detalles. En un MD con el bot se marcan los comandos que solo funcionan en un servidor.", "task": "Escribe {help} ahora — aquí en el MD o en cualquier canal." },
+      "link_account": { "title": "Vincula tu cuenta de Clash", "text": "Vincula tu cuenta de Clash of Clans a Discord: así tu servidor puede darte los roles adecuados y te llegan los recordatorios. Encuentras tu jugador por nombre o etiqueta. Un token de la API de los ajustes del juego demuestra que la cuenta es tuya, para que nadie más pueda reclamarla.", "task": "Pulsa 🔗 Vincular mi cuenta abajo — o usa {registration} → Vincular Cuentas." },
+      "my_accounts": { "title": "Tus cuentas", "text": "Mis Cuentas muestra todas las cuentas que vinculaste: elige tu cuenta principal, verifica una con un token de la API o quita un vínculo.", "task": "Abre 📋 Mis cuentas abajo y echa un vistazo." },
+      "war_reminders": { "title": "Recordatorios de guerra", "text": "ClashControl puede enviarte un MD antes de que termine una guerra mientras te queden ataques — para todas las guerras o solo LGC, una vez o repetidamente, y tú eliges con cuánta antelación. Los recordatorios de incursiones funcionan igual.", "task": "Abre 🔔 Mis recordatorios de guerra abajo y actívalos." },
+      "whois": { "title": "Quién es quién: /whois", "text": "{whois} muestra las cuentas de Clash de un miembro de Discord — o el historial de guerras de un jugador. Útil para saber quién está detrás de una cuenta.", "task": "Escribe {whois} y elígete a ti mismo como usuario." },
+      "leaderboard": { "title": "Clasificaciones", "text": "{leaderboard} muestra las estadísticas de un clan: estrellas, medias de ataque, ataques perdidos, LGC y más. Los canales también pueden suscribirse a clasificaciones que se actualizan solas ({subscriptions} las muestra).", "task": "Escribe {leaderboard} en un canal de tu servidor y elige tu clan." },
+      "cwl_preferences": { "title": "Tus preferencias de LGC", "text": "Antes de cada Liga de Guerras de Clanes tus líderes preguntan quién quiere jugar. Respóndelo una vez: un nivel de liga preferido, y si quieres jugar siempre, no jugar nunca o decidir en cada temporada — para cada una de tus cuentas.", "task": "Escribe {cwl_preferences} o usa 🛡️ Mis preferencias de LGC abajo." },
+      "done": { "title": "Todo listo", "text": "🎉 Ya conoces lo esencial. {help} tiene todo lo demás, {about} muestra lo que puede hacer ClashControl, y {tutorial} trae este recorrido de vuelta cuando quieras (🔄 Empezar de nuevo vuelve al paso 1)." }
     }
   },
   "config_audit": {
@@ -1626,6 +1662,7 @@
     "button_dismiss": "🚫 No lo usamos",
     "button_undismiss": "↩️ Usarlo después de todo",
     "guided": {
+      "tutorial_hint": "🎓 Consejo: lo básico para miembros (vincular una cuenta, recordatorios, preferencias de LGC) se explica paso a paso en {tutorial}. Hazlo primero si aún no lo has hecho — esta guía se basa en él.",
       "header": "🧭 Configuración guiada · paso {n} de {total}",
       "button_start": "🧭 Iniciar configuración guiada",
       "button_previous": "◀ Anterior",

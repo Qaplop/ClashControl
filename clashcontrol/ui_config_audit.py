@@ -130,6 +130,9 @@ class SetupView(discord.ui.View):
         self.results = results
         self.selected = selected
         self.guided = False
+        # #0121: the admin tutorial builds on the member tutorial — a soft tip on the first
+        # guided page for admins who haven't finished /tutorial (never a block).
+        self._tutorial_hint = False
         self._last_interaction: Optional[discord.Interaction] = None
         self._rebuild()
 
@@ -160,6 +163,10 @@ class SetupView(discord.ui.View):
             if result.status == AuditStatus.OK:
                 embed.add_field(name="​", value=_tr(gid, self.user_id, "config_audit.guided.ok_next")[:1024],
                                 inline=False)
+            if self._tutorial_hint:
+                from clashcontrol.QBdiscocmdshelper import command_mention
+                embed.add_field(name="​", value=_tr(gid, self.user_id, "config_audit.guided.tutorial_hint",
+                                                          tutorial=command_mention("tutorial"))[:1024], inline=False)
         return embed
 
     def _button(self, key: str, callback: Any, custom_id: str, row: int,
@@ -281,18 +288,22 @@ class SetupView(discord.ui.View):
     async def _on_start_guided(self, interaction: discord.Interaction) -> None:
         """Start at the first step that needs attention (nothing is stored — the checks say where
         the guild stands), or at step 1 when everything is fine: then it is a tour."""
+        from clashcontrol.tutorial import is_finished
         self.results = run_audit(self.guild)
         self.guided = True
+        self._tutorial_hint = not is_finished(self.user_id)
         self.selected = next((s.id for s in STEPS if needs_attention(self.results[s.id])), STEPS[0].id)
         logging.info(f"[SETUP] Guided setup started at '{self.selected}' in guild {self.guild.id} by user {self.user_id}")
         await self._show(interaction)
 
     async def _on_next(self, interaction: discord.Interaction) -> None:
+        self._tutorial_hint = False
         index = self._guided_index() + 1
         self.selected = STEPS[index].id if index < len(STEPS) else _DONE
         await self._show(interaction)
 
     async def _on_previous(self, interaction: discord.Interaction) -> None:
+        self._tutorial_hint = False
         index = max(self._guided_index() - 1, 0)
         self.selected = STEPS[index].id
         await self._show(interaction)

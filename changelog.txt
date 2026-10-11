@@ -1,6 +1,13 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-11 (26)
+- Fixed (tracker #0121, qaplop): /tutorial flooded the conversation — every step page and every
+  "✅ … done! Ready for the next step?" prompt stayed. Now one tutorial message at a time: the
+  prompt replaces the step page it answers, "Continue tutorial" turns the prompt itself into the
+  next page, and a new /tutorial removes the previous page (ui_tutorial.replace_open_message(),
+  best effort within Discord's 15-minute token). Build 170.
+
 2026-10-11 (25)
 - Fixed (qaplop, #cc-testing): the "Mark an individual test case…" dropdown didn't work for long
   test-case lists. It had two entries per case (Pass and Fail) and was cut off at Discord's 25 —

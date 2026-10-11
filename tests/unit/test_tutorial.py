@@ -233,3 +233,47 @@ class TestSetupHint:
         await view._on_start_guided(_click())
         assert not any("/tutorial" in f.value for f in view.current_embed().fields)
         view.stop()
+
+
+
+class TestOneMessageFlow:
+    """qaplop 2026-10-11: /tutorial left every page and "continue" prompt behind."""
+
+    @pytest.mark.asyncio
+    async def test_next_message_removes_the_previous_one(self):
+        from clashcontrol import ui_tutorial
+        first, second = AsyncMock(), AsyncMock()
+        await ui_tutorial.replace_open_message("u9", first)
+        await ui_tutorial.replace_open_message("u9", second)
+        first.assert_awaited_once()
+        second.assert_not_awaited()
+        assert ui_tutorial._OPEN_MESSAGE["u9"] is second
+        await ui_tutorial.replace_open_message("u9", None)          # nothing new: just remove
+        second.assert_awaited_once()
+        assert "u9" not in ui_tutorial._OPEN_MESSAGE
+
+    @pytest.mark.asyncio
+    async def test_a_failed_delete_never_breaks_the_flow(self):
+        from clashcontrol import ui_tutorial
+        broken = AsyncMock(side_effect=discord.HTTPException(MagicMock(status=401), "token expired"))
+        await ui_tutorial.replace_open_message("u8", broken)
+        await ui_tutorial.replace_open_message("u8", AsyncMock())    # no raise
+
+    @pytest.mark.asyncio
+    async def test_continue_turns_its_prompt_into_the_page(self, monkeypatch):
+        from clashcontrol import ui_tutorial
+        monkeypatch.setattr(ui_tutorial, "get_progress", lambda uid: {"step": "link_account", "done": set()})
+        old_page = AsyncMock()
+        ui_tutorial._OPEN_MESSAGE["77"] = old_page
+        it = MagicMock()
+        it.user.id = 77
+        it.guild = None
+        it.response.edit_message = AsyncMock()
+        it.response.send_message = AsyncMock()
+        it.delete_original_response = AsyncMock()
+        await ui_tutorial.send_tutorial(it, in_place=True)
+        it.response.edit_message.assert_awaited_once()
+        it.response.send_message.assert_not_awaited()
+        old_page.assert_awaited_once()
+        assert ui_tutorial._OPEN_MESSAGE["77"] is it.delete_original_response
+        ui_tutorial._OPEN_MESSAGE.pop("77", None)

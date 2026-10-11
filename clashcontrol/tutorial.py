@@ -154,10 +154,11 @@ async def on_command_completed(interaction: discord.Interaction, command: Any) -
         nxt = next_step_id(step.id)
         await save_progress(user_id, nxt, set(progress.get("done", set())) | {step.id})  # type: ignore[union-attr]
         logging.info(f"[TUTORIAL] user {user_id} completed '{step.id}' via /{name}")
-        from clashcontrol.ui_tutorial import ContinueTutorialView, step_done_text
-        await interaction.followup.send(
-            step_done_text(step, interaction), view=ContinueTutorialView(interaction), ephemeral=True,
+        from clashcontrol.ui_tutorial import ContinueTutorialView, replace_open_message, step_done_text
+        message = await interaction.followup.send(
+            step_done_text(step, interaction), view=ContinueTutorialView(interaction), ephemeral=True, wait=True,
         )
+        await replace_open_message(user_id, message.delete)   # the step page it answers goes away
     except Exception as e:  # e.g. a command whose response type allows no followup
         logging.debug(f"[TUTORIAL] completion reaction for /{getattr(command, 'name', '?')} skipped: {e}")
 

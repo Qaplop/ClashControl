@@ -7,7 +7,7 @@ position, so they claim the view first (claim_action) — a double click must no
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Awaitable, Callable, Dict, Optional
 
 import discord
 
@@ -62,6 +62,25 @@ def step_done_text(step: TutorialStep, interaction: discord.Interaction) -> str:
              title=t(step.title_key, guild_id=guild_id, user_id=user_id))
 
 
+#: Each user's open tutorial message (the step page or the "continue" prompt) as a delete
+#: callable. The flow keeps ONE message (Cardinal Rule 7): whenever it sends the next one, the
+#: previous one is deleted (qaplop 2026-10-11 — /tutorial flooded the conversation).
+_OPEN_MESSAGE: Dict[str, Callable[[], Awaitable[Any]]] = {}
+
+
+async def replace_open_message(user_id: str, delete: Optional[Callable[[], Awaitable[Any]]]) -> None:
+    """Remember ``delete`` as the user's open tutorial message and remove the previous one.
+    Best effort: an interaction token lives 15 minutes, an older message stays."""
+    previous = _OPEN_MESSAGE.pop(user_id, None)
+    if delete is not None:
+        _OPEN_MESSAGE[user_id] = delete
+    if previous is not None and previous is not delete:
+        try:
+            await previous()
+        except Exception as e:
+            logging.debug(f"[TUTORIAL] Could not remove the previous tutorial message of user {user_id}: {e}")
+
+
 class TutorialView(discord.ui.View):
     """Step pages: Back / Next (Finish) / Start over, plus the step's real flows."""
 
@@ -106,6 +125,8 @@ class TutorialView(discord.ui.View):
         self.welcome_back = False
         self._rebuild()
         await interaction.response.edit_message(embed=self.current_embed(), view=self)
+        # Same message, fresh token: keep the handle that can still delete it.
+        _OPEN_MESSAGE[self.user_id] = interaction.delete_original_response
 
     async def _go(self, interaction: discord.Interaction, step_id: str, mark_done: bool, reset: bool = False) -> None:
         progress = get_progress(self.user_id) or {}
@@ -183,12 +204,14 @@ class ContinueTutorialView(discord.ui.View):
         self.add_item(button)
 
     async def _on_continue(self, interaction: discord.Interaction) -> None:
-        await send_tutorial(interaction)
+        await send_tutorial(interaction, in_place=True)
 
 
-async def send_tutorial(interaction: discord.Interaction) -> None:
+async def send_tutorial(interaction: discord.Interaction, in_place: bool = False) -> None:
     """Open the tutorial where the user left off (new users at step 1, finished ones on the last
-    page with "Start over"). Sent as the interaction's first response."""
+    page with "Start over"), as the interaction's first response. ``in_place``: turn the clicked
+    message (the "continue" prompt) into the page instead of sending a new one. Either way the
+    user's previous tutorial message goes away."""
     user_id = str(interaction.user.id)
     guild_id = interaction.guild.id if interaction.guild else None
     progress = get_progress(user_id)
@@ -200,5 +223,9 @@ async def send_tutorial(interaction: discord.Interaction) -> None:
         welcome_back = step_id not in (STEP_IDS[0], STEP_IDS[-1])
     view = TutorialView(user_id, guild_id, step_id, welcome_back)
     view._last_interaction = interaction  # pyright: ignore[reportPrivateUsage]
-    await interaction.response.send_message(embed=view.current_embed(), view=view, ephemeral=True)
+    if in_place:
+        await interaction.response.edit_message(content=None, embed=view.current_embed(), view=view)
+    else:
+        await interaction.response.send_message(embed=view.current_embed(), view=view, ephemeral=True)
+    await replace_open_message(user_id, interaction.delete_original_response)
     logging.info(f"[TUTORIAL] user {user_id} opened the tutorial at '{step_id}'")

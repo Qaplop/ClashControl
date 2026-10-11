@@ -1249,3 +1249,18 @@ class TestRegistrationWhyAndTipOnTop:
         assert view._tutorial_hint and not embed.description.startswith("🎓")
         assert embed.fields[-1].value.startswith("🎓")
         view.stop()
+
+
+class TestRoleSystemsExplained:
+    """qaplop 2026-10-11: step 9 explains each role system (what, how, what for), on or off."""
+
+    @pytest.mark.parametrize("lang", LANGS)
+    def test_every_system_has_explanation_and_status(self, lang):
+        _cfg(language=lang)
+        guild = _guild(ADMIN)
+        detail = ca.detail_roles(guild, ca.check_roles(guild), GID, "1")
+        bodies = [b for h, b in detail.sections if h.startswith("⏸️")]
+        assert len(bodies) == 3
+        for body in bodies:
+            assert "🔴" in body and len(body) > 60 and "{" not in body and len(body) <= 1024
+

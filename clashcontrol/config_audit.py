@@ -963,11 +963,19 @@ def detail_roles(guild: discord.Guild, result: StepResult, guild_id: Optional[in
     def mention(rid: Any) -> str:
         return f"<@&{rid}>" if rid else tr("config_audit.roles.not_set")
 
+    def status(enabled: bool) -> str:
+        # /clan management's own status line for the same switch.
+        state = tr("ui_components.basic_config.config_status_enabled" if enabled
+                   else "ui_components.basic_config.config_status_disabled")
+        return tr("ui_components.basic_config.config_welcome_status", status=f"{'🟢' if enabled else '🔴'} {state}")
+
     sections: List[Tuple[str, str]] = []
     for name, _flag in _ROLE_SYSTEMS:
         title = tr(f"config_audit.roles.name_{name}")
+        # What it does, how it works, what it's good for — on or off (qaplop 2026-10-11).
+        explain = tr(f"config_audit.roles.explain_{name}")
         if name not in active:
-            sections.append((f"⏸️ {title}", tr("config_audit.roles.off")))
+            sections.append((f"⏸️ {title}", f"{explain}\n{status(False)}"))
             continue
         if name == "role_system":
             body = tr("config_audit.roles.simple_roles", newbie=mention(config.get("newbie_role_id")),
@@ -978,8 +986,9 @@ def detail_roles(guild: discord.Guild, result: StepResult, guild_id: Optional[in
             body = " ".join(f"<@&{i}>" for i in ids if i) if any(ids) else tr("config_audit.roles.coc_roles_auto")
         else:
             lines = [f"{_clan_name(t)}: <@&{rid}>" for t, rid in (config.get("clan_roles") or {}).items() if rid]
-            body = _join_limited(lines, 1024, lambda n: tr("permissions.warning_more", count=n)) or tr("config_audit.roles.not_set")
-        sections.append((f"✅ {title}", body))
+            budget = 1024 - len(explain) - len(status(True)) - 2   # one field holds all three
+            body = _join_limited(lines, budget, lambda n: tr("permissions.warning_more", count=n)) or tr("config_audit.roles.not_set")
+        sections.append((f"✅ {title}", f"{explain}\n{status(True)}\n{body}"[:1024]))
     me = bp._me(guild)  # pyright: ignore[reportPrivateUsage]
     if active and me is not None:
         sections.append((tr("config_audit.bot_permissions.role_title"),

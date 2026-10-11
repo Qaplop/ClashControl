@@ -1,6 +1,14 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-11 (38)
+- Changed (tracker #0151, qaplop): /setup step 9 explains the three role systems — how each
+  works, what it does and what it's good for (Simple Roles: newbie on join → member role once a
+  linked account is in a member clan, never revoked; CoC Roles: four bot-made roles following the
+  highest in-game rank, Leader/Co-Leader also manage CWL; Clan Roles: one per member clan, added
+  and removed with membership) — plus /clan management's status line, on or off (was a bare
+  "off"). New keys config_audit.roles.explain_* in all languages. Build 182.
+
 2026-10-11 (37)
 - Changed back (tracker #0151, qaplop): the guided setup's /tutorial tip is at the end of the
   page again (Build 180 had moved it to the top). Step 5's "Why it matters" stays. Build 181.

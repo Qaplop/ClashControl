@@ -809,8 +809,9 @@ async def get_clan_family_autocomplete_choices(
         - "subscribed_only": Only clans/families subscribed in the given channel
         - "subscribed_first": Channel subscriptions first, then other guild-subscribed clans/families
         - "clans_only": Only tracked clans (excludes families)
-        - "guild_first": Guild-subscribed clans only when current is empty; when current has text,
-            guild-subscribed matches appear first, then all other tracked clans/families that match
+        - "guild_first": The server's clans only when current is empty — member clans first, then
+            subscribed ones (guild_clan_selection()); when current has text, those matches appear
+            first, then all other tracked clans/families that match
     """
     from clashcontrol.cache_manager import CACHE
     
@@ -844,30 +845,14 @@ async def get_clan_family_autocomplete_choices(
     # Handle guild_first mode: guild clans only when empty, extend to all when searching
     if mode == "guild_first":
         guild_id_list: List[str] = list(guild_ids) if guild_ids else ([guild_id] if guild_id else [])
-        guild_tags: Set[str] = set()
-        for gid in guild_id_list:
-            if gid and gid in CACHE.subscriptions:
-                for ch_subs in CACHE.subscriptions[gid].values():
-                    for s in ch_subs:
-                        t_ = s.get('clan_tag')
-                        if t_ and t_ != 'PLAYERREGISTRATION':
-                            guild_tags.add(t_)
-        # Sort guild clans: CWL-active first (O(1) in-memory check), then alphabetical
-        def _is_cwl_active(tag: str) -> bool:
-            return bool(CACHE.temp_war_metadata.get(tag, {}).get('is_cwl', False))
-        guild_clan_tags_sorted = sorted(
-            (t for t in guild_tags if t not in CACHE.clan_families),
-            key=lambda t: (0 if _is_cwl_active(t) else 1, (CACHE.get_clan_name(t, '') or t).lower()),
-        )
-        # Add guild-subscribed clans (non-families) filtered by current
+        # The server's clans in the shared order (guild_clan_selection): member clans and member
+        # families' clans first, then the other subscribed clans; then the families.
+        guild_clan_tags_sorted, guild_family_tags = guild_clan_selection(guild_id_list, CACHE)
+        guild_tags: Set[str] = set(guild_clan_tags_sorted) | set(guild_family_tags)
         for tag in guild_clan_tags_sorted:
-            name = CACHE.get_clan_name(tag, '')
-            if name:
-                _add_clan_choice(tag, name)
-        # Add guild-subscribed families filtered by current
-        for tag in guild_tags:
-            if tag in CACHE.clan_families:
-                _add_family_choice(tag, CACHE.clan_families[tag])
+            _add_clan_choice(tag, CACHE.get_clan_name(tag, '') or '')
+        for tag in guild_family_tags:
+            _add_family_choice(tag, CACHE.clan_families[tag])
         if not current_lower:
             # No search text: only show guild clans (even if the guild has none yet)
             return choices[:max_choices]
@@ -2932,7 +2917,7 @@ async def cleanup_stale_messages_for_channel(channel: discord.TextChannel) -> in
 # Unified Player List Generation
 # ============================================================================
 
-def get_guild_subscribed_clans(guild_id: int) -> List[str]:
+def get_guild_subscribed_clans(guild_id: int, cache: Any = None) -> List[str]:
     """
     Get all clan tags that are subscribed (directly or via families) in a guild.
     
@@ -2956,12 +2941,13 @@ def get_guild_subscribed_clans(guild_id: int) -> List[str]:
         >>> print(clans)
         ['#2C9UR9GJY', '#L2J0C0PY', '#28GRPC00C']
     """
+    c = cache if cache is not None else CACHE   # guild_clan_selection() passes its own
     guild_id_str = str(guild_id)
     clans_in_guild = set()
     families_to_expand = set()
     
     # Traverse all channels in this guild's subscriptions
-    guild_subs = CACHE.subscriptions.get(guild_id_str, {})
+    guild_subs = c.subscriptions.get(guild_id_str, {})
     for _, subs in guild_subs.items():  # type: ignore[misc]
         for s in subs:
             if not s:
@@ -2973,21 +2959,61 @@ def get_guild_subscribed_clans(guild_id: int) -> List[str]:
                 continue
             
             # Check if this is a family ID (direct family subscription)
-            if tag in CACHE.clan_families:
+            if tag in c.clan_families:
                 families_to_expand.add(tag)
-                clans_in_guild.update(CACHE.clan_families[tag].get('clans', []))
+                clans_in_guild.update(c.clan_families[tag].get('clans', []))
             else:
                 # Individual clan subscription - add it and check if it belongs to a family
                 clans_in_guild.add(tag)
                 
                 # Check if this clan belongs to any family
-                for family_id, family_data in CACHE.clan_families.items():
+                for family_id, family_data in c.clan_families.items():
                     if tag in family_data.get('clans', []):
                         # This clan is part of a family - include all clans from that family
                         families_to_expand.add(family_id)
                         clans_in_guild.update(family_data.get('clans', []))
     
     return sorted(clans_in_guild)
+
+
+def guild_clan_selection(guild_ids: Any, cache: Any = None) -> Tuple[List[str], List[str]]:
+    """The server's clans for every clan selector, in ONE order (qaplop 2026-10-11): member clans
+    and the clans of member families first, then the other subscribed clans — within each group
+    clans in CWL right now first, then by name. Returns (clan_tags, family_tags); families: member
+    families first, then subscribed ones. ``guild_ids``: one or several (a DM caller linked to
+    several servers). ``cache``: the CACHE to read (callers that imported their own pass it)."""
+    c = cache if cache is not None else CACHE
+    member: Set[str] = set()
+    subscribed: Set[str] = set()
+    member_families: List[str] = []
+    subscribed_families: List[str] = []
+    for gid in [g for g in guild_ids if g]:
+        # Same rule as QBdiscocmdshelper_cwl.resolve_guild_member_clan_tags(), on this module's c.
+        config = c.server_config.get(str(gid), {})
+        member.update(config.get("member_clans", []))
+        for fam in config.get("member_families", []):
+            member.update(c.clan_families.get(fam, {}).get("clans", []))
+            if fam in c.clan_families and fam not in member_families:
+                member_families.append(fam)
+        subscribed.update(t for t in get_guild_subscribed_clans(int(gid), c) if t not in c.clan_families)
+        for ch_subs in c.subscriptions.get(str(gid), {}).values():
+            for sub in ch_subs:
+                tag = sub.get("clan_tag")
+                if tag in c.clan_families and tag not in member_families and tag not in subscribed_families:
+                    subscribed_families.append(tag)
+
+    def _key(tag: str) -> Tuple[int, str]:
+        in_cwl = bool((getattr(c, "temp_war_metadata", None) or {}).get(tag, {}).get("is_cwl", False))
+        name = c.get_clan_name(tag, "") if hasattr(c, "get_clan_name") else ""
+        return (0 if in_cwl else 1, (name or tag).lower())
+
+    clans = sorted(member, key=_key) + sorted(subscribed - member, key=_key)
+
+    def _family_key(tag: str) -> str:
+        return str(c.clan_families.get(tag, {}).get("name") or tag).lower()
+
+    families = sorted(member_families, key=_family_key) + sorted(subscribed_families, key=_family_key)
+    return clans, families
 
 
 def get_guild_clans_including_member_config(guild_id: int) -> List[str]:
@@ -3008,27 +3034,10 @@ def get_guild_clans_including_member_config(guild_id: int) -> List[str]:
         guild_id: Discord guild ID
         
     Returns:
-        List of clan tags (sorted) available for selection
+        List of clan tags available for selection, in guild_clan_selection()'s order: member
+        clans (incl. member families' clans) first, then the other subscribed clans.
     """
-    clans_in_guild = set()
-    
-    # 1. Add all subscribed clans (both direct and via families)
-    clans_in_guild.update(get_guild_subscribed_clans(guild_id))
-    
-    # 2. Add clans from member_families configuration
-    guild_id_str = str(guild_id)
-    config = CACHE.server_config.get(guild_id_str, {})
-    
-    member_families = config.get("member_families", [])
-    for family_id in member_families:
-        if family_id in CACHE.clan_families:
-            clans_in_guild.update(CACHE.clan_families[family_id].get("clans", []))
-    
-    # 3. Add clans from member_clans configuration (individual clans)
-    member_clans = config.get("member_clans", [])
-    clans_in_guild.update(member_clans)
-    
-    return sorted(clans_in_guild)
+    return guild_clan_selection([guild_id])[0]
 
 
 async def get_player_list(

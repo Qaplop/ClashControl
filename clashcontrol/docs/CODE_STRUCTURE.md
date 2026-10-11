@@ -625,6 +625,13 @@ all rebuild/button-handler paths so the reference is never lost.
 - get_clan_family_autocomplete_choices(current, channel_id, guild_id, mode, max_choices):
   `guild_id` restricts the fallback in "subscribed_first" mode to clans/families subscribed
   in the requesting guild — prevents cross-server clan leakage in autocomplete dropdowns
+- **Clan order in every server-context clan selector** (qaplop 2026-10-11): 
+  → (clans, families). Member clans and the clans of member families first, then the other
+  subscribed clans (each: in CWL now first, then by name); member families before subscribed
+  families. Used by the "guild_first" autocomplete (/subscribe, /leaderboard, /analyse, /link) and
+   (/clan management, welcome config, …). A new clan
+  selector in a server context uses one of these two — never subscriptions alone (a member clan
+  needs no subscription).
 - Note: get_player_autocomplete_choices() removed (was exclusive to deprecated /myaccounts command)
 
 🟫 QBcsvhandling.py

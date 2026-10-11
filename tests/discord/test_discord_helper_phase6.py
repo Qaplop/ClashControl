@@ -128,10 +128,13 @@ def test_get_guild_clans_including_member_config_combines_sources(monkeypatch: p
         }
     }
     monkeypatch.setattr(helper, "CACHE", cache)
+    import clashcontrol.QBdiscocmdshelper_cwl as cwl_helper
+    monkeypatch.setattr(cwl_helper, "CACHE", cache)   # member clans are resolved there
 
     out = helper.get_guild_clans_including_member_config(321)
 
-    assert out == ["#C1", "#C2", "#C3", "#C4"]
+    # Member clans (incl. member families' clans) first, then the other subscribed ones (2026-10-11).
+    assert out == ["#C3", "#C4", "#C1", "#C2"]
 
 
 @pytest.mark.smoke

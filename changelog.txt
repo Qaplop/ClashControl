@@ -1,6 +1,16 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-11 (44)
+- Changed (qaplop): one clan order in every server-context clan selector — member clans and the
+  clans of member families first, then the other subscribed clans (each group: in CWL now first,
+  then by name); families: member families first, then subscribed ones. Before, the autocomplete
+  of /subscribe, /leaderboard, /analyse leaguegroup|cwlopponent and /link offered only SUBSCRIBED
+  clans when empty — a member clan without a subscription was missing (new server: The QCrew
+  member clan, only "Hohenloher Land" subscribed → only Hohenloher Land offered). The
+  /clan management clan list (get_guild_clans_including_member_config) sorted by tag; it now
+  uses the same order. New shared QBdiscocmdshelper.guild_clan_selection(). Build 188.
+
 2026-10-11 (43)
 - Changed (tracker #0151, qaplop): one order on every /setup step page — 1. "💡 What this is",
   2. what's wrong + "🔧 How to fix", then the step's information ("ℹ️ About this step", only when

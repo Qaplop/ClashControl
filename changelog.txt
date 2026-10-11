@@ -1,6 +1,12 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-11 (20)
+- Changed (tracker #0151, qaplop): /setup step 12 — once this month's CWL is over, a missing
+  next season shows ℹ️ "season … can be started now" until the 20th, and ⚠️ "not set up yet"
+  only from the 20th (CWL_SEASON_DUE_DAY). New key config_audit.cwl_season.summary_can_start in
+  all languages. Build 164.
+
 2026-10-11 (19)
 - Fixed (tracker #0151, qaplop): /setup step 12 said next month's CWL season could only be
   started "from the 20th" and only expected it from then. The real rule: as soon as this month's

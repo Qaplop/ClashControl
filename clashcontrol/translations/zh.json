@@ -1632,6 +1632,7 @@
     "cwl_season": {
       "summary_off": "尚无部落战联赛赛季",
       "summary_missing": "{season} 赛季尚未创建",
+      "summary_can_start": "现在可以创建 {season} 赛季",
       "summary_between": "没有即将开始的赛季——本月部落战联赛结束后即可创建下一个赛季（最迟从 {day} 日起）",
       "summary_no_clans": "{season} 赛季：尚无参赛部落",
       "summary_no_start": "{season} 赛季：{count} 个部落没有开始时间",

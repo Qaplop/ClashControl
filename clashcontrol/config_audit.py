@@ -1186,6 +1186,8 @@ def detail_cwl_player_hub(guild: discord.Guild, result: StepResult, guild_id: Op
 #: this day of the month it is over for every clan. Next month's season can be started as soon as
 #: this month's is over for all member clans — this day at the latest (qaplop 2026-10-11).
 CWL_LATEST_END_DAY = 11
+#: Until this day a missing next season is only a hint (ℹ️ "can be started now"); from it on ⚠️.
+CWL_SEASON_DUE_DAY = 20
 
 
 def check_cwl_season(guild: discord.Guild, now: Optional[Any] = None) -> StepResult:
@@ -1193,8 +1195,9 @@ def check_cwl_season(guild: discord.Guild, now: Optional[Any] = None) -> StepRes
     DB in maintenance raises and run_step shows "could not be checked").
 
     Once this month's CWL is over for all participating clans (its season window has passed, or
-    the CWL_LATEST_END_DAY at the latest): next month's season must exist, with participating clans
-    that all have a start time → else ⚠️. Before that: the most relevant season's phase
+    the CWL_LATEST_END_DAY at the latest): next month's season can be started (ℹ️ until the
+    CWL_SEASON_DUE_DAY, ⚠️ from it on), and once it exists its participating clans must all have a
+    start time → else ⚠️. Before that: the most relevant season's phase
     (resolve_cwl_phase) as ✅, or ℹ️ when there is none. A guild that never ran a season and has
     no CWL hub → ⏸️."""
     from datetime import datetime, timezone
@@ -1231,6 +1234,9 @@ def check_cwl_season(guild: discord.Guild, now: Optional[Any] = None) -> StepRes
     if event is not None and event.get("status") == "cancelled":
         event = None
     if event is None:
+        if in_window and now.day < CWL_SEASON_DUE_DAY:
+            return StepResult(AuditStatus.INFO, "config_audit.cwl_season.summary_can_start",
+                              {"season": next_season}, data=data)
         if in_window:
             return StepResult(AuditStatus.INCOMPLETE, "config_audit.cwl_season.summary_missing",
                               {"season": next_season}, [Finding(AuditStatus.INCOMPLETE, "season_missing")], data)

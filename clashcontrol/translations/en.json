@@ -1633,6 +1633,7 @@
     "cwl_season": {
       "summary_off": "no CWL season yet",
       "summary_missing": "season {season} not set up yet",
+      "summary_can_start": "season {season} can be started now",
       "summary_between": "no upcoming season — the next one can be started once this month's CWL is over (by the {day}th at the latest)",
       "summary_no_clans": "season {season}: no participating clan yet",
       "summary_no_start": "season {season}: {count} clan(s) without a start time",

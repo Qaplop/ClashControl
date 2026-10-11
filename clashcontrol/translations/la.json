@@ -1632,6 +1632,7 @@
     "cwl_season": {
       "summary_off": "nullum tempus CWL adhuc",
       "summary_missing": "tempus {season} nondum creatum",
+      "summary_can_start": "tempus {season} nunc creari potest",
       "summary_between": "nullum tempus venturum — proximum creari potest simul ac CWL huius mensis finita est (a die {day} ad summum)",
       "summary_no_clans": "tempus {season}: nulla gens participans adhuc",
       "summary_no_start": "tempus {season}: {count} gens(tes) sine tempore initii",

@@ -1632,6 +1632,7 @@
     "cwl_season": {
       "summary_off": "aún no hay temporada de LGC",
       "summary_missing": "temporada {season} aún no creada",
+      "summary_can_start": "la temporada {season} ya se puede crear",
       "summary_between": "no hay temporada próxima — la siguiente se puede crear en cuanto termine la LGC de este mes (a más tardar el día {day})",
       "summary_no_clans": "temporada {season}: aún no hay clanes participantes",
       "summary_no_start": "temporada {season}: {count} clan(es) sin hora de inicio",

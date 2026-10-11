@@ -715,12 +715,17 @@ class TestStepCwlSeason:
         still_running = datetime(2026, 10, 10, 12, tzinfo=timezone.utc)   # #B's CWL ends 10-11 08:00
         assert ca.check_cwl_season(_guild(ADMIN), still_running).status == AuditStatus.OK
         over = datetime(2026, 10, 11, 9, tzinfo=timezone.utc)
-        r = ca.check_cwl_season(_guild(ADMIN), over)
+        r = ca.check_cwl_season(_guild(ADMIN), over)                      # ℹ️ "can be started now"
+        assert r.status == AuditStatus.INFO and r.summary_key.endswith("summary_can_start")
+        assert r.summary_params == {"season": "2026-11"}
+        due = datetime(2026, 10, 20, 0, tzinfo=timezone.utc)              # ⚠️ from the 20th
+        r = ca.check_cwl_season(_guild(ADMIN), due)
         assert r.status == AuditStatus.INCOMPLETE and r.summary_params == {"season": "2026-11"}
         clans[2].pop()                                                    # only #A: over on the 10th
-        assert ca.check_cwl_season(_guild(ADMIN), still_running).status == AuditStatus.INCOMPLETE
+        assert ca.check_cwl_season(_guild(ADMIN), still_running).summary_key.endswith("summary_can_start")
         self._db(monkeypatch, [], {})                                     # no season this month
-        assert ca.check_cwl_season(_guild(ADMIN), over).status == AuditStatus.INCOMPLETE
+        assert ca.check_cwl_season(_guild(ADMIN), over).summary_key.endswith("summary_can_start")
+        assert ca.check_cwl_season(_guild(ADMIN), still_running).summary_key.endswith("summary_between")
 
 
 class TestRenderingPhase4:

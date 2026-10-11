@@ -301,7 +301,7 @@
       "setup": {
         "short": "Institutionem ClashControl in hoc servitore inspice (administratores)",
         "title": "🛠️ Mandatum Setup",
-        "detailed": "Indicem omnium quae ClashControl in hoc servitore requirit ostendit, cum statu cuiusque gradus: ✅ recte, ❌ emendandum, ⚠️ imperfectum, ⏸️ non adhibitum, 🔒 gradum priorem requirit, ⚪ nondum inspectum. Elige gradum ut singula videas: quid erret, cur referat et quomodo emendes.\n\n**Usus:**\n`/setup`\n\n**Adhuc inspectum:**\n• Permissiones automati — Administrator, quaeque permissio deficiens cum causa cur requiratur, et globulus ut automatum uno ictu iterum auctorizes\n• Lingua et zona horaria, gentes et familiae (cum commentariis belli privatis et gentibus a Supercell deletis), nuntius salutationis, monita belli et incursionum in canalibus, tabulae ordinum — quid institutum sit, et omnis canalis quo automatum uti non potest\n\nInscriptio, nuntiationes belli, munera servitoris et CWL in renovationibus posterioribus sequentur.\n\n**Notae:**\n• Solis administratoribus servitoris\n• Solus tu eventum vides\n• Nihil mutatur — «🔄 Iterum inspice» inspectiones repetit postquam aliquid emendasti"
+        "detailed": "Indicem omnium quae ClashControl in hoc servitore requirit ostendit, cum statu cuiusque gradus: ✅ recte, ❌ emendandum, ⚠️ imperfectum, ⏸️ non adhibitum, 🔒 gradum priorem requirit, ⚪ nondum inspectum. Elige gradum ut singula videas: quid erret, cur referat et quomodo emendes.\n\n**Usus:**\n`/setup`\n\n**Adhuc inspectum:**\n• Permissiones automati — “Administrator”, quaeque permissio deficiens cum causa cur requiratur, et globulus ut automatum uno ictu iterum auctorizes\n• Lingua et zona horaria, gentes et familiae (cum commentariis belli privatis et gentibus a Supercell deletis), nuntius salutationis, monita belli et incursionum in canalibus, tabulae ordinum — quid institutum sit, et omnis canalis quo automatum uti non potest\n\nInscriptio, nuntiationes belli, munera servitoris et CWL in renovationibus posterioribus sequentur.\n\n**Notae:**\n• Solis administratoribus servitoris\n• Solus tu eventum vides\n• Nihil mutatur — «🔄 Iterum inspice» inspectiones repetit postquam aliquid emendasti"
       },
       "clan management": {
         "short": "Configuratio centralis servitoris et gentium",
@@ -321,7 +321,7 @@
       "admin": {
         "short": "Actiones administrativae et instrumenta",
         "title": "⚙️ Mandatum Admin",
-        "detailed": "Instrumenta administrativa pro configuratione, diagnosi, et sustentatione automati.\n\n**Usus:**\n`/admin action:<genus_actionis>`\n\n**Actiones Praesto:**\n• `Cleanup Messages` - Munda nuntia automati in servitore currenti (Administrator)\n• `Cleanup Messages All` - Munda omnia nuntia automati (Administrator Automati)\n• `Check Logs` - Perlustra et summa fac diaria errorum (Administrator Automati)\n• `Check Data` - Verifica constantiam datorum (Administrator Automati)\n• `List All Subscriptions` - Vide omnes subscriptiones in omnibus servitoribus (Administrator Automati)\n• `Test Notify` - Proba nuntiationes belli (Administrator Automati)\n• `DM User` - Nuntium salutationis /dm me sodali servitoris mitte (Administrator, solum in servitore)\n• `Remove Clan` - Remove gentem ex notatione (Administrator)\n• `List All Clans` - Indica omnes gentes notatas (Administrator)\n• `Import Data` - Importa inscriptiones lusorum ex ClashPerk (Administrator Automati)\n• `Analyze Message` - Investiga structuram nuntii Discord (Administrator)\n• `Refresh Data` - Coge renovationem omnium datorum gentis ex API CoC (Administrator Automati)\n• `Retrieve CWL Data` - Comple historiam CWL pro gente (Administrator Automati)\n• `Backfill CWL Groups` - Accipe coetus ligae CWL pro gentibus cum minus quam 7 rotis (Administrator Automati)\n• `War Prediction` - Praedic eventum belli inter duas gentes (Administrator Automati)\n• `Start Update Cycle` - Praeteri phasim quietis et incipe proximum cyclum renovationis statim (Administrator Automati)\n• `Execute Nightly Maintenance` - Age nunc translationem archivi + ANALYZE/REINDEX/VACUUM databasis (Administrator Automati)\n  ↳ `skip_db_maintenance:True` - soli gradus datorum, sine longa parte REINDEX/VACUUM/ANALYZE\n• `Memory Profile` - Effunde statisticas assignationis memoriae in fasciculum diarii (Administrator Automati)\n• `Permission Audit` - Permissiones automati pro omni automatione constituta in omnibus servitoribus inspice (Administrator Automati)\n• `Maintenance Start` - Suspende renovationes et claude databasim ad accessum datorum tutum (Administrator Automati)\n• `Maintenance End` - Iterum incipe automatum et normale opus resume (Administrator Automati)\n\n**Gradus Licentiae:**\n• Administrator - Requirit licentiam administratoris servitoris Discord\n• Administrator Automati - Requirit ordinem administratoris automati (in optionibus automati configuratum)\n\n**Exemplum:**\n`/admin action:Cleanup Messages`"
+        "detailed": "Instrumenta administrativa pro configuratione, diagnosi, et sustentatione automati.\n\n**Usus:**\n`/admin action:<genus_actionis>`\n\n**Actiones Praesto:**\n• `Cleanup Messages` - Munda nuntia automati in servitore currenti (Administrator)\n• `Cleanup Messages All` - Munda omnia nuntia automati (Administrator Automati)\n• `Check Logs` - Perlustra et summa fac diaria errorum (Administrator Automati)\n• `Check Data` - Verifica constantiam datorum (Administrator Automati)\n• `List All Subscriptions` - Vide omnes subscriptiones in omnibus servitoribus (Administrator Automati)\n• `Test Notify` - Proba nuntiationes belli (Administrator Automati)\n• `DM User` - Nuntium salutationis /dm me sodali servitoris mitte (Administrator, solum in servitore)\n• `Remove Clan` - Remove gentem ex notatione (Administrator)\n• `List All Clans` - Indica omnes gentes notatas (Administrator)\n• `Import Data` - Importa inscriptiones lusorum ex ClashPerk (Administrator Automati)\n• `Analyze Message` - Investiga structuram nuntii Discord (Administrator)\n• `Refresh Data` - Coge renovationem omnium datorum gentis ex API CoC (Administrator Automati)\n• `Retrieve CWL Data` - Comple historiam CWL pro gente (Administrator Automati)\n• `Backfill CWL Groups` - Accipe coetus ligae CWL pro gentibus cum minus quam 7 rotis (Administrator Automati)\n• `War Prediction` - Praedic eventum belli inter duas gentes (Administrator Automati)\n• `Start Update Cycle` - Praeteri phasim quietis et incipe proximum cyclum renovationis statim (Administrator Automati)\n• `Execute Nightly Maintenance` - Age nunc translationem archivi + ANALYZE/REINDEX/VACUUM databasis (Administrator Automati)\n  ↳ `skip_db_maintenance:True` - soli gradus datorum, sine longa parte REINDEX/VACUUM/ANALYZE\n• `Memory Profile` - Effunde statisticas assignationis memoriae in fasciculum diarii (Administrator Automati)\n• `Permission Audit` - Permissiones automati pro omni automatione constituta in omnibus servitoribus inspice (Administrator Automati)\n• `Maintenance Start` - Suspende renovationes et claude databasim ad accessum datorum tutum (Administrator Automati)\n• `Maintenance End` - Iterum incipe automatum et normale opus resume (Administrator Automati)\n\n**Gradus Licentiae:**\n• Administrator - Requirit permissionem “Administrator” in servitore Discord\n• Administrator Automati - Requirit ordinem administratoris automati (in optionibus automati configuratum)\n\n**Exemplum:**\n`/admin action:Cleanup Messages`"
       },
       "list": {
         "short": "Indica rationes, familias, vel lusores",
@@ -607,7 +607,7 @@
       "grant_access_member_not_found": "⚠️ Ille sodalis in hoc servitore inveniri non potuit.",
       "grant_access_granted": "✅ <@{reporter_id}> accessum ad hunc canalem et fila eius praebitum est: {jump_link}",
       "grant_access_failed": "⚠️ Accessus praeberi non potuit — licentias meas in hoc canali verifica.",
-      "grant_access_invite_failed": "⚠️ Invitatio creari non potuit — licentiam meam \"Creare Invitationem\" in hoc canali verifica.",
+      "grant_access_invite_failed": "⚠️ Invitatio creari non potuit — permissionem meam “Create Invite” in hoc canali verifica.",
       "grant_access_invite_dm": "👋 Administrator renuntiationi tuae **#{item_number}** respondit — servitorem intra ut eam videas et respondeas: {invite_url}",
       "grant_access_invited": "✅ Ille renuntians nondum in servitore est — nuntium privatum cum invitatione ei missum est. Accessum automatice obtinebit cum intraverit: {invite_url}",
       "grant_access_already_invited": "ℹ️ Invitatio iam illi renuntianti missa est — accessum automatice obtinebit cum intraverit.",
@@ -1423,7 +1423,7 @@
       "feature_stats": "Tabulae principum et statisticae lusorum gentiumque accuratae",
       "feature_languages": "Anglice, Germanice, Hispanice, Sinice et Latine. Lingua tua deest? Pete eam mandato /feature et libenter eam addemus.",
       "install_title": "Novus hic es? Adde ClashControl servitori tuo",
-      "install_text": "Licentia „Servitorem administrare“ in servitore illo tibi opus est.",
+      "install_text": "Permissio “Manage Server” in servitore illo tibi opus est.",
       "install_button": "Adde servitori",
       "members_title": "Iam in servitore tuo est? Incipe sic",
       "members_text": "Haec mandata in servitore tuo vel in nuntio privato ad ClashControl scribe:",
@@ -1485,7 +1485,7 @@
       "summary_no_apply_channel": "canalis petitionum non constitutus",
       "off_text": "Exstinctum. Cum accensum est, ClashControl omnem novum sodalem in canali nuntiorum systematis salutat, cum nexibus ad gentes tuas (vel canalem petitionum) et ad centrum inscriptionis.",
       "posts_title": "📍 Ubi mittit",
-      "posts_in": "{channel} — canalis nuntiorum systematis servitoris (Optiones servitoris → Conspectus → Canalis nuntiorum systematis).",
+      "posts_in": "{channel} — canalis nuntiorum systematis servitoris (Server Settings → Overview → System Messages Channel).",
       "content_title": "📝 Quid dicit",
       "mode_clan_link": "Nexus ad: {clans}",
       "mode_clan_link_none": "Nulla gens electa — nuntius salutationis nexum gentis non habet.",
@@ -1534,29 +1534,33 @@
       "leaderboards": { "title": "Tabulae ordinum", "desc": "Tabulae ordinum in canalibus subscriptis sponte missae et renovatae (/subscribe, /unsubscribe)." }
     },
     "bot_permissions": {
-      "summary_ok": "omnes permissiones datae (Administrator)",
-      "summary_no_admin": "omnes permissiones datae, sed non Administrator",
+      "summary_ok": "omnes permissiones datae (“Administrator”)",
+      "summary_no_admin": "omnes permissiones datae, sed non “Administrator”",
       "summary_problems": "{count} difficultas(es) inventa(e)",
       "summary_not_ready": "nondum inspici potest — automatum adhuc incipit",
       "not_ready": "Automatum hunc servitorem nondum totum legit. Post minutum iterum conare per «🔄 Iterum inspice».",
       "admin_granted": "Data. Permissionum exceptiones canalium ClashControl non afficiunt, itaque omnis functio in omni canali quem eligis operatur. Ad munera tribuenda sola positio muneris ClashControl refert (vide infra).",
-      "admin_missing": "Non data. Omnes functiones ClashControl sine ea operantur — sed tum automatum in omni singulo canali quo utitur permissiones aptas requirit, et exceptiones permissionum canalis (exempli gratia in canalibus privatis) id impedire possunt. Permissiones ClashControl in unoquoque horum canalium expresse constituere deberes, quod laboriosum est et facile erratur.\nAdministratorem dare haec omnia vitat, et tutum est: ClashControl nihil agit nisi quod functiones eius agunt, permissione numquam abutitur, et applicatio a Discord probata est.",
+      "admin_missing": "Non data. Omnes functiones ClashControl sine ea operantur — sed tum automatum in omni singulo canali quo utitur permissiones aptas requirit, et exceptiones permissionum canalis (exempli gratia in canalibus privatis) id impedire possunt. Permissiones ClashControl in unoquoque horum canalium expresse constituere deberes, quod laboriosum est et facile erratur.\nPermissionem “Administrator” dare haec omnia vitat, et tutum est: ClashControl nihil agit nisi quod functiones eius agunt, permissione numquam abutitur, et applicatio a Discord probata est.",
       "missing_title": "❌ Permissiones deficientes ({count})",
       "all_present": "✅ Omnes ceterae permissiones necessariae in gradu servitoris datae sunt.",
       "issues_title": "❌ Difficultates functionum constitutarum ({count})",
       "role_title": "🎭 Munus ClashControl",
-      "role_position": "Automatum sola munera tribuere potest quae **infra** suum summum munus ({role}) sunt in Optionibus servitoris → Munera. Id munus supra omnia munera tene quae ClashControl tribuere debet.",
+      "role_position": "Automatum sola munera tribuere potest quae **infra** suum summum munus ({role}) sunt in Server Settings → Roles. Id munus supra omnia munera tene quae ClashControl tribuere debet.",
       "fix_title": "🔧 Quomodo emendes",
-      "fix_text": "**Facillime:** preme **{button}** infra et confirma — Discord tum automato permissiones eius solitas in hoc servitore uno gradu dat.\n**Manu:** Optiones servitoris → Munera → ClashControl → Permissiones, et quod deest accende.\nDeinde preme «🔄 Iterum inspice».",
+      "fix_text": "**Facillime:** preme **{button}** infra et confirma — Discord tum automato permissiones eius solitas in hoc servitore uno gradu dat.\n**Manu:** Server Settings → Roles → ClashControl → Permissions, et quod deest accende.\nDeinde preme «🔄 Iterum inspice».",
       "button_reauthorize": "ClashControl iterum auctoriza"
     }
   },
   "permissions": {
     "warning_header": "⚠️ **Servatum — sed nondum operabitur. Haec in servitore corrige:**",
-    "warning_fix_channel": "Permissiones canalis deficientes administrator servitoris in optionibus canalis corrigit (Canalem emendare → Permissiones → ClashControl adde).",
-    "warning_fix_manage_roles": "„Munera administrare“ administrator servitoris in Optionibus servitoris → Munera → munus ClashControl → Permissiones activat.",
+    "warning_fix_channel": "Permissiones canalis deficientes administrator servitoris in optionibus canalis corrigit (Edit Channel → Permissions → ClashControl adde).",
+    "warning_fix_manage_roles": "“Manage Roles” administrator servitoris in Server Settings → Roles → munus ClashControl → Permissions activat.",
     "warning_footer": "Statim operabitur ubi hoc correctum erit — iterum constituere non oportet.",
     "warning_setup_hint": "🛠️ Conspectus plenus eorum quae desunt et quomodo emendes: {setup}",
+    "quoted": "“{name}”",
+    "perm_server": {
+      "view_channel": "View Channels"
+    },
     "warning_more": "… et {count} alia.",
     "feature": {
       "registration": "Nuntius inscriptionis",
@@ -1573,18 +1577,18 @@
       "cwl_coordinator_role": "Munus coordinatoris CWL"
     },
     "perm": {
-      "view_channel": "Canalem videre",
-      "send_messages": "Nuntios mittere",
-      "send_messages_in_threads": "Nuntios in filis mittere",
-      "embed_links": "Nexus inserere",
-      "read_message_history": "Historiam nuntiorum legere",
+      "view_channel": "View Channel",
+      "send_messages": "Send Messages",
+      "send_messages_in_threads": "Send Messages in Threads",
+      "embed_links": "Embed Links",
+      "read_message_history": "Read Message History",
       "administrator": "Administrator",
-      "attach_files": "Fasciculos adiungere",
-      "use_external_emojis": "Emoticis externis uti",
-      "create_public_threads": "Fila publica creare",
-      "manage_threads": "Fila moderari",
-      "create_instant_invite": "Invitationem creare",
-      "manage_roles": "Munera moderari"
+      "attach_files": "Attach Files",
+      "use_external_emojis": "Use External Emoji",
+      "create_public_threads": "Create Public Threads",
+      "manage_threads": "Manage Threads",
+      "create_instant_invite": "Create Invite",
+      "manage_roles": "Manage Roles"
     },
     "why": {
       "view_channel": "canales videre in quos mittit — sine ea hi canales automato invisibiles sunt.",
@@ -1602,9 +1606,9 @@
     "issue": {
       "missing_channel_perms": "**{feature}** in {channel}: deest {perms}",
       "channel_not_found": "**{feature}**: canalis constitutus {channel} non iam exstat aut automaton eum videre non potest",
-      "no_system_channel": "**{feature}**: servitor canalem nuntiorum systematis non habet (Optiones servitoris → Conspectus → Canalis nuntiorum systematis)",
+      "no_system_channel": "**{feature}**: servitor canalem nuntiorum systematis non habet (Server Settings → Overview → System Messages Channel)",
       "missing_manage_roles": "**{feature}**: automato deest permissio **{perms}**",
-      "role_above_bot": "**{feature}**: {role} in indice munerum servitoris non infra munus ClashControl est. ClashControl sola munera tribuere potest quae in eo indice infra suum munus sunt — in Optionibus servitoris → Munera munus ClashControl super {role} trahe",
+      "role_above_bot": "**{feature}**: {role} in indice munerum servitoris non infra munus ClashControl est. ClashControl sola munera tribuere potest quae in eo indice infra suum munus sunt — in Server Settings → Roles munus ClashControl super {role} trahe",
       "role_managed": "**{feature}**: {role} a Discord aut integratione regitur nec ab automato tribui potest",
       "role_not_found": "**{feature}**: munus constitutum {role} non iam exstat"
     }

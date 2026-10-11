@@ -301,11 +301,31 @@ def audit_guild(
 # Formatting
 # ---------------------------------------------------------------------------------------------
 
-def _perm_names(perms: Iterable[str], *, guild_id: Optional[int], user_id: Optional[str]) -> str:
+#: Permissions whose Discord label differs between Server Settings → Roles (server level) and a
+#: channel's permission overrides — only "View Channels" / "View Channel".
+_SERVER_LEVEL_LABEL_KEYS: Dict[str, str] = {"view_channel": "permissions.perm_server.view_channel"}
+
+
+def perm_label(perm: str, *, guild_id: Optional[int], user_id: Optional[str] = None,
+               scope: str = "channel") -> str:
+    """A Discord permission name for user-facing text: Discord's own client label in the reader's
+    language, in that language's quotation marks (qaplop, 2026-10-11: always quoted, always the
+    exact Discord wording). Latin uses the English labels — Discord has no Latin client.
+
+    Args:
+        perm: discord.Permissions attribute name (``send_messages``).
+        scope: "server" for a role permission (Server Settings → Roles), "channel" for a channel
+            override — the two differ for View Channel(s).
+    """
     from clashcontrol.i18n import t
-    return ", ".join(
-        t(f"permissions.perm.{p}", guild_id=guild_id, user_id=user_id) for p in perms
-    )
+    key = (_SERVER_LEVEL_LABEL_KEYS.get(perm) if scope == "server" else None) or f"permissions.perm.{perm}"
+    name = t(key, guild_id=guild_id, user_id=user_id)
+    return t("permissions.quoted", guild_id=guild_id, user_id=user_id, name=name)
+
+
+def _perm_names(perms: Iterable[str], *, guild_id: Optional[int], user_id: Optional[str],
+                scope: str = "channel") -> str:
+    return ", ".join(perm_label(p, guild_id=guild_id, user_id=user_id, scope=scope) for p in perms)
 
 
 def format_issue(
@@ -479,7 +499,7 @@ def build_audit_report(guilds: Iterable[discord.Guild]) -> Tuple[str, int, int]:
         if missing_server_level:
             out.append(
                 f"   missing at server level: "
-                f"{_perm_names(missing_server_level, guild_id=None, user_id=None)}"
+                f"{_perm_names(missing_server_level, guild_id=None, user_id=None, scope='server')}"
             )
         for issue in issues:
             out.append("   - " + format_issue(issue, guild_id=None, plain_guild=guild))

@@ -1,6 +1,19 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-11 (3)
+- Changed (tracker #0151, qaplop): Discord permission names in texts are always quoted and use
+  Discord's exact client label per language — new bot_permissions.perm_label() renders every one
+  (setup checklist, config-time warnings, /clan management's "missing permissions" reply, which
+  had English names hard-coded). Corrected names: de "Kanal ansehen" for channel problems
+  ("Kanäle ansehen" stays for role permissions, new perm_server key), de tracker invite text
+  „Soforteinladung erstellen“, en "Use External Emoji". Latin now uses the English Discord
+  labels and English Discord menu paths (Discord has no Latin client). /admin help and the
+  landing page's install text quote their permission too. New playbook rule (Cardinal Rule 6)
+  and a test that scans every translation for unquoted permission names.
+  Files: bot_permissions.py, config_audit.py, QBdiscordcmds.py, translations (5),
+  activity/client/src/landingPage.ts, tests. 3822 tests pass. Build 153.
+
 2026-10-11 (2)
 - Added (tracker #0151, Phase 2): /setup now checks six more steps, each with a detail page
   and the real /clan management menu path to change it: 2 language & timezone (✅ + hint for the

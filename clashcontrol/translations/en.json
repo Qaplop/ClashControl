@@ -301,7 +301,7 @@
       "setup": {
         "short": "Check ClashControl's setup on this server (admins)",
         "title": "🛠️ Setup Command",
-        "detailed": "Shows a checklist of everything ClashControl needs on this server, with a status for each step: ✅ OK, ❌ needs fixing, ⚠️ incomplete, ⏸️ not in use, 🔒 needs an earlier step, ⚪ not checked yet. Pick a step for the details: what is wrong, why it matters and how to fix it.\n\n**Usage:**\n`/setup`\n\n**Checked so far:**\n• Bot permissions — Administrator, every missing permission with the reason it is needed, and a button to re-authorize the bot in one click\n• Language & timezone, clans & families (incl. private war logs and clans deleted by Supercell), welcome message, war and raid reminders in channels, leaderboards — what is set up, and every channel the bot can't use\n\nRegistration, war notifications, server roles and CWL follow in later updates.\n\n**Notes:**\n• Server administrators only\n• Only you see the result\n• Nothing is changed — “🔄 Check again” re-runs the checks after you fixed something"
+        "detailed": "Shows a checklist of everything ClashControl needs on this server, with a status for each step: ✅ OK, ❌ needs fixing, ⚠️ incomplete, ⏸️ not in use, 🔒 needs an earlier step, ⚪ not checked yet. Pick a step for the details: what is wrong, why it matters and how to fix it.\n\n**Usage:**\n`/setup`\n\n**Checked so far:**\n• Bot permissions — “Administrator”, every missing permission with the reason it is needed, and a button to re-authorize the bot in one click\n• Language & timezone, clans & families (incl. private war logs and clans deleted by Supercell), welcome message, war and raid reminders in channels, leaderboards — what is set up, and every channel the bot can't use\n\nRegistration, war notifications, server roles and CWL follow in later updates.\n\n**Notes:**\n• Server administrators only\n• Only you see the result\n• Nothing is changed — “🔄 Check again” re-runs the checks after you fixed something"
       },
       "clan management": {
         "short": "Central server and clan configuration",
@@ -321,7 +321,7 @@
       "admin": {
         "short": "Administrative actions and utilities",
         "title": "⚙️ Admin Command",
-        "detailed": "Administrative tools for bot configuration, diagnostics, and maintenance.\n\n**Usage:**\n`/admin action:<action_type>`\n\n**Available Actions:**\n• `Cleanup Messages` - Clean up bot messages in current server (Admin)\n• `Cleanup Messages All` - Clean up all bot messages (Bot Admin)\n• `Check Logs` - Scan and summarize error logs (Bot Admin)\n• `Check Data` - Validate data consistency (Bot Admin)\n• `List All Subscriptions` - View all subscriptions across servers (Bot Admin)\n• `Test Notify` - Test war notifications (Bot Admin)\n• `DM User` - Send the /dm me greeting DM to a server member (Admin, server only)\n• `Remove Clan` - Remove clan from tracking (Admin)\n• `List All Clans` - List all tracked clans (Admin)\n• `Import Data` - Import player registrations from ClashPerk (Bot Admin)\n• `Analyze Message` - Debug Discord message structure (Admin)\n• `Refresh Data` - Force refresh all clan data from CoC API (Bot Admin)\n• `Retrieve CWL Data` - Backfill CWL history for a clan (Bot Admin)\n• `Backfill CWL Groups` - Fetch CWL league groups for clans with fewer than 7 rounds (Bot Admin)\n• `War Prediction` - Predict war outcome between two clans (Bot Admin)\n• `Start Update Cycle` - Skip sleep phase and start the next update cycle immediately (Bot Admin)\n• `Execute Nightly Maintenance` - Run archive move + DB ANALYZE/REINDEX/VACUUM now (Bot Admin)\n  ↳ `skip_db_maintenance:True` - only the data steps, without the long REINDEX/VACUUM/ANALYZE part\n• `Memory Profile` - Dump memory allocation stats to the log file (Bot Admin)\n• `Permission Audit` - Check the bot's permissions for every configured automation in every server (Bot Admin)\n• `Maintenance Start` - Suspend updates and close DB for safe data access (Bot Admin)\n• `Maintenance End` - Restart bot and resume normal operation (Bot Admin)\n\n**Permission Levels:**\n• Admin - Requires Discord server administrator permission\n• Bot Admin - Requires bot administrator role (configured in bot settings)\n\n**Example:**\n`/admin action:Cleanup Messages`"
+        "detailed": "Administrative tools for bot configuration, diagnostics, and maintenance.\n\n**Usage:**\n`/admin action:<action_type>`\n\n**Available Actions:**\n• `Cleanup Messages` - Clean up bot messages in current server (Admin)\n• `Cleanup Messages All` - Clean up all bot messages (Bot Admin)\n• `Check Logs` - Scan and summarize error logs (Bot Admin)\n• `Check Data` - Validate data consistency (Bot Admin)\n• `List All Subscriptions` - View all subscriptions across servers (Bot Admin)\n• `Test Notify` - Test war notifications (Bot Admin)\n• `DM User` - Send the /dm me greeting DM to a server member (Admin, server only)\n• `Remove Clan` - Remove clan from tracking (Admin)\n• `List All Clans` - List all tracked clans (Admin)\n• `Import Data` - Import player registrations from ClashPerk (Bot Admin)\n• `Analyze Message` - Debug Discord message structure (Admin)\n• `Refresh Data` - Force refresh all clan data from CoC API (Bot Admin)\n• `Retrieve CWL Data` - Backfill CWL history for a clan (Bot Admin)\n• `Backfill CWL Groups` - Fetch CWL league groups for clans with fewer than 7 rounds (Bot Admin)\n• `War Prediction` - Predict war outcome between two clans (Bot Admin)\n• `Start Update Cycle` - Skip sleep phase and start the next update cycle immediately (Bot Admin)\n• `Execute Nightly Maintenance` - Run archive move + DB ANALYZE/REINDEX/VACUUM now (Bot Admin)\n  ↳ `skip_db_maintenance:True` - only the data steps, without the long REINDEX/VACUUM/ANALYZE part\n• `Memory Profile` - Dump memory allocation stats to the log file (Bot Admin)\n• `Permission Audit` - Check the bot's permissions for every configured automation in every server (Bot Admin)\n• `Maintenance Start` - Suspend updates and close DB for safe data access (Bot Admin)\n• `Maintenance End` - Restart bot and resume normal operation (Bot Admin)\n\n**Permission Levels:**\n• Admin - Requires the “Administrator” permission on the Discord server\n• Bot Admin - Requires bot administrator role (configured in bot settings)\n\n**Example:**\n`/admin action:Cleanup Messages`"
       },
       "list": {
         "short": "List accounts, families, or players",
@@ -607,7 +607,7 @@
       "grant_access_member_not_found": "⚠️ Couldn't find that member in this server.",
       "grant_access_granted": "✅ Granted <@{reporter_id}> access to this channel and its threads: {jump_link}",
       "grant_access_failed": "⚠️ Couldn't grant access — check my permissions in this channel.",
-      "grant_access_invite_failed": "⚠️ Couldn't create an invite — check my \"Create Invite\" permission in this channel.",
+      "grant_access_invite_failed": "⚠️ Couldn't create an invite — check my “Create Invite” permission in this channel.",
       "grant_access_invite_dm": "👋 An admin replied to your report **#{item_number}** — join the server to see it and reply: {invite_url}",
       "grant_access_invited": "✅ That reporter isn't in the server yet — sent them a DM with an invite. They'll get access automatically once they join: {invite_url}",
       "grant_access_already_invited": "ℹ️ An invite was already sent to that reporter — they'll get access automatically once they join.",
@@ -1424,7 +1424,7 @@
       "feature_stats": "Leaderboards and detailed player and clan stats",
       "feature_languages": "English, German, Spanish, Chinese and Latin. Missing your language? Request it with /feature and we will gladly provide it.",
       "install_title": "New here? Add ClashControl to your server",
-      "install_text": "You need the Manage Server permission on the server you add it to.",
+      "install_text": "You need the “Manage Server” permission on the server you add it to.",
       "install_button": "Add to server",
       "members_title": "Already on your server? Get started",
       "members_text": "Type these commands in your server, or in a DM with ClashControl:",
@@ -1535,13 +1535,13 @@
       "leaderboards": { "title": "Leaderboards", "desc": "Leaderboards posted and kept up to date in subscribed channels (/subscribe, /unsubscribe)." }
     },
     "bot_permissions": {
-      "summary_ok": "all permissions granted (Administrator)",
-      "summary_no_admin": "all permissions granted, but not Administrator",
+      "summary_ok": "all permissions granted (“Administrator”)",
+      "summary_no_admin": "all permissions granted, but not “Administrator”",
       "summary_problems": "{count} problem(s) found",
       "summary_not_ready": "can't be checked yet — the bot is still starting",
       "not_ready": "The bot hasn't finished loading this server yet. Try again in a minute with “🔄 Check again”.",
       "admin_granted": "Granted. Channel permission overrides don't affect ClashControl, so every feature works in every channel you pick. Only the position of the ClashControl role still matters for assigning roles (see below).",
-      "admin_missing": "Not granted. Every ClashControl feature works without it — but then the bot needs the right permissions in every single channel it uses, and a channel's permission overrides (private channels, for example) can block it. You'd have to set ClashControl's permissions explicitly in each of those channels, which is effort and easy to get wrong.\nGranting Administrator saves all of that, and it is safe: ClashControl only ever does what its features do, never misuses the permission, and is an app verified by Discord.",
+      "admin_missing": "Not granted. Every ClashControl feature works without it — but then the bot needs the right permissions in every single channel it uses, and a channel's permission overrides (private channels, for example) can block it. You'd have to set ClashControl's permissions explicitly in each of those channels, which is effort and easy to get wrong.\nGranting “Administrator” saves all of that, and it is safe: ClashControl only ever does what its features do, never misuses the permission, and is an app verified by Discord.",
       "missing_title": "❌ Missing permissions ({count})",
       "all_present": "✅ All other required permissions are granted at server level.",
       "issues_title": "❌ Problems with configured features ({count})",
@@ -1558,6 +1558,10 @@
     "warning_fix_manage_roles": "A server admin can enable “Manage Roles” under Server Settings → Roles → ClashControl role → Permissions.",
     "warning_footer": "It starts working as soon as this is fixed — no need to set it up again.",
     "warning_setup_hint": "🛠️ Full overview of what's missing, and how to fix it: {setup}",
+    "quoted": "“{name}”",
+    "perm_server": {
+      "view_channel": "View Channels"
+    },
     "warning_more": "… and {count} more.",
     "feature": {
       "registration": "Registration message",
@@ -1581,7 +1585,7 @@
       "read_message_history": "Read Message History",
       "administrator": "Administrator",
       "attach_files": "Attach Files",
-      "use_external_emojis": "Use External Emojis",
+      "use_external_emojis": "Use External Emoji",
       "create_public_threads": "Create Public Threads",
       "manage_threads": "Manage Threads",
       "create_instant_invite": "Create Invite",

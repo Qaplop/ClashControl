@@ -389,3 +389,70 @@ class TestRenderingConfigured:
             texts = [e.title or "", e.description or ""] + [f.name for f in e.fields] + [f.value for f in e.fields]
             assert not any("config_audit." in x or "permissions." in x or "ui_components." in x for x in texts), texts
             assert len(e.description or "") <= 4096 and all(len(f.value) <= 1024 for f in e.fields)
+
+
+class TestPermissionNames:
+    """qaplop 2026-10-11: permission names in text are quoted and use Discord's own client wording;
+    Latin uses the English labels (Discord has no Latin client)."""
+
+    @pytest.mark.parametrize("lang, expected", [
+        ("en", "“Send Messages”"), ("de", "„Nachrichten senden“"), ("es", "«Enviar mensajes»"),
+        ("zh", "“发送消息”"), ("la", "“Send Messages”"),
+    ])
+    def test_quoted_in_every_language(self, lang, expected):
+        CACHE.server_config[str(GID)] = {"language": lang}
+        assert bp.perm_label("send_messages", guild_id=GID) == expected
+
+    def test_view_channel_differs_by_scope(self):
+        CACHE.server_config[str(GID)] = {"language": "de"}
+        assert bp.perm_label("view_channel", guild_id=GID) == "„Kanal ansehen“"
+        assert bp.perm_label("view_channel", guild_id=GID, scope="server") == "„Kanäle ansehen“"
+
+    def test_latin_uses_the_english_discord_labels(self):
+        import json
+        def perms(lang):
+            d = json.load(open(f"clashcontrol/translations/{lang}.json", encoding="utf-8"))
+            return d["permissions"]["perm"], d["permissions"]["perm_server"]
+        assert perms("la") == perms("en")
+
+    def test_issue_line_quotes_the_permission(self):
+        CACHE.server_config[str(GID)] = {"language": "de"}
+        issue = bp.PermissionIssue("leaderboard", bp.MISSING_CHANNEL_PERMS, 5, ("send_messages",))
+        assert "„Nachrichten senden“" in bp.format_issue(issue, guild_id=GID)
+
+    @pytest.mark.parametrize("lang", LANGS)
+    def test_no_unquoted_permission_name_in_any_text(self, lang):
+        import json
+        d = json.load(open(f"clashcontrol/translations/{lang}.json", encoding="utf-8"))
+        names = {v for k, v in {**d["permissions"]["perm"], **d["permissions"]["perm_server"]}.items()
+                 if k != "administrator"}  # "Administrator" is also an ordinary word (a person)
+        opening = d["permissions"]["quoted"].split("{name}")[0]
+
+        def strings(o, path=""):
+            for k, v in o.items():
+                p = f"{path}.{k}" if path else k
+                if isinstance(v, dict):
+                    if p not in ("permissions.perm", "permissions.perm_server"):
+                        yield from strings(v, p)
+                elif isinstance(v, str):
+                    yield p, v
+
+        # Ordinary words that happen to equal a permission name (not a permission reference).
+        allowed = {
+            ("de", "warnotifications.description"),               # "…als persönliche Nachrichten senden"
+            ("de", "commands.help.clan management.detailed"),     # menu label "Server-Rollen verwalten"
+            ("de", "ui_components.clan_management.mode_roles_label"),
+            ("zh", "ui_components.tracker.grant_access_invite_failed"),     # verb "无法创建邀请"; permission quoted later
+            ("zh", "ui_components.tracker.grant_access_invite_dm_failed"),  # verb "已创建邀请"
+        }
+        bad = []
+        for path, text in strings(d):
+            if (lang, path) in allowed:
+                continue
+            for name in names:
+                start = 0
+                while (i := text.find(name, start)) != -1:
+                    if not text[:i].endswith(opening):
+                        bad.append((path, name))
+                    start = i + len(name)
+        assert not bad, bad

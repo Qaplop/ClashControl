@@ -301,7 +301,7 @@
       "setup": {
         "short": "Einrichtung von ClashControl auf diesem Server prüfen (Admins)",
         "title": "🛠️ Setup-Befehl",
-        "detailed": "Zeigt eine Checkliste mit allem, was ClashControl auf diesem Server braucht, mit einem Status je Schritt: ✅ OK, ❌ muss behoben werden, ⚠️ unvollständig, ⏸️ nicht genutzt, 🔒 braucht einen früheren Schritt, ⚪ noch nicht geprüft. Wähle einen Schritt für die Details: was nicht stimmt, warum es wichtig ist und wie du es behebst.\n\n**Verwendung:**\n`/setup`\n\n**Bisher geprüft:**\n• Bot-Berechtigungen — Administrator, jede fehlende Berechtigung mit dem Grund, warum sie gebraucht wird, und ein Button, um den Bot mit einem Klick neu zu autorisieren\n• Sprache & Zeitzone, Clans & Familien (inkl. privater Kriegsprotokolle und von Supercell gelöschter Clans), Willkommensnachricht, Kriegs- und Raid-Erinnerungen im Kanal, Bestenlisten — was eingerichtet ist und jeder Kanal, den der Bot nicht nutzen kann\n\nRegistrierung, Kriegs-Erinnerungen per DM, Server-Rollen und CWL folgen in späteren Updates.\n\n**Hinweise:**\n• Nur für Server-Administratoren\n• Nur du siehst das Ergebnis\n• Es wird nichts geändert — „🔄 Erneut prüfen“ prüft noch einmal, nachdem du etwas behoben hast"
+        "detailed": "Zeigt eine Checkliste mit allem, was ClashControl auf diesem Server braucht, mit einem Status je Schritt: ✅ OK, ❌ muss behoben werden, ⚠️ unvollständig, ⏸️ nicht genutzt, 🔒 braucht einen früheren Schritt, ⚪ noch nicht geprüft. Wähle einen Schritt für die Details: was nicht stimmt, warum es wichtig ist und wie du es behebst.\n\n**Verwendung:**\n`/setup`\n\n**Bisher geprüft:**\n• Bot-Berechtigungen — „Administrator“, jede fehlende Berechtigung mit dem Grund, warum sie gebraucht wird, und ein Button, um den Bot mit einem Klick neu zu autorisieren\n• Sprache & Zeitzone, Clans & Familien (inkl. privater Kriegsprotokolle und von Supercell gelöschter Clans), Willkommensnachricht, Kriegs- und Raid-Erinnerungen im Kanal, Bestenlisten — was eingerichtet ist und jeder Kanal, den der Bot nicht nutzen kann\n\nRegistrierung, Kriegs-Erinnerungen per DM, Server-Rollen und CWL folgen in späteren Updates.\n\n**Hinweise:**\n• Nur für Server-Administratoren\n• Nur du siehst das Ergebnis\n• Es wird nichts geändert — „🔄 Erneut prüfen“ prüft noch einmal, nachdem du etwas behoben hast"
       },
       "clan management": {
         "short": "Zentrale Server- und Clan-Konfiguration",
@@ -321,7 +321,7 @@
       "admin": {
         "short": "Administrative Aktionen und Werkzeuge",
         "title": "⚙️ Admin-Befehl",
-        "detailed": "Administrative Werkzeuge für Bot-Konfiguration, Diagnose und Wartung.\n\n**Verwendung:**\n`/admin action:<aktionstyp>`\n\n**Verfügbare Aktionen:**\n• `Cleanup Messages` - Bot-Nachrichten im aktuellen Server aufräumen (Admin)\n• `Cleanup Messages All` - Alle Bot-Nachrichten aufräumen (Bot-Admin)\n• `Check Logs` - Fehlerprotokolle scannen und zusammenfassen (Bot-Admin)\n• `Check Data` - Datenkonsistenz validieren (Bot-Admin)\n• `List All Subscriptions` - Alle Abos über Server hinweg anzeigen (Bot-Admin)\n• `Test Notify` - Kriegsbenachrichtigungen testen (Bot-Admin)\n• `DM User` - Die Begrüßungs-DM von /dm me an ein Servermitglied schicken (Admin, nur im Server)\n• `Remove Clan` - Clan aus Tracking entfernen (Admin)\n• `List All Clans` - Alle getrackten Clans auflisten (Admin)\n• `Import Data` - Spielerregistrierungen von ClashPerk importieren (Bot-Admin)\n• `Analyze Message` - Discord-Nachrichtenstruktur debuggen (Admin)\n• `Refresh Data` - Alle Clan-Daten aus der CoC API neu laden (Bot-Admin)\n• `Retrieve CWL Data` - CWL-Historie für einen Clan nachladen (Bot-Admin)\n• `Backfill CWL Groups` - CWL-Ligagruppen für Clans mit weniger als 7 Runden abrufen (Bot-Admin)\n• `War Prediction` - Kriegsausgang zwischen zwei Clans vorhersagen (Bot-Admin)\n• `Start Update Cycle` - Schlafphase überspringen und nächsten Update-Zyklus sofort starten (Bot-Admin)\n• `Execute Nightly Maintenance` - Archiv-Verschiebung + DB ANALYZE/REINDEX/VACUUM jetzt ausführen (Bot-Admin)\n  ↳ `skip_db_maintenance:True` - nur die Daten-Schritte, ohne den langen REINDEX/VACUUM/ANALYZE-Teil\n• `Memory Profile` - Speicher-Belegungsstatistiken in die Log-Datei schreiben (Bot-Admin)\n• `Permission Audit` - Berechtigungen des Bots für jede eingerichtete Automatisierung in allen Servern prüfen (Bot-Admin)\n• `Maintenance Start` - Updates pausieren und DB schließen für sicheren Datenzugriff (Bot-Admin)\n• `Maintenance End` - Bot neu starten und normalen Betrieb wieder aufnehmen (Bot-Admin)\n\n**Berechtigungsstufen:**\n• Admin - Erfordert Discord-Server-Administratorberechtigung\n• Bot-Admin - Erfordert Bot-Administratorrolle (in Bot-Einstellungen konfiguriert)\n\n**Beispiel:**\n`/admin action:Cleanup Messages`"
+        "detailed": "Administrative Werkzeuge für Bot-Konfiguration, Diagnose und Wartung.\n\n**Verwendung:**\n`/admin action:<aktionstyp>`\n\n**Verfügbare Aktionen:**\n• `Cleanup Messages` - Bot-Nachrichten im aktuellen Server aufräumen (Admin)\n• `Cleanup Messages All` - Alle Bot-Nachrichten aufräumen (Bot-Admin)\n• `Check Logs` - Fehlerprotokolle scannen und zusammenfassen (Bot-Admin)\n• `Check Data` - Datenkonsistenz validieren (Bot-Admin)\n• `List All Subscriptions` - Alle Abos über Server hinweg anzeigen (Bot-Admin)\n• `Test Notify` - Kriegsbenachrichtigungen testen (Bot-Admin)\n• `DM User` - Die Begrüßungs-DM von /dm me an ein Servermitglied schicken (Admin, nur im Server)\n• `Remove Clan` - Clan aus Tracking entfernen (Admin)\n• `List All Clans` - Alle getrackten Clans auflisten (Admin)\n• `Import Data` - Spielerregistrierungen von ClashPerk importieren (Bot-Admin)\n• `Analyze Message` - Discord-Nachrichtenstruktur debuggen (Admin)\n• `Refresh Data` - Alle Clan-Daten aus der CoC API neu laden (Bot-Admin)\n• `Retrieve CWL Data` - CWL-Historie für einen Clan nachladen (Bot-Admin)\n• `Backfill CWL Groups` - CWL-Ligagruppen für Clans mit weniger als 7 Runden abrufen (Bot-Admin)\n• `War Prediction` - Kriegsausgang zwischen zwei Clans vorhersagen (Bot-Admin)\n• `Start Update Cycle` - Schlafphase überspringen und nächsten Update-Zyklus sofort starten (Bot-Admin)\n• `Execute Nightly Maintenance` - Archiv-Verschiebung + DB ANALYZE/REINDEX/VACUUM jetzt ausführen (Bot-Admin)\n  ↳ `skip_db_maintenance:True` - nur die Daten-Schritte, ohne den langen REINDEX/VACUUM/ANALYZE-Teil\n• `Memory Profile` - Speicher-Belegungsstatistiken in die Log-Datei schreiben (Bot-Admin)\n• `Permission Audit` - Berechtigungen des Bots für jede eingerichtete Automatisierung in allen Servern prüfen (Bot-Admin)\n• `Maintenance Start` - Updates pausieren und DB schließen für sicheren Datenzugriff (Bot-Admin)\n• `Maintenance End` - Bot neu starten und normalen Betrieb wieder aufnehmen (Bot-Admin)\n\n**Berechtigungsstufen:**\n• Admin - Erfordert die Berechtigung „Administrator“ auf dem Discord-Server\n• Bot-Admin - Erfordert Bot-Administratorrolle (in Bot-Einstellungen konfiguriert)\n\n**Beispiel:**\n`/admin action:Cleanup Messages`"
       },
       "list": {
         "short": "Konten, Familien oder Spieler auflisten",
@@ -607,7 +607,7 @@
       "grant_access_member_not_found": "⚠️ Dieses Mitglied wurde auf diesem Server nicht gefunden.",
       "grant_access_granted": "✅ <@{reporter_id}> hat nun Zugriff auf diesen Kanal und seine Threads: {jump_link}",
       "grant_access_failed": "⚠️ Zugriff konnte nicht gewährt werden — prüfe meine Berechtigungen in diesem Kanal.",
-      "grant_access_invite_failed": "⚠️ Einladung konnte nicht erstellt werden — prüfe meine „Einladung erstellen“-Berechtigung in diesem Kanal.",
+      "grant_access_invite_failed": "⚠️ Einladung konnte nicht erstellt werden — prüfe meine „Soforteinladung erstellen“-Berechtigung in diesem Kanal.",
       "grant_access_invite_dm": "👋 Ein Administrator hat auf deine Meldung **#{item_number}** geantwortet — tritt dem Server bei, um sie zu sehen und zu antworten: {invite_url}",
       "grant_access_invited": "✅ Dieser Melder ist noch nicht auf dem Server — ihm wurde eine Einladung per DM geschickt. Sobald er beitritt, erhält er automatisch Zugriff: {invite_url}",
       "grant_access_already_invited": "ℹ️ Diesem Melder wurde bereits eine Einladung geschickt — sobald er beitritt, erhält er automatisch Zugriff.",
@@ -1535,13 +1535,13 @@
       "leaderboards": { "title": "Bestenlisten", "desc": "Bestenlisten, die in abonnierten Kanälen automatisch gepostet und aktuell gehalten werden (/subscribe, /unsubscribe)." }
     },
     "bot_permissions": {
-      "summary_ok": "alle Berechtigungen erteilt (Administrator)",
-      "summary_no_admin": "alle Berechtigungen erteilt, aber kein Administrator",
+      "summary_ok": "alle Berechtigungen erteilt („Administrator“)",
+      "summary_no_admin": "alle Berechtigungen erteilt, aber nicht „Administrator“",
       "summary_problems": "{count} Problem(e) gefunden",
       "summary_not_ready": "noch nicht prüfbar — der Bot startet gerade",
       "not_ready": "Der Bot hat diesen Server noch nicht fertig geladen. Versuche es in einer Minute mit „🔄 Erneut prüfen“.",
       "admin_granted": "Erteilt. Berechtigungs-Überschreibungen in Kanälen betreffen ClashControl nicht, daher funktioniert jede Funktion in jedem Kanal, den du wählst. Für die Rollenvergabe zählt nur noch die Position der ClashControl-Rolle (siehe unten).",
-      "admin_missing": "Nicht erteilt. Alle Funktionen von ClashControl funktionieren auch ohne — aber dann braucht der Bot in jedem einzelnen Kanal, den er nutzt, die passenden Berechtigungen, und die Berechtigungs-Überschreibungen eines Kanals (zum Beispiel bei privaten Kanälen) können ihn blockieren. Du müsstest die Berechtigungen für ClashControl in jedem dieser Kanäle ausdrücklich einstellen — das ist Aufwand und fehleranfällig.\nMit Administrator entfällt all das, und es ist sicher: ClashControl tut nur, was seine Funktionen tun, missbraucht die Berechtigung nie und ist eine von Discord verifizierte App.",
+      "admin_missing": "Nicht erteilt. Alle Funktionen von ClashControl funktionieren auch ohne — aber dann braucht der Bot in jedem einzelnen Kanal, den er nutzt, die passenden Berechtigungen, und die Berechtigungs-Überschreibungen eines Kanals (zum Beispiel bei privaten Kanälen) können ihn blockieren. Du müsstest die Berechtigungen für ClashControl in jedem dieser Kanäle ausdrücklich einstellen — das ist Aufwand und fehleranfällig.\nMit „Administrator“ entfällt all das, und es ist sicher: ClashControl tut nur, was seine Funktionen tun, missbraucht die Berechtigung nie und ist eine von Discord verifizierte App.",
       "missing_title": "❌ Fehlende Berechtigungen ({count})",
       "all_present": "✅ Alle anderen benötigten Berechtigungen sind auf Server-Ebene erteilt.",
       "issues_title": "❌ Probleme bei eingerichteten Funktionen ({count})",
@@ -1558,6 +1558,10 @@
     "warning_fix_manage_roles": "„Rollen verwalten“ aktiviert ein Server-Admin unter Servereinstellungen → Rollen → ClashControl-Rolle → Berechtigungen.",
     "warning_footer": "Es funktioniert, sobald das behoben ist — eine erneute Einrichtung ist nicht nötig.",
     "warning_setup_hint": "🛠️ Komplette Übersicht, was fehlt und wie du es behebst: {setup}",
+    "quoted": "„{name}“",
+    "perm_server": {
+      "view_channel": "Kanäle ansehen"
+    },
     "warning_more": "… und {count} weitere.",
     "feature": {
       "registration": "Registrierungsnachricht",
@@ -1574,7 +1578,7 @@
       "cwl_coordinator_role": "CWL-Koordinator-Rolle"
     },
     "perm": {
-      "view_channel": "Kanäle ansehen",
+      "view_channel": "Kanal ansehen",
       "send_messages": "Nachrichten senden",
       "send_messages_in_threads": "Nachrichten in Threads senden",
       "embed_links": "Links einbetten",

@@ -2953,7 +2953,7 @@ async def clan_management(interaction: discord.Interaction):
     # (twice, INTL BootCamp, 2026-10-08) with nothing saying what to fix. Checked up front so the
     # admin gets the exact missing permissions; the except below stays as the backstop for
     # anything the cached permission state got wrong.
-    from clashcontrol.bot_permissions import check_channel_feature, format_issues_message
+    from clashcontrol.bot_permissions import CHANNEL_FEATURES, check_channel_feature, format_issues_message, perm_label
     _perm_issues = check_channel_feature(interaction.guild, "clan_management", interaction.channel.id)
     if _perm_issues:
         logging.warning(
@@ -2993,7 +2993,9 @@ async def clan_management(interaction: discord.Interaction):
         )
         await interaction.followup.send(
             t('commands.errors.bot_missing_permissions', user_id=str(interaction.user.id),
-              guild_id=interaction.guild_id, perms="View Channel, Send Messages, Embed Links"),
+              guild_id=interaction.guild_id,
+              perms=", ".join(perm_label(p, guild_id=interaction.guild_id, user_id=str(interaction.user.id))
+                              for p in CHANNEL_FEATURES["clan_management"])),
             ephemeral=True,
         )
         return

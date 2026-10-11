@@ -166,7 +166,7 @@ def detail_bot_permissions(
         return t(key, guild_id=guild_id, user_id=user_id, **kw)
 
     def perm_name(p: str) -> str:
-        return tr(f"permissions.perm.{p}")
+        return bp.perm_label(p, guild_id=guild_id, user_id=user_id, scope="server")
 
     if result.status == AuditStatus.INFO:
         return StepDetail([("", tr("config_audit.bot_permissions.not_ready"))])

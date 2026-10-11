@@ -21,7 +21,7 @@ export const FALLBACK_STRINGS: Record<string, string> = {
   feature_stats: 'Leaderboards and detailed player and clan stats',
   feature_languages: 'English, German, Spanish, Chinese and Latin. Missing your language? Request it with /feature and we will gladly provide it.',
   install_title: 'New here? Add ClashControl to your server',
-  install_text: 'You need the Manage Server permission on the server you add it to.',
+  install_text: 'You need the “Manage Server” permission on the server you add it to.',
   install_button: 'Add to server',
   members_title: 'Already on your server? Get started',
   members_text: 'Type these commands in your server, or in a DM with ClashControl:',

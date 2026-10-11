@@ -1,6 +1,15 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-11 (29)
+- Fixed (tracker #0121, qaplop on a new server): linking an account didn't move the tutorial on
+  from step 3 (and switching war reminders on didn't finish step 5) — those are button flows, and
+  only app commands reported back (on_command_completed). New tutorial.on_flow_completed():
+  called after a member's own linking/verification (check_and_prompt_war_notifications, "Skip API
+  verification") and after switching war reminders on ("Activate Notifications", the "My war
+  reminders" toggle). When the step's state check now passes it reacts with the same "✅ … done!
+  Ready for the next step?" prompt as after /help (shared _complete_step()). Build 173.
+
 2026-10-11 (28)
 - Fixed (tracker #0121, qaplop): since Build 170, clicking "Continue tutorial" made the tutorial
   vanish. The prompt turned into the next step's page, and then the "remove the previous

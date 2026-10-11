@@ -280,3 +280,51 @@ class TestOneMessageFlow:
         it.delete_original_response.assert_not_awaited()
         assert ui_tutorial._OPEN_MESSAGE["77"] is it.delete_original_response
         ui_tutorial._OPEN_MESSAGE.pop("77", None)
+
+
+class TestFlowCompletion:
+    """qaplop 2026-10-11: linking an account in step 3 didn't move the tutorial on — the link
+    flow is buttons, not an app command."""
+
+    @pytest.mark.asyncio
+    async def test_linking_completes_the_link_step(self, monkeypatch):
+        from clashcontrol import ui_tutorial
+        now = datetime.now(timezone.utc).isoformat()
+        monkeypatch.setattr(tut, "get_progress", lambda uid, track=tut.TRACK_USER: {
+            "step": "link_account", "done": {"welcome", "help"}, "updated_at": now})
+        saved = []
+
+        async def _save(uid, step_id, done=None, track=tut.TRACK_USER):
+            saved.append((step_id, set(done or ())))
+        monkeypatch.setattr(tut, "save_progress", _save)
+        step = tut.STEPS_BY_ID["link_account"]
+        monkeypatch.setattr(tut, "STEPS_BY_ID", {**tut.STEPS_BY_ID, "link_account": tut.TutorialStep(
+            step.id, step.emoji, flows=step.flows, done_check=lambda uid: True)})
+        it = MagicMock()
+        it.user.id = 31
+        it.guild = None
+        message = MagicMock()
+        message.delete = AsyncMock()
+        it.followup.send = AsyncMock(return_value=message)
+        page = AsyncMock()
+        ui_tutorial._OPEN_MESSAGE["31"] = page
+        await tut.on_flow_completed(it)
+        assert saved == [("my_accounts", {"welcome", "help", "link_account"})]
+        assert isinstance(it.followup.send.await_args.kwargs["view"], ui_tutorial.ContinueTutorialView)
+        page.assert_awaited_once()                       # the step-3 page makes room for the prompt
+        ui_tutorial._OPEN_MESSAGE.pop("31", None)
+
+    @pytest.mark.asyncio
+    async def test_nothing_happens_while_the_task_is_not_done(self, monkeypatch):
+        now = datetime.now(timezone.utc).isoformat()
+        monkeypatch.setattr(tut, "get_progress", lambda uid, track=tut.TRACK_USER: {
+            "step": "link_account", "done": set(), "updated_at": now})
+        step = tut.STEPS_BY_ID["link_account"]
+        monkeypatch.setattr(tut, "STEPS_BY_ID", {**tut.STEPS_BY_ID, "link_account": tut.TutorialStep(
+            step.id, step.emoji, flows=step.flows, done_check=lambda uid: False)})
+        it = MagicMock()
+        it.user.id = 32
+        it.followup.send = AsyncMock()
+        await tut.on_flow_completed(it)
+        it.followup.send.assert_not_awaited()
+

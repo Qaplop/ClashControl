@@ -151,16 +151,41 @@ async def on_command_completed(interaction: discord.Interaction, command: Any) -
         name = getattr(command, "qualified_name", None) or getattr(command, "name", "")
         if step is None or step.command is None or name != step.command:
             return
-        nxt = next_step_id(step.id)
-        await save_progress(user_id, nxt, set(progress.get("done", set())) | {step.id})  # type: ignore[union-attr]
-        logging.info(f"[TUTORIAL] user {user_id} completed '{step.id}' via /{name}")
-        from clashcontrol.ui_tutorial import ContinueTutorialView, replace_open_message, step_done_text
-        message = await interaction.followup.send(
-            step_done_text(step, interaction), view=ContinueTutorialView(interaction), ephemeral=True, wait=True,
-        )
-        await replace_open_message(user_id, message.delete)   # the step page it answers goes away
+        await _complete_step(interaction, user_id, progress, step, f"/{name}")  # type: ignore[arg-type]
     except Exception as e:  # e.g. a command whose response type allows no followup
         logging.debug(f"[TUTORIAL] completion reaction for /{getattr(command, 'name', '?')} skipped: {e}")
+
+
+async def on_flow_completed(interaction: discord.Interaction) -> None:
+    """Called after a member finished, for themselves, one of the real flows a tutorial step
+    waits for — linking an account, switching war reminders on. Those are buttons, not app
+    commands, so on_command_completed never sees them (qaplop 2026-10-11: step 3 didn't move on
+    after linking). When the active step's state check now passes: done, move on, and the same
+    "continue" prompt. The interaction must have been responded to. Never raises."""
+    try:
+        user_id = str(interaction.user.id)
+        progress = get_progress(user_id)
+        if not _is_active(progress):
+            return
+        step = STEPS_BY_ID.get(progress.get("step", ""))  # type: ignore[union-attr]
+        if step is None or step.done_check is None or not step.done_check(user_id):
+            return
+        await _complete_step(interaction, user_id, progress, step, "flow")  # type: ignore[arg-type]
+    except Exception as e:
+        logging.debug(f"[TUTORIAL] completion reaction after a flow skipped: {e}")
+
+
+async def _complete_step(interaction: discord.Interaction, user_id: str, progress: Dict[str, Any],
+                         step: TutorialStep, via: str) -> None:
+    """Mark ``step`` done, move on, and answer with the "✅ … done! Ready for the next step?"
+    prompt, which replaces the step page it answers (one tutorial message at a time)."""
+    await save_progress(user_id, next_step_id(step.id), set(progress.get("done", set())) | {step.id})
+    logging.info(f"[TUTORIAL] user {user_id} completed '{step.id}' via {via}")
+    from clashcontrol.ui_tutorial import ContinueTutorialView, replace_open_message, step_done_text
+    message = await interaction.followup.send(
+        step_done_text(step, interaction), view=ContinueTutorialView(interaction), ephemeral=True, wait=True,
+    )
+    await replace_open_message(user_id, message.delete)   # the step page it answers goes away
 
 
 def resolve_tutorial_guild(interaction: discord.Interaction) -> Optional[int]:

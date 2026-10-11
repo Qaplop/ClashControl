@@ -84,6 +84,8 @@ class WarNotificationPromptView(TrackedView):
             view=None
         )
         logging.info(f"USER ACTION: {interaction.user} activated war notifications via account linking workflow")
+        from clashcontrol.tutorial import on_flow_completed
+        await on_flow_completed(interaction)   # tutorial step: war reminders on
     
     @discord.ui.button(label="⏭️ Skip", style=discord.ButtonStyle.secondary)
     async def skip_button(self, interaction: discord.Interaction, button: discord.ui.Button):  # type: ignore[type-arg]
@@ -350,8 +352,11 @@ class UnifiedNotificationView(TrackedView):
                     original_interaction=self.original_interaction
                 )
                 new_view.message = self.message
-                
+
                 await interaction.response.edit_message(content=settings_text, view=new_view)
+                if enable and self.user_id == str(interaction.user.id):
+                    from clashcontrol.tutorial import on_flow_completed
+                    await on_flow_completed(interaction)   # tutorial step: war reminders on
         else:
             await interaction.response.send_message(f"❌ {result['message']}", ephemeral=True)
     

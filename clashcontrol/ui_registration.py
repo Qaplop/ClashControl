@@ -2029,6 +2029,9 @@ class ApiVerificationPromptView(discord.ui.View):
             except Exception as _role_sync_e:
                 logging.warning(f"[ROLE-SYNC] Post-skip role sync failed for {interaction.user.id}: {_role_sync_e}")
 
+        from clashcontrol.tutorial import on_flow_completed
+        await on_flow_completed(interaction)   # tutorial step 3: account linked
+
         logging.info(f"USER ACTION: {interaction.user} skipped verification for player {self.player_name} ({self.player_tag})")
 
 

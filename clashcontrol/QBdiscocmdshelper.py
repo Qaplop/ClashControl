@@ -3336,6 +3336,11 @@ async def check_and_prompt_war_notifications(
             await interaction.response.send_message(message_text, view=view, ephemeral=True)
             view.message = await interaction.original_response()
 
+    # A member linked/verified their own account: the tutorial's step 3 may be done now.
+    if user_id == str(interaction.user.id):
+        from clashcontrol.tutorial import on_flow_completed
+        await on_flow_completed(interaction)
+
 
 async def process_player_registration(
     interaction: discord.Interaction,

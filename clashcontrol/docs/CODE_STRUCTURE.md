@@ -783,6 +783,9 @@ all rebuild/button-handler paths so the reference is never lost.
   a cache-only `check(guild) -> StepResult` (status + machine-readable findings) and a `detail`
   renderer for the step's page. `run_audit(guild)` runs every step and turns a step whose
   prerequisite is INCOMPLETE/BLOCKED into BLOCKED. Every step must have a `check` and a `detail`.
+  A check never translates (it has no reader): text in `summary_params` is a `LazyText`
+  callable `(guild_id, user_id) -> str`, and every surface renders the line with
+  `summary_text()` in the reader's language (tracker #0152).
   The planned guided setup and the tutorials (#0121) walk the same registry — add new checks
   there, not as a second list.
 - `permission_features` on a step: the `bot_permissions` feature keys whose channel/role

@@ -59,6 +59,9 @@ class Finding:
 class StepResult:
     status: AuditStatus
     summary_key: str
+    #: Plain values, or a ``LazyText`` for any text that needs translating: a check runs without
+    #: a reader, so it never translates itself — the server language would leak into an admin's
+    #: own-language page ("2 Stunden before the war ends", tracker #0152). See summary_text().
     summary_params: Dict[str, Any] = field(default_factory=dict)
     findings: List[Finding] = field(default_factory=list)
     # Check-specific data the detail renderer needs (kept out of Finding to keep that small).
@@ -229,6 +232,16 @@ def _translator(guild_id: Optional[int], user_id: Optional[str]) -> Tr:
     def tr(key: str, **kw: Any) -> str:
         return t(key, guild_id=guild_id, user_id=user_id, **kw)
     return tr
+
+
+#: A summary parameter translated when the summary is shown: called with (guild_id, user_id).
+LazyText = Callable[[Optional[int], Optional[str]], str]
+
+
+def summary_text(result: StepResult, guild_id: Optional[int], user_id: Optional[str]) -> str:
+    """A step's one-line summary in the reader's language, LazyText parameters included."""
+    params = {k: (v(guild_id, user_id) if callable(v) else v) for k, v in result.summary_params.items()}
+    return _translator(guild_id, user_id)(result.summary_key, **params)
 
 
 def _config(guild: discord.Guild) -> Dict[str, Any]:
@@ -529,7 +542,7 @@ def check_channel_war_notifications(guild: discord.Guild) -> StepResult:
     hours = float(config.get("war_notification_threshold_hours", 2.0) or 2.0)
     return StepResult(AuditStatus.OK, "config_audit.channel_war.summary_ok",
                       {"channel": _channel_name(guild, channel_id),
-                       "time": format_war_threshold_label(hours, guild.id)}, data=data)
+                       "time": lambda g, u: format_war_threshold_label(hours, g, u)}, data=data)
 
 
 def detail_channel_war_notifications(guild: discord.Guild, result: StepResult, guild_id: Optional[int],
@@ -591,7 +604,9 @@ def check_raid_reminders(guild: discord.Guild) -> StepResult:
                           [Finding(AuditStatus.BROKEN, "permission", (("kind", i.kind),)) for i in issues], data)
     return StepResult(AuditStatus.OK, "config_audit.raid.summary_ok",
                       {"channel": _channel_name(guild, channel_id),
-                       **_raid_settings_params(config, _translator(guild.id, None))}, data=data)
+                       "time": lambda g, u: _raid_settings_params(config, _translator(g, u))["time"],
+                       "scope": lambda g, u: _raid_settings_params(config, _translator(g, u))["scope"]},
+                      data=data)
 
 
 def detail_raid_reminders(guild: discord.Guild, result: StepResult, guild_id: Optional[int],
@@ -906,9 +921,10 @@ def check_roles(guild: discord.Guild) -> StepResult:
     if incomplete:
         return StepResult(AuditStatus.INCOMPLETE, f"config_audit.roles.summary_{incomplete[0].code}",
                           dict(incomplete[0].params), findings, data)
-    tr = _translator(guild.id, None)
-    return StepResult(AuditStatus.OK, "config_audit.roles.summary_ok",
-                      {"systems": ", ".join(tr(f"config_audit.roles.name_{n}") for n in active)}, findings, data)
+    def systems(g: Optional[int], u: Optional[str]) -> str:
+        tr = _translator(g, u)
+        return ", ".join(tr(f"config_audit.roles.name_{n}") for n in active)
+    return StepResult(AuditStatus.OK, "config_audit.roles.summary_ok", {"systems": systems}, findings, data)
 
 
 def detail_roles(guild: discord.Guild, result: StepResult, guild_id: Optional[int],
@@ -1011,16 +1027,15 @@ def check_cwl_settings(guild: discord.Guild) -> StepResult:
     if incomplete:
         return StepResult(AuditStatus.INCOMPLETE, f"config_audit.cwl_settings.summary_{incomplete[0].code}",
                           findings=findings, data=data)
-    tr = _translator(guild.id, None)
-    parts = []
-    if mgmt_on:
-        parts.append(tr("config_audit.cwl_settings.part_mgmt", channel=_channel_name(guild, config.get("cwl_management_channel_id"))))
-    if player_on:
-        parts.append(tr("config_audit.cwl_settings.part_player", channel=_channel_name(guild, config.get("cwl_player_hub_channel_id"))))
-    if not parts:
-        parts.append(tr("config_audit.cwl_settings.part_no_hubs"))
-    return StepResult(AuditStatus.OK, "config_audit.cwl_settings.summary_ok", {"parts": " · ".join(parts)},
-                      findings, data)
+    def parts(g: Optional[int], u: Optional[str]) -> str:
+        tr = _translator(g, u)
+        lines = []
+        if mgmt_on:
+            lines.append(tr("config_audit.cwl_settings.part_mgmt", channel=_channel_name(guild, config.get("cwl_management_channel_id"))))
+        if player_on:
+            lines.append(tr("config_audit.cwl_settings.part_player", channel=_channel_name(guild, config.get("cwl_player_hub_channel_id"))))
+        return " · ".join(lines) or tr("config_audit.cwl_settings.part_no_hubs")
+    return StepResult(AuditStatus.OK, "config_audit.cwl_settings.summary_ok", {"parts": parts}, findings, data)
 
 
 def detail_cwl_settings(guild: discord.Guild, result: StepResult, guild_id: Optional[int],
@@ -1274,8 +1289,10 @@ def check_cwl_season(guild: discord.Guild, now: Optional[Any] = None) -> StepRes
             return StepResult(AuditStatus.INCOMPLETE, "config_audit.cwl_season.summary_no_start",
                               {"season": season, "count": len(no_start)},
                               [Finding(AuditStatus.INCOMPLETE, "no_start_time", (("count", len(no_start)),))], data)
-    tr = _translator(guild.id, None)
-    phase_label = tr(f"cwl.phase.step_{phase['key']}") if phase.get("key") else "?"
+    phase_key = phase.get("key")
+
+    def phase_label(g: Optional[int], u: Optional[str]) -> str:
+        return _translator(g, u)(f"cwl.phase.step_{phase_key}") if phase_key else "?"
     key = "summary_finished" if phase.get("finished") else "summary_phase"
     return StepResult(AuditStatus.OK, f"config_audit.cwl_season.{key}",
                       {"season": season, "phase": phase_label, "clans": len(participating)}, data=data)

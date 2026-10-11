@@ -1534,7 +1534,7 @@
     "channel_war": {
       "summary_off": "已关闭",
       "summary_no_channel": "已开启，但未设置频道",
-      "summary_ok": "在 {channel}，战争结束前 {time}",
+      "summary_ok": "{channel} · 战争结束前 {time}",
       "what": "当部落战即将结束而成员仍有未完成的进攻时，在频道中发布提醒。",
       "settings": "频道：{channel}\n提醒：战争结束前 **{time}**"
     },
@@ -1620,7 +1620,7 @@
       "custodians_none": "未设置值守员。"
     },
     "cwl_player_hub": {
-      "summary_hub": "成员使用 {channel} 或 /cwl preferences",
+      "summary_hub": "{channel} 或 /cwl preferences",
       "summary_hub_problem": "玩家中心有问题——请查看第 {step} 步",
       "summary_command": "成员使用 /cwl preferences",
       "what": "成员设置自己的部落战联赛偏好：偏好的联赛级别，以及是总是参加、从不参加还是每个赛季重新决定。设置按每个 Clash 账号生效，并适用于所有邀请他们的服务器。",

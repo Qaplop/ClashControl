@@ -1535,7 +1535,7 @@
     "channel_war": {
       "summary_off": "off",
       "summary_no_channel": "on, but no channel set",
-      "summary_ok": "in {channel}, {time} before the war ends",
+      "summary_ok": "{channel} · {time} before war end",
       "what": "Posts a reminder into a channel when a war is about to end and members still have attacks left.",
       "settings": "Channel: {channel}\nReminder: **{time}** before the war ends"
     },
@@ -1621,7 +1621,7 @@
       "custodians_none": "No custodians set."
     },
     "cwl_player_hub": {
-      "summary_hub": "members use {channel} or /cwl preferences",
+      "summary_hub": "{channel} or /cwl preferences",
       "summary_hub_problem": "the player hub has a problem — see step {step}",
       "summary_command": "members use /cwl preferences",
       "what": "Members set their personal CWL preferences: a preferred league tier, and whether they always want to play, never play, or decide fresh each season. The settings apply per Clash account and on every server that invites them.",

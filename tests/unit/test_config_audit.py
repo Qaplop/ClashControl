@@ -596,7 +596,7 @@ class TestStepRoles:
         _cfg(coc_role_enabled=True)
         assert ca.check_roles(_guild(_all_but("manage_roles"))).status == AuditStatus.BROKEN
         r = ca.check_roles(_guild(_all_but()))
-        assert r.status == AuditStatus.OK and r.summary_params == {"systems": "CoC Roles"}
+        assert r.status == AuditStatus.OK and ca.summary_text(r, GID, None).endswith("CoC Roles")
 
 
 class TestStepCwlSettings:
@@ -613,7 +613,7 @@ class TestStepCwlSettings:
         assert r.status == AuditStatus.INCOMPLETE and r.summary_key.endswith("summary_no_activities")
         ok = _channel_by_role(40, {EVERYONE: dict(VIEW_READ, use_embedded_activities=True)}, ALL_PERMS)
         r = ca.check_cwl_settings(_guild(ADMIN, {40: ok}))
-        assert r.status == AuditStatus.OK and "#ch40" in r.summary_params["parts"]
+        assert r.status == AuditStatus.OK and "#ch40" in ca.summary_text(r, GID, None)
 
     def test_hub_without_channel_is_incomplete(self):
         _cfg(cwl_management_message_enabled=True)
@@ -705,7 +705,7 @@ class TestStepCwlSeason:
         assert r.summary_key.endswith("summary_no_start") and r.summary_params["count"] == 1
         self._db(monkeypatch, [event], {1: [{"clan_tag": "#A", "participating": 1, "cwl_start_at": "2026-11-01T08:00"}]})
         r = ca.check_cwl_season(_guild(ADMIN), self.IN_WINDOW)
-        assert r.status == AuditStatus.OK and r.summary_params["phase"] == "Setup"
+        assert r.status == AuditStatus.OK and "Setup" in ca.summary_text(r, GID, None)
 
     def test_outside_the_window(self, monkeypatch):
         _cfg(cwl_management_message_enabled=True)
@@ -1146,3 +1146,30 @@ class TestRealTextChannelActivities:
         assert channel.permissions_for(leader).use_embedded_activities is False   # discord.py's strip
         assert ca._channel_permissions(channel, leader).use_embedded_activities is True
         assert ca._channel_permissions(channel, leader).view_channel is True
+
+
+class TestSummaryInReadersLanguage:
+    """Tracker #0152 (qaplop): a German server, an English admin — step 7 read "2 Stunden before
+    the war ends". A check never translates; the summary is rendered in the reader's language."""
+
+    LAZY_STEPS = ("channel_war_notifications", "raid_reminders", "roles", "cwl_settings")
+
+    def test_no_server_language_text_in_an_english_summary(self, monkeypatch):
+        _cfg(language="de", member_clans=["#A"], channel_war_notifications_enabled=True,
+             war_notification_channel_id="40", war_notification_threshold_hours=2.0,
+             channel_raid_notifications_enabled=True, raid_notification_channel_id="40",
+             coc_role_enabled=True, cwl_management_message_enabled=True, cwl_management_channel_id="40")
+        monkeypatch.setattr(ca, "_permission_issues", lambda guild, features: [])
+        guild = _guild(ADMIN, {40: _channel(40)})
+        import clashcontrol.i18n as i18n
+        monkeypatch.setattr(i18n, "get_user_language", lambda uid: "en" if uid == "en_admin" else None)
+        monkeypatch.setattr(i18n, "get_guild_language", lambda gid: "de")
+        r = ca.check_channel_war_notifications(guild)
+        assert r.status == AuditStatus.OK
+        assert ca.summary_text(r, GID, "en_admin").endswith("2 hours before war end")
+        assert "2 Stunden" in ca.summary_text(r, GID, "de_admin")
+        for sid in self.LAZY_STEPS:
+            r = ca.run_step(ca.STEPS_BY_ID[sid], guild)
+            assert r.summary_key != "config_audit.summary_check_failed", sid
+            assert all(not isinstance(v, str) or v.startswith("#") or v.isdigit()
+                       for v in r.summary_params.values()), (sid, r.summary_params)

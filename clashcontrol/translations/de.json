@@ -1535,7 +1535,7 @@
     "channel_war": {
       "summary_off": "aus",
       "summary_no_channel": "an, aber kein Kanal gesetzt",
-      "summary_ok": "in {channel}, {time} vor Kriegsende",
+      "summary_ok": "{channel} · {time} vor Kriegsende",
       "what": "Postet eine Erinnerung in einen Kanal, wenn ein Krieg bald endet und Mitglieder noch Angriffe offen haben.",
       "settings": "Kanal: {channel}\nErinnerung: **{time}** vor Kriegsende"
     },
@@ -1621,7 +1621,7 @@
       "custodians_none": "Keine Betreuer gesetzt."
     },
     "cwl_player_hub": {
-      "summary_hub": "Mitglieder nutzen {channel} oder /cwl preferences",
+      "summary_hub": "{channel} oder /cwl preferences",
       "summary_hub_problem": "der Spieler-Hub hat ein Problem — siehe Schritt {step}",
       "summary_command": "Mitglieder nutzen /cwl preferences",
       "what": "Mitglieder legen ihre persönlichen CWL-Einstellungen fest: eine bevorzugte Liga-Stufe, und ob sie immer spielen, nie spielen oder jede Saison neu entscheiden wollen. Die Einstellungen gelten pro Clash-Account und auf jedem Server, der sie einlädt.",

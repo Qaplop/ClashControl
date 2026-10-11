@@ -1,6 +1,15 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-11 (22)
+- Fixed (tracker #0152, qaplop): /setup mixed languages — with an English admin on a German
+  server, step 7 read "2 Stunden before the war ends" (also steps 8, 9, 10 and 12: "Einfache
+  Rollen", "Verwaltungs-Hub", the phase name). The checks translated parts of the summary in the
+  server's language while the sentence was rendered in the reader's. Checks no longer translate:
+  such parameters are LazyText callables, resolved by the new config_audit.summary_text() in the
+  reader's language. Steps 7 and 11 summaries are shorter so they fit on one line
+  ("#channel · 2 hours before war end", "#channel or /cwl preferences"). Build 166.
+
 2026-10-11 (21)
 - Changed (tracker #0151, qaplop on the STAY server): /setup step 11 ("Your CWL Preferences")
   was always ℹ️, even with a working player hub. Now ✅ when the hub's channel exists, the bot

@@ -16,7 +16,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import discord
 
 from clashcontrol.config_audit import (
-    STATUS_ICON, STEPS, STEPS_BY_ID, AuditStatus, StepResult, can_dismiss, run_audit,
+    STATUS_ICON, STEPS, STEPS_BY_ID, AuditStatus, StepResult, can_dismiss, run_audit, summary_text,
 )
 from clashcontrol.i18n import t  # type: ignore[attr-defined]
 from clashcontrol.ui_common import claim_action, release_action
@@ -39,7 +39,7 @@ def build_overview_embed(guild: discord.Guild, user_id: str, results: Dict[str, 
     for step in STEPS:
         r = results[step.id]
         title = _tr(gid, user_id, step.title_key)
-        summary = _tr(gid, user_id, r.summary_key, **r.summary_params)
+        summary = summary_text(r, gid, user_id)
         lines.append(f"{STATUS_ICON[r.status]} **{step.order}. {title}** — {summary}")
     description = _tr(gid, user_id, "config_audit.overview_intro") + "\n\n" + "\n".join(lines)
     embed = discord.Embed(
@@ -56,7 +56,7 @@ def build_step_embed(guild: discord.Guild, user_id: str, step_id: str, result: S
     gid = guild.id
     step = STEPS_BY_ID[step_id]
     title = f"{STATUS_ICON[result.status]} {step.order}. {_tr(gid, user_id, step.title_key)}"
-    summary = _tr(gid, user_id, result.summary_key, **result.summary_params)
+    summary = summary_text(result, gid, user_id)
     embed = discord.Embed(title=title[:256], color=_status_color(result.status))
     if result.status == AuditStatus.BLOCKED:
         embed.description = (f"{_tr(gid, user_id, step.desc_key)}\n\n**{summary}**")[:_EMBED_DESCRIPTION_LIMIT]
@@ -195,7 +195,7 @@ class SetupView(discord.ui.View):
             options.append(discord.SelectOption(
                 label=f"{step.order}. {_tr(gid, self.user_id, step.title_key)}"[:100],
                 value=step.id,
-                description=_tr(gid, self.user_id, r.summary_key, **r.summary_params)[:100],
+                description=summary_text(r, gid, self.user_id)[:100],
                 emoji=STATUS_ICON[r.status],
                 default=(step.id == self.selected),
             ))

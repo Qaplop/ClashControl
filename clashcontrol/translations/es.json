@@ -1534,7 +1534,7 @@
     "channel_war": {
       "summary_off": "desactivado",
       "summary_no_channel": "activado, pero sin canal",
-      "summary_ok": "en {channel}, {time} antes del final de la guerra",
+      "summary_ok": "{channel} · {time} antes del fin",
       "what": "Publica un recordatorio en un canal cuando una guerra está a punto de terminar y los miembros aún tienen ataques pendientes.",
       "settings": "Canal: {channel}\nRecordatorio: **{time}** antes del final de la guerra"
     },
@@ -1620,7 +1620,7 @@
       "custodians_none": "No hay custodios configurados."
     },
     "cwl_player_hub": {
-      "summary_hub": "los miembros usan {channel} o /cwl preferences",
+      "summary_hub": "{channel} o /cwl preferences",
       "summary_hub_problem": "el centro de jugadores tiene un problema — ver el paso {step}",
       "summary_command": "los miembros usan /cwl preferences",
       "what": "Los miembros definen sus preferencias personales de LGC: un nivel de liga preferido, y si quieren jugar siempre, no jugar nunca o decidir en cada temporada. Los ajustes se aplican por cuenta de Clash y en todos los servidores que los invitan.",

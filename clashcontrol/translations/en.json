@@ -1522,6 +1522,8 @@
       "summary_ok": "{clans} clan(s), {families} famil(y/ies)",
       "summary_problems": "{count} problem(s) in {clans} clan(s)",
       "none_text": "No member clan yet. Member clans are the base for almost everything: registration, roles, war and raid reminders and CWL all work with the clans you add here.",
+      "what_title": "💡 What this is",
+      "what": "**Member clans** are your server's own clans. ClashControl tracks their wars and raid weekends, and they decide who counts as a member here: registration, roles, war and raid reminders, CWL and the leaderboards all work with them. A **clan family** groups several clans so you can pick them together. Clans you only follow on a leaderboard ({subscribe}) don't have to be member clans.",
       "list_title": "⚔️ Member clans ({count})",
       "state_deleted": "deleted by Supercell — remove it from the member clans.",
       "state_warlog_private": "war log is private — no war tracking, war reminders or war leaderboards for this clan.",

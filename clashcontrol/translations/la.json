@@ -1521,6 +1521,8 @@
       "summary_ok": "{clans} gens(tes), {families} familia(e)",
       "summary_problems": "{count} difficultas(es) in {clans} gente(ibus)",
       "none_text": "Nulla gens sodalis adhuc. Gentes sodales fundamentum fere omnium sunt: inscriptio, munera, monita belli et incursionum et CWL cum gentibus quas hic addis operantur.",
+      "what_title": "💡 Quid hoc sit",
+      "what": "**Gentes sodales** sunt gentes propriae servitoris tui. ClashControl bella et fines hebdomadis incursionum earum sequitur, et eae decernunt quis hic sodalis habeatur: inscriptio, munera, admonitiones belli et incursionum, CWL et tabulae cum eis operantur. **Familia gentium** plures gentes coniungit ut eas simul eligere possis. Gentes quas tantum in tabula sequeris ({subscribe}) gentes sodales esse non necesse est.",
       "list_title": "⚔️ Gentes sodales ({count})",
       "state_deleted": "a Supercell deleta — eam e gentibus sodalibus remove.",
       "state_warlog_private": "commentarius belli privatus est — nulla observatio bellorum, nulla monita belli, nullae tabulae ordinum belli huic genti.",

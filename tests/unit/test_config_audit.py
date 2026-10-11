@@ -1264,3 +1264,16 @@ class TestRoleSystemsExplained:
         for body in bodies:
             assert "🔴" in body and len(body) > 60 and "{" not in body and len(body) <= 1024
 
+
+
+class TestClansExplained:
+    """qaplop 2026-10-11: step 3 explains member clans and families also when they're set up."""
+
+    @pytest.mark.parametrize("lang", LANGS)
+    def test_explanation_first_when_clans_exist(self, lang):
+        _cfg(language=lang, member_clans=["#A"])
+        guild = _guild(ADMIN)
+        result = ca.StepResult(AuditStatus.OK, "x", data={"clans": [("#A", "ok")], "families": []})
+        heading, body = ca.detail_clans(guild, result, GID, "1").sections[0]
+        assert heading.startswith("💡") and "{" not in body and len(body) <= 1024
+

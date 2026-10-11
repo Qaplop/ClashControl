@@ -1,6 +1,12 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-11 (39)
+- Changed (tracker #0151, qaplop): /setup step 3 explains member clans and families also when
+  they're set up ("💡 What this is": the server's own clans, tracked, deciding who counts as a
+  member for registration, roles, reminders, CWL and leaderboards; families group clans;
+  leaderboard-only clans don't need to be member clans). All languages. Build 183.
+
 2026-10-11 (38)
 - Changed (tracker #0151, qaplop): /setup step 9 explains the three role systems — how each
   works, what it does and what it's good for (Simple Roles: newbie on join → member role once a

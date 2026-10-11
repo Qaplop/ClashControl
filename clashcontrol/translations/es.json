@@ -1521,6 +1521,8 @@
       "summary_ok": "{clans} clan(es), {families} familia(s)",
       "summary_problems": "{count} problema(s) en {clans} clan(es)",
       "none_text": "Aún no hay clan miembro. Los clanes miembro son la base de casi todo: el registro, los roles, los recordatorios de guerra e incursiones y la LGC funcionan con los clanes que añadas aquí.",
+      "what_title": "💡 De qué se trata",
+      "what": "Los **clanes miembro** son los clanes propios de tu servidor. ClashControl sigue sus guerras y fines de semana de incursiones, y ellos deciden quién cuenta aquí como miembro: el registro, los roles, los recordatorios de guerra e incursiones, la LGC y las clasificaciones funcionan con ellos. Una **familia de clanes** agrupa varios clanes para que puedas elegirlos juntos. Los clanes que solo sigues en una clasificación ({subscribe}) no tienen que ser clanes miembro.",
       "list_title": "⚔️ Clanes miembro ({count})",
       "state_deleted": "eliminado por Supercell — quítalo de los clanes miembro.",
       "state_warlog_private": "el registro de guerra es privado — no hay seguimiento de guerras, recordatorios de guerra ni clasificaciones de guerra para este clan.",

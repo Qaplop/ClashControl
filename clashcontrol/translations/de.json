@@ -1522,6 +1522,8 @@
       "summary_ok": "{clans} Clan(s), {families} Familie(n)",
       "summary_problems": "{count} Problem(e) bei {clans} Clan(s)",
       "none_text": "Noch kein Mitglieds-Clan. Mitglieds-Clans sind die Basis für fast alles: Registrierung, Rollen, Kriegs- und Raid-Erinnerungen und CWL arbeiten mit den Clans, die du hier hinzufügst.",
+      "what_title": "💡 Worum es geht",
+      "what": "**Mitglieds-Clans** sind die eigenen Clans deines Servers. ClashControl verfolgt ihre Kriege und Raid-Wochenenden, und sie bestimmen, wer hier als Mitglied zählt: Registrierung, Rollen, Kriegs- und Raid-Erinnerungen, CWL und die Bestenlisten arbeiten mit ihnen. Eine **Clan-Familie** fasst mehrere Clans zusammen, damit du sie gemeinsam auswählen kannst. Clans, die du nur in einer Bestenliste verfolgst ({subscribe}), müssen keine Mitglieds-Clans sein.",
       "list_title": "⚔️ Mitglieds-Clans ({count})",
       "state_deleted": "von Supercell gelöscht — entferne ihn aus den Mitglieds-Clans.",
       "state_warlog_private": "Kriegsprotokoll ist privat — kein Kriegs-Tracking, keine Kriegs-Erinnerungen und keine Kriegs-Bestenlisten für diesen Clan.",

@@ -431,6 +431,11 @@ def detail_clans(guild: discord.Guild, result: StepResult, guild_id: Optional[in
                                _join_limited(lines, 1500, lambda n: tr("permissions.warning_more", count=n)), fixes)
     sections: List[Tuple[str, str]] = []
     if clans:
+        # What member clans and families are (qaplop 2026-10-11) — without clans the problem
+        # block already says it (none_text), so only here.
+        from clashcontrol.QBdiscocmdshelper import command_mention
+        sections.append((tr("config_audit.clans.what_title"),
+                         tr("config_audit.clans.what", subscribe=command_mention("subscribe"))))
         icon = {"ok": "✅", "deleted": "❌", "warlog_private": "❌", "no_data": "ℹ️"}
         lines = [f"{icon[s]} **{_clan_name(t)}** `{t}`" + (" — " + tr("config_audit.clans.state_no_data") if s == "no_data" else "")
                  for t, s in clans]

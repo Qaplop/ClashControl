@@ -1,6 +1,12 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-11 (28)
+- Fixed (tracker #0121, qaplop): since Build 170, clicking "Continue tutorial" made the tutorial
+  vanish. The prompt turned into the next step's page, and then the "remove the previous
+  tutorial message" cleanup deleted that very message (the prompt was the open message). In place
+  now only updates the handle; nothing is deleted. Build 172.
+
 2026-10-11 (27)
 - Changed (qaplop, /setup on a brand-new server): member clans no longer depend on /subscribe.
   * Fixed: "Member Clans" refused to open without a subscription ("No Clans Available") — the

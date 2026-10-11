@@ -263,8 +263,10 @@ class TestOneMessageFlow:
     async def test_continue_turns_its_prompt_into_the_page(self, monkeypatch):
         from clashcontrol import ui_tutorial
         monkeypatch.setattr(ui_tutorial, "get_progress", lambda uid: {"step": "link_account", "done": set()})
-        old_page = AsyncMock()
-        ui_tutorial._OPEN_MESSAGE["77"] = old_page
+        # The open message is the "continue" prompt itself (on_command_completed registered it):
+        # it becomes the page and must NOT be deleted (qaplop 2026-10-11, Build 170 deleted it).
+        prompt = AsyncMock()
+        ui_tutorial._OPEN_MESSAGE["77"] = prompt
         it = MagicMock()
         it.user.id = 77
         it.guild = None
@@ -274,6 +276,7 @@ class TestOneMessageFlow:
         await ui_tutorial.send_tutorial(it, in_place=True)
         it.response.edit_message.assert_awaited_once()
         it.response.send_message.assert_not_awaited()
-        old_page.assert_awaited_once()
+        prompt.assert_not_awaited()
+        it.delete_original_response.assert_not_awaited()
         assert ui_tutorial._OPEN_MESSAGE["77"] is it.delete_original_response
         ui_tutorial._OPEN_MESSAGE.pop("77", None)

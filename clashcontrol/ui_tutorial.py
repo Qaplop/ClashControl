@@ -224,8 +224,11 @@ async def send_tutorial(interaction: discord.Interaction, in_place: bool = False
     view = TutorialView(user_id, guild_id, step_id, welcome_back)
     view._last_interaction = interaction  # pyright: ignore[reportPrivateUsage]
     if in_place:
+        # The clicked prompt IS the open message: it becomes the page, so only its handle changes
+        # — "replacing" it would delete the page just shown.
         await interaction.response.edit_message(content=None, embed=view.current_embed(), view=view)
+        _OPEN_MESSAGE[user_id] = interaction.delete_original_response
     else:
         await interaction.response.send_message(embed=view.current_embed(), view=view, ephemeral=True)
-    await replace_open_message(user_id, interaction.delete_original_response)
+        await replace_open_message(user_id, interaction.delete_original_response)
     logging.info(f"[TUTORIAL] user {user_id} opened the tutorial at '{step_id}'")

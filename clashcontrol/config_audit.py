@@ -89,6 +89,9 @@ class AuditStep:
     #: bot_permissions feature keys whose channel/role problems this step reports. Step 1 lists
     #: only the problems of features no implemented step owns, so one problem is red once.
     permission_features: Tuple[str, ...] = ()
+    #: /clan management mode that fixes this step ("⚙️ Open settings", Phase 5) — chosen per
+    #: result, since one step can need different screens; None = no settings screen.
+    fix_mode: Optional[Callable[["StepResult"], Optional[str]]] = None
 
     @property
     def title_key(self) -> str:
@@ -1245,33 +1248,47 @@ def detail_cwl_season(guild: discord.Guild, result: StepResult, guild_id: Option
 # whose check comes in a later phase reports PENDING until then.
 # ---------------------------------------------------------------------------------------------
 
+def _CONFIG(result: StepResult) -> Optional[str]:
+    """Settings live in /clan management → ⚙️ Basic Configuration."""
+    return "config"
+
+
+def _registration_fix_mode(result: StepResult) -> Optional[str]:
+    """Hub off / no channel → Basic Configuration (activate it); otherwise Manage Registrations
+    (linking accounts for members)."""
+    codes = {f.code for f in result.findings}
+    return "config" if codes & {"hub_off", "no_channel"} else "registrations"
+
+
 STEPS: Tuple[AuditStep, ...] = (
     AuditStep("bot_permissions", 1, "admin", check=check_bot_permissions, detail=detail_bot_permissions),
-    AuditStep("basics", 2, "admin", check=check_basics, detail=detail_basics),
-    AuditStep("clans", 3, "admin", check=check_clans, detail=detail_clans),
+    AuditStep("basics", 2, "admin", check=check_basics, detail=detail_basics, fix_mode=_CONFIG),
+    AuditStep("clans", 3, "admin", check=check_clans, detail=detail_clans, fix_mode=_CONFIG),
     AuditStep("welcome", 4, "admin", check=check_welcome, detail=detail_welcome,
-              permission_features=("welcome",)),
+              permission_features=("welcome",), fix_mode=_CONFIG),
     AuditStep("registration", 5, "both", requires=("clans",),
               check=check_registration, detail=detail_registration,
-              permission_features=("registration",)),
+              permission_features=("registration",), fix_mode=_registration_fix_mode),
     AuditStep("war_notifications", 6, "both", requires=("clans",),
-              check=check_war_notifications, detail=detail_war_notifications),
+              check=check_war_notifications, detail=detail_war_notifications,
+              fix_mode=lambda r: "notifications"),
     AuditStep("channel_war_notifications", 7, "admin", requires=("clans",),
               check=check_channel_war_notifications, detail=detail_channel_war_notifications,
-              permission_features=("war_notifications",)),
+              permission_features=("war_notifications",), fix_mode=_CONFIG),
     AuditStep("raid_reminders", 8, "admin", requires=("clans",),
               check=check_raid_reminders, detail=detail_raid_reminders,
-              permission_features=("raid_notifications",)),
+              permission_features=("raid_notifications",), fix_mode=_CONFIG),
     AuditStep("roles", 9, "admin", requires=("clans",), check=check_roles, detail=detail_roles,
-              permission_features=("role_system", "coc_roles", "clan_roles")),
+              permission_features=("role_system", "coc_roles", "clan_roles"), fix_mode=lambda r: "roles"),
     AuditStep("cwl_settings", 10, "admin", requires=("clans",),
               check=check_cwl_settings, detail=detail_cwl_settings,
-              permission_features=("cwl_management", "cwl_player_hub", "cwl_coordinator_role")),
+              permission_features=("cwl_management", "cwl_player_hub", "cwl_coordinator_role"),
+              fix_mode=lambda r: "cwl_settings"),
     # 11 and 12 need clans only: a CWL hub setting problem (step 10) must not lock them.
     AuditStep("cwl_player_hub", 11, "both", requires=("clans",),
-              check=check_cwl_player_hub, detail=detail_cwl_player_hub),
+              check=check_cwl_player_hub, detail=detail_cwl_player_hub, fix_mode=lambda r: "cwl_settings"),
     AuditStep("cwl_season", 12, "admin", requires=("clans",),
-              check=check_cwl_season, detail=detail_cwl_season),
+              check=check_cwl_season, detail=detail_cwl_season, fix_mode=lambda r: "cwl_management"),
     # No prerequisite: any clan can be subscribed, member clan or not.
     AuditStep("leaderboards", 13, "admin", check=check_leaderboards, detail=detail_leaderboards,
               permission_features=("leaderboard",)),

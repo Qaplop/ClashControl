@@ -7,6 +7,7 @@ need no double-click claim: each one computes synchronously and answers with ONE
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any, Dict, Optional
 
@@ -150,6 +151,15 @@ class SetupView(discord.ui.View):
         recheck.callback = self._on_recheck  # type: ignore[assignment]
         self.add_item(recheck)
 
+        # "Open settings" (Phase 5): the /clan management screen that fixes this step.
+        if self._fix_mode() is not None:
+            open_settings: discord.ui.Button[Any] = discord.ui.Button(
+                label=_tr(gid, self.user_id, "config_audit.button_open_settings")[:80],
+                style=discord.ButtonStyle.success, custom_id="setup_open_settings", row=1,
+            )
+            open_settings.callback = self._on_open_settings  # type: ignore[assignment]
+            self.add_item(open_settings)
+
         # Link buttons the step's detail page offers (e.g. step 1's re-authorize link).
         if self.selected is not None:
             step = STEPS_BY_ID[self.selected]
@@ -157,6 +167,17 @@ class SetupView(discord.ui.View):
             if step.detail is not None and result.status not in (AuditStatus.PENDING, AuditStatus.BLOCKED):
                 for label, url in step.detail(self.guild, result, gid, self.user_id).links:
                     self.add_item(discord.ui.Button(label=label[:80], url=url, row=1))
+
+    def _fix_mode(self) -> Optional[str]:
+        """The /clan management mode for the selected step, or None (overview, no settings
+        screen, or a step that is blocked / not checked)."""
+        if self.selected is None:
+            return None
+        step = STEPS_BY_ID[self.selected]
+        result = self.results[self.selected]
+        if step.fix_mode is None or result.status in (AuditStatus.PENDING, AuditStatus.BLOCKED):
+            return None
+        return step.fix_mode(result)
 
     async def _show(self, interaction: discord.Interaction) -> None:
         self._last_interaction = interaction
@@ -178,6 +199,15 @@ class SetupView(discord.ui.View):
         self.results = run_audit(self.guild)
         _log_audit(self.guild, self.user_id, self.results, "Re-check")
         await self._show(interaction)
+
+    async def _on_open_settings(self, interaction: discord.Interaction) -> None:
+        """Open the /clan management panel in the step's mode as a separate ephemeral message.
+        The /setup message stays as it is; "Check again" there shows the result afterwards."""
+        mode = self._fix_mode()
+        if mode is None:
+            await interaction.response.defer()
+            return
+        await open_settings_panel(interaction, self.guild, mode)
 
     async def on_timeout(self) -> None:
         """Grey out the components; the checklist itself stays readable."""
@@ -202,3 +232,42 @@ async def send_setup_overview(interaction: discord.Interaction) -> None:
     view = SetupView(guild, user_id, results)
     view._last_interaction = interaction  # pyright: ignore[reportPrivateUsage]  # its token edits the followup
     await interaction.followup.send(embed=view.current_embed(), view=view, ephemeral=True)
+
+
+#: The ephemeral settings panel is edited through the webhook token of the click that opened it,
+#: which dies 15 minutes later (Pitfall 41) — the panel's own buttons rebuild it in place through
+#: that same token. So it is closed with a notice at 14 minutes instead of failing silently.
+SETTINGS_PANEL_LIFETIME_SECONDS = 840
+
+
+async def open_settings_panel(interaction: discord.Interaction, guild: discord.Guild, mode: str) -> None:
+    """Send the /clan management panel (``build_clan_management_panel``) for ``mode`` as an
+    ephemeral message — the same panel /clan management posts publicly — and close it before its
+    token expires. Shared by /setup's detail pages and the guided setup."""
+    import QBcore
+    from clashcontrol.ui_clan_management import build_clan_management_panel
+
+    user_id = str(interaction.user.id)
+    gid = guild.id
+    await interaction.response.defer(ephemeral=True, thinking=True)
+    try:
+        embeds, panel = await build_clan_management_panel(guild, mode=mode, timeout=SETTINGS_PANEL_LIFETIME_SECONDS)
+    except Exception as e:
+        logging.warning(f"[SETUP] Could not build the {mode} panel for guild {gid}: {e}", exc_info=True)
+        await interaction.followup.send(_tr(gid, user_id, "config_audit.open_failed"), ephemeral=True)
+        return
+    message = await interaction.followup.send(
+        content=_tr(gid, user_id, "config_audit.panel_hint"), embeds=embeds, view=panel,
+        ephemeral=True, wait=True,
+    )
+    panel.sent_message = message  # type: ignore[assignment]
+    logging.info(f"[SETUP] Opened the {mode} panel for user {user_id} in guild {gid}")
+
+    async def _expire() -> None:
+        await asyncio.sleep(SETTINGS_PANEL_LIFETIME_SECONDS)
+        try:
+            await message.edit(content=_tr(gid, user_id, "config_audit.panel_expired"), embeds=[], view=None)
+        except discord.HTTPException as e:
+            logging.debug(f"[SETUP] Could not close expired {mode} panel: {e}")
+
+    QBcore.spawn_tracked(f"setup-panel-expiry-{gid}-{user_id}", _expire())

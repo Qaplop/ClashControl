@@ -2958,6 +2958,55 @@ class ClanManagementView(discord.ui.View):
         clans_config_view.sent_message = msg
 
 
+async def build_clan_management_panel(
+    guild: discord.Guild, mode: str = "config", timeout: int = 1800,
+) -> Tuple[List[discord.Embed], "ClanManagementView"]:
+    """The /clan management panel for ``guild`` in ``mode``: the embeds to send and the view to
+    send WITH them. Shared by /clan management (posted publicly in the channel) and /setup's
+    "Open settings" (an ephemeral copy, tracker #0151).
+
+    The view is built before the message exists (2026-10-10: a view added by a later edit stayed
+    invisible until Ctrl+R), so it gets a stand-in carrying the guild — its builders only read
+    ``sent_message.guild``. The caller sends the message and then sets ``view.sent_message``.
+
+    Works without any clan for the modes that don't need one (config, roles, families, CWL);
+    registrations/notifications then have no clan to show.
+
+    Raises:
+        Whatever format_clan_management_message() raises — the caller reports it.
+    """
+    from types import SimpleNamespace
+    from clashcontrol.QBdiscocmdshelper import (
+        format_clan_management_message, get_guild_clans_including_member_config,
+        get_most_active_clan_for_guild,
+    )
+    guild_clans = get_guild_clans_including_member_config(guild.id)
+    default_clan_tag = get_most_active_clan_for_guild(guild.id, guild_clans) if guild_clans else None
+    main_embed, unlinked_embed, _linked, unlinked_players = await format_clan_management_message(
+        default_clan_tag, guild, mode=mode,  # type: ignore[arg-type]
+    )
+    all_embeds: List[discord.Embed] = []
+    if main_embed is None and isinstance(unlinked_embed, list):
+        # Pagination mode (>6000 chars): a list of embeds, the first one shown
+        all_embeds = unlinked_embed  # type: ignore[assignment]
+        display_embeds = [all_embeds[0]]
+    elif main_embed is not None and unlinked_embed is not None and not isinstance(unlinked_embed, list):
+        display_embeds = [main_embed, unlinked_embed]   # two-embed mode (4096 < chars <= 6000)
+    else:
+        display_embeds = [main_embed] if main_embed else []
+    view = ClanManagementView(
+        clan_tag=default_clan_tag,  # type: ignore[arg-type]
+        guild_clans=guild_clans,
+        unlinked_players=unlinked_players,
+        sent_message=SimpleNamespace(guild=guild, id=None),  # type: ignore[arg-type]
+        mode=mode,
+        timeout=timeout,
+        all_embeds=all_embeds or None,
+        current_page=0,
+    )
+    return display_embeds, view
+
+
 async def push_refresh_to_open_cwl_settings_session(guild_id: int, mode: str) -> None:
     """Tracker #0070: pushes a refresh to this guild's tracked open `/clan management`
     cwl_settings/cwl_management session (CACHE.cwl_settings_open_view — see its own docstring,

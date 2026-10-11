@@ -699,3 +699,78 @@ class TestRenderingPhase4:
             texts = [e.title or "", e.description or ""] + [f.name for f in e.fields] + [f.value for f in e.fields]
             assert not any(k in x for x in texts for k in ("config_audit.", "permissions.", "ui_components.", "cwl.", "playerregistration.")), texts
             assert all(len(f.value) <= 1024 for f in e.fields)
+
+
+class TestOpenSettings:
+    """Phase 5: "⚙️ Open settings" opens the /clan management panel in the step's mode."""
+
+    def test_modes_per_step(self):
+        expected = {"bot_permissions": None, "basics": "config", "clans": "config", "welcome": "config",
+                    "war_notifications": "notifications", "channel_war_notifications": "config",
+                    "raid_reminders": "config", "roles": "roles", "cwl_settings": "cwl_settings",
+                    "cwl_player_hub": "cwl_settings", "cwl_season": "cwl_management", "leaderboards": None}
+        dummy = ca.StepResult(AuditStatus.OK, "x")
+        for sid, mode in expected.items():
+            step = ca.STEPS_BY_ID[sid]
+            assert (step.fix_mode(dummy) if step.fix_mode else None) == mode, sid
+
+    def test_registration_opens_config_while_the_hub_is_off(self):
+        step = ca.STEPS_BY_ID["registration"]
+        off = ca.StepResult(AuditStatus.INCOMPLETE, "x", findings=[ca.Finding(AuditStatus.INCOMPLETE, "hub_off")])
+        assert step.fix_mode(off) == "config"
+        assert step.fix_mode(ca.StepResult(AuditStatus.OK, "x")) == "registrations"
+
+    @pytest.mark.asyncio
+    async def test_button_only_where_a_screen_exists(self):
+        from clashcontrol import ui_config_audit as ui
+        guild = _guild(ADMIN)
+        view = ui.SetupView(guild, "1", ca.run_audit(guild))
+        ids = lambda: {getattr(c, "custom_id", None) for c in view.children}   # noqa: E731
+        assert "setup_open_settings" not in ids()                       # overview
+        for sid, shown in (("basics", True), ("bot_permissions", False), ("leaderboards", False),
+                           ("roles", True)):
+            view.selected = sid
+            view._rebuild()
+            assert ("setup_open_settings" in ids()) is shown, sid
+        _cfg(channel_raid_notifications_enabled=True)                   # no clans → step 8 blocked
+        view.results = ca.run_audit(guild)
+        view.selected = "raid_reminders"
+        view._rebuild()
+        assert "setup_open_settings" not in ids()
+        view.stop()
+
+    @pytest.mark.asyncio
+    async def test_panel_is_sent_ephemerally_and_closed_later(self, monkeypatch):
+        from clashcontrol import ui_clan_management, ui_config_audit as ui
+        panel = SimpleNamespace(sent_message=None)
+        build = AsyncMock(return_value=([discord.Embed(title="x")], panel))
+        monkeypatch.setattr(ui_clan_management, "build_clan_management_panel", build)
+        spawned = []
+        monkeypatch.setattr(QBcore, "spawn_tracked", lambda name, coro: spawned.append((name, coro)))
+        message = SimpleNamespace(edit=AsyncMock())
+        it = MagicMock()
+        it.user.id = 1
+        it.response.defer = AsyncMock()
+        it.followup.send = AsyncMock(return_value=message)
+        await ui.open_settings_panel(it, _guild(ADMIN), "roles")
+        build.assert_awaited_once()
+        assert build.await_args.kwargs["mode"] == "roles"
+        kw = it.followup.send.await_args.kwargs
+        assert kw["ephemeral"] is True and kw["view"] is panel and kw["wait"] is True
+        assert panel.sent_message is message
+        assert len(spawned) == 1
+        spawned[0][1].close()                                          # don't sleep 14 minutes
+
+
+class TestBuildClanManagementPanel:
+    @pytest.mark.asyncio
+    async def test_works_without_clans_in_config_mode(self, monkeypatch):
+        from clashcontrol import QBdiscocmdshelper, ui_clan_management
+        fmt = AsyncMock(return_value=(discord.Embed(title="cfg"), None, [], []))
+        monkeypatch.setattr(QBdiscocmdshelper, "format_clan_management_message", fmt)
+        guild = _guild(ADMIN)
+        embeds, view = await ui_clan_management.build_clan_management_panel(guild, mode="config", timeout=60)
+        assert [e.title for e in embeds] == ["cfg"] and view.mode == "config"
+        assert view.sent_message.guild is guild and view.clan_tag is None
+        assert fmt.await_args.args[0] is None
+        view.stop()

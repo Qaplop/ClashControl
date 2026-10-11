@@ -2859,8 +2859,8 @@ async def clan_management(interaction: discord.Interaction):
         return
     _log_cmd(interaction, "clan management")
     
-    from clashcontrol.QBdiscocmdshelper import format_clan_management_message, get_most_active_clan_for_guild, get_guild_clans_including_member_config
-    from clashcontrol.ui_clan_management import ClanManagementView
+    from clashcontrol.QBdiscocmdshelper import get_guild_clans_including_member_config
+    from clashcontrol.ui_clan_management import build_clan_management_panel
     from QBhelperfunctions import generate_message_key_timestamp
     
     if not interaction.guild_id or not interaction.guild:
@@ -2877,27 +2877,22 @@ async def clan_management(interaction: discord.Interaction):
         )
         return
     
-    # Get most active clan for this guild (default selection)
-    default_clan_tag = get_most_active_clan_for_guild(interaction.guild_id, guild_clans)
-    
-    # Generate clan management message for default clan (default mode: config)
+    # Build the panel (default mode: Basic Configuration) — shared with /setup's "Open settings"
+    # (build_clan_management_panel(), tracker #0151).
     try:
-        main_embed, unlinked_embed, _linked_players, unlinked_players = await format_clan_management_message(
-            default_clan_tag,
-            interaction.guild,
-            mode="config"  # Default to config mode (Basic Configuration)
-        )
+        display_embeds, view = await build_clan_management_panel(interaction.guild, mode="config", timeout=1800)
     except Exception as e:
-        logging.error(f"Failed to generate clan management message for {default_clan_tag}: {e}")
+        logging.error(f"Failed to generate clan management message for guild {interaction.guild_id}: {e}")
         await interaction.followup.send(
             f"❌ Failed to generate clan management view: {str(e)}",
             ephemeral=True
         )
         return
-    
+
     # Delete old clan_management messages in this channel
     if not interaction.channel or not hasattr(interaction.channel, 'fetch_message'):
         await interaction.followup.send("❌ Channel doesn't support messages.", ephemeral=True)
+        view.stop()
         return
     
     channel_id = str(interaction.channel.id)
@@ -2925,27 +2920,9 @@ async def clan_management(interaction: discord.Interaction):
     except Exception:
         pass
     
-    # Detect mode based on return values and apply rules
-    all_embeds: List[discord.Embed] = []
-    display_embeds: List[discord.Embed]
-    if main_embed is None and isinstance(unlinked_embed, builtins.list):  # type: ignore[misc]
-        # Rule 3: Pagination mode (>6000 chars) - multiple embeds returned as list
-        all_embeds = unlinked_embed  # type: ignore[assignment]
-        display_embeds = [all_embeds[0]]
-        current_page = 0
-    elif main_embed is not None and unlinked_embed is not None and not isinstance(unlinked_embed, builtins.list):  # type: ignore[misc]
-        # Rule 2: Two-embed mode (4096 < chars <= 6000)
-        all_embeds = []
-        display_embeds = [main_embed, unlinked_embed]
-        current_page = 0
-    else:
-        # Rule 1: Single embed mode (<= 4096 chars)
-        all_embeds = []
-        display_embeds = [main_embed] if main_embed else []
-        current_page = 0
-    
     if not interaction.channel or not isinstance(interaction.channel, (discord.TextChannel, discord.Thread)):
         await interaction.followup.send("❌ Cannot send message in this channel type.", ephemeral=True)
+        view.stop()
         return
     
     # Send new message. A channel where the bot may not post raises 50013 here; until tracker
@@ -2966,23 +2943,10 @@ async def clan_management(interaction: discord.Interaction):
             format_issues_message(_perm_issues, guild_id=interaction.guild_id, user_id=str(interaction.user.id)),
             ephemeral=True,
         )
+        view.stop()
         return
-    # Build the view first and send it WITH the message (2026-10-10). Sending the embed alone and
-    # adding the view with a second edit left the buttons/selects invisible in the Discord client
-    # until Ctrl+R, although Discord had stored all of them (log: "12 component(s) sent, 12 stored
-    # by Discord"): the client renders the first version and sometimes misses the update. The
-    # builders only read sent_message.guild, so a stand-in carries the guild until the real
-    # message exists.
-    view = ClanManagementView(
-        clan_tag=default_clan_tag,
-        guild_clans=guild_clans,
-        unlinked_players=unlinked_players,
-        sent_message=SimpleNamespace(guild=interaction.guild, id=None),  # type: ignore[arg-type]
-        mode="config",  # Default mode (Basic Configuration)
-        timeout=1800,  # 30 minute timeout (int required)
-        all_embeds=all_embeds if all_embeds else None,
-        current_page=current_page
-    )
+    # The view was built first and is sent WITH the message (2026-10-10): adding it by a later
+    # edit left the buttons invisible until Ctrl+R. See build_clan_management_panel().
     try:
         sent_message = await interaction.channel.send(embeds=display_embeds, view=view)
     except discord.Forbidden:

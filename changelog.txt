@@ -1,6 +1,18 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-11 (13)
+- Added (tracker #0151, Phase 5): "⚙️ Open settings" on /setup's detail pages opens the matching
+  /clan management screen (Basic Configuration, Manage Registrations, War Notifications, Server
+  Roles, CWL Settings, CWL Season Management) as a private copy of the panel; "Check again" in
+  /setup then shows the result. The panel closes itself after 14 minutes (its edit token dies at
+  15). Steps 1 and 13 have no settings screen (re-authorize link / /subscribe).
+- Changed: /clan management builds its panel with the new shared
+  ui_clan_management.build_clan_management_panel() (no behaviour change; also stops the unsent
+  view on early bail-outs).
+  Files: config_audit.py, ui_config_audit.py, ui_clan_management.py, QBdiscordcmds.py,
+  translations (5), docs, tests. 3855 tests pass. Build 157.
+
 2026-10-11 (12)
 - Added (tracker #0151, Phase 4): the last three /setup steps — all 13 are checked now.
   6 War notifications (DM): how many linked members get war / raid reminders (⚠️ only when

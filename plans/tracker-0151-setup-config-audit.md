@@ -1,6 +1,6 @@
 # /setup (config audit + admin setup guide) and /tutorial (#0121): concept & stepped plan
 
-Status: **Concept agreed 2026-10-11. Phase 1 implemented 2026-10-11 (Build 151, v1.3.43), Phase 2 implemented 2026-10-11 (Build 152), Phase 3 implemented 2026-10-11 (Build 155), Phase 4 implemented 2026-10-11 (Build 156); Phases 5–7 open.**
+Status: **Concept agreed 2026-10-11. Phase 1 implemented 2026-10-11 (Build 151, v1.3.43), Phase 2 implemented 2026-10-11 (Build 152), Phase 3 implemented 2026-10-11 (Build 155), Phase 4 implemented 2026-10-11 (Build 156), Phase 5 implemented 2026-10-11 (Build 157); Phases 6–7 open.**
 Tracker: #0151 (this feature), #0121 (tutorials). Owner: qaplop. Builds on `/admin Permission Audit` (Build 135, `clashcontrol/bot_permissions.py`)
 and is the foundation for tracker #0121 (tutorials).
 
@@ -249,7 +249,7 @@ tests (`.\run_tests.ps1`), tracker test cases.
 | 2 | Pure config-state steps reusing `audit_guild`: 2 Language/TZ, 3 Clans (+ war log, deleted), 4 Welcome, 7 Channel war notifications, 8 Raid reminders, 13 Leaderboards. `blocked` dependencies. | M |
 | 3 | 5 Registration (+ member visibility, link coverage), 9 Roles (+ clan-role completeness), 10 CWL Settings (+ member visibility, Use Activities after DEV check). | M–L |
 | 4 | Info-heavy steps 6, 11, 12 (season-state vs calendar, custodians, coordinators). | M |
-| 5 | "Open settings" buttons from a step detail into the existing views (Language, Timezone, Channels, Member Clans, Roles, CWL Settings…) — needs a check per view that it can be opened ephemerally outside `/clan management`. | M |
+| 5 | (As built: opens the whole /clan management panel in the right mode as an ephemeral message — the sub-views are bound to that panel and can't open alone.) "Open settings" buttons from a step detail into the existing views (Language, Timezone, Channels, Member Clans, Roles, CWL Settings…) — needs a check per view that it can be opened ephemerally outside `/clan management`. | M |
 | 6 | Layer B guided setup inside `/setup` + `guild_setup_progress` (dismiss). | M |
 | 7 | Layer C user tutorial (#0121). | L |
 

@@ -804,6 +804,12 @@ all rebuild/button-handler paths so the reference is never lost.
   labels of /clan management), so they follow label changes.
 - `ui_config_audit.SetupView` — one ephemeral message: overview ⇄ step detail via a select,
   Back, Re-check, plus the link buttons a detail page offers. Read-only, so no double-click claim.
+- "⚙️ Open settings" (Phase 5, Build 157): `AuditStep.fix_mode(result)` names the /clan
+  management mode that fixes a step; `ui_config_audit.open_settings_panel()` sends that panel as a
+  separate ephemeral message, built by `ui_clan_management.build_clan_management_panel(guild,
+  mode)` — the same builder /clan management uses for its public post. The ephemeral panel is
+  closed with a notice after 14 minutes (`SETTINGS_PANEL_LIFETIME_SECONDS`): it is edited through
+  the token of the click that opened it, which dies at 15 minutes (Pitfall 41).
 
 🟫 clashcontrol/log_throttle.py (tracker #0150)
 - `log_throttled(level, key, message, interval_s=DAY_S)` — log a recurring failure once per

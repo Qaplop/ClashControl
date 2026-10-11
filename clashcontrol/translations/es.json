@@ -1578,15 +1578,15 @@
     },
     "perm": {
       "view_channel": "Ver canal",
-      "send_messages": "Enviar mensajes",
-      "send_messages_in_threads": "Enviar mensajes en hilos",
+      "send_messages": "Enviar mensajes y crear publicaciones",
+      "send_messages_in_threads": "Enviar mensajes en hilos y publicaciones",
       "embed_links": "Insertar enlaces",
       "read_message_history": "Leer el historial de mensajes",
       "administrator": "Administrador",
       "attach_files": "Adjuntar archivos",
       "use_external_emojis": "Usar emojis externos",
       "create_public_threads": "Crear hilos públicos",
-      "manage_threads": "Gestionar hilos",
+      "manage_threads": "Gestionar hilos y publicaciones",
       "create_instant_invite": "Crear invitación",
       "manage_roles": "Gestionar roles"
     },

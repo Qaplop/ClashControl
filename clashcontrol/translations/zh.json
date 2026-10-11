@@ -1583,7 +1583,6 @@
       "summary_hidden_from_newcomers": "新成员看不到注册消息",
       "summary_ok": "注册消息在 {channel}",
       "hub_in": "发布在 {channel}：成员在这里绑定 Clash of Clans 账号、设置战争提醒并查看自己的账号。",
-      "hub_off": "已关闭——没有任何频道中的注册消息。",
       "command_hint": "成员也可以在服务器上或与机器人的私信中使用 {registration} 自行打开。",
       "coverage_title": "🔗 已绑定账号",
       "coverage": "你的成员部落中 {total} 个账号里有 {linked} 个已绑定到 Discord 用户（其中 {verified} 个已通过 API 令牌验证）。",

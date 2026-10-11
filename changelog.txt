@@ -1,6 +1,12 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-11 (42)
+- Changed (tracker #0151, qaplop): /setup step 5 with the registration message off no longer
+  repeats "Off — there is no registration message in a channel." and the /registration hint
+  under "About this step" — the problem block above says both. Key registration.hub_off removed.
+  Build 186.
+
 2026-10-11 (41)
 - Changed (tracker #0151, qaplop): the guided setup's /tutorial tip never shows before step 3 is
   done (no member clan → the tour has nothing to show). It waits and appears once on the first

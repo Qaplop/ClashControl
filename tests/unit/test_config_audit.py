@@ -1237,7 +1237,9 @@ class TestRegistrationWhyAndTipOnTop:
         guild = _guild(ADMIN)
         detail = ca.detail_registration(guild, ca.check_registration(guild), GID, "1")
         body = ca.what_text("registration", GID, "1")
-        assert "{" not in body and len(body) <= 1024 and detail.sections
+        assert "{" not in body and len(body) <= 1024
+        # Off: the problem block says it all — no repeated "Off …" / /registration lines below.
+        assert detail.problem is not None and detail.sections == []
 
     @pytest.mark.asyncio
     async def test_tutorial_tip_is_at_the_end(self):

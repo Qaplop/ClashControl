@@ -1583,7 +1583,6 @@
       "summary_hidden_from_newcomers": "los nuevos miembros no ven el mensaje de registro",
       "summary_ok": "mensaje de registro en {channel}",
       "hub_in": "Publicado en {channel}: allí los miembros vinculan sus cuentas de Clash of Clans, configuran recordatorios de guerra y ven sus cuentas.",
-      "hub_off": "Desactivado — no hay mensaje de registro en ningún canal.",
       "command_hint": "Los miembros también pueden abrirlo con {registration}, en el servidor o en un MD con el bot.",
       "coverage_title": "🔗 Cuentas vinculadas",
       "coverage": "{linked} de {total} cuentas de tus clanes miembro están vinculadas a un usuario de Discord ({verified} verificadas con un token de la API).",

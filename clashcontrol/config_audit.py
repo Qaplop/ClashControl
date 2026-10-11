@@ -889,9 +889,11 @@ def detail_registration(guild: discord.Guild, result: StepResult, guild_id: Opti
                view=bp.perm_label("view_channel", guild_id=guild_id, user_id=user_id),
                history=bp.perm_label("read_message_history", guild_id=guild_id, user_id=user_id)),
         ], either=True)
-    about = (tr("config_audit.registration.hub_in", channel=f"<#{channel_id}>")
-             if channel_id and "hub_off" not in codes else tr("config_audit.registration.hub_off"))
-    about += "\n" + tr("config_audit.registration.command_hint", registration=registration)
+    if "hub_off" in codes:
+        # The problem block already says it's off and names /registration (qaplop 2026-10-11).
+        return StepDetail([], problem=problem)
+    about = tr("config_audit.registration.hub_in", channel=f"<#{channel_id}>") if channel_id else ""
+    about += ("\n" if about else "") + tr("config_audit.registration.command_hint", registration=registration)
     return StepDetail([("", about)], problem=problem)
 
 

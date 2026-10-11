@@ -1584,7 +1584,6 @@
       "summary_hidden_from_newcomers": "neue Mitglieder sehen die Registrierungsnachricht nicht",
       "summary_ok": "Registrierungsnachricht in {channel}",
       "hub_in": "Gepostet in {channel}: Dort verknüpfen Mitglieder ihre Clash of Clans Accounts, richten Kriegs-Erinnerungen ein und sehen ihre Accounts.",
-      "hub_off": "Aus — es gibt keine Registrierungsnachricht in einem Kanal.",
       "command_hint": "Mitglieder können sie auch selbst mit {registration} öffnen, auf dem Server oder in einer DM mit dem Bot.",
       "coverage_title": "🔗 Verknüpfte Accounts",
       "coverage": "{linked} von {total} Accounts in deinen Mitglieds-Clans sind mit einem Discord-Benutzer verknüpft ({verified} per API-Token verifiziert).",

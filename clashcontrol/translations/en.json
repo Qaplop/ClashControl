@@ -1584,7 +1584,6 @@
       "summary_hidden_from_newcomers": "new members can't see the registration message",
       "summary_ok": "registration message in {channel}",
       "hub_in": "Posted in {channel}: members link their Clash of Clans accounts there, set up war reminders and see their accounts.",
-      "hub_off": "Off — there is no registration message in a channel.",
       "command_hint": "Members can also open it themselves with {registration}, on the server or in a DM with the bot.",
       "coverage_title": "🔗 Linked accounts",
       "coverage": "{linked} of {total} accounts in your member clans are linked to a Discord user ({verified} verified with an API token).",

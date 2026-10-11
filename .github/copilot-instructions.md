@@ -93,7 +93,10 @@ Token budget note (cl100k_base): keep this file ~≤3000 tokens.
   texts: "Server Settings → Roles"). In code, render them with `bot_permissions.perm_label(perm,
   guild_id=, user_id=, scope=)` (`scope="server"` for role permissions: "View Channels" vs the
   channel override "View Channel"); never hard-code a name. Discord's help center sometimes words
-  them differently from the client — the client is the reference. Guarded by
+  them differently from the client — the client (Server Settings → Roles) is the reference, verified
+  per language from screenshots. Since forum channels, the client names the send/thread permissions
+  with "posts" (es «Enviar mensajes y crear publicaciones», zh 发送消息与创建帖子), while older
+  sources still show the short names; verified on 2026-10-11 for es and zh, en/de still pending. Guarded by
   `tests/unit/test_config_audit.py::TestPermissionNames`.
 - WHY: Multi-language support.
 📖 Details: ../clashcontrol/docs/CODE_STRUCTURE.md § Discord.py Patterns

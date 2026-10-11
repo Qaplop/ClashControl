@@ -4797,10 +4797,14 @@ async def on_message(message: discord.Message) -> None:
             from clashcontrol.QBdiscocmdshelper import command_mention
             reply += "\n" + t('commands.dm.fallback_tracker_hint', user_id=str(message.author.id),
                               bug=command_mention("bug"), feature=command_mention("feature"))
-        # Tracker #0151: server admins find the setup checklist from here too.
+        # Tracker #0122 part 2: the tutorial (#0121) — start / continue, nothing once finished.
+        from clashcontrol.tutorial import dm_hint_key
         from clashcontrol.QBdiscocmdshelper import command_mention as _cmd_mention
-        reply += "\n" + t('commands.dm.fallback_tutorial_hint', user_id=str(message.author.id),
-                          tutorial=_cmd_mention("tutorial"))
+        hint = dm_hint_key(str(message.author.id))
+        if hint is not None:
+            key, params = hint
+            reply += "\n" + t(key, user_id=str(message.author.id), tutorial=_cmd_mention("tutorial"), **params)
+        # Tracker #0151: server admins find the setup checklist from here too.
         reply += "\n" + t('commands.dm.fallback_setup_hint', user_id=str(message.author.id),
                           setup=_cmd_mention("setup"))
         try:

@@ -117,6 +117,18 @@ async def mark_done(user_id: str, step_id: str) -> None:
     await save_progress(user_id, progress.get("step") or step_id, set(progress.get("done", set())) | {step_id})
 
 
+def dm_hint_key(user_id: str) -> Optional[Tuple[str, Dict[str, Any]]]:
+    """The tutorial line of the bot's reply to a free-text DM (tracker #0122): (key, params) —
+    "new here?" before the first start, "you're at step N" while under way, None once finished."""
+    progress = get_progress(user_id)
+    if progress is None or progress.get("step") not in STEP_IDS:
+        return "commands.dm.fallback_tutorial_hint", {}
+    if is_finished(user_id):
+        return None
+    return "commands.dm.fallback_tutorial_continue_hint", {
+        "step": STEP_IDS.index(progress["step"]) + 1, "total": len(STEP_IDS)}
+
+
 def next_step_id(step_id: str) -> str:
     i = STEP_IDS.index(step_id) if step_id in STEP_IDS else 0
     return STEP_IDS[min(i + 1, len(STEP_IDS) - 1)]

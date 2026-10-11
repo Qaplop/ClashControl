@@ -1,6 +1,14 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-11 (30)
+- Changed (tracker #0122 part 2, qaplop): the reply to a free-text DM points to the tutorial by
+  where the user is: "New here? /tutorial …" before the first start, "You're at step N of 9 in the
+  tutorial — /tutorial continues where you left off." while under way, and no tutorial line once
+  finished (tutorial.dm_hint_key(); new key commands.dm.fallback_tutorial_continue_hint in all
+  languages). The /bug + /feature line (part 1, PROD only) and the /setup line are unchanged.
+  Build 174.
+
 2026-10-11 (29)
 - Fixed (tracker #0121, qaplop on a new server): linking an account didn't move the tutorial on
   from step 3 (and switching war reminders on didn't finish step 5) — those are button flows, and

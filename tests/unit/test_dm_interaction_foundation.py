@@ -390,3 +390,29 @@ async def test_on_message_dm_tracker_hint_mentions_are_clickable(clashcontrol_mo
 
     sent_text = message.channel.send.await_args.args[0]
     assert "</bug:101>" in sent_text and "</feature:202>" in sent_text
+
+
+@pytest.mark.discord
+@pytest.mark.asyncio
+@pytest.mark.parametrize("progress, expected", [
+    (None, "New here?"),
+    ({"step": "my_accounts", "done": set()}, "step 4 of 9"),
+    ({"step": "done", "done": set()}, None),
+])
+async def test_on_message_dm_fallback_tutorial_hint_follows_progress(
+    clashcontrol_module, fake_bot, monkeypatch, progress, expected
+):
+    """Tracker #0122 part 2: start the tutorial, continue it where you are, nothing once done."""
+    from clashcontrol import tutorial
+    monkeypatch.setattr(tutorial, "get_progress", lambda uid, track=tutorial.TRACK_USER: progress)
+    message = _make_message(guild=None, is_bot=False)
+
+    await clashcontrol_module.on_message(message)
+
+    sent_text = message.channel.send.await_args.args[0]
+    if expected is None:
+        assert "🎓" not in sent_text
+    else:
+        assert expected in sent_text and "tutorial" in sent_text
+    assert "🛠️" in sent_text                    # the /setup line stays either way
+

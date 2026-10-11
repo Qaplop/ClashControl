@@ -469,6 +469,7 @@
     "dm": {
       "fallback_reply": "👋 Ich verstehe keine Freitext-Nachrichten — probiere `/help`, um zu sehen, was ich kann, oder nutze direkt hier in der DM einen Slash-Befehl.",
       "fallback_tutorial_hint": "🎓 Neu hier? {tutorial} zeigt dir alles in ein paar Schritten.",
+      "fallback_tutorial_continue_hint": "🎓 Du bist bei Schritt {step} von {total} im Tutorial — {tutorial} macht dort weiter, wo du aufgehört hast.",
       "fallback_setup_hint": "🛠️ Server-Admin? Nutze {setup} auf deinem Server, um die Einrichtung von ClashControl dort zu prüfen.",
       "setup_welcome": "👋 Danke, dass du ClashControl zu **{guild}** hinzugefügt hast!\n🛠️ Nächster Schritt: Nutze {setup} auf diesem Server. Es prüft die Berechtigungen des Bots und zeigt Schritt für Schritt, was eingerichtet ist und was noch fehlt.\n📖 {help} listet alle Befehle.",
       "fallback_tracker_hint": "🐞 Melde Fehler mit {bug} oder wenn du einen Verbesserungsvorschlag hast, schlage ihn mit {feature} vor, direkt hier im Chat.",

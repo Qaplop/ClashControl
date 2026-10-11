@@ -100,7 +100,9 @@ Token budget note (cl100k_base): keep this file ~≤3000 tokens.
   sources — Discord's help center and the install-permission picker in the Developer Portal (de
   „Soforteinladung erstellen“ there vs „Einladung erstellen“ in the client) — still show other
   names. All 12 install permissions verified from client screenshots for en, de, es, zh on
-  2026-10-11 (role level; the channel-override "View Channel" wording is not yet verified). Guarded by
+  2026-10-11 (role level; the channel-override "View Channel" wording is not yet verified).
+  📖 Verified label tables (role settings = what the bot uses; the authorize dialog's shorter names,
+  only for a text that describes that dialog): ../clashcontrol/docs/DISCORD_PERMISSION_LABELS.md Guarded by
   `tests/unit/test_config_audit.py::TestPermissionNames`.
 - WHY: Multi-language support.
 📖 Details: ../clashcontrol/docs/CODE_STRUCTURE.md § Discord.py Patterns
@@ -536,6 +538,7 @@ All pitfalls: short snippets + details in ../clashcontrol/docs/COPILOT_PITFALLS_
 📖 **../clashcontrol/docs/PERFORMANCE_TUNING.md**: **Read before touching any update-cycle performance knob** — why the cycle is CPU-bound on the server-machine, which knobs measurably do NOTHING (fetch concurrency, throttle limit, a tracked-clan index — all tried, measured, reverted), where the real wins were, the **GC policy** (automatic collection is disabled; `release_war_object()` keeps coc.py war graphs out of the collector entirely — read before touching either), and the measurement discipline that separates real wins from apparent ones (Little's Law, `cores_busy`, matched-load comparison, and why a cProfile hotspot is a *suspect* and not a finding)  
 📖 **../clashcontrol/docs/TEST_CONCEPT.md**: Test tier design (smoke/integration/discord/live/e2e), fixture strategy, coverage targets, CI pipeline — see also "Run tests with" above for the one-line version  
 📖 **../clashcontrol/docs/CWL_CLAN_CONFIG_ACTIVITY_PLAN.md**: CWL Clan-Config Discord Activity — Cloudflare Pages/Workers + `clashcontrol/web_bridge.py` architecture, auth model, phase-by-phase history (see also Pitfall 25 / `../clashcontrol/docs/COPILOT_PITFALLS_COOKBOOK.md` for the Activities Entry Point command gotcha)  
+📖 **../clashcontrol/docs/DISCORD_PERMISSION_LABELS.md**: Discord permission names per language — role settings (used in bot texts) vs. authorize dialog vs. Developer Portal picker  
 📖 **../clashcontrol/docs/BUG_FEATURE_TRACKER.md**: Bug/feature tracker — `clashcontrol/ui_tracker.py` item lifecycle, `/api/tracker/*` bridge endpoints, `clashcontrol/mcp/tracker_mcp.py` MCP server, runbook (see `../BUG_FEATURE_TRACKER_PLAN.md` for the full design doc)  
 📖 **../activity/README.md**: Activity dev setup, deploy commands, PROD rollout runbook (domain, named `cloudflared` tunnel, NAS auto-start)  
 📖 **../README.md**: Installation, environment variables, commands, deployment, features  

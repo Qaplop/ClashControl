@@ -328,3 +328,35 @@ class TestFlowCompletion:
         await tut.on_flow_completed(it)
         it.followup.send.assert_not_awaited()
 
+
+
+class TestNeedsAMemberClan:
+    """qaplop 2026-10-11: on a server without a member clan the tour has nothing to show."""
+
+    def test_server_ready_only_with_a_member_clan(self, monkeypatch):
+        monkeypatch.setattr(CACHE, "server_config", {"5": {"member_clans": []}, "6": {"member_clans": ["#A"]}})
+        monkeypatch.setattr(CACHE, "clan_families", {})
+        assert tut.server_ready_for_tutorial(5) is False
+        assert tut.server_ready_for_tutorial(6) is True
+        assert tut.server_ready_for_tutorial(None) is True          # DM: each flow picks its server
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("admin, key", [(True, "no_member_clan_admin"), (False, "no_member_clan_member")])
+    async def test_tutorial_command_answers_with_a_note(self, monkeypatch, admin, key):
+        import QBdiscordcmds
+        from clashcontrol import ui_tutorial
+        monkeypatch.setattr(CACHE, "server_config", {"5": {"member_clans": []}})
+        monkeypatch.setattr(CACHE, "clan_families", {})
+        opened = AsyncMock()
+        monkeypatch.setattr(ui_tutorial, "send_tutorial", opened)
+        it = MagicMock()
+        it.guild_id = 5
+        it.user.id = 9
+        it.user.guild_permissions.administrator = admin
+        it.response.send_message = AsyncMock()
+        await QBdiscordcmds.tutorial.callback(it)
+        opened.assert_not_awaited()
+        text = it.response.send_message.await_args.args[0]
+        assert "member clan" in text and it.response.send_message.await_args.kwargs["ephemeral"] is True
+        assert ("server admin" in text) is (not admin)
+

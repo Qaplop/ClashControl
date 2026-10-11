@@ -1477,6 +1477,8 @@
     "button_war_reminders": "🔔 Monita belli mea",
     "button_cwl_preferences": "🛡️ Praeferentiae meae CWL",
     "pick_server": "Pro quo servitore? Semel hic in nuntio privato {registration} adhibe et servitorem elige — deinde iterum conare.",
+    "no_member_clan_admin": "⚠️ Hic servitor nondum gentem sodalem habet. Doctrina conexionem, munera, admonitiones, tabulas et CWL per gentes tuas ostendit — itaque primum gentem tuam adde: {setup}, gradus 3. Deinde {tutorial} iterum incipe.",
+    "no_member_clan_member": "⚠️ Hic servitor nondum gentem sodalem habet, itaque doctrina hic ostendere non potest quid ClashControl faciat. Roga administratorem ut gentem vestram addat ({setup}, gradus 3), deinde {tutorial} iterum incipe.",
     "step": {
       "welcome": { "title": "Salve in ClashControl", "text": "ClashControl rationes tuas Clash of Clans cum servitore Discord tuo coniungit: munera automatica, monita ante finem belli, inscriptiones CWL et tabulae ordinum.\n\nHaec peregrinatio 7 gradus breves habet. Quidam te rogant ut mandatum experiaris — automatum id animadvertit et te pergere sinit. Quovis tempore desistere potes: {tutorial} te eo reducit ubi eras." },
       "help": { "title": "Omnia mandata: /help", "text": "{help} omnia mandata cum brevi descriptione enumerat; unum elige ut singula videas. In nuntio privato cum automato mandata quae solum in servitore operantur notantur.", "task": "Nunc {help} scribe — hic in nuntio privato vel in quovis canali." },
@@ -1667,6 +1669,7 @@
     "button_undismiss": "↩️ Tamen adhibere",
     "guided": {
       "tutorial_hint": "🎓 Consilium: fundamenta sodalium (rationem iungere, monita, praeferentiae CWL) gradatim in {tutorial} explicantur. Prius id fac si nondum fecisti — haec institutio in eo nititur.",
+      "tutorial_hint_no_clans": "🎓 Consilium: {tutorial} fundamenta sodalium (rationem conectere, admonitiones, optiones CWL) gradatim explicat, et hic dux in eo nititur. **Primum gentem sodalem adde (gradus 3)**: doctrina omnia per gentes tuas ostendit, itaque una eget. Eam sume, cum gens tua parata est.",
       "header": "🧭 Institutio ducta · gradus {n} ex {total}",
       "button_start": "🧭 Institutionem ductam incipe",
       "button_previous": "◀ Prior",

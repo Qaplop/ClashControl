@@ -1478,6 +1478,8 @@
     "button_war_reminders": "🔔 Meine Kriegs-Erinnerungen",
     "button_cwl_preferences": "🛡️ Meine CWL-Einstellungen",
     "pick_server": "Für welchen Server? Nutze hier in der DM einmal {registration} und wähle den Server — dann versuche es erneut.",
+    "no_member_clan_admin": "⚠️ Dieser Server hat noch keinen Mitglieds-Clan. Das Tutorial zeigt Verknüpfen, Rollen, Erinnerungen, Bestenlisten und CWL anhand deiner Clans — füge also zuerst deinen Clan hinzu: {setup}, Schritt 3 „Clans & Familien“. Starte dann {tutorial} erneut.",
+    "no_member_clan_member": "⚠️ Dieser Server hat noch keinen Mitglieds-Clan, daher kann das Tutorial hier nicht zeigen, was ClashControl macht. Bitte einen Server-Admin, euren Clan hinzuzufügen ({setup}, Schritt 3), und starte dann {tutorial} erneut.",
     "step": {
       "welcome": { "title": "Willkommen bei ClashControl", "text": "ClashControl verbindet deine Clash of Clans Accounts mit deinem Discord-Server: automatische Rollen, Erinnerungen vor Kriegsende, CWL-Anmeldungen und Bestenlisten.\n\nDiese Tour hat 7 kurze Schritte. Manche bitten dich, einen Befehl auszuprobieren — der Bot merkt das und lässt dich weitermachen. Du kannst jederzeit aufhören: {tutorial} bringt dich dorthin zurück, wo du warst." },
       "help": { "title": "Alle Befehle: /help", "text": "{help} listet alle Befehle mit einer kurzen Beschreibung; wähle einen für die Details. In einer DM mit dem Bot sind die Befehle markiert, die nur auf einem Server funktionieren.", "task": "Gib jetzt {help} ein — hier in der DM oder in einem beliebigen Kanal." },
@@ -1668,6 +1670,7 @@
     "button_undismiss": "↩️ Doch nutzen",
     "guided": {
       "tutorial_hint": "🎓 Tipp: Die Grundlagen für Mitglieder (Account verknüpfen, Erinnerungen, CWL-Einstellungen) erklärt {tutorial} Schritt für Schritt. Mach es zuerst, falls noch nicht geschehen — diese Anleitung baut darauf auf.",
+      "tutorial_hint_no_clans": "🎓 Tipp: {tutorial} erklärt die Grundlagen für Mitglieder (Account verknüpfen, Erinnerungen, CWL-Einstellungen) Schritt für Schritt, und diese Anleitung baut darauf auf. **Füge zuerst einen Mitglieds-Clan hinzu (Schritt 3)**: Das Tutorial zeigt alles anhand deiner Clans und braucht deshalb einen. Mach es, sobald dein Clan eingerichtet ist.",
       "header": "🧭 Geführte Einrichtung · Schritt {n} von {total}",
       "button_start": "🧭 Geführte Einrichtung starten",
       "button_previous": "◀ Zurück",

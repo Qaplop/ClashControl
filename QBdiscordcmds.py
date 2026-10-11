@@ -3637,7 +3637,18 @@ async def tutorial(interaction: discord.Interaction) -> None:
     for a command completes when the user runs it (QBcore.on_app_command_completion). Ephemeral.
     Must answer with send_message (the tutorial is the interaction's first response)."""
     _log_cmd(interaction, "tutorial")
+    from clashcontrol.tutorial import server_ready_for_tutorial
     from clashcontrol.ui_tutorial import send_tutorial
+    if not server_ready_for_tutorial(interaction.guild_id):
+        # No member clan yet: linking, roles, reminders and CWL have nothing to show here.
+        from clashcontrol.QBdiscocmdshelper import command_mention
+        is_admin = bool(getattr(getattr(interaction.user, "guild_permissions", None), "administrator", False))
+        key = "tutorial.no_member_clan_admin" if is_admin else "tutorial.no_member_clan_member"
+        await interaction.response.send_message(t(
+            key, guild_id=interaction.guild_id, user_id=str(interaction.user.id),
+            setup=command_mention("setup"), tutorial=command_mention("tutorial")), ephemeral=True)
+        logging.info(f"[TUTORIAL] /tutorial in guild {interaction.guild_id} without member clan — note shown")
+        return
     await send_tutorial(interaction)
     _log_cmd_done(interaction, "tutorial")
 

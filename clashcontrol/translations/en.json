@@ -1478,6 +1478,8 @@
     "button_war_reminders": "🔔 My war reminders",
     "button_cwl_preferences": "🛡️ My CWL preferences",
     "pick_server": "Which server is this for? Run {registration} here in the DM once and pick the server — then try again.",
+    "no_member_clan_admin": "⚠️ This server has no member clan yet. The tutorial shows linking, roles, reminders, leaderboards and CWL for your clans — so add your clan first: {setup}, step 3 “Clans & families”. Then run {tutorial} again.",
+    "no_member_clan_member": "⚠️ This server has no member clan yet, so the tutorial can't show what ClashControl does here. Ask a server admin to add your clan ({setup}, step 3), then run {tutorial} again.",
     "step": {
       "welcome": { "title": "Welcome to ClashControl", "text": "ClashControl connects your Clash of Clans accounts with your Discord server: automatic roles, reminders before a war ends, CWL sign-ups and leaderboards.\n\nThis tour has 7 short steps. Some ask you to try a command — the bot notices and lets you continue. You can stop any time: {tutorial} brings you back to where you were." },
       "help": { "title": "All commands: /help", "text": "{help} lists every command with a short description; pick one for the details. In a DM with the bot, the commands that only work on a server are marked.", "task": "Type {help} now — here in the DM or in any channel." },
@@ -1668,6 +1670,7 @@
     "button_undismiss": "↩️ Use it after all",
     "guided": {
       "tutorial_hint": "🎓 Tip: the member basics (linking an account, reminders, CWL preferences) are explained step by step in {tutorial}. Take it first if you haven't — this guide builds on it.",
+      "tutorial_hint_no_clans": "🎓 Tip: {tutorial} explains the member basics (linking an account, reminders, CWL preferences) step by step, and this guide builds on it. **Add a member clan first (step 3)**: the tutorial shows everything for your clans, so it needs one. Take it once your clan is set up.",
       "header": "🧭 Guided setup · step {n} of {total}",
       "button_start": "🧭 Start guided setup",
       "button_previous": "◀ Previous",

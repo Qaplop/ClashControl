@@ -1,6 +1,15 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-11 (33)
+- Changed (tracker #0121/#0151, qaplop): the tutorial needs a member clan — it shows linking,
+  roles, reminders, leaderboards and CWL for the server's clans. /tutorial on a server without
+  one answers with a note instead (admins: add it in /setup step 3; members: ask an admin);
+  in a DM nothing changes. /setup's guided hint on a server without a member clan now says to
+  add the clan first (step 3) and take /tutorial afterwards (was: "take it first"). Shared:
+  tutorial.server_ready_for_tutorial(). New keys tutorial.no_member_clan_admin/_member and
+  config_audit.guided.tutorial_hint_no_clans in all languages. Build 177.
+
 2026-10-11 (32)
 - Fixed (qaplop): in the reply to a free-text DM, /help was plain text while /bug, /feature,
   /tutorial and /setup below it were clickable. commands.dm.fallback_reply now takes {help}

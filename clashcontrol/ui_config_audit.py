@@ -169,7 +169,11 @@ class SetupView(discord.ui.View):
                                 inline=False)
             if self._tutorial_hint:
                 from clashcontrol.QBdiscocmdshelper import command_mention
-                embed.add_field(name="\u200b", value=_tr(gid, self.user_id, "config_audit.guided.tutorial_hint",
+                from clashcontrol.tutorial import server_ready_for_tutorial
+                # Without a member clan the tour has nothing to show yet: clan first (step 3).
+                key = ("config_audit.guided.tutorial_hint" if server_ready_for_tutorial(gid)
+                       else "config_audit.guided.tutorial_hint_no_clans")
+                embed.add_field(name="\u200b", value=_tr(gid, self.user_id, key,
                                                           tutorial=command_mention("tutorial"))[:1024], inline=False)
         return embed
 

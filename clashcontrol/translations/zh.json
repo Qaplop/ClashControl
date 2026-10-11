@@ -1477,6 +1477,8 @@
     "button_war_reminders": "🔔 我的战争提醒",
     "button_cwl_preferences": "🛡️ 我的部落战联赛偏好",
     "pick_server": "这是针对哪个服务器？请先在私信中使用一次 {registration} 并选择服务器——然后再试一次。",
+    "no_member_clan_admin": "⚠️ 本服务器还没有成员部落。教程会以你的部落来展示关联、身份组、提醒、排行榜和部落战联赛——请先添加你的部落：{setup}，第 3 步“部落和家族”。然后再次运行 {tutorial}。",
+    "no_member_clan_member": "⚠️ 本服务器还没有成员部落，因此教程无法在这里展示 ClashControl 的功能。请让服务器管理员添加你们的部落（{setup}，第 3 步），然后再次运行 {tutorial}。",
     "step": {
       "welcome": { "title": "欢迎使用 ClashControl", "text": "ClashControl 将你的 Clash of Clans 账号与 Discord 服务器连接起来：自动身份组、战争结束前的提醒、部落战联赛报名和排行榜。\n\n本教程有 7 个简短步骤。有些步骤会让你试用一个命令——机器人会察觉并让你继续。你可以随时停止：{tutorial} 会带你回到上次的位置。" },
       "help": { "title": "所有命令：/help", "text": "{help} 会列出所有命令及简短说明；选择一个可查看详情。在与机器人的私信中，仅在服务器上可用的命令会被标出。", "task": "现在输入 {help}——在私信中或任何频道都可以。" },
@@ -1667,6 +1669,7 @@
     "button_undismiss": "↩️ 还是要使用",
     "guided": {
       "tutorial_hint": "🎓 提示：{tutorial} 会一步步讲解成员的基础操作（绑定账号、提醒、部落战联赛偏好）。如果还没完成，请先完成它——本引导以此为基础。",
+      "tutorial_hint_no_clans": "🎓 提示：{tutorial} 会一步步讲解成员基础（关联账号、提醒、部落战联赛偏好），本向导以此为基础。**请先添加一个成员部落（第 3 步）**：教程会以你的部落来展示一切，因此需要至少一个。部落设置好后再参加教程。",
       "header": "🧭 引导设置 · 第 {n} 步，共 {total} 步",
       "button_start": "🧭 开始引导设置",
       "button_previous": "◀ 上一步",

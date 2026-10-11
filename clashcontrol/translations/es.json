@@ -1477,6 +1477,8 @@
     "button_war_reminders": "🔔 Mis recordatorios de guerra",
     "button_cwl_preferences": "🛡️ Mis preferencias de LGC",
     "pick_server": "¿Para qué servidor? Usa una vez {registration} aquí en el MD y elige el servidor — luego inténtalo de nuevo.",
+    "no_member_clan_admin": "⚠️ Este servidor aún no tiene un clan miembro. El tutorial muestra la vinculación, los roles, los recordatorios, las clasificaciones y la LGC con tus clanes — así que añade primero tu clan: {setup}, paso 3 “Clanes y familias”. Luego vuelve a usar {tutorial}.",
+    "no_member_clan_member": "⚠️ Este servidor aún no tiene un clan miembro, así que el tutorial no puede mostrar lo que ClashControl hace aquí. Pide a un administrador del servidor que añada vuestro clan ({setup}, paso 3) y luego vuelve a usar {tutorial}.",
     "step": {
       "welcome": { "title": "Bienvenido a ClashControl", "text": "ClashControl conecta tus cuentas de Clash of Clans con tu servidor de Discord: roles automáticos, recordatorios antes de que termine una guerra, inscripciones a la LGC y clasificaciones.\n\nEste recorrido tiene 7 pasos cortos. Algunos te piden probar un comando — el bot lo nota y te deja continuar. Puedes parar cuando quieras: {tutorial} te devuelve a donde estabas." },
       "help": { "title": "Todos los comandos: /help", "text": "{help} muestra todos los comandos con una breve descripción; elige uno para ver los detalles. En un MD con el bot se marcan los comandos que solo funcionan en un servidor.", "task": "Escribe {help} ahora — aquí en el MD o en cualquier canal." },
@@ -1667,6 +1669,7 @@
     "button_undismiss": "↩️ Usarlo después de todo",
     "guided": {
       "tutorial_hint": "🎓 Consejo: lo básico para miembros (vincular una cuenta, recordatorios, preferencias de LGC) se explica paso a paso en {tutorial}. Hazlo primero si aún no lo has hecho — esta guía se basa en él.",
+      "tutorial_hint_no_clans": "🎓 Consejo: {tutorial} explica paso a paso lo básico para miembros (vincular una cuenta, recordatorios, preferencias de LGC), y esta guía se basa en él. **Añade primero un clan miembro (paso 3)**: el tutorial lo muestra todo con tus clanes, así que necesita uno. Hazlo cuando tu clan esté configurado.",
       "header": "🧭 Configuración guiada · paso {n} de {total}",
       "button_start": "🧭 Iniciar configuración guiada",
       "button_previous": "◀ Anterior",

@@ -117,6 +117,16 @@ async def mark_done(user_id: str, step_id: str) -> None:
     await save_progress(user_id, progress.get("step") or step_id, set(progress.get("done", set())) | {step_id})
 
 
+def server_ready_for_tutorial(guild_id: Optional[int]) -> bool:
+    """Whether the tutorial makes sense on this server: it shows linking, roles, reminders,
+    leaderboards and CWL for the server's clans, so it needs at least one member clan (qaplop
+    2026-10-11). No server (a DM) → True: there each flow picks its server itself."""
+    if guild_id is None:
+        return True
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_guild_member_clan_tags
+    return bool(resolve_guild_member_clan_tags(guild_id))
+
+
 def dm_hint_key(user_id: str) -> Optional[Tuple[str, Dict[str, Any]]]:
     """The tutorial line of the bot's reply to a free-text DM (tracker #0122): (key, params) —
     "new here?" before the first start, "you're at step N" while under way, None once finished."""

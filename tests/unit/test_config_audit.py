@@ -1201,3 +1201,28 @@ class TestSummaryInReadersLanguage:
             assert r.summary_key != "config_audit.summary_check_failed", sid
             assert all(not isinstance(v, str) or v.startswith("#") or v.isdigit()
                        for v in r.summary_params.values()), (sid, r.summary_params)
+
+
+class TestToggleStatusLine:
+    """qaplop 2026-10-11: an on/off step reads "Status: 🔴 Disabled" like /clan management, not
+    "off" + "Off. When it is on …"."""
+
+    def test_switch_steps(self):
+        assert {s.id for s in ca.STEPS if s.toggle_key} == {
+            "welcome", "registration", "channel_war_notifications", "raid_reminders"}
+
+    @pytest.mark.parametrize("lang", LANGS)
+    def test_disabled_and_enabled_pages(self, lang):
+        from clashcontrol.ui_config_audit import build_step_embed
+        _cfg(language=lang)
+        guild = _guild(ADMIN)
+        r = ca.run_step(ca.STEPS_BY_ID["welcome"], guild)
+        e = build_step_embed(guild, "1", "welcome", r)
+        assert e.description.count("🔴") == 1 and "🟢" not in e.description
+        assert "\n" not in e.description                       # no second "off" line
+        _cfg(language=lang, welcome_message_enabled=True)
+        r = ca.run_step(ca.STEPS_BY_ID["welcome"], guild)
+        e = build_step_embed(guild, "1", "welcome", r)
+        if r.status == AuditStatus.OK:
+            assert e.description.startswith(e.description.split("🟢")[0]) and "🟢" in e.description
+

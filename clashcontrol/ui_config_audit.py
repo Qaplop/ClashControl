@@ -70,10 +70,25 @@ def build_step_embed(guild: discord.Guild, user_id: str, step_id: str, result: S
         if detail.sections:
             embed.add_field(name="\u200b", value=f"**{_tr(gid, user_id, 'config_audit.about_title')}**", inline=False)
     else:
-        embed.description = f"**{summary}**"
+        enabled = step.toggle_enabled(gid)
+        if enabled is None:
+            embed.description = f"**{summary}**"
+        else:
+            # An on/off feature: /clan management's own status line (one "off", not two). When
+            # on, the summary (where it posts) follows.
+            embed.description = toggle_status_line(gid, user_id, enabled) + (f"\n**{summary}**" if enabled else "")
     for heading, body in detail.sections:
         embed.add_field(name=(heading or "\u200b")[:256], value=(body or "\u200b")[:1024], inline=False)
     return embed
+
+
+def toggle_status_line(guild_id: int, user_id: str, enabled: bool) -> str:
+    """'Status: 🟢 Enabled' / 'Status: 🔴 Disabled' — the texts /clan management's Basic
+    Configuration uses for the same switches."""
+    state = _tr(guild_id, user_id, "ui_components.basic_config.config_status_enabled" if enabled
+                else "ui_components.basic_config.config_status_disabled")
+    return _tr(guild_id, user_id, "ui_components.basic_config.config_welcome_status",
+               status=f"{'🟢' if enabled else '🔴'} {state}")
 
 
 def _status_color(status: AuditStatus) -> discord.Color:

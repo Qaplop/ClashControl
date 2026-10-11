@@ -1532,10 +1532,10 @@
     },
     "welcome": {
       "summary_off": "已关闭",
-      "summary_ok": "已开启——发布在 {channel}",
+      "summary_ok": "发布在 {channel}",
       "summary_problems": "发现 {count} 个问题",
       "summary_no_apply_channel": "未设置申请频道",
-      "off_text": "已关闭。开启后，ClashControl 会在服务器的系统消息频道中欢迎每位新成员，并附上你的部落（或申请频道）和注册中心的链接。",
+      "off_text": "开启后，ClashControl 会在服务器的系统消息频道中欢迎每位新成员，并附上你的部落（或申请频道）和注册中心的链接。",
       "posts_title": "📍 发布位置",
       "posts_in": "{channel}——服务器的系统消息频道（服务器设置 → 概况 → 系统消息频道）。",
       "content_title": "📝 消息内容",

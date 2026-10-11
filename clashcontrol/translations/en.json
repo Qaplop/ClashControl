@@ -1533,10 +1533,10 @@
     },
     "welcome": {
       "summary_off": "off",
-      "summary_ok": "on — posts in {channel}",
+      "summary_ok": "posts in {channel}",
       "summary_problems": "{count} problem(s) found",
       "summary_no_apply_channel": "apply channel not set",
-      "off_text": "Off. When it is on, ClashControl greets every new member in the server's system messages channel, with links to your clans (or your apply channel) and to the registration hub.",
+      "off_text": "When it is on, ClashControl greets every new member in the server's system messages channel, with links to your clans (or your apply channel) and to the registration hub.",
       "posts_title": "📍 Where it posts",
       "posts_in": "{channel} — the server's system messages channel (Server Settings → Overview → System Messages Channel).",
       "content_title": "📝 What it says",

@@ -1532,10 +1532,10 @@
     },
     "welcome": {
       "summary_off": "exstinctum",
-      "summary_ok": "accensum — in {channel} mittit",
+      "summary_ok": "in {channel} mittit",
       "summary_problems": "{count} difficultas(es) inventa(e)",
       "summary_no_apply_channel": "canalis petitionum non constitutus",
-      "off_text": "Exstinctum. Cum accensum est, ClashControl omnem novum sodalem in canali nuntiorum systematis salutat, cum nexibus ad gentes tuas (vel canalem petitionum) et ad centrum inscriptionis.",
+      "off_text": "Cum accensum est, ClashControl omnem novum sodalem in canali nuntiorum systematis salutat, cum nexibus ad gentes tuas (vel canalem petitionum) et ad centrum inscriptionis.",
       "posts_title": "📍 Ubi mittit",
       "posts_in": "{channel} — canalis nuntiorum systematis servitoris (Server Settings → Overview → System Messages Channel).",
       "content_title": "📝 Quid dicit",

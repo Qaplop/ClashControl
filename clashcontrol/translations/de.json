@@ -1533,10 +1533,10 @@
     },
     "welcome": {
       "summary_off": "aus",
-      "summary_ok": "an — postet in {channel}",
+      "summary_ok": "postet in {channel}",
       "summary_problems": "{count} Problem(e) gefunden",
       "summary_no_apply_channel": "Bewerbungskanal nicht gesetzt",
-      "off_text": "Aus. Wenn sie an ist, begrüßt ClashControl jedes neue Mitglied im Systemnachrichten-Kanal des Servers, mit Links zu deinen Clans (oder deinem Bewerbungskanal) und zum Registrierungs-Hub.",
+      "off_text": "Wenn sie an ist, begrüßt ClashControl jedes neue Mitglied im Systemnachrichten-Kanal des Servers, mit Links zu deinen Clans (oder deinem Bewerbungskanal) und zum Registrierungs-Hub.",
       "posts_title": "📍 Wo sie gepostet wird",
       "posts_in": "{channel} — der Systemnachrichten-Kanal des Servers (Servereinstellungen → Übersicht → Kanal für Systemnachrichten).",
       "content_title": "📝 Was sie sagt",

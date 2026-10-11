@@ -1,6 +1,14 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-11 (34)
+- Changed (tracker #0151, qaplop): /setup's on/off steps (4 welcome, 5 registration message,
+  7 channel war notifications, 8 raid reminders) open with /clan management's status line —
+  "Status: 🔴 Disabled" / "Status: 🟢 Enabled" (+ where it posts) — instead of the bare summary.
+  The welcome page read "off" and then "Off. When it is on, …"; the explanation now starts with
+  "When it is on, …", and its summary is "posts in #channel" (was "on — posts in"). New
+  AuditStep.toggle_key; ui_config_audit.toggle_status_line(). Build 178.
+
 2026-10-11 (33)
 - Changed (tracker #0121/#0151, qaplop): the tutorial needs a member clan — it shows linking,
   roles, reminders, leaderboards and CWL for the server's clans. /tutorial on a server without

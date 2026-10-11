@@ -99,6 +99,16 @@ class AuditStep:
     #: The guild may mark this step "we don't use this" (Phase 6). Not for the basics every
     #: server needs (permissions, language, clans).
     dismissable: bool = True
+    #: guild_config key of the step's on/off switch: its page then opens with the same
+    #: "Status: 🟢 Enabled / 🔴 Disabled" line as /clan management (qaplop 2026-10-11).
+    toggle_key: Optional[str] = None
+
+    def toggle_enabled(self, guild_id: Any) -> Optional[bool]:
+        """The switch's state, or None for a step without one."""
+        if self.toggle_key is None:
+            return None
+        from clashcontrol.cache_manager import CACHE
+        return bool(CACHE.server_config.get(str(guild_id), {}).get(self.toggle_key))
 
     @property
     def title_key(self) -> str:
@@ -1400,19 +1410,21 @@ STEPS: Tuple[AuditStep, ...] = (
     AuditStep("clans", 3, "admin", check=check_clans, detail=detail_clans, fix_mode=_CONFIG,
               dismissable=False),
     AuditStep("welcome", 4, "admin", check=check_welcome, detail=detail_welcome,
-              permission_features=("welcome",), fix_mode=_CONFIG),
+              permission_features=("welcome",), fix_mode=_CONFIG, toggle_key="welcome_message_enabled"),
     AuditStep("registration", 5, "both", requires=("clans",),
               check=check_registration, detail=detail_registration,
-              permission_features=("registration",), fix_mode=_CONFIG),
+              permission_features=("registration",), fix_mode=_CONFIG, toggle_key="registration_message_enabled"),
     AuditStep("war_notifications", 6, "both", requires=("clans",),
               check=check_war_notifications, detail=detail_war_notifications,
               fix_mode=lambda r: "notifications"),
     AuditStep("channel_war_notifications", 7, "admin", requires=("clans",),
               check=check_channel_war_notifications, detail=detail_channel_war_notifications,
-              permission_features=("war_notifications",), fix_mode=_CONFIG),
+              permission_features=("war_notifications",), fix_mode=_CONFIG,
+              toggle_key="channel_war_notifications_enabled"),
     AuditStep("raid_reminders", 8, "admin", requires=("clans",),
               check=check_raid_reminders, detail=detail_raid_reminders,
-              permission_features=("raid_notifications",), fix_mode=_CONFIG),
+              permission_features=("raid_notifications",), fix_mode=_CONFIG,
+              toggle_key="channel_raid_notifications_enabled"),
     AuditStep("roles", 9, "admin", requires=("clans",), check=check_roles, detail=detail_roles,
               permission_features=("role_system", "coc_roles", "clan_roles"), fix_mode=lambda r: "roles"),
     AuditStep("cwl_settings", 10, "admin", requires=("clans",),

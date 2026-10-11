@@ -1532,10 +1532,10 @@
     },
     "welcome": {
       "summary_off": "desactivado",
-      "summary_ok": "activado — publica en {channel}",
+      "summary_ok": "publica en {channel}",
       "summary_problems": "{count} problema(s) encontrado(s)",
       "summary_no_apply_channel": "canal de solicitudes no configurado",
-      "off_text": "Desactivado. Cuando está activado, ClashControl saluda a cada nuevo miembro en el canal de mensajes del sistema del servidor, con enlaces a tus clanes (o a tu canal de solicitudes) y al hub de registro.",
+      "off_text": "Cuando está activado, ClashControl saluda a cada nuevo miembro en el canal de mensajes del sistema del servidor, con enlaces a tus clanes (o a tu canal de solicitudes) y al hub de registro.",
       "posts_title": "📍 Dónde publica",
       "posts_in": "{channel} — el canal de mensajes del sistema del servidor (Ajustes del servidor → Vista general → Canal de mensajes del sistema).",
       "content_title": "📝 Qué dice",

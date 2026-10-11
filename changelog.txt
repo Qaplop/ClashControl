@@ -1,6 +1,12 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-11 (45)
+- Changed (tracker #0151, qaplop): the guided setup's finish page adds "⚙️ All settings can be
+  found and changed any time in /clan management." (both variants, all languages); /clan
+  management and /setup there are clickable now. New key config_audit.guided.done_settings_hint.
+  Build 189.
+
 2026-10-11 (44)
 - Changed (qaplop): one clan order in every server-context clan selector — member clans and the
   clans of member families first, then the other subscribed clans (each group: in CWL now first,

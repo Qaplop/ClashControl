@@ -168,9 +168,14 @@ class SetupView(discord.ui.View):
         if self.selected == _DONE:
             open_steps = sum(needs_attention(r) for r in self.results.values())
             key = "config_audit.guided.done_open" if open_steps else "config_audit.guided.done_all"
+            from clashcontrol.QBdiscocmdshelper import command_mention
+            # Where all settings live afterwards (qaplop 2026-10-11).
+            text = (_tr(gid, self.user_id, key, count=open_steps, setup=command_mention("setup")) + "\n\n"
+                    + _tr(gid, self.user_id, "config_audit.guided.done_settings_hint",
+                          clan_management=command_mention("clan management")))
             return discord.Embed(
                 title=_tr(gid, self.user_id, "config_audit.guided.done_title")[:256],
-                description=_tr(gid, self.user_id, key, count=open_steps)[:_EMBED_DESCRIPTION_LIMIT],
+                description=text[:_EMBED_DESCRIPTION_LIMIT],
                 color=discord.Color.orange() if open_steps else discord.Color.green(),
             )
         embed = build_step_embed(self.guild, self.user_id, self.selected, self.results[self.selected])

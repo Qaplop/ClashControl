@@ -1560,7 +1560,10 @@
     "warning_setup_hint": "🛠️ Komplette Übersicht, was fehlt und wie du es behebst: {setup}",
     "quoted": "„{name}“",
     "perm_server": {
-      "view_channel": "Kanäle ansehen"
+      "view_channel": "Kanäle ansehen",
+      "send_messages": "Nachrichten versenden und Posts erstellen",
+      "send_messages_in_threads": "Nachrichten in Threads und Posts senden",
+      "manage_threads": "Threads und Posts verwalten"
     },
     "warning_more": "… und {count} weitere.",
     "feature": {
@@ -1579,15 +1582,15 @@
     },
     "perm": {
       "view_channel": "Kanal ansehen",
-      "send_messages": "Nachrichten versenden und Posts erstellen",
-      "send_messages_in_threads": "Nachrichten in Threads und Posts senden",
+      "send_messages": "Nachrichten senden",
+      "send_messages_in_threads": "Nachrichten in Threads senden",
       "embed_links": "Links einbetten",
       "read_message_history": "Nachrichtenverlauf anzeigen",
       "administrator": "Administrator",
       "attach_files": "Dateien anhängen",
       "use_external_emojis": "Externe Emojis verwenden",
       "create_public_threads": "Öffentliche Threads erstellen",
-      "manage_threads": "Threads und Posts verwalten",
+      "manage_threads": "Threads verwalten",
       "create_instant_invite": "Einladung erstellen",
       "manage_roles": "Rollen verwalten"
     },

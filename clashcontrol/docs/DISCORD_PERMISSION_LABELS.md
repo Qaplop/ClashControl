@@ -5,25 +5,27 @@ Rule (../../.github/copilot-instructions.md Cardinal Rule 6): permission names i
 quoted and use Discord's exact wording for the place the reader is looking at. Latin readers see
 Discord in English (Discord has no Latin client), so Latin uses the English labels.
 
-Discord shows **three different sets** of names for the same permissions:
+Discord shows **four different sets** of names for the same permissions:
 
-1. **Server Settings → Roles → (role) → Permissions** — the client's role settings. This is what
-   an admin looks at when fixing a permission, so it is what the bot uses by default
-   (`permissions.perm.*` in the translations, rendered by `bot_permissions.perm_label()`).
-2. **The authorize dialog** ("Confirm that you want to grant ClashControl the following
-   permissions…") — shown when installing the bot or clicking /setup's "Re-authorize" link. Short,
-   older names. Use these ONLY in a text that tells the reader what that dialog shows. No text
-   does so today.
-3. **Developer Portal → Installation → Default Install Settings** — the permission picker for the
+1. **Server Settings → Roles → (role) → Permissions** — the client's role settings. The bot uses
+   these for server-level problems (/setup step 1's missing permissions, a missing "Manage Roles"):
+   `bot_permissions.perm_label(..., scope="server")`. Since forum channels, the send/thread
+   permissions carry "…Posts" here.
+2. **Edit Channel → Permissions** (a text channel's overrides) — the bot uses these for every
+   problem in a specific channel (`perm_label(...)`, default `scope="channel"`). They keep the short
+   names. In the translations, `permissions.perm.*` holds these channel labels and
+   `permissions.perm_server.*` the role labels for the four permissions that differ
+   (`bot_permissions._SERVER_LEVEL_DIFFERENT`).
+3. **The authorize dialog** ("Confirm that you want to grant ClashControl the following
+   permissions…") — shown when installing the bot or clicking /setup's "Re-authorize" link. Use
+   these ONLY in a text that tells the reader what that dialog shows. No text does so today.
+   In zh they are identical to the channel-override labels.
+4. **Developer Portal → Installation → Default Install Settings** — the permission picker for the
    install link (the README's install list uses these English names). The German picker differs
-   from both sets above (e.g. „Soforteinladung erstellen“); never use it as a reference for
+   from all sets above (e.g. „Soforteinladung erstellen“); never use it as a reference for
    user-facing text.
 
-Not yet verified: a channel's permission overrides (Edit Channel → Permissions), where the view
-permission is expected to read "View Channel" (singular) — `permissions.perm.view_channel`; the
-role-level plural lives in `permissions.perm_server.view_channel`.
-
-## 1. Role settings (used by the bot)
+## 1. Role settings (used by the bot for server-level problems)
 
 | Permission (API) | en | de | es | zh |
 |---|---|---|---|---|
@@ -41,7 +43,20 @@ role-level plural lives in `permissions.perm_server.view_channel`.
 | use_external_emojis | Use External Emojis | Externe Emojis verwenden | Usar emojis externos | 使用外部表情符号 |
 | manage_guild | Manage Server (not verified) | Server verwalten (not verified) | Gestionar servidor | 管理服务器 (not verified) |
 
-## 2. Authorize dialog (reference only)
+## 2. Text channel overrides (used by the bot for channel problems)
+
+Only the four permissions whose label differs from the role settings are listed; all others are
+the same as in table 1. zh verified 2026-10-11 from screenshots; en/de/es are the authorize-dialog
+names (identical to the overrides in zh) and still need verification.
+
+| Permission (API) | en (unverified) | de (unverified) | es (unverified) | zh |
+|---|---|---|---|---|
+| view_channel | View Channel | Kanal ansehen | Ver canal | 查看频道 |
+| send_messages | Send Messages | Nachrichten senden | Enviar mensajes | 发送消息 |
+| send_messages_in_threads | Send Messages in Threads | Nachrichten in Threads senden | Enviar mensajes en los hilos | 在子区内发送消息 |
+| manage_threads | Manage Threads | Threads verwalten | Gestionar hilos | 管理子区 |
+
+## 3. Authorize dialog (reference only)
 
 | Permission (API) | en | de | es | zh |
 |---|---|---|---|---|

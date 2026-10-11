@@ -302,8 +302,13 @@ def audit_guild(
 # ---------------------------------------------------------------------------------------------
 
 #: Permissions whose Discord label differs between Server Settings → Roles (server level) and a
-#: channel's permission overrides — only "View Channels" / "View Channel".
-_SERVER_LEVEL_LABEL_KEYS: Dict[str, str] = {"view_channel": "permissions.perm_server.view_channel"}
+#: text channel's permission overrides: "View Channels" vs "View Channel", and the send/thread
+#: permissions, which the role settings name with "…and Posts" (forum channels) while a text
+#: channel's overrides keep the short name (verified from qaplop's zh screenshots, 2026-10-11).
+#: ``permissions.perm.*`` holds the channel labels, ``permissions.perm_server.*`` these role labels.
+_SERVER_LEVEL_DIFFERENT: Tuple[str, ...] = (
+    "view_channel", "send_messages", "send_messages_in_threads", "manage_threads",
+)
 
 
 def perm_label(perm: str, *, guild_id: Optional[int], user_id: Optional[str] = None,
@@ -314,11 +319,12 @@ def perm_label(perm: str, *, guild_id: Optional[int], user_id: Optional[str] = N
 
     Args:
         perm: discord.Permissions attribute name (``send_messages``).
-        scope: "server" for a role permission (Server Settings → Roles), "channel" for a channel
-            override — the two differ for View Channel(s).
+        scope: "server" for a role permission (Server Settings → Roles), "channel" for a text
+            channel's override — the labels differ for the permissions in _SERVER_LEVEL_DIFFERENT.
     """
     from clashcontrol.i18n import t
-    key = (_SERVER_LEVEL_LABEL_KEYS.get(perm) if scope == "server" else None) or f"permissions.perm.{perm}"
+    key = (f"permissions.perm_server.{perm}" if scope == "server" and perm in _SERVER_LEVEL_DIFFERENT
+           else f"permissions.perm.{perm}")
     name = t(key, guild_id=guild_id, user_id=user_id)
     return t("permissions.quoted", guild_id=guild_id, user_id=user_id, name=name)
 
@@ -360,7 +366,9 @@ def format_issue(
     key = f"permissions.issue.{issue.kind}"
     text = t(
         key, guild_id=guild_id, user_id=user_id, feature=feature, channel=channel, role=role,
-        perms=_perm_names(issue.perms, guild_id=guild_id, user_id=user_id),
+        # Manage Roles is a role permission (server level); every other issue is about a channel.
+        perms=_perm_names(issue.perms, guild_id=guild_id, user_id=user_id,
+                          scope="server" if issue.kind == MISSING_MANAGE_ROLES else "channel"),
     )
     return text.replace("**", "") if plain_guild is not None else text
 

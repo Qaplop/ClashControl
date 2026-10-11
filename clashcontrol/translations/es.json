@@ -1559,7 +1559,10 @@
     "warning_setup_hint": "🛠️ Resumen completo de lo que falta y cómo solucionarlo: {setup}",
     "quoted": "«{name}»",
     "perm_server": {
-      "view_channel": "Ver canales"
+      "view_channel": "Ver canales",
+      "send_messages": "Enviar mensajes y crear publicaciones",
+      "send_messages_in_threads": "Enviar mensajes en hilos y publicaciones",
+      "manage_threads": "Gestionar hilos y publicaciones"
     },
     "warning_more": "… y {count} más.",
     "feature": {
@@ -1578,15 +1581,15 @@
     },
     "perm": {
       "view_channel": "Ver canal",
-      "send_messages": "Enviar mensajes y crear publicaciones",
-      "send_messages_in_threads": "Enviar mensajes en hilos y publicaciones",
+      "send_messages": "Enviar mensajes",
+      "send_messages_in_threads": "Enviar mensajes en los hilos",
       "embed_links": "Insertar enlaces",
       "read_message_history": "Leer el historial de mensajes",
       "administrator": "Administrador",
       "attach_files": "Adjuntar archivos",
       "use_external_emojis": "Usar emojis externos",
       "create_public_threads": "Crear hilos públicos",
-      "manage_threads": "Gestionar hilos y publicaciones",
+      "manage_threads": "Gestionar hilos",
       "create_instant_invite": "Crear invitación",
       "manage_roles": "Gestionar roles"
     },

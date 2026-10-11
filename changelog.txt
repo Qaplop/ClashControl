@@ -1,6 +1,16 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-11 (9)
+- Fixed: problems in a specific channel now name permissions as that channel's permission
+  overrides do — Discord keeps the short names there (zh 发送消息, 在子区内发送消息, 管理子区;
+  qaplop's screenshots), while the role settings say "…Posts". perm_label(scope="server") uses
+  the role labels for View Channel(s), Send Messages, Send Messages in Threads and Manage Threads
+  (permissions.perm_server.*); permissions.perm.* now holds the channel labels. A missing
+  "Manage Roles" uses the role label. zh verified; en/de/es channel labels are the
+  authorize-dialog names pending client screenshots. Doc: DISCORD_PERMISSION_LABELS.md.
+  Files: bot_permissions.py, translations (5), tests, docs. 3823 tests pass. Build 154.
+
 2026-10-11 (8)
 - Fixed: English (and Latin, which uses the English labels) permission labels now match the
   Discord client (qaplop's screenshots): “Send Messages and Create Posts”, “Send Messages in

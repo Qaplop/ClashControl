@@ -91,8 +91,10 @@ Token budget note (cl100k_base): keep this file ~≤3000 tokens.
   es «Adjuntar archivos», zh “添加附件”. **Latin uses the English labels** — Discord has no Latin
   client, so Latin readers see Discord in English (the same goes for Discord menu paths in Latin
   texts: "Server Settings → Roles"). In code, render them with `bot_permissions.perm_label(perm,
-  guild_id=, user_id=, scope=)` (`scope="server"` for role permissions: "View Channels" vs the
-  channel override "View Channel"); never hard-code a name. Discord's help center sometimes words
+  guild_id=, user_id=, scope=)`: `scope="server"` for a role permission (Server Settings → Roles),
+  the default `"channel"` for a problem in one channel (Edit Channel → Permissions) — the two
+  differ for View Channel(s) and the send/thread permissions (role settings add "…Posts", text
+  channel overrides keep the short names). Never hard-code a name. Discord's help center sometimes words
   them differently from the client — the client (Server Settings → Roles) is the reference, verified
   per language from screenshots. Since forum channels, the client names the send/thread permissions
   with "posts" (en “Send Messages and Create Posts”, de „Nachrichten versenden und Posts

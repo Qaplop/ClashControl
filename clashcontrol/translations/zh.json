@@ -1559,7 +1559,10 @@
     "warning_setup_hint": "🛠️ 查看缺少内容的完整总览及修复方法：{setup}",
     "quoted": "“{name}”",
     "perm_server": {
-      "view_channel": "查看频道"
+      "view_channel": "查看频道",
+      "send_messages": "发送消息与创建帖子",
+      "send_messages_in_threads": "在子区和帖子中发送消息",
+      "manage_threads": "管理子区和帖子"
     },
     "warning_more": "……还有 {count} 项。",
     "feature": {
@@ -1578,15 +1581,15 @@
     },
     "perm": {
       "view_channel": "查看频道",
-      "send_messages": "发送消息与创建帖子",
-      "send_messages_in_threads": "在子区和帖子中发送消息",
+      "send_messages": "发送消息",
+      "send_messages_in_threads": "在子区内发送消息",
       "embed_links": "嵌入链接",
       "read_message_history": "阅读消息历史",
       "administrator": "管理员",
       "attach_files": "添加附件",
       "use_external_emojis": "使用外部表情符号",
       "create_public_threads": "创建公共子区",
-      "manage_threads": "管理子区和帖子",
+      "manage_threads": "管理子区",
       "create_instant_invite": "创建邀请",
       "manage_roles": "管理身份组"
     },

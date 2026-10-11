@@ -1,6 +1,14 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-11 (43)
+- Changed (tracker #0151, qaplop): one order on every /setup step page — 1. "💡 What this is",
+  2. what's wrong + "🔧 How to fix", then the step's information ("ℹ️ About this step", only when
+  there is any) and "👤 See it as a member" (guided setup). Before, the problem came first and the
+  explanation below it. Pages without a problem keep their state line on top, then the
+  explanation. Done once in ui_config_audit.build_step_embed(), so all 14 steps follow it.
+  Build 187.
+
 2026-10-11 (42)
 - Changed (tracker #0151, qaplop): /setup step 5 with the registration message off no longer
   repeats "Off — there is no registration message in a channel." and the /registration hint

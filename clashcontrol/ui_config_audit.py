@@ -62,23 +62,23 @@ def build_step_embed(guild: discord.Guild, user_id: str, step_id: str, result: S
         embed.description = (f"{_tr(gid, user_id, step.desc_key)}\n\n**{summary}**")[:_EMBED_DESCRIPTION_LIMIT]
         return embed
     detail = step.detail(guild, result, gid, user_id)
+    # One order on every page (qaplop 2026-10-11): 1. what this is, 2. what's wrong + how to fix,
+    # then the step's information, and "see it as a member" (guided setup) after that.
+    what = f"**{_tr(gid, user_id, 'config_audit.what_title')}**\n{what_text(step_id, gid, user_id)}"
     if detail.problem is not None:
-        # Problem first (qaplop 2026-10-11): the dominant block at the top — what's wrong and the
-        # numbered fix — and the information about the step below it.
         heading, body = detail.problem
-        embed.description = f"## {heading}\n{body}"[:_EMBED_DESCRIPTION_LIMIT]
-        embed.add_field(name="\u200b", value=f"**{_tr(gid, user_id, 'config_audit.about_title')}**", inline=False)
+        embed.description = f"{what}\n\n## {heading}\n{body}"[:_EMBED_DESCRIPTION_LIMIT]
+        if detail.sections:
+            embed.add_field(name="\u200b", value=f"**{_tr(gid, user_id, 'config_audit.about_title')}**", inline=False)
     else:
         enabled = step.toggle_enabled(gid)
         if enabled is None:
-            embed.description = f"**{summary}**"
+            state = f"**{summary}**"
         else:
             # An on/off feature: /clan management's own status line (one "off", not two). When
             # on, the summary (where it posts) follows.
-            embed.description = toggle_status_line(gid, user_id, enabled) + (f"\n**{summary}**" if enabled else "")
-    # Every step explains itself first, whatever its state (qaplop 2026-10-11).
-    embed.add_field(name=_tr(gid, user_id, "config_audit.what_title")[:256],
-                    value=what_text(step_id, gid, user_id)[:1024], inline=False)
+            state = toggle_status_line(gid, user_id, enabled) + (f"\n**{summary}**" if enabled else "")
+        embed.description = f"{state}\n\n{what}"[:_EMBED_DESCRIPTION_LIMIT]
     for heading, body in detail.sections:
         embed.add_field(name=(heading or "\u200b")[:256], value=(body or "\u200b")[:1024], inline=False)
     return embed

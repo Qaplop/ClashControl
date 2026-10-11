@@ -1058,8 +1058,8 @@ class TestTutorialFlows:
 
 
 class TestProblemFirstLayout:
-    """qaplop 2026-10-11: a step with a problem opens with ONE dominant block — what's wrong and
-    the numbered fix — and the information comes below it."""
+    """qaplop 2026-10-11: one order on every page — "What this is", then ONE dominant block (what's
+    wrong and the numbered fix), then the information below it."""
 
     def test_problem_block_leads_the_page(self):
         from clashcontrol.ui_config_audit import build_step_embed
@@ -1067,16 +1067,16 @@ class TestProblemFirstLayout:
         guild = _guild(ADMIN)
         r = ca.run_audit(guild)["raid_reminders"]
         e = build_step_embed(guild, "1", "raid_reminders", r)
-        assert e.description.startswith("## ⚠️")
+        assert e.description.startswith("**💡") and "\n\n## ⚠️" in e.description   # what, then problem
         assert "1." in e.description and "Check again" in e.description
-        assert e.fields[0].value.startswith("**ℹ️")                                  # "About this step"
+        assert not e.fields          # nothing more to say: no empty "About this step" heading
 
     def test_ok_page_has_no_problem_block(self):
         from clashcontrol.ui_config_audit import build_step_embed
         guild = _guild(ADMIN)
         r = ca.run_audit(guild)["basics"]
         e = build_step_embed(guild, "1", "basics", r)
-        assert not e.description.startswith("##")
+        assert "## " not in e.description
 
     @pytest.mark.parametrize("lang", LANGS)
     def test_every_problem_block_renders_in_every_language(self, lang, monkeypatch):
@@ -1096,7 +1096,7 @@ class TestProblemFirstLayout:
         with_problem = 0
         for step in ca.STEPS:
             e = build_step_embed(guild, "1", step.id, results[step.id])
-            with_problem += (e.description or "").startswith("## ")
+            with_problem += "\n## " in (e.description or "")
             texts = [e.title or "", e.description or ""] + [f.name for f in e.fields] + [f.value for f in e.fields]
             assert not any(k in x for x in texts for k in ("config_audit.", "permissions.", "ui_components.", "cwl.")), (step.id, texts)
             assert len(e.description or "") <= 4096 and all(len(f.value) <= 1024 for f in e.fields)
@@ -1219,7 +1219,7 @@ class TestToggleStatusLine:
         r = ca.run_step(ca.STEPS_BY_ID["welcome"], guild)
         e = build_step_embed(guild, "1", "welcome", r)
         assert e.description.count("🔴") == 1 and "🟢" not in e.description
-        assert "\n" not in e.description                       # no second "off" line
+        assert "\n" not in e.description.split("\n\n")[0]      # status part: no second "off" line
         _cfg(language=lang, welcome_message_enabled=True)
         r = ca.run_step(ca.STEPS_BY_ID["welcome"], guild)
         e = build_step_embed(guild, "1", "welcome", r)
@@ -1300,10 +1300,11 @@ class TestEveryStepExplainsItself:
             if r.status == AuditStatus.BLOCKED:
                 continue
             e = build_step_embed(guild, "1", step.id, r)
-            names = [f.name for f in e.fields]
-            assert title in names, (step.id, names)
-            value = e.fields[names.index(title)].value
-            assert value and "{" not in value and "config_audit." not in value, (step.id, value)
+            d = e.description or ""
+            assert title in d, (step.id, d[:200])
+            assert "{" not in d and "config_audit." not in d, (step.id, d[:200])
+            if "## " in d:                      # a problem page: what this is BEFORE the problem
+                assert d.index(title) < d.index("## "), (step.id, d[:200])
 
 
 

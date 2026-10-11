@@ -1,6 +1,18 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-11 (2)
+- Added (tracker #0151, Phase 2): /setup now checks six more steps, each with a detail page
+  and the real /clan management menu path to change it: 2 language & timezone (✅ + hint for the
+  en/UTC defaults), 3 clans & families (⚠️ none; ❌ clan deleted by Supercell or private war log,
+  with the in-game fix), 4 welcome message (system channel, apply channel, clan links),
+  7 channel war reminders, 8 raid reminders (incl. the war-channel fallback), 13 leaderboards
+  (deleted clans, channel permissions). Switched-off features show ⏸️, never 🔒. A channel
+  problem now shows only under its own step (AuditStep.permission_features), not in step 1 too.
+  The war reminder time label moved to ui_clan_management.format_war_threshold_label() (shared).
+  Files: clashcontrol/config_audit.py, ui_clan_management.py, translations (5), docs, tests.
+  3809 tests pass. Build 152.
+
 2026-10-11 (1)
 - Added (tracker #0151, Phase 1): /setup — server configuration checklist for server admins,
   ephemeral, current server only. 13 setup steps with a status each (✅/❌/⚠️/⏸️/🔒/⚪) and a

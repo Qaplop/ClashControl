@@ -301,7 +301,7 @@
       "setup": {
         "short": "检查 ClashControl 在此服务器上的设置（管理员）",
         "title": "🛠️ Setup 命令",
-        "detailed": "显示 ClashControl 在此服务器上所需一切的检查清单，每个步骤都有状态：✅ 正常、❌ 需要修复、⚠️ 不完整、⏸️ 未使用、🔒 需要先完成前面的步骤、⚪ 尚未检查。选择一个步骤查看详情：哪里有问题、为什么重要以及如何修复。\n\n**用法：**\n`/setup`\n\n**目前已检查：**\n• 机器人权限——管理员权限、每个缺少的权限及其用途、已配置频道和身份组的问题，以及一键重新授权机器人的按钮\n\n其他步骤（语言、部落、注册、通知、身份组、部落战联赛、排行榜）将在后续更新中提供。\n\n**注意：**\n• 仅限服务器管理员\n• 只有你能看到结果\n• 不会更改任何内容——修复问题后，「🔄 重新检查」会再次运行检查"
+        "detailed": "显示 ClashControl 在此服务器上所需一切的检查清单，每个步骤都有状态：✅ 正常、❌ 需要修复、⚠️ 不完整、⏸️ 未使用、🔒 需要先完成前面的步骤、⚪ 尚未检查。选择一个步骤查看详情：哪里有问题、为什么重要以及如何修复。\n\n**用法：**\n`/setup`\n\n**目前已检查：**\n• 机器人权限——管理员权限、每个缺少的权限及其用途，以及一键重新授权机器人的按钮\n• 语言和时区、部落和家族（包括私密战争日志和被 Supercell 删除的部落）、欢迎消息、频道中的战争和突袭提醒、排行榜——哪些已设置，以及机器人无法使用的每个频道\n\n注册、战争通知、服务器身份组和部落战联赛将在后续更新中提供。\n\n**注意：**\n• 仅限服务器管理员\n• 只有你能看到结果\n• 不会更改任何内容——修复问题后，「🔄 重新检查」会再次运行检查"
       },
       "clan management": {
         "short": "服务器与部落的集中配置",
@@ -1450,6 +1450,74 @@
     "summary_pending": "尚未检查——将在后续更新中提供",
     "summary_check_failed": "目前无法检查——请重试",
     "summary_blocked": "请先完成第 {steps} 步",
+    "where_title": "🔧 在哪里修改",
+    "settings_title": "⚙️ 当前设置",
+    "permission_issues_title": "❌ 权限问题（{count}）",
+    "summary_permission_problems": "发现 {count} 个问题",
+    "basics": {
+      "summary": "{lang_name} · {timezone}",
+      "language_title": "🌍 语言",
+      "language_text": "此服务器上的所有机器人消息均使用 **{lang_name}**。成员可以为只有自己能看到的消息选择自己的语言。",
+      "language_default_hint": "这是默认值——如果你的服务器使用其他语言，请切换。",
+      "timezone_title": "🕒 时区",
+      "timezone_text": "部落战联赛时间（开始时间、截止时间）以 **{timezone}** 显示。",
+      "timezone_utc_hint": "UTC 是默认值——请设置你部落的时区，使部落战联赛时间与成员的时钟一致。"
+    },
+    "clans": {
+      "summary_none": "尚无成员部落",
+      "summary_ok": "{clans} 个部落，{families} 个家族",
+      "summary_problems": "{clans} 个部落中有 {count} 个问题",
+      "none_text": "尚无成员部落。成员部落几乎是一切的基础：注册、身份组、战争和突袭提醒以及部落战联赛都基于你在这里添加的部落。",
+      "list_title": "⚔️ 成员部落（{count}）",
+      "state_deleted": "已被 Supercell 删除——请将其从成员部落中移除。",
+      "state_warlog_private": "战争日志为私密——此部落没有战争跟踪、战争提醒或战争排行榜。",
+      "state_no_data": "暂无数据——机器人尚未获取此部落。",
+      "families_title": "🏰 部落家族",
+      "family_clans": "{count} 个部落",
+      "guests": "另有 {count} 个部落战联赛客队部落——仅用于部落战联赛。",
+      "warlog_fix_title": "🔓 公开战争日志",
+      "warlog_fix": "在游戏中，由首领或副首领打开部落设置（编辑部落），将战争日志设为公开。ClashControl 会在下次检查战争时自动识别此更改。"
+    },
+    "welcome": {
+      "summary_off": "已关闭",
+      "summary_ok": "已开启——发布在 {channel}",
+      "summary_problems": "发现 {count} 个问题",
+      "summary_no_apply_channel": "未设置申请频道",
+      "off_text": "已关闭。开启后，ClashControl 会在服务器的系统消息频道中欢迎每位新成员，并附上你的部落（或申请频道）和注册中心的链接。",
+      "posts_title": "📍 发布位置",
+      "posts_in": "{channel}——服务器的系统消息频道（服务器设置 → 概况 → 系统消息频道）。",
+      "content_title": "📝 消息内容",
+      "mode_clan_link": "链接到：{clans}",
+      "mode_clan_link_none": "未选择部落——欢迎消息中没有部落链接。",
+      "mode_apply": "引导新成员前往 {channel} 申请。",
+      "mode_apply_unset": "模式为「申请频道」，但未设置申请频道——新成员会被告知尚未配置部落。",
+      "mode_apply_missing": "申请频道已不存在——新成员会被告知尚未配置部落。请选择一个新频道。",
+      "registration_hint": "💡 注册消息启用后（第 5 步），欢迎消息也会引导新成员前往注册。"
+    },
+    "channel_war": {
+      "summary_off": "已关闭",
+      "summary_no_channel": "已开启，但未设置频道",
+      "summary_ok": "在 {channel}，战争结束前 {time}",
+      "what": "当部落战即将结束而成员仍有未完成的进攻时，在频道中发布提醒。",
+      "settings": "频道：{channel}\n提醒：战争结束前 **{time}**"
+    },
+    "raid": {
+      "summary_off": "已关闭",
+      "summary_no_channel": "已开启，但未设置频道",
+      "summary_ok": "在 {channel}，{time}",
+      "what": "在部落都城突袭周末结束前，在频道中发布提醒，列出仍需进攻的成员。突袭仅针对成员部落进行跟踪。",
+      "settings": "频道：{channel}\n提醒：**{time}**\n提醒对象：**{scope}**",
+      "fallback_hint": "未设置单独的突袭频道，因此突袭提醒会发送到战争提醒频道。"
+    },
+    "leaderboards": {
+      "summary_off": "没有订阅",
+      "summary_ok": "{channels} 个频道中有 {count} 个订阅",
+      "off_text": "尚无频道订阅排行榜。",
+      "list_title": "📊 已订阅的频道（{count}）",
+      "deleted": "这些部落已被 Supercell 删除，不再获得更新：{clans}。请在其频道中使用 {unsubscribe} 移除。",
+      "how_title": "🔧 使用方法",
+      "how": "在需要显示排行榜的频道中使用 {subscribe}，选择部落或家族以及模式。{unsubscribe} 用于移除订阅，{subscriptions} 用于列出订阅。"
+    },
     "step": {
       "bot_permissions": { "title": "机器人权限", "desc": "ClashControl 发布消息和分配身份组所需的服务器权限。" },
       "basics": { "title": "语言和时区", "desc": "服务器上所有机器人消息使用的语言，以及部落战联赛时间和提醒使用的时区。" },

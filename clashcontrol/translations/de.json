@@ -301,7 +301,7 @@
       "setup": {
         "short": "Einrichtung von ClashControl auf diesem Server prüfen (Admins)",
         "title": "🛠️ Setup-Befehl",
-        "detailed": "Zeigt eine Checkliste mit allem, was ClashControl auf diesem Server braucht, mit einem Status je Schritt: ✅ OK, ❌ muss behoben werden, ⚠️ unvollständig, ⏸️ nicht genutzt, 🔒 braucht einen früheren Schritt, ⚪ noch nicht geprüft. Wähle einen Schritt für die Details: was nicht stimmt, warum es wichtig ist und wie du es behebst.\n\n**Verwendung:**\n`/setup`\n\n**Bisher geprüft:**\n• Bot-Berechtigungen — Administrator, jede fehlende Berechtigung mit dem Grund, warum sie gebraucht wird, Probleme bei eingerichteten Kanälen und Rollen, und ein Button, um den Bot mit einem Klick neu zu autorisieren\n\nDie weiteren Schritte (Sprache, Clans, Registrierung, Erinnerungen, Rollen, CWL, Bestenlisten) folgen in späteren Updates.\n\n**Hinweise:**\n• Nur für Server-Administratoren\n• Nur du siehst das Ergebnis\n• Es wird nichts geändert — „🔄 Erneut prüfen“ prüft noch einmal, nachdem du etwas behoben hast"
+        "detailed": "Zeigt eine Checkliste mit allem, was ClashControl auf diesem Server braucht, mit einem Status je Schritt: ✅ OK, ❌ muss behoben werden, ⚠️ unvollständig, ⏸️ nicht genutzt, 🔒 braucht einen früheren Schritt, ⚪ noch nicht geprüft. Wähle einen Schritt für die Details: was nicht stimmt, warum es wichtig ist und wie du es behebst.\n\n**Verwendung:**\n`/setup`\n\n**Bisher geprüft:**\n• Bot-Berechtigungen — Administrator, jede fehlende Berechtigung mit dem Grund, warum sie gebraucht wird, und ein Button, um den Bot mit einem Klick neu zu autorisieren\n• Sprache & Zeitzone, Clans & Familien (inkl. privater Kriegsprotokolle und von Supercell gelöschter Clans), Willkommensnachricht, Kriegs- und Raid-Erinnerungen im Kanal, Bestenlisten — was eingerichtet ist und jeder Kanal, den der Bot nicht nutzen kann\n\nRegistrierung, Kriegs-Erinnerungen per DM, Server-Rollen und CWL folgen in späteren Updates.\n\n**Hinweise:**\n• Nur für Server-Administratoren\n• Nur du siehst das Ergebnis\n• Es wird nichts geändert — „🔄 Erneut prüfen“ prüft noch einmal, nachdem du etwas behoben hast"
       },
       "clan management": {
         "short": "Zentrale Server- und Clan-Konfiguration",
@@ -1451,6 +1451,74 @@
     "summary_pending": "noch nicht geprüft — kommt in einem späteren Update",
     "summary_check_failed": "konnte gerade nicht geprüft werden — versuche es erneut",
     "summary_blocked": "richte zuerst Schritt {steps} ein",
+    "where_title": "🔧 Wo du es änderst",
+    "settings_title": "⚙️ Aktuelle Einstellungen",
+    "permission_issues_title": "❌ Berechtigungsprobleme ({count})",
+    "summary_permission_problems": "{count} Problem(e) gefunden",
+    "basics": {
+      "summary": "{lang_name} · {timezone}",
+      "language_title": "🌍 Sprache",
+      "language_text": "Alle Bot-Nachrichten auf diesem Server sind auf **{lang_name}**. Mitglieder können für Nachrichten, die nur sie sehen, ihre eigene Sprache wählen.",
+      "language_default_hint": "Das ist die Voreinstellung — stell sie um, wenn dein Server eine andere Sprache nutzt.",
+      "timezone_title": "🕒 Zeitzone",
+      "timezone_text": "CWL-Zeiten (Startzeiten, Fristen) werden in **{timezone}** angezeigt.",
+      "timezone_utc_hint": "UTC ist die Voreinstellung — stell die Zeitzone deines Clans ein, damit CWL-Zeiten zu den Uhren deiner Mitglieder passen."
+    },
+    "clans": {
+      "summary_none": "noch kein Mitglieds-Clan",
+      "summary_ok": "{clans} Clan(s), {families} Familie(n)",
+      "summary_problems": "{count} Problem(e) bei {clans} Clan(s)",
+      "none_text": "Noch kein Mitglieds-Clan. Mitglieds-Clans sind die Basis für fast alles: Registrierung, Rollen, Kriegs- und Raid-Erinnerungen und CWL arbeiten mit den Clans, die du hier hinzufügst.",
+      "list_title": "⚔️ Mitglieds-Clans ({count})",
+      "state_deleted": "von Supercell gelöscht — entferne ihn aus den Mitglieds-Clans.",
+      "state_warlog_private": "Kriegsprotokoll ist privat — kein Kriegs-Tracking, keine Kriegs-Erinnerungen und keine Kriegs-Bestenlisten für diesen Clan.",
+      "state_no_data": "noch keine Daten — der Bot hat diesen Clan noch nicht abgerufen.",
+      "families_title": "🏰 Clan-Familien",
+      "family_clans": "{count} Clan(s)",
+      "guests": "Dazu {count} CWL-Gast-Clan(s) — nur für die CWL.",
+      "warlog_fix_title": "🔓 Kriegsprotokoll öffentlich machen",
+      "warlog_fix": "Im Spiel öffnet ein Anführer oder Vize-Anführer die Clan-Einstellungen (Clan bearbeiten) und stellt das Kriegsprotokoll auf öffentlich. ClashControl übernimmt die Änderung bei seiner nächsten Kriegsprüfung von selbst."
+    },
+    "welcome": {
+      "summary_off": "aus",
+      "summary_ok": "an — postet in {channel}",
+      "summary_problems": "{count} Problem(e) gefunden",
+      "summary_no_apply_channel": "Bewerbungskanal nicht gesetzt",
+      "off_text": "Aus. Wenn sie an ist, begrüßt ClashControl jedes neue Mitglied im Systemnachrichten-Kanal des Servers, mit Links zu deinen Clans (oder deinem Bewerbungskanal) und zum Registrierungs-Hub.",
+      "posts_title": "📍 Wo sie gepostet wird",
+      "posts_in": "{channel} — der Systemnachrichten-Kanal des Servers (Servereinstellungen → Übersicht → Kanal für Systemnachrichten).",
+      "content_title": "📝 Was sie sagt",
+      "mode_clan_link": "Verlinkt: {clans}",
+      "mode_clan_link_none": "Kein Clan ausgewählt — die Willkommensnachricht enthält keinen Clan-Link.",
+      "mode_apply": "Verweist neue Mitglieder zum Bewerben auf {channel}.",
+      "mode_apply_unset": "Modus „Bewerbungskanal“, aber kein Bewerbungskanal gesetzt — neuen Mitgliedern wird gesagt, dass kein Clan eingerichtet ist.",
+      "mode_apply_missing": "Der Bewerbungskanal existiert nicht mehr — neuen Mitgliedern wird gesagt, dass kein Clan eingerichtet ist. Wähle einen neuen.",
+      "registration_hint": "💡 Sobald die Registrierungsnachricht aktiv ist (Schritt 5), verweist die Willkommensnachricht neue Mitglieder auch dorthin."
+    },
+    "channel_war": {
+      "summary_off": "aus",
+      "summary_no_channel": "an, aber kein Kanal gesetzt",
+      "summary_ok": "in {channel}, {time} vor Kriegsende",
+      "what": "Postet eine Erinnerung in einen Kanal, wenn ein Krieg bald endet und Mitglieder noch Angriffe offen haben.",
+      "settings": "Kanal: {channel}\nErinnerung: **{time}** vor Kriegsende"
+    },
+    "raid": {
+      "summary_off": "aus",
+      "summary_no_channel": "an, aber kein Kanal gesetzt",
+      "summary_ok": "in {channel}, {time}",
+      "what": "Postet vor dem Ende des Clanstadt-Raid-Wochenendes eine Erinnerung in einen Kanal, mit den Mitgliedern, die noch angreifen müssen. Raids werden für Mitglieds-Clans verfolgt.",
+      "settings": "Kanal: {channel}\nErinnerung: **{time}**\nErinnert: **{scope}**",
+      "fallback_hint": "Es ist kein eigener Raid-Kanal gesetzt, daher gehen Raid-Erinnerungen in den Kanal der Kriegs-Erinnerungen."
+    },
+    "leaderboards": {
+      "summary_off": "keine Abonnements",
+      "summary_ok": "{count} Abonnement(s) in {channels} Kanal/Kanälen",
+      "off_text": "Noch kein Kanal hat ein Bestenlisten-Abonnement.",
+      "list_title": "📊 Abonnierte Kanäle ({count})",
+      "deleted": "Diese Clans wurden von Supercell gelöscht und bekommen keine Updates mehr: {clans}. Entferne sie mit {unsubscribe} in ihrem Kanal.",
+      "how_title": "🔧 So funktioniert es",
+      "how": "Nutze im Kanal, in dem eine Bestenliste erscheinen soll, {subscribe} und wähle den Clan oder die Familie und einen Modus. {unsubscribe} entfernt ein Abonnement, {subscriptions} listet sie auf."
+    },
     "step": {
       "bot_permissions": { "title": "Bot-Berechtigungen", "desc": "Die Server-Berechtigungen, die ClashControl braucht, um seine Nachrichten zu posten und Rollen zu vergeben." },
       "basics": { "title": "Sprache & Zeitzone", "desc": "Die Sprache des Servers für alle Bot-Nachrichten und die Zeitzone für CWL-Zeiten und Erinnerungen." },

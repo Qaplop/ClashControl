@@ -301,7 +301,7 @@
       "setup": {
         "short": "Comprobar la configuración de ClashControl en este servidor (administradores)",
         "title": "🛠️ Comando Setup",
-        "detailed": "Muestra una lista de todo lo que ClashControl necesita en este servidor, con un estado por paso: ✅ OK, ❌ hay que corregirlo, ⚠️ incompleto, ⏸️ no se usa, 🔒 requiere un paso anterior, ⚪ aún no comprobado. Elige un paso para ver los detalles: qué falla, por qué importa y cómo solucionarlo.\n\n**Uso:**\n`/setup`\n\n**Comprobado hasta ahora:**\n• Permisos del bot — Administrador, cada permiso que falta con el motivo por el que se necesita, problemas con canales y roles configurados, y un botón para volver a autorizar el bot con un clic\n\nLos demás pasos (idioma, clanes, registro, notificaciones, roles, LGC, clasificaciones) llegarán en próximas actualizaciones.\n\n**Notas:**\n• Solo para administradores del servidor\n• Solo tú ves el resultado\n• No se cambia nada — «🔄 Comprobar de nuevo» repite las comprobaciones cuando hayas corregido algo"
+        "detailed": "Muestra una lista de todo lo que ClashControl necesita en este servidor, con un estado por paso: ✅ OK, ❌ hay que corregirlo, ⚠️ incompleto, ⏸️ no se usa, 🔒 requiere un paso anterior, ⚪ aún no comprobado. Elige un paso para ver los detalles: qué falla, por qué importa y cómo solucionarlo.\n\n**Uso:**\n`/setup`\n\n**Comprobado hasta ahora:**\n• Permisos del bot — Administrador, cada permiso que falta con el motivo por el que se necesita, y un botón para volver a autorizar el bot con un clic\n• Idioma y zona horaria, clanes y familias (incl. registros de guerra privados y clanes eliminados por Supercell), mensaje de bienvenida, recordatorios de guerra e incursiones en canales, clasificaciones — qué está configurado y cada canal que el bot no puede usar\n\nEl registro, las notificaciones de guerra, los roles del servidor y la LGC llegarán en próximas actualizaciones.\n\n**Notas:**\n• Solo para administradores del servidor\n• Solo tú ves el resultado\n• No se cambia nada — «🔄 Comprobar de nuevo» repite las comprobaciones cuando hayas corregido algo"
       },
       "clan management": {
         "short": "Configuración central del servidor y de los clanes",
@@ -1450,6 +1450,74 @@
     "summary_pending": "aún no comprobado — llegará en una actualización posterior",
     "summary_check_failed": "no se pudo comprobar ahora — inténtalo de nuevo",
     "summary_blocked": "configura primero el paso {steps}",
+    "where_title": "🔧 Dónde cambiarlo",
+    "settings_title": "⚙️ Ajustes actuales",
+    "permission_issues_title": "❌ Problemas de permisos ({count})",
+    "summary_permission_problems": "{count} problema(s) encontrado(s)",
+    "basics": {
+      "summary": "{lang_name} · {timezone}",
+      "language_title": "🌍 Idioma",
+      "language_text": "Todos los mensajes del bot en este servidor están en **{lang_name}**. Los miembros pueden elegir su propio idioma para los mensajes que solo ven ellos.",
+      "language_default_hint": "Es el valor predeterminado — cámbialo si tu servidor usa otro idioma.",
+      "timezone_title": "🕒 Zona horaria",
+      "timezone_text": "Las horas de la LGC (horas de inicio, plazos) se muestran en **{timezone}**.",
+      "timezone_utc_hint": "UTC es el valor predeterminado — configura la zona horaria de tu clan para que las horas de la LGC coincidan con los relojes de tus miembros."
+    },
+    "clans": {
+      "summary_none": "aún no hay clan miembro",
+      "summary_ok": "{clans} clan(es), {families} familia(s)",
+      "summary_problems": "{count} problema(s) en {clans} clan(es)",
+      "none_text": "Aún no hay clan miembro. Los clanes miembro son la base de casi todo: el registro, los roles, los recordatorios de guerra e incursiones y la LGC funcionan con los clanes que añadas aquí.",
+      "list_title": "⚔️ Clanes miembro ({count})",
+      "state_deleted": "eliminado por Supercell — quítalo de los clanes miembro.",
+      "state_warlog_private": "el registro de guerra es privado — no hay seguimiento de guerras, recordatorios de guerra ni clasificaciones de guerra para este clan.",
+      "state_no_data": "aún sin datos — el bot todavía no ha consultado este clan.",
+      "families_title": "🏰 Familias de clanes",
+      "family_clans": "{count} clan(es)",
+      "guests": "Además, {count} clan(es) invitado(s) de LGC — solo para la LGC.",
+      "warlog_fix_title": "🔓 Hacer público el registro de guerra",
+      "warlog_fix": "En el juego, un líder o colíder abre los ajustes del clan (Editar clan) y pone el registro de guerra en público. ClashControl detecta el cambio por sí solo en su siguiente comprobación de guerra."
+    },
+    "welcome": {
+      "summary_off": "desactivado",
+      "summary_ok": "activado — publica en {channel}",
+      "summary_problems": "{count} problema(s) encontrado(s)",
+      "summary_no_apply_channel": "canal de solicitudes no configurado",
+      "off_text": "Desactivado. Cuando está activado, ClashControl saluda a cada nuevo miembro en el canal de mensajes del sistema del servidor, con enlaces a tus clanes (o a tu canal de solicitudes) y al hub de registro.",
+      "posts_title": "📍 Dónde publica",
+      "posts_in": "{channel} — el canal de mensajes del sistema del servidor (Ajustes del servidor → Vista general → Canal de mensajes del sistema).",
+      "content_title": "📝 Qué dice",
+      "mode_clan_link": "Enlaza a: {clans}",
+      "mode_clan_link_none": "Ningún clan seleccionado — el mensaje de bienvenida no tiene enlace de clan.",
+      "mode_apply": "Envía a los nuevos miembros a {channel} para solicitar el ingreso.",
+      "mode_apply_unset": "Modo «canal de solicitudes», pero no hay canal configurado — a los nuevos miembros se les dice que no hay ningún clan configurado.",
+      "mode_apply_missing": "El canal de solicitudes ya no existe — a los nuevos miembros se les dice que no hay ningún clan configurado. Elige uno nuevo.",
+      "registration_hint": "💡 En cuanto el mensaje de registro esté activo (paso 5), el mensaje de bienvenida también enviará allí a los nuevos miembros."
+    },
+    "channel_war": {
+      "summary_off": "desactivado",
+      "summary_no_channel": "activado, pero sin canal",
+      "summary_ok": "en {channel}, {time} antes del final de la guerra",
+      "what": "Publica un recordatorio en un canal cuando una guerra está a punto de terminar y los miembros aún tienen ataques pendientes.",
+      "settings": "Canal: {channel}\nRecordatorio: **{time}** antes del final de la guerra"
+    },
+    "raid": {
+      "summary_off": "desactivado",
+      "summary_no_channel": "activado, pero sin canal",
+      "summary_ok": "en {channel}, {time}",
+      "what": "Publica un recordatorio en un canal antes de que termine el fin de semana de incursiones de la Capital del Clan, con los miembros que aún tienen que atacar. Las incursiones se siguen para los clanes miembro.",
+      "settings": "Canal: {channel}\nRecordatorio: **{time}**\nRecuerda a: **{scope}**",
+      "fallback_hint": "No hay un canal de incursiones propio, así que los recordatorios de incursiones van al canal de recordatorios de guerra."
+    },
+    "leaderboards": {
+      "summary_off": "sin suscripciones",
+      "summary_ok": "{count} suscripción(es) en {channels} canal(es)",
+      "off_text": "Ningún canal tiene todavía una suscripción de clasificación.",
+      "list_title": "📊 Canales suscritos ({count})",
+      "deleted": "Supercell eliminó estos clanes y ya no reciben actualizaciones: {clans}. Quítalos con {unsubscribe} en su canal.",
+      "how_title": "🔧 Cómo funciona",
+      "how": "En el canal donde deba aparecer una clasificación, usa {subscribe} y elige el clan o la familia y un modo. {unsubscribe} quita una suscripción, {subscriptions} las muestra."
+    },
     "step": {
       "bot_permissions": { "title": "Permisos del bot", "desc": "Los permisos del servidor que ClashControl necesita para publicar sus mensajes y asignar roles." },
       "basics": { "title": "Idioma y zona horaria", "desc": "El idioma del servidor para todos los mensajes del bot y la zona horaria para las horas de la LGC y los recordatorios." },

@@ -210,8 +210,9 @@ action. There is no separate `/clans`, `/list_families`, `/list_players`, `/list
 ### Admin Commands
 - `/setup` - Server configuration checklist for this server (server admins, ephemeral): every
   setup step with a status (✅/❌/⚠️/⏸️/🔒/⚪) and a detail page explaining what is wrong and how to
-  fix it. Phase 1 checks the bot's permissions (incl. a one-click re-authorize link); the other
-  steps follow (tracker #0151, `plans/tracker-0151-setup-config-audit.md`).
+  fix it. Checks so far: bot permissions (incl. a one-click re-authorize link), language and
+  timezone, clans (private war log, deleted clans), welcome message, war and raid reminders in
+  channels, leaderboards; registration, roles and CWL follow (tracker #0151, `plans/tracker-0151-setup-config-audit.md`).
 - `/admin` - Administrative diagnostic actions and utilities; pick an `action` (permission scope
   noted per action — "admin" = server admin, "bot admin" = bot's configured `SERVER_ADMIN` only):
   - **CLEANUP_MESSAGES** - Clean up orphaned messages in current channel (admin)

@@ -785,6 +785,13 @@ all rebuild/button-handler paths so the reference is never lost.
   prerequisite is INCOMPLETE/BLOCKED into BLOCKED. A step without a check reports PENDING.
   The planned guided setup and the tutorials (#0121) walk the same registry — add new checks
   there, not as a second list.
+- `permission_features` on a step: the `bot_permissions` feature keys whose channel/role
+  problems that step reports. Step 1 lists only problems of features no implemented step owns,
+  so one problem shows red once. Steps with a check so far (Build 152): 1 bot permissions,
+  2 language/timezone, 3 clans (deleted / private war log from `CACHE.clan_name_cache`),
+  4 welcome, 7 channel war reminders, 8 raid reminders, 13 leaderboards. A step that is OFF is
+  never turned into BLOCKED. Fix hints name the real menu path via `_ui_path()` (translated
+  labels of /clan management), so they follow label changes.
 - `ui_config_audit.SetupView` — one ephemeral message: overview ⇄ step detail via a select,
   Back, Re-check, plus the link buttons a detail page offers. Read-only, so no double-click claim.
 

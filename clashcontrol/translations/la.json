@@ -301,7 +301,7 @@
       "setup": {
         "short": "Institutionem ClashControl in hoc servitore inspice (administratores)",
         "title": "🛠️ Mandatum Setup",
-        "detailed": "Indicem omnium quae ClashControl in hoc servitore requirit ostendit, cum statu cuiusque gradus: ✅ recte, ❌ emendandum, ⚠️ imperfectum, ⏸️ non adhibitum, 🔒 gradum priorem requirit, ⚪ nondum inspectum. Elige gradum ut singula videas: quid erret, cur referat et quomodo emendes.\n\n**Usus:**\n`/setup`\n\n**Adhuc inspectum:**\n• Permissiones automati — Administrator, quaeque permissio deficiens cum causa cur requiratur, difficultates canalium et munerum constitutorum, et globulus ut automatum uno ictu iterum auctorizes\n\nCeteri gradus (lingua, gentes, inscriptio, nuntiationes, munera, CWL, tabulae ordinum) in renovationibus posterioribus sequentur.\n\n**Notae:**\n• Solis administratoribus servitoris\n• Solus tu eventum vides\n• Nihil mutatur — «🔄 Iterum inspice» inspectiones repetit postquam aliquid emendasti"
+        "detailed": "Indicem omnium quae ClashControl in hoc servitore requirit ostendit, cum statu cuiusque gradus: ✅ recte, ❌ emendandum, ⚠️ imperfectum, ⏸️ non adhibitum, 🔒 gradum priorem requirit, ⚪ nondum inspectum. Elige gradum ut singula videas: quid erret, cur referat et quomodo emendes.\n\n**Usus:**\n`/setup`\n\n**Adhuc inspectum:**\n• Permissiones automati — Administrator, quaeque permissio deficiens cum causa cur requiratur, et globulus ut automatum uno ictu iterum auctorizes\n• Lingua et zona horaria, gentes et familiae (cum commentariis belli privatis et gentibus a Supercell deletis), nuntius salutationis, monita belli et incursionum in canalibus, tabulae ordinum — quid institutum sit, et omnis canalis quo automatum uti non potest\n\nInscriptio, nuntiationes belli, munera servitoris et CWL in renovationibus posterioribus sequentur.\n\n**Notae:**\n• Solis administratoribus servitoris\n• Solus tu eventum vides\n• Nihil mutatur — «🔄 Iterum inspice» inspectiones repetit postquam aliquid emendasti"
       },
       "clan management": {
         "short": "Configuratio centralis servitoris et gentium",
@@ -1450,6 +1450,74 @@
     "summary_pending": "nondum inspectum — in renovatione posteriore veniet",
     "summary_check_failed": "nunc inspici non potuit — iterum conare",
     "summary_blocked": "prius gradum {steps} institue",
+    "where_title": "🔧 Ubi mutes",
+    "settings_title": "⚙️ Optiones praesentes",
+    "permission_issues_title": "❌ Difficultates permissionum ({count})",
+    "summary_permission_problems": "{count} difficultas(es) inventa(e)",
+    "basics": {
+      "summary": "{lang_name} · {timezone}",
+      "language_title": "🌍 Lingua",
+      "language_text": "Omnia nuntia automati in hoc servitore sunt lingua **{lang_name}**. Sodales linguam suam eligere possunt nuntiis quae soli vident.",
+      "language_default_hint": "Haec est optio praedefinita — muta eam si servitor tuus alia lingua utitur.",
+      "timezone_title": "🕒 Zona horaria",
+      "timezone_text": "Tempora CWL (initia, termini) in **{timezone}** ostenduntur.",
+      "timezone_utc_hint": "UTC est praedefinita — zonam horariam gentis tuae constitue ut tempora CWL horologiis sodalium congruant."
+    },
+    "clans": {
+      "summary_none": "nulla gens sodalis adhuc",
+      "summary_ok": "{clans} gens(tes), {families} familia(e)",
+      "summary_problems": "{count} difficultas(es) in {clans} gente(ibus)",
+      "none_text": "Nulla gens sodalis adhuc. Gentes sodales fundamentum fere omnium sunt: inscriptio, munera, monita belli et incursionum et CWL cum gentibus quas hic addis operantur.",
+      "list_title": "⚔️ Gentes sodales ({count})",
+      "state_deleted": "a Supercell deleta — eam e gentibus sodalibus remove.",
+      "state_warlog_private": "commentarius belli privatus est — nulla observatio bellorum, nulla monita belli, nullae tabulae ordinum belli huic genti.",
+      "state_no_data": "nondum data — automatum hanc gentem nondum petivit.",
+      "families_title": "🏰 Familiae gentium",
+      "family_clans": "{count} gens(tes)",
+      "guests": "Praeterea {count} gens(tes) hospes CWL — solum ad CWL.",
+      "warlog_fix_title": "🔓 Commentarium belli publicum facere",
+      "warlog_fix": "In ludo dux vel condux optiones gentis aperit (Gentem emendare) et commentarium belli publicum facit. ClashControl mutationem proxima inspectione belli sponte animadvertit."
+    },
+    "welcome": {
+      "summary_off": "exstinctum",
+      "summary_ok": "accensum — in {channel} mittit",
+      "summary_problems": "{count} difficultas(es) inventa(e)",
+      "summary_no_apply_channel": "canalis petitionum non constitutus",
+      "off_text": "Exstinctum. Cum accensum est, ClashControl omnem novum sodalem in canali nuntiorum systematis salutat, cum nexibus ad gentes tuas (vel canalem petitionum) et ad centrum inscriptionis.",
+      "posts_title": "📍 Ubi mittit",
+      "posts_in": "{channel} — canalis nuntiorum systematis servitoris (Optiones servitoris → Conspectus → Canalis nuntiorum systematis).",
+      "content_title": "📝 Quid dicit",
+      "mode_clan_link": "Nexus ad: {clans}",
+      "mode_clan_link_none": "Nulla gens electa — nuntius salutationis nexum gentis non habet.",
+      "mode_apply": "Novos sodales ad {channel} mittit ut petant.",
+      "mode_apply_unset": "Modus «canalis petitionum», sed nullus canalis constitutus — novis sodalibus dicitur nullam gentem constitutam esse.",
+      "mode_apply_missing": "Canalis petitionum non iam exstat — novis sodalibus dicitur nullam gentem constitutam esse. Novum elige.",
+      "registration_hint": "💡 Cum nuntius inscriptionis activus est (gradus 5), nuntius salutationis novos sodales eo quoque mittit."
+    },
+    "channel_war": {
+      "summary_off": "exstinctum",
+      "summary_no_channel": "accensum, sed nullus canalis",
+      "summary_ok": "in {channel}, {time} ante finem belli",
+      "what": "Monitum in canalem mittit cum bellum mox finitur et sodales adhuc impetus apertos habent.",
+      "settings": "Canalis: {channel}\nMonitum: **{time}** ante finem belli"
+    },
+    "raid": {
+      "summary_off": "exstinctum",
+      "summary_no_channel": "accensum, sed nullus canalis",
+      "summary_ok": "in {channel}, {time}",
+      "what": "Ante finem hebdomadis incursionum Capitis Gentis monitum in canalem mittit, cum sodalibus qui adhuc impetum facere debent. Incursiones gentium sodalium observantur.",
+      "settings": "Canalis: {channel}\nMonitum: **{time}**\nMonet: **{scope}**",
+      "fallback_hint": "Nullus canalis incursionum proprius constitutus est, itaque monita incursionum in canalem monitorum belli eunt."
+    },
+    "leaderboards": {
+      "summary_off": "nullae subscriptiones",
+      "summary_ok": "{count} subscriptio(nes) in {channels} canali(bus)",
+      "off_text": "Nullus canalis adhuc tabulam ordinum subscriptam habet.",
+      "list_title": "📊 Canales subscripti ({count})",
+      "deleted": "Hae gentes a Supercell deletae sunt et nullas renovationes accipiunt: {clans}. Eas per {unsubscribe} in canali suo remove.",
+      "how_title": "🔧 Quomodo operatur",
+      "how": "In canali ubi tabula ordinum apparere debet, {subscribe} adhibe et gentem vel familiam et modum elige. {unsubscribe} subscriptionem removet, {subscriptions} eas enumerat."
+    },
     "step": {
       "bot_permissions": { "title": "Permissiones automati", "desc": "Permissiones servitoris quibus ClashControl eget ut nuntia sua mittat et munera tribuat." },
       "basics": { "title": "Lingua et zona horaria", "desc": "Lingua servitoris omnibus nuntiis automati, et zona horaria temporibus CWL et monitis." },

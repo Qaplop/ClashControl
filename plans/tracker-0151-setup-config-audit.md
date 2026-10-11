@@ -1,6 +1,6 @@
 # /setup (config audit + admin setup guide) and /tutorial (#0121): concept & stepped plan
 
-Status: **Concept agreed 2026-10-11. Phase 1 implemented 2026-10-11 (Build 151, v1.3.43); Phases 2–7 open.**
+Status: **Concept agreed 2026-10-11. Phase 1 implemented 2026-10-11 (Build 151, v1.3.43), Phase 2 implemented 2026-10-11 (Build 152); Phases 3–7 open.**
 Tracker: #0151 (this feature), #0121 (tutorials). Owner: qaplop. Builds on `/admin Permission Audit` (Build 135, `clashcontrol/bot_permissions.py`)
 and is the foundation for tracker #0121 (tutorials).
 

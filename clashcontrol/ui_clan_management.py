@@ -299,6 +299,28 @@ class ManualUserIDModal(discord.ui.Modal, title="Enter Discord User ID"):
 
 
 
+def format_war_threshold_label(hours: float, guild_id: Optional[int] = None, user_id: Optional[str] = None) -> str:
+    """War reminder time as a readable label ("1 hour", "30 minutes"). Shared by /clan management's
+    Basic Configuration and /setup (tracker #0151)."""
+    from clashcontrol.i18n import t
+    
+    if hours == 0.5:
+        return t('ui_components.basic_config.threshold_time_30_minutes', guild_id=guild_id, user_id=user_id)
+    elif hours == 1.0:
+        return t('ui_components.basic_config.threshold_time_1_hour', guild_id=guild_id, user_id=user_id)
+    elif hours == 2.0:
+        return t('ui_components.basic_config.threshold_time_2_hours', guild_id=guild_id, user_id=user_id)
+    elif hours == 4.0:
+        return t('ui_components.basic_config.threshold_time_4_hours', guild_id=guild_id, user_id=user_id)
+    else:
+        # Fallback for custom values
+        if hours < 1:
+            minutes = int(hours * 60)
+            return t('ui_components.basic_config.threshold_time_30_minutes', guild_id=guild_id, user_id=user_id) if minutes == 30 else f"{minutes} min"
+        else:
+            return f"{hours:.1f} " + t('ui_components.basic_config.threshold_time_4_hours', guild_id=guild_id, user_id=user_id).split()[-1]
+
+
 class ClanManagementView(discord.ui.View):
     """
     Interactive view for clan management message showing clan selection and linking options.
@@ -2812,24 +2834,8 @@ class ClanManagementView(discord.ui.View):
         threshold_config_view.config_message = msg
     
     def _format_threshold_label(self, hours: float, guild_id: Optional[int] = None) -> str:
-        """Format threshold hours as readable label."""
-        from clashcontrol.i18n import t
-        
-        if hours == 0.5:
-            return t('ui_components.basic_config.threshold_time_30_minutes', guild_id=guild_id)
-        elif hours == 1.0:
-            return t('ui_components.basic_config.threshold_time_1_hour', guild_id=guild_id)
-        elif hours == 2.0:
-            return t('ui_components.basic_config.threshold_time_2_hours', guild_id=guild_id)
-        elif hours == 4.0:
-            return t('ui_components.basic_config.threshold_time_4_hours', guild_id=guild_id)
-        else:
-            # Fallback for custom values
-            if hours < 1:
-                minutes = int(hours * 60)
-                return t('ui_components.basic_config.threshold_time_30_minutes', guild_id=guild_id) if minutes == 30 else f"{minutes} min"
-            else:
-                return f"{hours:.1f} " + t('ui_components.basic_config.threshold_time_4_hours', guild_id=guild_id).split()[-1]
+        """Format threshold hours as readable label (shared: format_war_threshold_label())."""
+        return format_war_threshold_label(hours, guild_id)
     
     async def _on_config_manage_member_clans(self, interaction: discord.Interaction) -> None:
         """Handle Member Clans button in config mode - manage which clans grant member role. Admin-only."""

@@ -50,11 +50,12 @@ def _channel(cid: int, **perms: bool) -> MagicMock:
     return ch
 
 
-def _guild(perms: Optional[discord.Permissions], channels: Optional[Dict[int, MagicMock]] = None) -> SimpleNamespace:
+def _guild(perms: Optional[discord.Permissions], channels: Optional[Dict[int, MagicMock]] = None,
+           system_channel: Optional[MagicMock] = None) -> SimpleNamespace:
     me = None if perms is None else SimpleNamespace(guild_permissions=perms, top_role=FakeRole(1, 10))
     channels = channels or {}
     return SimpleNamespace(
-        id=GID, name="Test Server", owner_id=7, me=me, system_channel=None,
+        id=GID, name="Test Server", owner_id=7, me=me, system_channel=system_channel,
         get_channel_or_thread=lambda cid: channels.get(cid),
         get_channel=lambda cid: channels.get(cid),
         get_role=lambda rid: None,
@@ -69,6 +70,9 @@ def _all_but(*missing: str) -> discord.Permissions:
 def _isolate(monkeypatch):
     monkeypatch.setattr(CACHE, "server_config", {})
     monkeypatch.setattr(CACHE, "subscriptions", {})
+    monkeypatch.setattr(CACHE, "clan_name_cache", {})
+    monkeypatch.setattr(CACHE, "clan_families", {})
+    monkeypatch.setattr(CACHE, "guild_guest_clans", {})
     monkeypatch.setattr(QBcore, "bot", SimpleNamespace(application_id=1234))
 
 
@@ -140,7 +144,19 @@ class TestRegistry:
     def test_unimplemented_steps_are_pending(self):
         results = ca.run_audit(_guild(discord.Permissions(administrator=True)))
         assert list(results) == [s.id for s in ca.STEPS]
-        assert all(results[s.id].status == AuditStatus.PENDING for s in ca.STEPS[1:])
+        assert [s.id for s in ca.STEPS if results[s.id].status == AuditStatus.PENDING] == [
+            s.id for s in ca.STEPS if s.check is None
+        ]
+        assert {s.id for s in ca.STEPS if s.check is None} == {  # Phase 3/4
+            "registration", "war_notifications", "roles", "cwl_settings", "cwl_player_hub", "cwl_season",
+        }
+
+    def test_switched_off_feature_is_not_blocked(self):
+        # No member clans (step 3 ⚠️): raid reminders off → ⏸️, not 🔒; switched on → 🔒.
+        guild = _guild(discord.Permissions(administrator=True))
+        assert ca.run_audit(guild)["raid_reminders"].status == AuditStatus.OFF
+        CACHE.server_config[str(GID)] = {"channel_raid_notifications_enabled": True}
+        assert ca.run_audit(guild)["raid_reminders"].status == AuditStatus.BLOCKED
 
     def test_prerequisite_not_set_up_blocks(self, monkeypatch):
         def incomplete(g):
@@ -236,3 +252,140 @@ class TestWarningPointsToSetup:
         issue = bp.PermissionIssue("registration", bp.MISSING_CHANNEL_PERMS, 1, ("send_messages",))
         text = bp.format_issues_message([issue], guild_id=None)
         assert "/setup" in text
+
+
+ADMIN = discord.Permissions(administrator=True)
+ALL_PERMS = dict(view_channel=True, send_messages=True, embed_links=True, read_message_history=True)
+
+
+def _cfg(**kw) -> Dict:
+    CACHE.server_config[str(GID)] = kw
+    return kw
+
+
+def _body(detail: ca.StepDetail) -> str:
+    return "\n".join(b for _, b in detail.sections)
+
+
+class TestStepBasics:
+    def test_defaults_are_ok_with_hints(self):
+        r = ca.check_basics(_guild(ADMIN))
+        assert r.status == AuditStatus.OK
+        assert {f.code for f in r.findings} == {"default_language", "default_timezone"}
+        body = _body(ca.detail_basics(_guild(ADMIN), r, GID, "1"))
+        assert "UTC" in body and "/clan management" in body
+
+    def test_explicit_settings_have_no_hints(self):
+        _cfg(language="de", timezone_name="Europe/Berlin")
+        r = ca.check_basics(_guild(ADMIN))
+        assert r.findings == [] and r.summary_params["timezone"] == "Europe/Berlin"
+        assert r.summary_params["lang_name"] == "Deutsch"
+
+
+class TestStepClans:
+    def test_none_is_incomplete_and_blocks_enabled_dependents(self):
+        _cfg(channel_war_notifications_enabled=True, war_notification_channel_id="1")
+        results = ca.run_audit(_guild(ADMIN))
+        assert results["clans"].status == AuditStatus.INCOMPLETE
+        assert results["channel_war_notifications"].status == AuditStatus.BLOCKED
+
+    def test_states_and_family_expansion(self):
+        CACHE.clan_families["F1"] = {"name": "Fam", "clans": ["#B", "#C"]}
+        _cfg(member_clans=["#A"], member_families=["F1"])
+        CACHE.clan_name_cache.update({
+            "#A": {"name": "Alpha", "warlog_is_public": True},
+            "#B": {"name": "Beta", "warlog_is_public": False},
+            "#C": {"name": "Gamma", "is_deleted": True},
+        })
+        r = ca.check_clans(_guild(ADMIN))
+        assert r.status == AuditStatus.BROKEN and r.summary_params == {"clans": 3, "families": 1, "count": 2}
+        assert dict(r.data["clans"]) == {"#A": "ok", "#B": "warlog_private", "#C": "deleted"}
+        body = _body(ca.detail_clans(_guild(ADMIN), r, GID, "1"))
+        assert "Alpha" in body and "Fam" in body and "Edit Clan" in body
+
+    def test_unknown_clan_is_not_a_problem(self):
+        _cfg(member_clans=["#X"])
+        r = ca.check_clans(_guild(ADMIN))
+        assert r.status == AuditStatus.OK and r.data["clans"] == [("#X", "no_data")]
+
+
+class TestStepWelcome:
+    def test_off(self):
+        assert ca.check_welcome(_guild(ADMIN)).status == AuditStatus.OFF
+
+    def test_no_system_channel_is_broken(self):
+        _cfg(welcome_message_enabled=True)
+        assert ca.check_welcome(_guild(ADMIN)).status == AuditStatus.BROKEN
+
+    def test_apply_mode(self):
+        sys_ch = _channel(10, view_channel=True, send_messages=True)
+        _cfg(welcome_message_enabled=True, welcome_message_mode="apply_channel")
+        assert ca.check_welcome(_guild(ADMIN, {10: sys_ch}, sys_ch)).status == AuditStatus.INCOMPLETE
+        _cfg(welcome_message_enabled=True, welcome_message_mode="apply_channel", welcome_apply_channel_id="99")
+        assert ca.check_welcome(_guild(ADMIN, {10: sys_ch}, sys_ch)).status == AuditStatus.BROKEN
+        r = ca.check_welcome(_guild(ADMIN, {10: sys_ch, 99: _channel(99)}, sys_ch))
+        assert r.status == AuditStatus.OK and r.summary_params == {"channel": "#ch10"}
+
+
+class TestChannelReminders:
+    def test_channel_war_states_and_step1_does_not_double_count(self):
+        assert ca.check_channel_war_notifications(_guild(ADMIN)).status == AuditStatus.OFF
+        _cfg(channel_war_notifications_enabled=True)
+        assert ca.check_channel_war_notifications(_guild(ADMIN)).status == AuditStatus.INCOMPLETE
+        _cfg(channel_war_notifications_enabled=True, war_notification_channel_id="20",
+             war_notification_threshold_hours=1.0)
+        no_embed = _channel(20, view_channel=True, send_messages=True)
+        guild = _guild(_all_but(), {20: no_embed})
+        assert ca.check_channel_war_notifications(guild).status == AuditStatus.BROKEN
+        assert not [f for f in ca.check_bot_permissions(guild).findings if f.code == "feature_issue"]
+        r = ca.check_channel_war_notifications(_guild(ADMIN, {20: _channel(20, **ALL_PERMS)}))
+        assert r.status == AuditStatus.OK and r.summary_params["channel"] == "#ch20"
+
+    def test_raid_falls_back_to_war_channel(self):
+        _cfg(channel_raid_notifications_enabled=True, war_notification_channel_id="20")
+        guild = _guild(ADMIN, {20: _channel(20, **ALL_PERMS)})
+        r = ca.check_raid_reminders(guild)
+        assert r.status == AuditStatus.OK and r.data["channel_id"] == "20"
+        assert "war reminder channel" in _body(ca.detail_raid_reminders(guild, r, GID, "1"))
+
+
+class TestStepLeaderboards:
+    def test_registration_tracker_is_not_a_leaderboard(self):
+        CACHE.subscriptions[str(GID)] = {"5": [{"clan_tag": "#A", "subscription_type": "playerregistration"}]}
+        assert ca.check_leaderboards(_guild(ADMIN)).status == AuditStatus.OFF
+
+    def test_deleted_clan_and_ok(self):
+        CACHE.subscriptions[str(GID)] = {"5": [{"clan_tag": "#A", "mode": "attack"}]}
+        guild = _guild(ADMIN, {5: _channel(5, **ALL_PERMS)})
+        r = ca.check_leaderboards(guild)
+        assert r.status == AuditStatus.OK and r.summary_params == {"count": 1, "channels": 1}
+        CACHE.clan_name_cache["#A"] = {"name": "Alpha", "is_deleted": True}
+        r = ca.check_leaderboards(guild)
+        assert r.status == AuditStatus.BROKEN and r.data["deleted"] == ["#A"]
+
+
+class TestRenderingConfigured:
+    @pytest.mark.parametrize("lang", LANGS)
+    @pytest.mark.parametrize("problems", [False, True], ids=["ok", "problems"])
+    def test_every_step_renders_in_every_language(self, lang, problems):
+        from clashcontrol.ui_config_audit import build_overview_embed, build_step_embed
+        CACHE.clan_families["F1"] = {"name": "Fam", "clans": ["#B"]}
+        CACHE.clan_name_cache.update({"#A": {"name": "Alpha"}, "#B": {"name": "Beta", "warlog_is_public": not problems}})
+        CACHE.guild_guest_clans[str(GID)] = {"#G": "2026-10"}
+        CACHE.subscriptions[str(GID)] = {"5": [{"clan_tag": "#A", "mode": "attack"}]}
+        _cfg(language=lang, member_clans=["#A"], member_families=["F1"],
+             welcome_message_enabled=True, welcome_clan_tags=["#A"],
+             channel_war_notifications_enabled=True, war_notification_channel_id="20",
+             channel_raid_notifications_enabled=True, raid_notification_scope="open_attacks")
+        perms = dict(view_channel=True) if problems else dict(ALL_PERMS)
+        chans = {i: _channel(i, **perms) for i in (5, 10, 20)}
+        guild = _guild(_all_but("attach_files") if problems else ADMIN, chans, chans[10])
+        results = ca.run_audit(guild)
+        assert all(results[s.id].status != AuditStatus.INFO for s in ca.STEPS), results
+        embeds = [build_overview_embed(guild, "1", results)] + [
+            build_step_embed(guild, "1", s.id, results[s.id]) for s in ca.STEPS
+        ]
+        for e in embeds:
+            texts = [e.title or "", e.description or ""] + [f.name for f in e.fields] + [f.value for f in e.fields]
+            assert not any("config_audit." in x or "permissions." in x or "ui_components." in x for x in texts), texts
+            assert len(e.description or "") <= 4096 and all(len(f.value) <= 1024 for f in e.fields)

@@ -1622,6 +1622,7 @@
     },
     "cwl_player_hub": {
       "summary_hub": "Mitglieder nutzen {channel} oder /cwl preferences",
+      "summary_hub_problem": "der Spieler-Hub hat ein Problem — siehe Schritt {step}",
       "summary_command": "Mitglieder nutzen /cwl preferences",
       "what": "Mitglieder legen ihre persönlichen CWL-Einstellungen fest: eine bevorzugte Liga-Stufe, und ob sie immer spielen, nie spielen oder jede Saison neu entscheiden wollen. Die Einstellungen gelten pro Clash-Account und auf jedem Server, der sie einlädt.",
       "how_title": "👤 So kommen Mitglieder dorthin",

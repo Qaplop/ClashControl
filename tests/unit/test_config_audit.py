@@ -663,11 +663,23 @@ class TestStepWarNotifications:
 
 
 class TestStepCwlPlayerHub:
-    def test_always_info(self):
-        assert ca.check_cwl_player_hub(_guild(ADMIN)).summary_key.endswith("summary_command")
+    def test_green_when_the_hub_works_info_otherwise(self):
+        # qaplop 2026-10-11 (STAY): a working player hub is ✅, not ℹ️.
+        r = ca.check_cwl_player_hub(_guild(ADMIN))
+        assert r.status == AuditStatus.INFO and r.summary_key.endswith("summary_command")
         _cfg(cwl_player_hub_message_enabled=True, cwl_player_hub_channel_id="40")
-        r = ca.check_cwl_player_hub(_guild(ADMIN, {40: _channel(40)}))
-        assert r.status == AuditStatus.INFO and r.summary_params == {"channel": "#ch40"}
+        members_ok = dict(view_channel=True, read_message_history=True, use_embedded_activities=True)
+        hub = _channel_by_role(40, {EVERYONE: members_ok}, ALL_PERMS)
+        r = ca.check_cwl_player_hub(_guild(ADMIN, {40: hub}))
+        assert r.status == AuditStatus.OK and r.summary_params == {"channel": "#ch40"}
+
+    def test_a_broken_hub_points_to_step_10(self):
+        _cfg(cwl_player_hub_message_enabled=True, cwl_player_hub_channel_id="40")
+        hidden = _channel_by_role(40, {EVERYONE: {}}, ALL_PERMS)
+        r = ca.check_cwl_player_hub(_guild(ADMIN, {40: hidden}))
+        assert r.status == AuditStatus.INFO and r.summary_key.endswith("summary_hub_problem")
+        assert r.summary_params == {"step": 10}
+        assert ca.check_cwl_player_hub(_guild(ADMIN)).summary_key.endswith("summary_hub_problem")  # channel gone
 
 
 class TestStepCwlSeason:

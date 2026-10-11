@@ -1621,6 +1621,7 @@
     },
     "cwl_player_hub": {
       "summary_hub": "sodales {channel} vel /cwl preferences adhibent",
+      "summary_hub_problem": "centrum lusorum vitium habet — vide gradum {step}",
       "summary_command": "sodales /cwl preferences adhibent",
       "what": "Sodales praeferentias suas CWL constituunt: gradum foederis praelatum, et an semper ludere, numquam ludere, an quoque tempore de novo decernere velint. Optiones per rationem Clash valent et in omni servitore qui eos invitat.",
       "how_title": "👤 Quomodo sodales eo perveniant",

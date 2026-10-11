@@ -1621,6 +1621,7 @@
     },
     "cwl_player_hub": {
       "summary_hub": "los miembros usan {channel} o /cwl preferences",
+      "summary_hub_problem": "el centro de jugadores tiene un problema — ver el paso {step}",
       "summary_command": "los miembros usan /cwl preferences",
       "what": "Los miembros definen sus preferencias personales de LGC: un nivel de liga preferido, y si quieren jugar siempre, no jugar nunca o decidir en cada temporada. Los ajustes se aplican por cuenta de Clash y en todos los servidores que los invitan.",
       "how_title": "👤 Cómo llegan los miembros",

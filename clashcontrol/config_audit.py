@@ -963,6 +963,17 @@ def detail_roles(guild: discord.Guild, result: StepResult, guild_id: Optional[in
 # Step 10: CWL settings
 # ---------------------------------------------------------------------------------------------
 
+def _player_hub_member_problem(guild: discord.Guild, config: Dict[str, Any], channel: Any) -> Optional[str]:
+    """Why members can't use the player hub in ``channel``: "player_hub_hidden" (can't see it or
+    read its history), "no_activities" (can't open the Activity), or None. Shared by steps 10/11."""
+    members = _member_groups(guild, config)
+    if not _groups_can(channel, members, "view_channel", "read_message_history"):
+        return "player_hub_hidden"
+    if not _groups_can(channel, members, "view_channel", "use_embedded_activities"):
+        return "no_activities"
+    return None
+
+
 def check_cwl_settings(guild: discord.Guild) -> StepResult:
     """The CWL Settings screen top to bottom. OFF when neither hub message is on and no
     coordinator role is linked (CWL can still be run from /clan management). Hub without channel,
@@ -989,11 +1000,9 @@ def check_cwl_settings(guild: discord.Guild) -> StepResult:
     findings += [Finding(AuditStatus.BROKEN, "permission", (("kind", i.kind),)) for i in issues]
     player_channel = _channel(guild, config.get("cwl_player_hub_channel_id")) if player_on else None
     if player_channel is not None:
-        members = _member_groups(guild, config)
-        if not _groups_can(player_channel, members, "view_channel", "read_message_history"):
-            findings.append(Finding(AuditStatus.INCOMPLETE, "player_hub_hidden"))
-        elif not _groups_can(player_channel, members, "view_channel", "use_embedded_activities"):
-            findings.append(Finding(AuditStatus.INCOMPLETE, "no_activities"))
+        member_problem = _player_hub_member_problem(guild, config, player_channel)
+        if member_problem:
+            findings.append(Finding(AuditStatus.INCOMPLETE, member_problem))
     broken = [f for f in findings if f.status == AuditStatus.BROKEN]
     if broken:
         return StepResult(AuditStatus.BROKEN, "config_audit.summary_permission_problems",
@@ -1151,13 +1160,21 @@ def detail_war_notifications(guild: discord.Guild, result: StepResult, guild_id:
 # ---------------------------------------------------------------------------------------------
 
 def check_cwl_player_hub(guild: discord.Guild) -> StepResult:
-    """ℹ️ only: the member side of CWL. Whether the player hub works is step 10's job, so a
-    problem there is never shown twice."""
+    """The member side of CWL. ✅ when the player hub is up and members can use it (qaplop
+    2026-10-11: a working hub is green, not ℹ️). The problems themselves stay step 10's (the hub
+    is set up there), so a broken hub is ℹ️ "see step 10" here, never a second red line. No hub
+    → ℹ️: members use /cwl preferences."""
     config = _config(guild)
     channel_id = config.get("cwl_player_hub_channel_id") if config.get("cwl_player_hub_message_enabled") else None
     if channel_id:
-        return StepResult(AuditStatus.INFO, "config_audit.cwl_player_hub.summary_hub",
-                          {"channel": _channel_name(guild, channel_id)}, data={"channel_id": channel_id})
+        data = {"channel_id": channel_id}
+        channel = _channel(guild, channel_id)
+        if (channel is None or _permission_issues(guild, {"cwl_player_hub"})
+                or _player_hub_member_problem(guild, config, channel)):
+            return StepResult(AuditStatus.INFO, "config_audit.cwl_player_hub.summary_hub_problem",
+                              {"step": STEPS_BY_ID["cwl_settings"].order}, data=data)
+        return StepResult(AuditStatus.OK, "config_audit.cwl_player_hub.summary_hub",
+                          {"channel": _channel_name(guild, channel_id)}, data=data)
     return StepResult(AuditStatus.INFO, "config_audit.cwl_player_hub.summary_command", data={"channel_id": None})
 
 

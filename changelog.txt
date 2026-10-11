@@ -1,6 +1,14 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-11 (21)
+- Changed (tracker #0151, qaplop on the STAY server): /setup step 11 ("Your CWL Preferences")
+  was always ℹ️, even with a working player hub. Now ✅ when the hub's channel exists, the bot
+  has its permissions there and members can see it and open the Activity (same check as step
+  10, shared via _player_hub_member_problem()); ℹ️ "the player hub has a problem — see step 10"
+  otherwise (the problem itself stays step 10's); ℹ️ without a hub. New key
+  config_audit.cwl_player_hub.summary_hub_problem in all languages. Build 165.
+
 2026-10-11 (20)
 - Changed (tracker #0151, qaplop): /setup step 12 — once this month's CWL is over, a missing
   next season shows ℹ️ "season … can be started now" until the 20th, and ⚠️ "not set up yet"

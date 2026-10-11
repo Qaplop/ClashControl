@@ -306,7 +306,7 @@
       "setup": {
         "short": "Einrichtung von ClashControl auf diesem Server prüfen (Admins)",
         "title": "🛠️ Setup-Befehl",
-        "detailed": "Zeigt eine Checkliste mit allem, was ClashControl auf diesem Server braucht, mit einem Status je Schritt: ✅ OK, ❌ muss behoben werden, ⚠️ unvollständig, ⏸️ nicht genutzt, 🔒 braucht einen früheren Schritt, ⚪ noch nicht geprüft. Wähle einen Schritt für die Details: was nicht stimmt, warum es wichtig ist und wie du es behebst.\n\n**Verwendung:**\n`/setup`\n\n**Was geprüft wird:**\n• Bot-Berechtigungen — „Administrator“, jede fehlende Berechtigung mit dem Grund, warum sie gebraucht wird, und ein Button, um den Bot mit einem Klick neu zu autorisieren\n• Sprache & Zeitzone, Clans & Familien (private Kriegsprotokolle, von Supercell gelöschte Clans), Willkommensnachricht\n• Registrierung (sehen neue Mitglieder sie, wie viele Accounts sind verknüpft), Kriegs-Erinnerungen per DM, Kriegs- und Raid-Erinnerungen im Kanal\n• Server-Rollen (Einfache, CoC- und Clan-Rollen), CWL-Einstellungen, „Deine CWL-Einstellungen“, die CWL-Saison im Kalender, Bestenlisten\n\n**Hinweise:**\n• Nur für Server-Administratoren\n• Nur du siehst das Ergebnis\n• „⚙️ Einstellungen öffnen“ öffnet den passenden Bildschirm von /clan management; „🔄 Erneut prüfen“ prüft noch einmal\n• „🧭 Geführte Einrichtung starten“ geht alle Schritte der Reihe nach durch, auch wie es für deine Mitglieder aussieht\n• „🚫 Nutzen wir nicht“ markiert einen optionalen Schritt als auf deinem Server nicht genutzt (rückgängig: „↩️ Doch nutzen“)"
+        "detailed": "Zeigt eine Checkliste mit allem, was ClashControl auf diesem Server braucht, mit einem Status je Schritt: ✅ OK, ❌ muss behoben werden, ⚠️ unvollständig, ⏸️ nicht genutzt, 🔒 braucht einen früheren Schritt. Wähle einen Schritt für die Details: was nicht stimmt, warum es wichtig ist und wie du es behebst.\n\n**Verwendung:**\n`/setup`\n\n**Was geprüft wird:**\n• Bot-Berechtigungen — „Administrator“, jede fehlende Berechtigung mit dem Grund, warum sie gebraucht wird, und ein Button, um den Bot mit einem Klick neu zu autorisieren\n• Sprache & Zeitzone, Clans & Familien (private Kriegsprotokolle, von Supercell gelöschte Clans), Willkommensnachricht\n• Registrierung (sehen neue Mitglieder sie, wie viele Accounts sind verknüpft), Kriegs-Erinnerungen per DM, Kriegs- und Raid-Erinnerungen im Kanal\n• Server-Rollen (Einfache, CoC- und Clan-Rollen), CWL-Einstellungen, „Deine CWL-Einstellungen“, die CWL-Saison im Kalender, Bestenlisten\n\n**Hinweise:**\n• Nur für Server-Administratoren\n• Nur du siehst das Ergebnis\n• „⚙️ Einstellungen öffnen“ öffnet den passenden Bildschirm von /clan management; „🔄 Erneut prüfen“ prüft noch einmal\n• „🧭 Geführte Einrichtung starten“ geht alle Schritte der Reihe nach durch, auch wie es für deine Mitglieder aussieht\n• „🚫 Nutzen wir nicht“ markiert einen optionalen Schritt als auf deinem Server nicht genutzt (rückgängig: „↩️ Doch nutzen“)"
       },
       "clan management": {
         "short": "Zentrale Server- und Clan-Konfiguration",
@@ -1480,7 +1480,7 @@
   "config_audit": {
     "overview_title": "🛠️ Server-Einrichtung — {guild}",
     "overview_intro": "Alles, was ClashControl auf diesem Server braucht, Schritt für Schritt. Wähle unten einen Schritt für die Details und wie du ihn behebst.",
-    "legend": "✅ OK · ❌ muss behoben werden · ⚠️ unvollständig · ⏸️ nicht genutzt · 🔒 braucht einen früheren Schritt · ℹ️ Info · ⚪ noch nicht geprüft",
+    "legend": "✅ OK · ❌ muss behoben werden · ⚠️ unvollständig · ⏸️ nicht genutzt · 🔒 braucht einen früheren Schritt · ℹ️ Info",
     "select_placeholder": "Details zu einem Schritt anzeigen…",
     "button_back": "◀ Übersicht",
     "button_recheck": "🔄 Erneut prüfen",
@@ -1488,7 +1488,6 @@
     "open_failed": "❌ Die Einstellungen konnten gerade nicht geöffnet werden — bitte nutze /clan management.",
     "panel_hint": "Nimm deine Änderung hier vor und klicke dann in /setup auf 🔄 Erneut prüfen. Dieses Fenster schließt sich nach 14 Minuten.",
     "panel_expired": "⏱️ Dieses Einstellungsfenster wurde geschlossen. Öffne es erneut über /setup.",
-    "summary_pending": "noch nicht geprüft — kommt in einem späteren Update",
     "summary_check_failed": "konnte gerade nicht geprüft werden — versuche es erneut",
     "summary_blocked": "richte zuerst Schritt {steps} ein",
     "settings_title": "⚙️ Aktuelle Einstellungen",

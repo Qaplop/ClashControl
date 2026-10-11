@@ -306,7 +306,7 @@
       "setup": {
         "short": "Comprobar la configuración de ClashControl en este servidor (administradores)",
         "title": "🛠️ Comando Setup",
-        "detailed": "Muestra una lista de todo lo que ClashControl necesita en este servidor, con un estado por paso: ✅ OK, ❌ hay que corregirlo, ⚠️ incompleto, ⏸️ no se usa, 🔒 requiere un paso anterior, ⚪ aún no comprobado. Elige un paso para ver los detalles: qué falla, por qué importa y cómo solucionarlo.\n\n**Uso:**\n`/setup`\n\n**Qué comprueba:**\n• Permisos del bot — «Administrador», cada permiso que falta con el motivo por el que se necesita, y un botón para volver a autorizar el bot con un clic\n• Idioma y zona horaria, clanes y familias (registros de guerra privados, clanes eliminados por Supercell), mensaje de bienvenida\n• Registro (si los nuevos miembros lo ven, cuántas cuentas están vinculadas), recordatorios de guerra por MD, recordatorios de guerra e incursiones en canales\n• Roles del servidor (Simples, de CoC y de Clan), ajustes de la LGC, «Tus Preferencias de LGC», la temporada de LGC según el calendario, clasificaciones\n\n**Notas:**\n• Solo para administradores del servidor\n• Solo tú ves el resultado\n• «⚙️ Abrir ajustes» abre la pantalla correspondiente de /clan management; «🔄 Comprobar de nuevo» repite las comprobaciones\n• «🧭 Iniciar configuración guiada» recorre todos los pasos en orden, incl. cómo lo ven tus miembros\n• «🚫 No lo usamos» marca un paso opcional como no usado en tu servidor (deshacer: «↩️ Usarlo después de todo»)"
+        "detailed": "Muestra una lista de todo lo que ClashControl necesita en este servidor, con un estado por paso: ✅ OK, ❌ hay que corregirlo, ⚠️ incompleto, ⏸️ no se usa, 🔒 requiere un paso anterior. Elige un paso para ver los detalles: qué falla, por qué importa y cómo solucionarlo.\n\n**Uso:**\n`/setup`\n\n**Qué comprueba:**\n• Permisos del bot — «Administrador», cada permiso que falta con el motivo por el que se necesita, y un botón para volver a autorizar el bot con un clic\n• Idioma y zona horaria, clanes y familias (registros de guerra privados, clanes eliminados por Supercell), mensaje de bienvenida\n• Registro (si los nuevos miembros lo ven, cuántas cuentas están vinculadas), recordatorios de guerra por MD, recordatorios de guerra e incursiones en canales\n• Roles del servidor (Simples, de CoC y de Clan), ajustes de la LGC, «Tus Preferencias de LGC», la temporada de LGC según el calendario, clasificaciones\n\n**Notas:**\n• Solo para administradores del servidor\n• Solo tú ves el resultado\n• «⚙️ Abrir ajustes» abre la pantalla correspondiente de /clan management; «🔄 Comprobar de nuevo» repite las comprobaciones\n• «🧭 Iniciar configuración guiada» recorre todos los pasos en orden, incl. cómo lo ven tus miembros\n• «🚫 No lo usamos» marca un paso opcional como no usado en tu servidor (deshacer: «↩️ Usarlo después de todo»)"
       },
       "clan management": {
         "short": "Configuración central del servidor y de los clanes",
@@ -1479,7 +1479,7 @@
   "config_audit": {
     "overview_title": "🛠️ Configuración del servidor — {guild}",
     "overview_intro": "Todo lo que ClashControl necesita en este servidor, paso a paso. Elige un paso abajo para ver los detalles y cómo solucionarlo.",
-    "legend": "✅ OK · ❌ hay que corregirlo · ⚠️ incompleto · ⏸️ no se usa · 🔒 requiere un paso anterior · ℹ️ info · ⚪ aún no comprobado",
+    "legend": "✅ OK · ❌ hay que corregirlo · ⚠️ incompleto · ⏸️ no se usa · 🔒 requiere un paso anterior · ℹ️ info",
     "select_placeholder": "Mostrar detalles de un paso…",
     "button_back": "◀ Resumen",
     "button_recheck": "🔄 Comprobar de nuevo",
@@ -1487,7 +1487,6 @@
     "open_failed": "❌ No se pudieron abrir los ajustes ahora — usa /clan management.",
     "panel_hint": "Haz tu cambio aquí y luego pulsa 🔄 Comprobar de nuevo en /setup. Este panel se cierra a los 14 minutos.",
     "panel_expired": "⏱️ Este panel de ajustes se ha cerrado. Ábrelo de nuevo desde /setup.",
-    "summary_pending": "aún no comprobado — llegará en una actualización posterior",
     "summary_check_failed": "no se pudo comprobar ahora — inténtalo de nuevo",
     "summary_blocked": "configura primero el paso {steps}",
     "settings_title": "⚙️ Ajustes actuales",

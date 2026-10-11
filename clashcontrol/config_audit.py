@@ -8,7 +8,7 @@ planned to walk the same registry, so a step is defined once and every surface a
 it is done. Plan: plans/implemented/tracker-0151-setup-config-audit.md.
 
 Checks never call an API (same rule as ``bot_permissions.audit_guild``): they read the bot's own
-cached guild state and CACHE. A step whose check is not implemented yet reports ``PENDING``.
+cached guild state and CACHE.
 """
 from __future__ import annotations
 
@@ -30,7 +30,6 @@ class AuditStatus(str, Enum):
     OFF = "off"                # optional feature not in use — no judgement
     BLOCKED = "blocked"        # a prerequisite step is not set up
     INFO = "info"              # nothing to check, or nothing can be said yet
-    PENDING = "pending"        # check not implemented yet
 
 
 STATUS_ICON: Dict[AuditStatus, str] = {
@@ -40,7 +39,6 @@ STATUS_ICON: Dict[AuditStatus, str] = {
     AuditStatus.OFF: "⏸️",
     AuditStatus.BLOCKED: "🔒",
     AuditStatus.INFO: "ℹ️",
-    AuditStatus.PENDING: "⚪",
 }
 
 #: A dependent step shows BLOCKED while a prerequisite has one of these. A BROKEN prerequisite
@@ -87,8 +85,8 @@ class AuditStep:
     order: int                                  # 1-based display number
     audience: Literal["admin", "user", "both"]
     requires: Tuple[str, ...] = ()
-    check: Optional[CheckFn] = None
-    detail: Optional[DetailFn] = None
+    check: CheckFn = field(kw_only=True)
+    detail: DetailFn = field(kw_only=True)
     #: bot_permissions feature keys whose channel/role problems this step reports. Step 1 lists
     #: only the problems of features no implemented step owns, so one problem is red once.
     permission_features: Tuple[str, ...] = ()
@@ -1330,8 +1328,7 @@ def detail_linked_accounts(guild: discord.Guild, result: StepResult, guild_id: O
 
 
 # ---------------------------------------------------------------------------------------------
-# Registry (plan §3). Every step is listed so the checklist shows the whole structure; a step
-# whose check comes in a later phase reports PENDING until then.
+# Registry (plan §3): every step in the order an admin sets ClashControl up.
 # ---------------------------------------------------------------------------------------------
 
 def _CONFIG(result: StepResult) -> Optional[str]:
@@ -1386,8 +1383,6 @@ STEPS_BY_ID: Dict[str, AuditStep] = {s.id: s for s in STEPS}
 def run_step(step: AuditStep, guild: discord.Guild) -> StepResult:
     """Run one step's check. Never raises: a failing check shows as INFO "could not be checked"
     instead of breaking the whole checklist."""
-    if step.check is None:
-        return StepResult(AuditStatus.PENDING, "config_audit.summary_pending")
     try:
         return step.check(guild)
     except Exception as e:
@@ -1425,8 +1420,8 @@ def run_audit(guild: discord.Guild) -> Dict[str, StepResult]:
                 result = StepResult(AuditStatus.OFF, "config_audit.summary_dismissed",
                                     findings=result.findings, data=result.data)
             result.data["dismissed"] = True
-        # Not checked yet, or switched off: nothing to block (a disabled feature stays ⏸️).
-        if result.status not in (AuditStatus.PENDING, AuditStatus.OFF) and any(
+        # Switched off: nothing to block (a disabled feature stays ⏸️).
+        if result.status != AuditStatus.OFF and any(
             results.get(req) is not None and results[req].status in _BLOCKING for req in step.requires
         ):
             result = StepResult(AuditStatus.BLOCKED, "config_audit.summary_blocked",

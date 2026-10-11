@@ -1,6 +1,11 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-11 (18)
+- Changed (tracker #0151, qaplop): /setup no longer knows the "⚪ not checked yet" status — every
+  step has had a real check since Phase 4. Removed from the legend, the status enum and the
+  translations (summary_pending); AuditStep now requires check and detail. Build 162.
+
 2026-10-11 (17)
 - Fixed (tracker #0151, qaplop on the STAY server): /setup step 10 warned that members couldn't
   open "Your CWL Preferences" although all four CoC roles had "Use Activities" in the player-hub

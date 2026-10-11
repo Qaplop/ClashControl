@@ -40,10 +40,7 @@ def build_overview_embed(guild: discord.Guild, user_id: str, results: Dict[str, 
         r = results[step.id]
         title = _tr(gid, user_id, step.title_key)
         summary = _tr(gid, user_id, r.summary_key, **r.summary_params)
-        if r.status == AuditStatus.PENDING:
-            lines.append(f"{STATUS_ICON[r.status]} {step.order}. {title} — *{summary}*")
-        else:
-            lines.append(f"{STATUS_ICON[r.status]} **{step.order}. {title}** — {summary}")
+        lines.append(f"{STATUS_ICON[r.status]} **{step.order}. {title}** — {summary}")
     description = _tr(gid, user_id, "config_audit.overview_intro") + "\n\n" + "\n".join(lines)
     embed = discord.Embed(
         title=_tr(gid, user_id, "config_audit.overview_title", guild=guild.name)[:256],
@@ -55,14 +52,13 @@ def build_overview_embed(guild: discord.Guild, user_id: str, results: Dict[str, 
 
 
 def build_step_embed(guild: discord.Guild, user_id: str, step_id: str, result: StepResult) -> discord.Embed:
-    """A step's detail page. Steps without a renderer yet show their description and "not
-    checked yet"."""
+    """A step's detail page. A blocked step shows its description and what it waits for."""
     gid = guild.id
     step = STEPS_BY_ID[step_id]
     title = f"{STATUS_ICON[result.status]} {step.order}. {_tr(gid, user_id, step.title_key)}"
     summary = _tr(gid, user_id, result.summary_key, **result.summary_params)
     embed = discord.Embed(title=title[:256], color=_status_color(result.status))
-    if step.detail is None or result.status in (AuditStatus.PENDING, AuditStatus.BLOCKED):
+    if result.status == AuditStatus.BLOCKED:
         embed.description = (f"{_tr(gid, user_id, step.desc_key)}\n\n**{summary}**")[:_EMBED_DESCRIPTION_LIMIT]
         return embed
     detail = step.detail(guild, result, gid, user_id)
@@ -250,7 +246,7 @@ class SetupView(discord.ui.View):
         elif can_dismiss(step, result):
             self._button("config_audit.button_dismiss", self._on_dismiss, "setup_dismiss", dismiss_row,
                          discord.ButtonStyle.danger)
-        if step.detail is not None and result.status not in (AuditStatus.PENDING, AuditStatus.BLOCKED):
+        if result.status != AuditStatus.BLOCKED:
             for label, url in step.detail(self.guild, result, self.guild.id, self.user_id).links:
                 self.add_item(discord.ui.Button(label=label[:80], url=url, row=row))
 
@@ -262,12 +258,12 @@ class SetupView(discord.ui.View):
 
     def _fix_mode(self) -> Optional[str]:
         """The /clan management mode for the selected step, or None (overview, finish page, no
-        settings screen, or a step that is blocked / not checked)."""
+        settings screen, or a step that is blocked)."""
         if self.selected is None or self.selected == _DONE:
             return None
         step = STEPS_BY_ID[self.selected]
         result = self.results[self.selected]
-        if step.fix_mode is None or result.status in (AuditStatus.PENDING, AuditStatus.BLOCKED):
+        if step.fix_mode is None or result.status == AuditStatus.BLOCKED:
             return None
         return step.fix_mode(result)
 

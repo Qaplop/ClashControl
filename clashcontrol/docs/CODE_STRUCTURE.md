@@ -782,7 +782,7 @@ all rebuild/button-handler paths so the reference is never lost.
 - `config_audit.STEPS` — the step registry: id, order, audience, `requires` (prerequisite steps),
   a cache-only `check(guild) -> StepResult` (status + machine-readable findings) and a `detail`
   renderer for the step's page. `run_audit(guild)` runs every step and turns a step whose
-  prerequisite is INCOMPLETE/BLOCKED into BLOCKED. A step without a check reports PENDING.
+  prerequisite is INCOMPLETE/BLOCKED into BLOCKED. Every step must have a `check` and a `detail`.
   The planned guided setup and the tutorials (#0121) walk the same registry — add new checks
   there, not as a second list.
 - `permission_features` on a step: the `bot_permissions` feature keys whose channel/role

@@ -306,7 +306,7 @@
       "setup": {
         "short": "Check ClashControl's setup on this server (admins)",
         "title": "🛠️ Setup Command",
-        "detailed": "Shows a checklist of everything ClashControl needs on this server, with a status for each step: ✅ OK, ❌ needs fixing, ⚠️ incomplete, ⏸️ not in use, 🔒 needs an earlier step, ⚪ not checked yet. Pick a step for the details: what is wrong, why it matters and how to fix it.\n\n**Usage:**\n`/setup`\n\n**What it checks:**\n• Bot permissions — “Administrator”, every missing permission with the reason it is needed, and a button to re-authorize the bot in one click\n• Language & timezone, clans & families (private war logs, clans deleted by Supercell), welcome message\n• Registration (can new members see it, how many accounts are linked), war reminders by DM, war and raid reminders in channels\n• Server roles (Simple, CoC and clan roles), CWL settings, “Your CWL Preferences”, the CWL season against the calendar, leaderboards\n\n**Notes:**\n• Server administrators only\n• Only you see the result\n• “⚙️ Open settings” opens the matching /clan management screen; “🔄 Check again” re-runs the checks\n• “🧭 Start guided setup” walks through every step in order, incl. how it looks for your members\n• “🚫 We don't use this” marks an optional step as not used on your server (undo: “↩️ Use it after all”)"
+        "detailed": "Shows a checklist of everything ClashControl needs on this server, with a status for each step: ✅ OK, ❌ needs fixing, ⚠️ incomplete, ⏸️ not in use, 🔒 needs an earlier step. Pick a step for the details: what is wrong, why it matters and how to fix it.\n\n**Usage:**\n`/setup`\n\n**What it checks:**\n• Bot permissions — “Administrator”, every missing permission with the reason it is needed, and a button to re-authorize the bot in one click\n• Language & timezone, clans & families (private war logs, clans deleted by Supercell), welcome message\n• Registration (can new members see it, how many accounts are linked), war reminders by DM, war and raid reminders in channels\n• Server roles (Simple, CoC and clan roles), CWL settings, “Your CWL Preferences”, the CWL season against the calendar, leaderboards\n\n**Notes:**\n• Server administrators only\n• Only you see the result\n• “⚙️ Open settings” opens the matching /clan management screen; “🔄 Check again” re-runs the checks\n• “🧭 Start guided setup” walks through every step in order, incl. how it looks for your members\n• “🚫 We don't use this” marks an optional step as not used on your server (undo: “↩️ Use it after all”)"
       },
       "clan management": {
         "short": "Central server and clan configuration",
@@ -1480,7 +1480,7 @@
   "config_audit": {
     "overview_title": "🛠️ Server setup — {guild}",
     "overview_intro": "Everything ClashControl needs on this server, step by step. Pick a step below for details and how to fix it.",
-    "legend": "✅ OK · ❌ needs fixing · ⚠️ incomplete · ⏸️ not in use · 🔒 needs an earlier step · ℹ️ info · ⚪ not checked yet",
+    "legend": "✅ OK · ❌ needs fixing · ⚠️ incomplete · ⏸️ not in use · 🔒 needs an earlier step · ℹ️ info",
     "select_placeholder": "Show details for a step…",
     "button_back": "◀ Overview",
     "button_recheck": "🔄 Check again",
@@ -1488,7 +1488,6 @@
     "open_failed": "❌ The settings could not be opened right now — please try /clan management.",
     "panel_hint": "Make your change here, then click 🔄 Check again in /setup. This panel closes after 14 minutes.",
     "panel_expired": "⏱️ This settings panel has closed. Open it again from /setup.",
-    "summary_pending": "not checked yet — coming in a later update",
     "summary_check_failed": "could not be checked right now — try again",
     "summary_blocked": "set up step {steps} first",
     "settings_title": "⚙️ Current settings",

@@ -306,7 +306,7 @@
       "setup": {
         "short": "Institutionem ClashControl in hoc servitore inspice (administratores)",
         "title": "🛠️ Mandatum Setup",
-        "detailed": "Indicem omnium quae ClashControl in hoc servitore requirit ostendit, cum statu cuiusque gradus: ✅ recte, ❌ emendandum, ⚠️ imperfectum, ⏸️ non adhibitum, 🔒 gradum priorem requirit, ⚪ nondum inspectum. Elige gradum ut singula videas: quid erret, cur referat et quomodo emendes.\n\n**Usus:**\n`/setup`\n\n**Quid inspiciatur:**\n• Permissiones automati — “Administrator”, quaeque permissio deficiens cum causa cur requiratur, et globulus ut automatum uno ictu iterum auctorizes\n• Lingua et zona horaria, gentes et familiae (commentarii belli privati, gentes a Supercell deletae), nuntius salutationis\n• Inscriptio (an novi sodales eam videant, quot rationes iunctae sint), monita belli per nuntium privatum, monita belli et incursionum in canalibus\n• Munera servitoris (Simplicia, CoC, gentis), optiones CWL, «Praeferentiae Tuae CWL», tempus CWL ad calendarium, tabulae ordinum\n\n**Notae:**\n• Solis administratoribus servitoris\n• Solus tu eventum vides\n• «⚙️ Optiones aperi» tabulam congruentem /clan management aperit; «🔄 Iterum inspice» inspectiones repetit\n• «🧭 Institutionem ductam incipe» omnes gradus ordine percurrit, cum eo quomodo sodalibus appareat\n• «🚫 Hoc non adhibemus» gradum optionalem ut in servitore tuo non adhibitum notat (rescindere: «↩️ Tamen adhibere»)"
+        "detailed": "Indicem omnium quae ClashControl in hoc servitore requirit ostendit, cum statu cuiusque gradus: ✅ recte, ❌ emendandum, ⚠️ imperfectum, ⏸️ non adhibitum, 🔒 gradum priorem requirit. Elige gradum ut singula videas: quid erret, cur referat et quomodo emendes.\n\n**Usus:**\n`/setup`\n\n**Quid inspiciatur:**\n• Permissiones automati — “Administrator”, quaeque permissio deficiens cum causa cur requiratur, et globulus ut automatum uno ictu iterum auctorizes\n• Lingua et zona horaria, gentes et familiae (commentarii belli privati, gentes a Supercell deletae), nuntius salutationis\n• Inscriptio (an novi sodales eam videant, quot rationes iunctae sint), monita belli per nuntium privatum, monita belli et incursionum in canalibus\n• Munera servitoris (Simplicia, CoC, gentis), optiones CWL, «Praeferentiae Tuae CWL», tempus CWL ad calendarium, tabulae ordinum\n\n**Notae:**\n• Solis administratoribus servitoris\n• Solus tu eventum vides\n• «⚙️ Optiones aperi» tabulam congruentem /clan management aperit; «🔄 Iterum inspice» inspectiones repetit\n• «🧭 Institutionem ductam incipe» omnes gradus ordine percurrit, cum eo quomodo sodalibus appareat\n• «🚫 Hoc non adhibemus» gradum optionalem ut in servitore tuo non adhibitum notat (rescindere: «↩️ Tamen adhibere»)"
       },
       "clan management": {
         "short": "Configuratio centralis servitoris et gentium",
@@ -1479,7 +1479,7 @@
   "config_audit": {
     "overview_title": "🛠️ Institutio servitoris — {guild}",
     "overview_intro": "Omnia quae ClashControl in hoc servitore requirit, gradatim. Elige gradum infra ut singula videas et quomodo emendes.",
-    "legend": "✅ recte · ❌ emendandum · ⚠️ imperfectum · ⏸️ non adhibitum · 🔒 gradum priorem requirit · ℹ️ notitia · ⚪ nondum inspectum",
+    "legend": "✅ recte · ❌ emendandum · ⚠️ imperfectum · ⏸️ non adhibitum · 🔒 gradum priorem requirit · ℹ️ notitia",
     "select_placeholder": "Singula gradus ostende…",
     "button_back": "◀ Conspectus",
     "button_recheck": "🔄 Iterum inspice",
@@ -1487,7 +1487,6 @@
     "open_failed": "❌ Optiones nunc aperiri non potuerunt — /clan management adhibe.",
     "panel_hint": "Mutationem tuam hic fac, deinde in /setup «🔄 Iterum inspice» preme. Haec tabula post 14 minuta clauditur.",
     "panel_expired": "⏱️ Haec tabula optionum clausa est. Eam iterum ex /setup aperi.",
-    "summary_pending": "nondum inspectum — in renovatione posteriore veniet",
     "summary_check_failed": "nunc inspici non potuit — iterum conare",
     "summary_blocked": "prius gradum {steps} institue",
     "settings_title": "⚙️ Optiones praesentes",

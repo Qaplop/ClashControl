@@ -187,13 +187,10 @@ class TestRegistry:
         for s in ca.STEPS:
             assert all(r in ca.STEPS_BY_ID for r in s.requires)
 
-    def test_unimplemented_steps_are_pending(self):
+    def test_every_step_is_checked(self):
         results = ca.run_audit(_guild(discord.Permissions(administrator=True)))
         assert list(results) == [s.id for s in ca.STEPS]
-        assert [s.id for s in ca.STEPS if results[s.id].status == AuditStatus.PENDING] == [
-            s.id for s in ca.STEPS if s.check is None
-        ]
-        assert all(s.check is not None and s.detail is not None for s in ca.STEPS)  # Phase 4: all 13
+        assert not hasattr(AuditStatus, "PENDING")  # "not checked yet" retired once all phases shipped
 
     def test_switched_off_feature_is_not_blocked(self):
         # No member clans (step 3 ⚠️): raid reminders off → ⏸️, not 🔒; switched on → 🔒.
@@ -209,18 +206,17 @@ class TestRegistry:
         def ok(g):
             return ca.StepResult(AuditStatus.OK, "x")
 
-        steps = (ca.AuditStep("a", 1, "admin", check=incomplete), ca.AuditStep("b", 2, "admin", ("a",), check=ok),
-                 ca.AuditStep("c", 3, "admin", ("a",)))
+        steps = (ca.AuditStep("a", 1, "admin", check=incomplete, detail=None),
+                 ca.AuditStep("b", 2, "admin", ("a",), check=ok, detail=None))
         monkeypatch.setattr(ca, "STEPS", steps)
         monkeypatch.setattr(ca, "STEPS_BY_ID", {s.id: s for s in steps})
         results = ca.run_audit(_guild(None))
         assert results["b"].status == AuditStatus.BLOCKED and results["b"].summary_params == {"steps": "1"}
-        assert results["c"].status == AuditStatus.PENDING  # not checked → not "blocked" either
 
     def test_failing_check_never_breaks_the_list(self):
         def boom(g):
             raise RuntimeError("x")
-        r = ca.run_step(ca.AuditStep("z", 1, "admin", check=boom), _guild(None))
+        r = ca.run_step(ca.AuditStep("z", 1, "admin", check=boom, detail=None), _guild(None))
         assert r.status == AuditStatus.INFO and r.summary_key == "config_audit.summary_check_failed"
 
 
@@ -640,7 +636,7 @@ class TestRenderingPhase3:
         _accounts(UNASSIGNED=[{"player_tag": "#1", "current_clan_tag": "#A"}])
         results = ca.run_audit(guild)
         for sid in ("registration", "roles", "cwl_settings"):
-            assert results[sid].status not in (AuditStatus.PENDING, AuditStatus.INFO), (sid, results[sid])
+            assert results[sid].status != AuditStatus.INFO, (sid, results[sid])
             e = build_step_embed(guild, "1", sid, results[sid])
             texts = [e.title or "", e.description or ""] + [f.name for f in e.fields] + [f.value for f in e.fields]
             assert not any(k in x for x in texts for k in ("config_audit.", "permissions.", "ui_components.", "cwl.")), texts

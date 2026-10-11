@@ -8032,7 +8032,7 @@ class WelcomeMessageConfigView(discord.ui.View):
 
         explanation = t('ui_components.basic_config.welcome_explanation', guild_id=guild_id_int)
         content = (
-            f"👋 **{t('ui_components.basic_config.config_welcome_block_title', guild_id=guild_id_int)}**\n\n"
+            f"**{t('ui_components.basic_config.config_welcome_block_title', guild_id=guild_id_int)}**\n\n"
             f"{explanation}\n\n"
             f"{t('ui_components.basic_config.config_welcome_mode', guild_id=guild_id_int, mode=mode_label)}\n"
             f"{detail}"

@@ -871,7 +871,7 @@
       "welcome_channel_set_success": "\u2705 Bewerbungskanal auf {channel} gesetzt!",
       "welcome_mode_clan_link_set": "\u2705 Modus gesetzt auf: Clan-Link",
       "welcome_mode_apply_channel_set": "\u2705 Modus gesetzt auf: Bewerbungskanal",
-      "welcome_explanation": "**\ud83d\udd17 Clan-Link:** Die Willkommensnachricht enth\u00e4lt einen direkten Link zum Profil eines ausgew\u00e4hlten Clans.\n**\ud83d\udce8 Bewerbungskanal:** Die Willkommensnachricht verweist neue Mitglieder auf einen Kanal, in dem sie sich bewerben k\u00f6nnen.",
+      "welcome_explanation": "Wähle, was die Begrüßung neuen Mitgliedern anbietet, die noch nicht in deinem Clan sind:\n**🔗 Clan-Link** — ein Link zu jedem Clan, den du hier auswählst. Ein Tipp öffnet den Clan in Clash of Clans, wo sie beitreten oder eine Beitrittsanfrage senden können. Gut, wenn neue Mitglieder einfach beitreten dürfen.\n**📨 Bewerbungskanal** — kein Clan-Link. Die Begrüßung schickt sie in den Kanal, den du hier wählst (z. B. Bewerbungen oder Tickets). Gut, wenn ihr erst mit Bewerbern sprechen wollt.\n💡 In beiden Fällen begrüßt sie die Nachricht mit Namen und verweist, solange die Registrierungsnachricht aktiv ist, auf diese.",
       "welcome_save": "\ud83d\udcbe Speichern",
       "welcome_cancel": "\u2716 Abbrechen",
       "welcome_error_no_clan": "Bitte w\u00e4hle vor dem Speichern einen Clan aus.",

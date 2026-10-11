@@ -871,7 +871,7 @@
       "welcome_channel_set_success": "✅ Canalis petitionis ad {channel} constitutus!",
       "welcome_mode_clan_link_set": "✅ Modus constitutus ad: Nexus Gentis",
       "welcome_mode_apply_channel_set": "✅ Modus constitutus ad: Canalis Petitionis",
-      "welcome_explanation": "**🔗 Nexus Gentis:** Nuntium salutationis nexum directum ad profilum gentis electae continet.\n**📨 Canalis Petitionis:** Nuntium salutationis novos sodales ad canalem dirigit ubi petere possunt.",
+      "welcome_explanation": "Elige quid salutatio novis sodalibus offerat qui nondum in gente tua sunt:\n**🔗 Nexus Gentis** — nexus ad quamque gentem quam hic eligis. Unus tactus gentem in Clash of Clans aperit, ubi intrare vel petitionem mittere possunt. Aptum si novi sodales simpliciter intrare possunt.\n**📨 Canalis Petitionis** — nullus nexus gentis. Salutatio eos ad canalem quem hic eligis mittit (e.g. petitiones vel tesserae). Aptum si prius cum petitoribus loqui vultis.\n💡 Utroque modo salutatio eos nomine salutat et, dum nuntium inscriptionis accensum est, ad id dirigit.",
       "welcome_save": "💾 Serva",
       "welcome_cancel": "✖ Cancella",
       "welcome_error_no_clan": "Quaeso gentem elige antequam servas.",

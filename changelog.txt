@@ -1,6 +1,14 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-11 (35)
+- Changed (qaplop): the Welcome Message dialog explains its two modes properly — what a new
+  member gets (Clan Link: one link per selected clan that opens it in Clash of Clans to join or
+  request; Apply Channel: no link, sent to the chosen applications/tickets channel), when to pick
+  which, and what both share (greeting by name, pointer to the registration message while it's
+  on). All languages (ui_components.basic_config.welcome_explanation). Also: the dialog title
+  showed 👋 twice. Build 179.
+
 2026-10-11 (34)
 - Changed (tracker #0151, qaplop): /setup's on/off steps (4 welcome, 5 registration message,
   7 channel war notifications, 8 raid reminders) open with /clan management's status line —

@@ -871,7 +871,7 @@
       "welcome_channel_set_success": "✅ ¡Canal de solicitud establecido en {channel}!",
       "welcome_mode_clan_link_set": "✅ Modo establecido en: Enlace de Clan",
       "welcome_mode_apply_channel_set": "✅ Modo establecido en: Canal de Solicitud",
-      "welcome_explanation": "**🔗 Enlace de Clan:** El mensaje de bienvenida contiene un enlace directo al perfil de un clan seleccionado.\n**📨 Canal de Solicitud:** El mensaje de bienvenida dirige a los nuevos miembros a un canal donde pueden solicitar entrar.",
+      "welcome_explanation": "Elige qué ofrece el saludo a los nuevos miembros que aún no están en tu clan:\n**🔗 Enlace de Clan** — un enlace a cada clan que selecciones aquí. Un toque abre el clan en Clash of Clans, donde pueden unirse o enviar una solicitud. Útil si los nuevos miembros pueden unirse sin más.\n**📨 Canal de Solicitud** — sin enlace al clan. El saludo los envía al canal que elijas aquí (p. ej. solicitudes o tickets). Útil si queréis hablar antes con los aspirantes.\n💡 En ambos casos el saludo les da la bienvenida por su nombre y, mientras el mensaje de registro esté activo, les remite a él.",
       "welcome_save": "💾 Guardar",
       "welcome_cancel": "✖ Cancelar",
       "welcome_error_no_clan": "Selecciona un clan antes de guardar.",

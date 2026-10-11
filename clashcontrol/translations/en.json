@@ -871,7 +871,7 @@
       "welcome_channel_set_success": "\u2705 Apply channel set to {channel}!",
       "welcome_mode_clan_link_set": "\u2705 Mode set to: Clan Link",
       "welcome_mode_apply_channel_set": "\u2705 Mode set to: Apply Channel",
-      "welcome_explanation": "**\ud83d\udd17 Clan Link:** The welcome message contains a direct link to a selected clan's profile.\n**\ud83d\udce8 Apply Channel:** The welcome message points new members to a channel where they can apply.",
+      "welcome_explanation": "Choose what the greeting offers new members who aren't in your clan yet:\n**🔗 Clan Link** — a link to each clan you select here. One tap opens the clan in Clash of Clans, where they can join or send a join request. Good if new members may simply join.\n**📨 Apply Channel** — no clan link. The greeting sends them to the channel you pick here (e.g. applications or tickets). Good if you want to talk to applicants first.\n💡 Either way the greeting welcomes them by name and, while the registration message is on, points them to it.",
       "welcome_save": "\ud83d\udcbe Save",
       "welcome_cancel": "\u2716 Cancel",
       "welcome_error_no_clan": "Please select a clan before saving.",

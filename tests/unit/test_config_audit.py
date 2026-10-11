@@ -396,7 +396,7 @@ class TestPermissionNames:
     Latin uses the English labels (Discord has no Latin client)."""
 
     @pytest.mark.parametrize("lang, expected", [
-        ("en", "“Send Messages”"), ("de", "„Nachrichten senden“"), ("es", "«Enviar mensajes y crear publicaciones»"),
+        ("en", "“Send Messages”"), ("de", "„Nachrichten versenden und Posts erstellen“"), ("es", "«Enviar mensajes y crear publicaciones»"),
         ("zh", "“发送消息与创建帖子”"), ("la", "“Send Messages”"),
     ])
     def test_quoted_in_every_language(self, lang, expected):
@@ -418,7 +418,7 @@ class TestPermissionNames:
     def test_issue_line_quotes_the_permission(self):
         CACHE.server_config[str(GID)] = {"language": "de"}
         issue = bp.PermissionIssue("leaderboard", bp.MISSING_CHANNEL_PERMS, 5, ("send_messages",))
-        assert "„Nachrichten senden“" in bp.format_issue(issue, guild_id=GID)
+        assert "„Nachrichten versenden und Posts erstellen“" in bp.format_issue(issue, guild_id=GID)
 
     @pytest.mark.parametrize("lang", LANGS)
     def test_no_unquoted_permission_name_in_any_text(self, lang):
@@ -439,7 +439,6 @@ class TestPermissionNames:
 
         # Ordinary words that happen to equal a permission name (not a permission reference).
         allowed = {
-            ("de", "warnotifications.description"),               # "…als persönliche Nachrichten senden"
             ("de", "commands.help.clan management.detailed"),     # menu label "Server-Rollen verwalten"
             ("de", "ui_components.clan_management.mode_roles_label"),
             ("zh", "ui_components.tracker.grant_access_invite_failed"),     # verb "无法创建邀请"; permission quoted later

@@ -1,6 +1,14 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-11 (7)
+- Fixed: German permission labels now match the Discord client (qaplop's screenshots):
+  „Nachrichten versenden und Posts erstellen“, „Nachrichten in Threads und Posts senden“,
+  „Threads und Posts verwalten“, „Einladung erstellen“ (the install-permission picker says
+  „Soforteinladung erstellen“, the client does not — entry (3) took it from the picker, so the
+  tracker invite text is corrected back too). The other eight confirmed. Translations (de) +
+  tests + playbook note only, no build change.
+
 2026-10-11 (6)
 - Fixed: Chinese permission labels now match the Discord client (qaplop's screenshots):
   发送消息与创建帖子, 在子区和帖子中发送消息, 创建公共子区, 添加附件, 管理子区和帖子,

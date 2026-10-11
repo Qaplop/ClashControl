@@ -87,16 +87,19 @@ Token budget note (cl100k_base): keep this file ~≤3000 tokens.
   a factual correction must land in both, or the two languages start telling users different things.
   (2026-08-30: two tooltips drifted exactly this way and had to be resynced afterwards.)
 - DO: **Discord permission names in user-facing text are always quoted and use Discord's exact
-  client label in that language** (qaplop, 2026-10-11): en “Send Messages”, de „Nachrichten senden“,
-  es «Enviar mensajes», zh “发送消息”. **Latin uses the English labels** — Discord has no Latin
+  client label in that language** (qaplop, 2026-10-11): en “Attach Files”, de „Dateien anhängen“,
+  es «Adjuntar archivos», zh “添加附件”. **Latin uses the English labels** — Discord has no Latin
   client, so Latin readers see Discord in English (the same goes for Discord menu paths in Latin
   texts: "Server Settings → Roles"). In code, render them with `bot_permissions.perm_label(perm,
   guild_id=, user_id=, scope=)` (`scope="server"` for role permissions: "View Channels" vs the
   channel override "View Channel"); never hard-code a name. Discord's help center sometimes words
   them differently from the client — the client (Server Settings → Roles) is the reference, verified
   per language from screenshots. Since forum channels, the client names the send/thread permissions
-  with "posts" (es «Enviar mensajes y crear publicaciones», zh 发送消息与创建帖子), while older
-  sources still show the short names; verified on 2026-10-11 for es and zh, en/de still pending. Guarded by
+  with "posts" (de „Nachrichten versenden und Posts erstellen“, es «Enviar mensajes y crear
+  publicaciones», zh 发送消息与创建帖子), while older sources — Discord's help center and the
+  install-permission picker (de „Soforteinladung erstellen“ there vs „Einladung erstellen“ in the
+  client) — still show other names. Verified from client screenshots on 2026-10-11 for de, es, zh;
+  en still pending. Guarded by
   `tests/unit/test_config_audit.py::TestPermissionNames`.
 - WHY: Multi-language support.
 📖 Details: ../clashcontrol/docs/CODE_STRUCTURE.md § Discord.py Patterns

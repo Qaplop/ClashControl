@@ -797,10 +797,14 @@ all rebuild/button-handler paths so the reference is never lost.
   14 linked accounts (`link_coverage()`; split out of step 5 on 2026-10-11 — ongoing work, not
   configuration, so it comes last). Every
   audited feature belongs to a step, so step 1 is server-level permissions only.
-- Member-side checks (Phase 3): `_any_role_can(channel, roles, *perms)` over `_newcomer_roles()`
-  (@everyone + the newbie role Simple Roles gives on join) for the registration hub and
-  `_member_roles()` (@everyone + every role ClashControl assigns) for the player hub, incl.
-  "Use Activities" for the CWL Preferences Activity. `link_coverage(guild)` counts linked vs.
+- Member-side checks (Phase 3; rule refined 2026-10-11, qaplop): `_groups_can(channel, groups,
+  *perms)` — members are covered when ONE role group fully works. Registration hub:
+  `_newcomer_groups()` = @everyone, or the newbie role (Simple Roles gives it on join). Player
+  hub: `_member_groups()` = @everyone, or the Simple Roles member role, or ALL four CoC roles,
+  or the clan role of EVERY member clan (each only while that role system is on and fully set
+  up), incl. "Use Activities" for the CWL Preferences Activity. Role permissions come from
+  `_channel_permissions()` — never discord.py's `TextChannel.permissions_for()`, which drops
+  "Use Activities" (Pitfall 46). `link_coverage(guild)` counts linked vs.
   all accounts in the member clans from `CACHE.user_accounts` (UNASSIGNED = not linked). A step that is OFF is
   never turned into BLOCKED. Fix hints name the real menu path via `_ui_path()` (translated
   labels of /clan management), so they follow label changes.

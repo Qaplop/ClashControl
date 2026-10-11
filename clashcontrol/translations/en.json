@@ -1604,8 +1604,8 @@
       "hub_no_channel": "on, but no channel set",
       "coordinator_per_clan": "one role per clan ({count} linked)",
       "settings": "Data Retention: {retention}\nInclude All Linked Accounts: {include_all}\nCoordinator Role: {coordinator}\nExtended Sign-up (Bench): {bench}",
-      "player_hub_hidden": "None of the roles your members have (@everyone or the roles ClashControl assigns) can see the player hub's channel or read its history, so members can't use the player hub.",
-      "no_activities": "Your members' roles don't have {perm} in the player hub's channel. The {button} button opens a Discord Activity, which may need that permission — allow it for @everyone in that channel."
+      "player_hub_hidden": "Your members can't see the player hub's channel or read its history. Members are covered as soon as one of these can: @everyone, the Simple Roles member role, all four CoC roles, or every clan role.",
+      "no_activities": "The {button} button opens a Discord Activity, which needs {perm} in the player hub's channel — and none of your members' role groups has it there: @everyone, the Simple Roles member role, all four CoC roles, or every clan role."
     },
     "war_notifications": {
       "summary_nobody_linked": "no linked members yet",
@@ -1698,6 +1698,7 @@
       "registration_hidden": "It is posted in {channel}, which neither @everyone nor the newbie role can see.",
       "registration_move": "Move it to a channel new members can see: {path}.",
       "allow_everyone": "Or keep the channel and allow {view} and {history} for @everyone in {channel} (Edit Channel → Permissions).",
+      "allow_members": "Or keep the channel and allow {view} and {history} in {channel} for @everyone — or for the member role, all four CoC roles, or every clan role (Edit Channel → Permissions).",
       "nobody_linked_title": "⚠️ Nobody is linked yet",
       "nobody_linked": "None of the {total} accounts in your member clans is linked to a Discord user, so roles and reminders can't reach anyone yet.",
       "link_own": "Link your own account first: {registration} → {button}.",
@@ -1707,7 +1708,7 @@
       "player_hub_hidden_title": "⚠️ Members can't see the player hub",
       "player_hub_move": "Move it to a channel your members can see: {path}.",
       "no_activities_title": "⚠️ Members may not be able to open their CWL preferences",
-      "allow_activities": "In {channel}: Edit Channel → Permissions → @everyone, allow {perm}.",
+      "allow_activities": "In {channel}: Edit Channel → Permissions, allow {perm} for @everyone — or for the member role, all four CoC roles, or every clan role.",
       "no_reminders_title": "⚠️ Nobody gets war reminders",
       "reminders_members": "Members switch them on themselves: {how}",
       "reminders_admins": "Or switch them on for the whole clan: {path}.",

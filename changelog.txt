@@ -1,6 +1,18 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-11 (17)
+- Fixed (tracker #0151, qaplop on the STAY server): /setup step 10 warned that members couldn't
+  open "Your CWL Preferences" although all four CoC roles had "Use Activities" in the player-hub
+  channel. Root cause: discord.py's TextChannel.permissions_for() clears every voice permission
+  and still counts "Use Activities" as one, so it read False in EVERY text channel. New
+  config_audit._channel_permissions() resolves role permissions like Discord (base
+  GuildChannel.permissions_for). Also the coverage rule (qaplop): members are covered when ONE
+  group fully works — @everyone, the Simple Roles member role, ALL four CoC roles, or EVERY clan
+  role (each only while that role system is on); before, any single role counted. Step 10's
+  texts name these groups. Pitfall 46 added to the playbook; a test uses a real TextChannel.
+  Files: config_audit.py, translations (5), docs, tests. 3901 tests pass. Build 161.
+
 2026-10-11 (16)
 - Changed (tracker #0151, qaplop): /setup step pages are problem-first. A step with a problem
   opens with ONE dominant block (Discord heading): what's wrong, then numbered fix steps that say

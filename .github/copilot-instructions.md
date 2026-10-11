@@ -440,6 +440,8 @@ All pitfalls: short snippets + details in ../clashcontrol/docs/COPILOT_PITFALLS_
 
 45) `war_summary` numeric columns can hold **`WAR_SUMMARY_UNKNOWN` (-1) = "data not available"** (`clashcontrol/constants.py`): the 317 reconstructed legacy wars (2025-07-26 to 2026-01) store -1 in `clan_stars`, `clan_destruction`, `opp_destruction`, `opp_attacks_used` (and `opponent_stars` for the bot's first week), with `result = ''`. Any new reader must treat `< 0` as unknown: SQL aggregates use `SUM(CASE WHEN col >= 0 THEN col ELSE 0 END)` — a bare `SUM(col)` fails `tests/unit/test_war_summary_unknown.py` —, display it as `?`, and never derive a result from it (`classify_war_result()` returns `❔ Unknown`). 📖 ../clashcontrol/docs/DATABASE_ARCHITECTURE.md § war_summary: reconstructed legacy rows.
 
+46) Checking a ROLE's permission in a text channel with discord.py (`channel.permissions_for(role)`) → `TextChannel.permissions_for()` clears every permission in `Permissions.voice()`, and discord.py still files **"Use Activities"** (`use_embedded_activities`) there — so it always reads False in a text channel, although Discord offers and honours it there (Activities launched from a button, e.g. "Your CWL Preferences"). Confirmed on the STAY server 2026-10-11: /setup warned that members couldn't open the Activity while all four CoC roles had the permission. Use `config_audit._channel_permissions(channel, role)` (base `GuildChannel.permissions_for`, before the voice strip; threads via their parent). Same trap for any other voice-classed flag you might check on a text channel.
+
 ---
 
 ## Implementation Workflow

@@ -87,7 +87,10 @@ def _channel_by_role(cid: int, by_role: Dict[object, Dict[str, bool]], bot: Dict
     ch = MagicMock(spec=discord.TextChannel)
     ch.id = cid
     ch.name = f"ch{cid}"
-    ch.permissions_for = MagicMock(side_effect=lambda who: discord.Permissions(**by_role.get(who, bot)))
+    # Identity lookup: the bot's own fake member (a SimpleNamespace) isn't hashable.
+    pairs = list(by_role.items())
+    ch.permissions_for = MagicMock(side_effect=lambda who: discord.Permissions(
+        **next((perms for role, perms in pairs if role is who), bot)))
     return ch
 
 
@@ -1038,3 +1041,76 @@ class TestProblemFirstLayout:
             assert not any(k in x for x in texts for k in ("config_audit.", "permissions.", "ui_components.", "cwl.")), (step.id, texts)
             assert len(e.description or "") <= 4096 and all(len(f.value) <= 1024 for f in e.fields)
         assert with_problem >= 8
+
+
+
+class TestMemberAccessGroups:
+    """qaplop 2026-10-11 (STAY server): members reach the player hub if ONE group fully works —
+    @everyone, the Simple Roles member role, ALL four CoC roles, or EVERY clan role."""
+
+    COC = {"coc_role_member_id": "51", "coc_role_elder_id": "52", "coc_role_coleader_id": "53", "coc_role_leader_id": "54"}
+    OK = dict(view_channel=True, read_message_history=True, use_embedded_activities=True)
+
+    def _guild_with(self, channel_perms):
+        roles = {i: FakeRole(i, 2) for i in (51, 52, 53, 54, 61, 62, 70)}
+        # Every role is listed: one without channel permissions gets none (not the bot's).
+        ch = _channel_by_role(40, {r: channel_perms.get(i, {}) for i, r in roles.items()} | {EVERYONE: {}}, ALL_PERMS)
+        return _guild(ADMIN, {40: ch}, roles=roles)
+
+    def _status(self, guild, **cfg):
+        _cfg(member_clans=["#A", "#B"], cwl_player_hub_message_enabled=True, cwl_player_hub_channel_id="40", **cfg)
+        return ca.check_cwl_settings(guild)
+
+    def test_all_four_coc_roles_cover_members(self):
+        guild = self._guild_with({51: self.OK, 52: self.OK, 53: self.OK, 54: self.OK})
+        assert self._status(guild, coc_role_enabled=True, **self.COC).status == AuditStatus.OK
+
+    def test_three_of_four_coc_roles_are_not_enough(self):
+        guild = self._guild_with({51: self.OK, 52: self.OK, 53: self.OK})
+        r = self._status(guild, coc_role_enabled=True, **self.COC)
+        assert r.status == AuditStatus.INCOMPLETE and r.summary_key.endswith("summary_player_hub_hidden")
+
+    def test_coc_roles_only_count_while_coc_roles_are_on(self):
+        guild = self._guild_with({51: self.OK, 52: self.OK, 53: self.OK, 54: self.OK})
+        assert self._status(guild, coc_role_enabled=False, **self.COC).status == AuditStatus.INCOMPLETE
+
+    def test_every_clan_role_or_the_member_role(self):
+        guild = self._guild_with({61: self.OK, 62: self.OK})
+        assert self._status(guild, clan_role_enabled=True, clan_roles={"#A": "61", "#B": "62"}).status == AuditStatus.OK
+        guild = self._guild_with({61: self.OK})                       # #B's clan role can't
+        assert self._status(guild, clan_role_enabled=True, clan_roles={"#A": "61", "#B": "62"}).status == AuditStatus.INCOMPLETE
+        guild = self._guild_with({70: self.OK})
+        assert self._status(guild, role_system_enabled=True, member_role_id="70").status == AuditStatus.OK
+
+    def test_activities_checked_per_group_too(self):
+        no_act = dict(view_channel=True, read_message_history=True)
+        guild = self._guild_with({51: no_act, 52: no_act, 53: no_act, 54: no_act})
+        r = self._status(guild, coc_role_enabled=True, **self.COC)
+        assert r.summary_key.endswith("summary_no_activities")
+
+
+class TestRealTextChannelActivities:
+    """discord.py's TextChannel.permissions_for() clears every 'voice' permission, and it still
+    counts "Use Activities" as one — on a real text channel the check always failed (STAY,
+    2026-10-11). _channel_permissions() resolves it as Discord does."""
+
+    def test_use_activities_survives_on_a_real_text_channel(self):
+        state = MagicMock()
+        state.self_id = 999
+        guild = MagicMock()
+        guild.id, guild.owner_id = 1000, 1
+
+        def role(rid, perms=0):
+            return discord.Role(guild=guild, state=state, data={
+                "id": str(rid), "name": f"r{rid}", "permissions": str(perms), "position": 1, "color": 0,
+                "hoist": False, "managed": False, "mentionable": False, "flags": 0})
+
+        guild.default_role = role(1000, discord.Permissions(view_channel=True).value)
+        leader = role(5)
+        allow = discord.Permissions(view_channel=True, read_message_history=True, use_embedded_activities=True).value
+        channel = discord.TextChannel(state=state, guild=guild, data={
+            "id": "30", "type": 0, "name": "cwl", "position": 0,
+            "permission_overwrites": [{"id": "5", "type": 0, "allow": str(allow), "deny": "0"}]})
+        assert channel.permissions_for(leader).use_embedded_activities is False   # discord.py's strip
+        assert ca._channel_permissions(channel, leader).use_embedded_activities is True
+        assert ca._channel_permissions(channel, leader).view_channel is True

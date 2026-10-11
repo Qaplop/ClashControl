@@ -697,34 +697,44 @@ def _role(guild: discord.Guild, role_id: Any) -> Optional[discord.Role]:
         return None
 
 
-def _newcomer_roles(guild: discord.Guild, config: Dict[str, Any]) -> List[discord.Role]:
-    """Roles a brand-new server member has: @everyone, plus the newbie role when Simple Roles
-    gives it on join (on_member_join → assign_newbie_role)."""
-    roles = [guild.default_role]
+def _newcomer_groups(guild: discord.Guild, config: Dict[str, Any]) -> List[List[discord.Role]]:
+    """Who a brand-new member is: @everyone, or the newbie role when Simple Roles gives it on
+    join (on_member_join → assign_newbie_role). One role per group."""
+    groups = [[guild.default_role]]
     if config.get("role_system_enabled"):
         newbie = _role(guild, config.get("newbie_role_id"))
         if newbie is not None:
-            roles.append(newbie)
-    return roles
+            groups.append([newbie])
+    return groups
 
 
-def _member_roles(guild: discord.Guild, config: Dict[str, Any]) -> List[discord.Role]:
-    """Roles a clan member typically has: @everyone plus every role ClashControl assigns
-    (Simple Roles member role, CoC roles, clan roles)."""
-    roles = [guild.default_role]
-    ids: List[Any] = []
+def _member_groups(guild: discord.Guild, config: Dict[str, Any]) -> List[List[discord.Role]]:
+    """The role groups through which clan members reach a channel (qaplop, 2026-10-11). Members
+    are covered as soon as ONE group fully works:
+      - @everyone;
+      - Simple Roles on → its member role;
+      - CoC Roles on → ALL four CoC roles (a member holds only one of them);
+      - Clan Roles on → the clan role of EVERY member clan.
+    A group with a role that isn't set up (missing id, deleted role) doesn't count."""
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_guild_member_clan_tags
+
+    groups: List[List[discord.Role]] = [[guild.default_role]]
     if config.get("role_system_enabled"):
-        ids.append(config.get("member_role_id"))
+        member = _role(guild, config.get("member_role_id"))
+        if member is not None:
+            groups.append([member])
     if config.get("coc_role_enabled"):
-        ids += [config.get(k) for k in ("coc_role_member_id", "coc_role_elder_id",
-                                        "coc_role_coleader_id", "coc_role_leader_id")]
+        coc = [_role(guild, config.get(k)) for k in ("coc_role_member_id", "coc_role_elder_id",
+                                                      "coc_role_coleader_id", "coc_role_leader_id")]
+        if all(r is not None for r in coc):
+            groups.append(coc)  # type: ignore[arg-type]
     if config.get("clan_role_enabled"):
-        ids += list((config.get("clan_roles") or {}).values())
-    for rid in ids:
-        role = _role(guild, rid) if rid else None
-        if role is not None and role not in roles:
-            roles.append(role)
-    return roles
+        mapped = config.get("clan_roles") or {}
+        tags = resolve_guild_member_clan_tags(guild.id)
+        clan = [_role(guild, mapped.get(t)) if mapped.get(t) else None for t in tags]
+        if clan and all(r is not None for r in clan):
+            groups.append(clan)  # type: ignore[arg-type]
+    return groups
 
 
 def _channel(guild: discord.Guild, channel_id: Any) -> Any:
@@ -736,17 +746,31 @@ def _channel(guild: discord.Guild, channel_id: Any) -> Any:
     return getter(cid)
 
 
-def _any_role_can(channel: Any, roles: List[discord.Role], *perms: str) -> bool:
-    """True when at least one of ``roles`` has every permission in ``perms`` in ``channel``
-    (role permissions + that channel's overrides, as Discord resolves them)."""
-    for role in roles:
+def _channel_permissions(channel: Any, role: discord.Role) -> discord.Permissions:
+    """What ``role`` may do in ``channel``: the role's permissions plus @everyone's and its own
+    channel overrides, as Discord resolves them.
+
+    For text channels this deliberately bypasses discord.py's ``TextChannel.permissions_for()``,
+    which clears every "voice" permission — and discord.py still counts "Use Activities" as one,
+    although Discord offers and honours it in text channels (the player hub's CWL Preferences
+    button opens an Activity there). Through discord.py's own call every text channel looked
+    like it lacked "Use Activities" (STAY server, 2026-10-11). A thread inherits its parent's."""
+    target = getattr(channel, "parent", None) if isinstance(channel, discord.Thread) else channel
+    if target is not None and type(target) is discord.TextChannel:
+        return discord.abc.GuildChannel.permissions_for(target, role)
+    return channel.permissions_for(role)
+
+
+def _groups_can(channel: Any, groups: List[List[discord.Role]], *perms: str) -> bool:
+    """True when at least one group has every permission in ``perms`` in ``channel`` for EVERY
+    role of the group."""
+    def role_can(role: discord.Role) -> bool:
         try:
-            p = channel.permissions_for(role)
+            p = _channel_permissions(channel, role)
         except Exception:
-            continue
-        if all(getattr(p, name, False) for name in perms):
-            return True
-    return False
+            return False
+        return all(getattr(p, name, False) for name in perms)
+    return any(group and all(role_can(r) for r in group) for group in groups)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -798,8 +822,8 @@ def check_registration(guild: discord.Guild) -> StepResult:
         data["issues"] = issues
         findings += [Finding(AuditStatus.BROKEN, "permission", (("kind", i.kind),)) for i in issues]
         channel = _channel(guild, channel_id)
-        if not issues and channel is not None and not _any_role_can(
-                channel, _newcomer_roles(guild, config), "view_channel", "read_message_history"):
+        if not issues and channel is not None and not _groups_can(
+                channel, _newcomer_groups(guild, config), "view_channel", "read_message_history"):
             findings.append(Finding(AuditStatus.INCOMPLETE, "hidden_from_newcomers"))
     broken = [f for f in findings if f.status == AuditStatus.BROKEN]
     if broken:
@@ -967,10 +991,10 @@ def check_cwl_settings(guild: discord.Guild) -> StepResult:
     findings += [Finding(AuditStatus.BROKEN, "permission", (("kind", i.kind),)) for i in issues]
     player_channel = _channel(guild, config.get("cwl_player_hub_channel_id")) if player_on else None
     if player_channel is not None:
-        members = _member_roles(guild, config)
-        if not _any_role_can(player_channel, members, "view_channel", "read_message_history"):
+        members = _member_groups(guild, config)
+        if not _groups_can(player_channel, members, "view_channel", "read_message_history"):
             findings.append(Finding(AuditStatus.INCOMPLETE, "player_hub_hidden"))
-        elif not _any_role_can(player_channel, members, "view_channel", "use_embedded_activities"):
+        elif not _groups_can(player_channel, members, "view_channel", "use_embedded_activities"):
             findings.append(Finding(AuditStatus.INCOMPLETE, "no_activities"))
     broken = [f for f in findings if f.status == AuditStatus.BROKEN]
     if broken:
@@ -1010,7 +1034,7 @@ def detail_cwl_settings(guild: discord.Guild, result: StepResult, guild_id: Opti
         problem = _problem(tr, tr("config_audit.fix.player_hub_hidden_title"),
                            tr("config_audit.cwl_settings.player_hub_hidden"), [
             tr("config_audit.fix.player_hub_move", path=channels),
-            tr("config_audit.fix.allow_everyone", channel=player_channel,
+            tr("config_audit.fix.allow_members", channel=player_channel,
                view=bp.perm_label("view_channel", guild_id=guild_id, user_id=user_id),
                history=bp.perm_label("read_message_history", guild_id=guild_id, user_id=user_id)),
         ], either=True)

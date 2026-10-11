@@ -1603,8 +1603,8 @@
       "hub_no_channel": "已开启，但未设置频道",
       "coordinator_per_clan": "每个部落一个身份组（已绑定 {count} 个）",
       "settings": "数据保留：{retention}\n纳入所有已绑定账号：{include_all}\n协调员身份组：{coordinator}\n扩展报名（替补）：{bench}",
-      "player_hub_hidden": "你的成员所拥有的身份组（@everyone 或 ClashControl 分配的身份组）都无法查看玩家中心所在频道或阅读其历史记录，因此成员无法使用玩家中心。",
-      "no_activities": "你的成员的身份组在玩家中心所在频道中没有 {perm}。{button} 按钮会打开一个 Discord 小活动，可能需要该权限——请在该频道为 @everyone 允许它。"
+      "player_hub_hidden": "你的成员无法查看玩家中心所在频道或阅读其历史记录。只要以下任意一项可以，成员即被覆盖：@everyone、简单身份组的成员身份组、全部四个部落冲突身份组，或每个部落身份组。",
+      "no_activities": "{button} 按钮会打开一个 Discord 小活动，它需要在玩家中心所在频道中拥有 {perm}——而你的成员的身份组组合在那里都没有该权限：@everyone、简单身份组的成员身份组、全部四个部落冲突身份组，或每个部落身份组。"
     },
     "war_notifications": {
       "summary_nobody_linked": "尚无已绑定的成员",
@@ -1697,6 +1697,7 @@
       "registration_hidden": "它发布在 {channel} 中，@everyone 和新人身份组都无法查看该频道。",
       "registration_move": "将它移到新成员能看到的频道：{path}。",
       "allow_everyone": "或者保留该频道，在 {channel} 中为 @everyone 允许 {view} 和 {history}（编辑频道 → 权限）。",
+      "allow_members": "或者保留该频道，在 {channel} 中为 @everyone 允许 {view} 和 {history}——或为成员身份组、全部四个部落冲突身份组或每个部落身份组允许（编辑频道 → 权限）。",
       "nobody_linked_title": "⚠️ 尚无人绑定",
       "nobody_linked": "你的成员部落中 {total} 个账号都没有绑定到 Discord 用户，因此身份组和提醒还无法送达任何人。",
       "link_own": "先绑定你自己的账号：{registration} → {button}。",
@@ -1706,7 +1707,7 @@
       "player_hub_hidden_title": "⚠️ 成员看不到玩家中心",
       "player_hub_move": "将它移到成员能看到的频道：{path}。",
       "no_activities_title": "⚠️ 成员可能无法打开自己的部落战联赛偏好",
-      "allow_activities": "在 {channel} 中：编辑频道 → 权限 → @everyone，允许 {perm}。",
+      "allow_activities": "在 {channel} 中：编辑频道 → 权限，为 @everyone 允许 {perm}——或为成员身份组、全部四个部落冲突身份组或每个部落身份组允许。",
       "no_reminders_title": "⚠️ 没有人接收战争提醒",
       "reminders_members": "成员自行开启：{how}",
       "reminders_admins": "或为整个部落开启：{path}。",

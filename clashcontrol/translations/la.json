@@ -1603,8 +1603,8 @@
       "hub_no_channel": "accensum, sed nullus canalis",
       "coordinator_per_clan": "unum munus per gentem ({count} iuncta)",
       "settings": "Retentio datorum: {retention}\nOmnes rationes nexas includere: {include_all}\nMunus coordinatoris: {coordinator}\nInscriptio ampliata (subsellium): {bench}",
-      "player_hub_hidden": "Nullum munerum sodalium tuorum (@everyone vel munera quae ClashControl tribuit) canalem centri lusorum videre aut historiam eius legere potest, itaque sodales centro lusorum uti non possunt.",
-      "no_activities": "Munera sodalium tuorum in canali centri lusorum {perm} non habent. Globulus {button} Activitatem Discord aperit, quae hac permissione egere potest — eam ibi pro @everyone permitte."
+      "player_hub_hidden": "Sodales tui canalem centri lusorum videre aut historiam eius legere non possunt. Sodales tecti sunt simul ac unum ex his potest: @everyone, munus sodalium Ordinum Simplicium, omnia quattuor munera CoC, vel omne munus gentis.",
+      "no_activities": "Globulus {button} Activitatem Discord aperit, quae in canali centri lusorum {perm} requirit — et nullus grex munerum sodalium tuorum id ibi habet: @everyone, munus sodalium Ordinum Simplicium, omnia quattuor munera CoC, vel omne munus gentis."
     },
     "war_notifications": {
       "summary_nobody_linked": "nulli sodales iuncti adhuc",
@@ -1697,6 +1697,7 @@
       "registration_hidden": "In {channel} missus est, quem neque @everyone neque munus tironum videre potest.",
       "registration_move": "In canalem quem novi sodales vident move: {path}.",
       "allow_everyone": "Vel canalem serva et in {channel} {view} et {history} pro @everyone permitte (Edit Channel → Permissions).",
+      "allow_members": "Vel canalem serva et in {channel} {view} et {history} pro @everyone permitte — vel pro munere sodalium, omnibus quattuor muneribus CoC, vel omni munere gentis (Edit Channel → Permissions).",
       "nobody_linked_title": "⚠️ Nemo adhuc iunctus",
       "nobody_linked": "Nulla ex {total} rationibus in gentibus tuis sodalibus usori Discord iuncta est — munera et monita adhuc neminem attingunt.",
       "link_own": "Primum rationem tuam iunge: {registration} → {button}.",
@@ -1706,7 +1707,7 @@
       "player_hub_hidden_title": "⚠️ Sodales centrum lusorum non vident",
       "player_hub_move": "In canalem quem sodales vident move: {path}.",
       "no_activities_title": "⚠️ Sodales fortasse praeferentias suas CWL aperire non possunt",
-      "allow_activities": "In {channel}: Edit Channel → Permissions → @everyone, {perm} permitte.",
+      "allow_activities": "In {channel}: Edit Channel → Permissions, {perm} pro @everyone permitte — vel pro munere sodalium, omnibus quattuor muneribus CoC, vel omni munere gentis.",
       "no_reminders_title": "⚠️ Nemo monita belli accipit",
       "reminders_members": "Sodales ipsi ea accendunt: {how}",
       "reminders_admins": "Vel ea pro tota gente accende: {path}.",

@@ -1604,8 +1604,8 @@
       "hub_no_channel": "an, aber kein Kanal gesetzt",
       "coordinator_per_clan": "eine Rolle pro Clan ({count} verknüpft)",
       "settings": "Datenaufbewahrung: {retention}\nAlle verknüpften Accounts einbeziehen: {include_all}\nKoordinatoren-Rolle: {coordinator}\nErweiterte Anmeldung (Ersatzbank): {bench}",
-      "player_hub_hidden": "Keine der Rollen deiner Mitglieder (@everyone oder die Rollen, die ClashControl vergibt) kann den Kanal des Spieler-Hubs sehen oder seinen Verlauf lesen, daher können Mitglieder den Spieler-Hub nicht nutzen.",
-      "no_activities": "Die Rollen deiner Mitglieder haben im Kanal des Spieler-Hubs kein {perm}. Der Button {button} öffnet eine Discord-Aktivität, die diese Berechtigung brauchen kann — erlaube sie dort für @everyone."
+      "player_hub_hidden": "Deine Mitglieder können den Kanal des Spieler-Hubs nicht sehen oder seinen Verlauf lesen. Mitglieder sind abgedeckt, sobald eines davon es kann: @everyone, die Mitglieder-Rolle der Einfachen Rollen, alle vier CoC-Rollen oder jede Clan-Rolle.",
+      "no_activities": "Der Button {button} öffnet eine Discord-Aktivität, die im Kanal des Spieler-Hubs {perm} braucht — und keine der Rollengruppen deiner Mitglieder hat es dort: @everyone, die Mitglieder-Rolle der Einfachen Rollen, alle vier CoC-Rollen oder jede Clan-Rolle."
     },
     "war_notifications": {
       "summary_nobody_linked": "noch keine verknüpften Mitglieder",
@@ -1698,6 +1698,7 @@
       "registration_hidden": "Sie ist in {channel} gepostet, den weder @everyone noch die Neuling-Rolle sehen kann.",
       "registration_move": "Verschiebe sie in einen Kanal, den neue Mitglieder sehen: {path}.",
       "allow_everyone": "Oder behalte den Kanal und erlaube in {channel} {view} und {history} für @everyone (Kanal bearbeiten → Berechtigungen).",
+      "allow_members": "Oder behalte den Kanal und erlaube in {channel} {view} und {history} für @everyone — oder für die Mitglieder-Rolle, alle vier CoC-Rollen oder jede Clan-Rolle (Kanal bearbeiten → Berechtigungen).",
       "nobody_linked_title": "⚠️ Noch niemand verknüpft",
       "nobody_linked": "Keiner der {total} Accounts in deinen Mitglieds-Clans ist mit einem Discord-Benutzer verknüpft — Rollen und Erinnerungen erreichen noch niemanden.",
       "link_own": "Verknüpfe zuerst deinen eigenen Account: {registration} → {button}.",
@@ -1707,7 +1708,7 @@
       "player_hub_hidden_title": "⚠️ Mitglieder sehen den Spieler-Hub nicht",
       "player_hub_move": "Verschiebe ihn in einen Kanal, den deine Mitglieder sehen: {path}.",
       "no_activities_title": "⚠️ Mitglieder können ihre CWL-Einstellungen evtl. nicht öffnen",
-      "allow_activities": "In {channel}: Kanal bearbeiten → Berechtigungen → @everyone, erlaube {perm}.",
+      "allow_activities": "In {channel}: Kanal bearbeiten → Berechtigungen, erlaube {perm} für @everyone — oder für die Mitglieder-Rolle, alle vier CoC-Rollen oder jede Clan-Rolle.",
       "no_reminders_title": "⚠️ Niemand bekommt Kriegs-Erinnerungen",
       "reminders_members": "Mitglieder schalten sie selbst ein: {how}",
       "reminders_admins": "Oder schalte sie für den ganzen Clan ein: {path}.",

@@ -1603,8 +1603,8 @@
       "hub_no_channel": "activado, pero sin canal",
       "coordinator_per_clan": "un rol por clan ({count} vinculados)",
       "settings": "Retención de datos: {retention}\nIncluir todas las cuentas vinculadas: {include_all}\nRol de coordinador: {coordinator}\nInscripción ampliada (banquillo): {bench}",
-      "player_hub_hidden": "Ninguno de los roles de tus miembros (@everyone o los roles que asigna ClashControl) puede ver el canal del centro de jugadores ni leer su historial, así que los miembros no pueden usarlo.",
-      "no_activities": "Los roles de tus miembros no tienen {perm} en el canal del centro de jugadores. El botón {button} abre una Actividad de Discord, que puede necesitar ese permiso — permítelo para @everyone en ese canal."
+      "player_hub_hidden": "Tus miembros no pueden ver el canal del centro de jugadores ni leer su historial. Los miembros quedan cubiertos en cuanto uno de estos pueda: @everyone, el rol de miembro de Roles Simples, los cuatro roles de CoC o todos los roles de clan.",
+      "no_activities": "El botón {button} abre una Actividad de Discord, que necesita {perm} en el canal del centro de jugadores — y ningún grupo de roles de tus miembros lo tiene allí: @everyone, el rol de miembro de Roles Simples, los cuatro roles de CoC o todos los roles de clan."
     },
     "war_notifications": {
       "summary_nobody_linked": "aún no hay miembros vinculados",
@@ -1697,6 +1697,7 @@
       "registration_hidden": "Está publicado en {channel}, que ni @everyone ni el rol de novato pueden ver.",
       "registration_move": "Muévelo a un canal que los nuevos miembros puedan ver: {path}.",
       "allow_everyone": "O mantén el canal y permite {view} y {history} para @everyone en {channel} (Editar canal → Permisos).",
+      "allow_members": "O mantén el canal y permite {view} y {history} en {channel} para @everyone — o para el rol de miembro, los cuatro roles de CoC o todos los roles de clan (Editar canal → Permisos).",
       "nobody_linked_title": "⚠️ Aún no hay nadie vinculado",
       "nobody_linked": "Ninguna de las {total} cuentas de tus clanes miembro está vinculada a un usuario de Discord, así que los roles y recordatorios todavía no llegan a nadie.",
       "link_own": "Vincula primero tu propia cuenta: {registration} → {button}.",
@@ -1706,7 +1707,7 @@
       "player_hub_hidden_title": "⚠️ Los miembros no ven el centro de jugadores",
       "player_hub_move": "Muévelo a un canal que tus miembros puedan ver: {path}.",
       "no_activities_title": "⚠️ Puede que los miembros no puedan abrir sus preferencias de LGC",
-      "allow_activities": "En {channel}: Editar canal → Permisos → @everyone, permite {perm}.",
+      "allow_activities": "En {channel}: Editar canal → Permisos, permite {perm} para @everyone — o para el rol de miembro, los cuatro roles de CoC o todos los roles de clan.",
       "no_reminders_title": "⚠️ Nadie recibe recordatorios de guerra",
       "reminders_members": "Los miembros los activan ellos mismos: {how}",
       "reminders_admins": "O actívalos para todo el clan: {path}.",

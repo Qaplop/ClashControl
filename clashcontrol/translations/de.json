@@ -266,7 +266,7 @@
       "subscribe": {
         "short": "Kanal für Clan/Familien-Bestenlisten abonnieren",
         "title": "📊 Subscribe-Befehl",
-        "detailed": "Abonniere einen Discord-Kanal, um automatische Bestenlisten-Updates für einen Clan oder eine Clan-Familie zu erhalten.\n\n**Verwendung:**\n`/subscribe clan:<clan_tag_oder_name> mode:<bestenlisten_modus> [cwl_only:<true/false>] [current_year:<true/false>]`\n\n**Parameter:**\n• `clan` - Clan-Tag (z.B. #ABC123) oder Clan-Name, oder Familien-Tag\n• `mode` - Bestenlisten-Modus (Standard: `attack`, falls nicht angegeben)\n• `cwl_only` - Optional: Abo nur auf CWL-Statistiken beschränken (hängt `_cwl` an den Modus an)\n• `current_year` - Optional: Jahr-bis-heute statt aktuellem Monat verfolgen (Standard: false)\n\n**Beispiel:**\n`/subscribe clan:#L2J0C0PY mode:attack`\n`/subscribe clan:QCrew mode:avgstars current_year:true`"
+        "detailed": "Abonniere einen Discord-Kanal, um automatische Bestenlisten-Updates für einen Clan oder eine Clan-Familie zu erhalten.\n\n**Verwendung:**\n`/subscribe clan:<clan_tag_oder_name> mode:<bestenlisten_modus> [cwl_only:<true/false>] [current_year:<true/false>]`\n\n**Parameter:**\n• `clan` - Clan-Tag (z.B. #ABC123) oder Clan-Name, oder Familien-Tag\n• `mode` - Bestenlisten-Modus (Standard: `attack`, falls nicht angegeben)\n• `cwl_only` - Optional: Abo nur auf CWL-Statistiken beschränken (hängt `_cwl` an den Modus an)\n• `current_year` - Optional: Jahr-bis-heute statt aktuellem Monat verfolgen (Standard: false)\n\n**Beispiel:**\n`/subscribe clan:#L2J0C0PY mode:attack`\n`/subscribe clan:QCrew mode:avgstars current_year:true`\n\n**Mitglieds-Clan:** Ist der Clan noch kein Mitglieds-Clan dieses Servers, fragt ClashControl, ob er hinzugefügt werden soll. Ein Abo allein macht ihn nicht zum Mitglieds-Clan — Mitglieds-Clans verwaltest du unter /clan management → ⚙️ Grundeinstellungen → ⚔️ Mitglieds-Clans."
       },
       "unsubscribe": {
         "short": "Kanal von Updates abmelden",
@@ -750,6 +750,13 @@
       "error_guild_required": "Dieser Befehl muss in einem Server verwendet werden."
     },
     "member_clans_config": {
+      "button_add": "Clan oder Familie hinzufügen (Name oder Tag)",
+      "add_hint": "➕ Dein Clan fehlt? **{button}** findet ihn per Name oder Tag — ein Abo ist nicht nötig.",
+      "ask_member": "Ist **{clan}** ({tag}) einer der eigenen Clans dieses Servers? Als **Mitglieds-Clan** zählt er für Registrierung, Rollen, Erinnerungen und CWL. Das Bestenlisten-Abo funktioniert so oder so.",
+      "button_yes_member": "Ja, als Mitglieds-Clan hinzufügen",
+      "button_no_member": "Nein, nur die Bestenliste",
+      "added_member": "✅ **{clan}** ist jetzt ein Mitglieds-Clan dieses Servers.",
+      "kept_subscription_only": "👍 Alles klar — **{clan}** bleibt nur ein Bestenlisten-Abo.",
       "button_clear_all": "Alle löschen",
       "button_apply": "Änderungen übernehmen"
     },
@@ -1085,7 +1092,6 @@
       "error_deleting_family": "❌ **Fehler beim Löschen der Familie**\n\nFehler beim Löschen von '{family_name}':\n{error}",
       "error_no_families_to_edit": "❌ **Keine Familien zum Bearbeiten**\n\nDieser Server besitzt keine Clan-Familien.\n\nNur die Gilde, die eine Familie erstellt hat, kann sie bearbeiten.",
       "error_no_families_to_delete": "❌ **Keine Familien zum Löschen**\n\nDieser Server besitzt keine Clan-Familien.\n\nNur die Gilde, die eine Familie erstellt hat, kann sie löschen.",
-      "error_no_clans_available": "❌ **Keine Clans verfügbar**\n\nDieser Server hat keine Clan-Abos. Verwenden Sie `/subscribe`, um zuerst Clans hinzuzufügen.",
       "error_no_clans_configured": "❌ Keine Clans oder Familien konfiguriert",
       "error_adding_selection": "❌ Fehler beim Hinzufügen der Auswahl",
       "error_no_clans_selected": "❌ Keine Clans oder Familien ausgewählt",

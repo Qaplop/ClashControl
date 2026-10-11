@@ -228,6 +228,7 @@ _GUARDED_HANDLERS = {
         "RoleConfigurationView": ["_on_apply"],
         "EditFamilyView": ["_on_save"],
         "WelcomeMessageConfigView": ["_on_save", "_on_cancel"],
+        "AddAsMemberClanView": ["_on_yes", "_on_no"],  # /subscribe's member-clan question
     },
     "clashcontrol/ui_registration.py": {
         "UnlinkConfirmView": ["_on_confirm", "_on_cancel"],

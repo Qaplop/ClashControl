@@ -255,6 +255,9 @@ async def subscribe(
     # this success reply, and the leaderboard then failed every cycle. Say so right away.
     from clashcontrol.bot_permissions import warn_missing_permissions
     await warn_missing_permissions(interaction, features={"leaderboard"}, only_channel_id=interaction.channel.id)
+    # Not a member clan yet? Ask (qaplop 2026-10-11): subscription and member clan are separate.
+    from clashcontrol.ui_clan_management import ask_add_as_member_clan
+    await ask_add_as_member_clan(interaction, tag)
     _log_cmd_done(interaction, "subscribe")
     logging.info(f"ADMIN ACTION: {interaction.user} subscribed channel {interaction.channel.id} to {tag} for mode '{requested_mode}' (year_scope={'current' if current_year else 'month'})")
 

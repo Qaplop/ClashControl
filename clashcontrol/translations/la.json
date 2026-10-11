@@ -266,7 +266,7 @@
       "subscribe": {
         "short": "Subscribe canalem ad renovationes tabulae principum gentis/familiae",
         "title": "📊 Mandatum Subscribe",
-        "detailed": "Subscribe canalem Discord ut renovationes automaticas tabulae principum gentis vel familiae gentium accipiat.\n\n**Usus:**\n`/subscribe clan:<nota_vel_nomen_gentis> mode:<modus_tabulae> [cwl_only:<true/false>] [current_year:<true/false>]`\n\n**Parametri:**\n• `clan` - Nota gentis (e.g., #ABC123) vel nomen gentis, vel nota familiae\n• `mode` - Modus tabulae principum (ad `attack` praedefinitur si omittitur)\n• `cwl_only` - Optionale: Subscriptionem ad tantum statisticas CWL restringere (`_cwl` modo addit)\n• `current_year` - Optionale: Periodum anni currentis potius quam mensem currentem sequi (praedefinitum: false)\n\n**Exemplum:**\n`/subscribe clan:#L2J0C0PY mode:attack`\n`/subscribe clan:QCrew mode:avgstars current_year:true`"
+        "detailed": "Subscribe canalem Discord ut renovationes automaticas tabulae principum gentis vel familiae gentium accipiat.\n\n**Usus:**\n`/subscribe clan:<nota_vel_nomen_gentis> mode:<modus_tabulae> [cwl_only:<true/false>] [current_year:<true/false>]`\n\n**Parametri:**\n• `clan` - Nota gentis (e.g., #ABC123) vel nomen gentis, vel nota familiae\n• `mode` - Modus tabulae principum (ad `attack` praedefinitur si omittitur)\n• `cwl_only` - Optionale: Subscriptionem ad tantum statisticas CWL restringere (`_cwl` modo addit)\n• `current_year` - Optionale: Periodum anni currentis potius quam mensem currentem sequi (praedefinitum: false)\n\n**Exemplum:**\n`/subscribe clan:#L2J0C0PY mode:attack`\n`/subscribe clan:QCrew mode:avgstars current_year:true`\n\n**Gens sodalis:** si gens nondum gens sodalis huius servitoris est, ClashControl rogat num addenda sit. Subscriptio sola eam gentem sodalem non facit — gentes sodales in /clan management → ⚙️ Configuratio Basica → ⚔️ Gentes Sodales administrantur."
       },
       "unsubscribe": {
         "short": "Cancella subscriptionem canalis a renovationibus",
@@ -750,6 +750,13 @@
       "error_guild_required": "Hoc mandatum intra servitorem uti debet."
     },
     "member_clans_config": {
+      "button_add": "Gentem vel familiam adde (nomen vel signum)",
+      "add_hint": "➕ Gens tua deest? **{button}** eam per nomen vel signum invenit — subscriptio non requiritur.",
+      "ask_member": "Estne **{clan}** ({tag}) una ex gentibus propriis huius servitoris? Ut **gens sodalis** valet ad inscriptionem, munera, admonitiones et CWL. Subscriptio tabulae utroque modo operatur.",
+      "button_yes_member": "Ita, ut gentem sodalem adde",
+      "button_no_member": "Minime, tantum tabula",
+      "added_member": "✅ **{clan}** nunc gens sodalis huius servitoris est.",
+      "kept_subscription_only": "👍 Bene — **{clan}** tantum subscriptio tabulae manet.",
       "button_clear_all": "Vacua Omnia",
       "button_apply": "Applica Mutationes"
     },
@@ -1084,7 +1091,6 @@
       "error_deleting_family": "❌ **Error in Familia Delenda**\n\nDelere '{family_name}' non potuit:\n{error}",
       "error_no_families_to_edit": "❌ **Nullae Familiae ad Mutandum**\n\nHic servitor nullas familias gentium possidet.\n\nTantum servitor qui familiam creavit eam mutare potest.",
       "error_no_families_to_delete": "❌ **Nullae Familiae ad Delendum**\n\nHic servitor nullas familias gentium possidet.\n\nTantum servitor qui familiam creavit eam delere potest.",
-      "error_no_clans_available": "❌ **Nullae Gentes Praesto**\n\nHic servitor nullas subscriptiones gentium habet. Utere `/subscribe` ut primum gentes addas.",
       "error_no_clans_configured": "❌ Nullae gentes vel familiae configuratae",
       "error_adding_selection": "❌ Error in electione addenda",
       "error_no_clans_selected": "❌ Nullae gentes vel familiae electae",

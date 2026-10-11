@@ -2880,13 +2880,9 @@ class ClanManagementView(discord.ui.View):
                     if tag in CACHE.clan_families:
                         subscribed_family_tags.add(tag)
         
-        if not available_clans and not subscribed_family_tags:
-            await interaction.response.send_message(
-                t('ui_components.errors.error_no_clans_available', guild_id=interaction.guild.id),
-                ephemeral=True
-            )
-            return
-        
+        # No early exit without subscriptions (qaplop 2026-10-11): a member clan needs none, and
+        # on a brand-new server this dialog — "Add clan or family" — is how the first clan arrives.
+
         # Filter families to only those with:
         # 1. Direct subscription on this guild, OR
         # 2. At least one clan with a subscription on this guild
@@ -2945,8 +2941,7 @@ class ClanManagementView(discord.ui.View):
         
         user_id = str(interaction.user.id)
         guild_id_int = interaction.guild.id
-        header_msg = t('ui_components.prompts.member_clans_header', 
-                       user_id=user_id, guild_id=guild_id_int, display_text=display_text)
+        header_msg = member_clans_dialog_text(guild_id_int, display_text, user_id)
         
         await interaction.response.defer(thinking=False, ephemeral=True)
         msg = await interaction.followup.send(
@@ -4218,25 +4213,15 @@ class AddClanFamilyModal(discord.ui.Modal, title="Add Clan or Family"):
                     await self.parent_view._refresh_view()  # type: ignore[attr-defined]
                 return
             
-            # Check clan by tag
-            clan_data = CACHE.clan_name_cache.get(normalized_tag)
-            clan_name = None
-            if clan_data:
-                if isinstance(clan_data, dict):  # type: ignore[misc]
-                    clan_name = clan_data.get("name")
-                else:
-                    clan_name = clan_data  # Old format
-            
-            if not clan_name:
-                # Fetch from CoC API via cache manager
-                try:
-                    clan = await CACHE.coc_clan_cache.get_clan(normalized_tag)
-                    if clan:
-                        clan_name = clan.name
-                except Exception:
-                    pass
-            
-            if clan_name:
+            # Check clan by tag — a clan the bot doesn't know yet is fetched and registered
+            # (cache + DB), so it is tracked like any other clan once it's a member clan.
+            from clashcontrol.QBdiscocmdshelper import validate_and_add_clan_to_cache
+            try:
+                known, _msg, clan_name = await validate_and_add_clan_to_cache(normalized_tag)
+            except Exception:
+                known, clan_name = False, None
+
+            if known and clan_name:
                 if normalized_tag in self.parent_view.member_clans:
                     from clashcontrol.i18n import t
                     user_id = str(interaction.user.id)
@@ -4244,7 +4229,7 @@ class AddClanFamilyModal(discord.ui.Modal, title="Add Clan or Family"):
                     msg = t('ui_components.errors.clan_already_added', user_id=user_id, guild_id=guild_id)
                     await interaction.followup.send(msg, ephemeral=True)
                 else:
-                    self.parent_view.member_clans.append(normalized_tag)
+                    self.parent_view.add_member_clan_candidate(normalized_tag)
                     await self.parent_view._refresh_view()  # type: ignore[attr-defined]
                 return
         
@@ -4299,10 +4284,7 @@ class AddClanFamilyModal(discord.ui.Modal, title="Add Clan or Family"):
                 msg = t('ui_components.errors.clan_already_added', user_id=user_id, guild_id=guild_id)
                 await interaction.followup.send(msg, ephemeral=True)
             else:
-                self.parent_view.member_clans.append(clan_tag)  # type: ignore[arg-type]
-                # Also add to clan_management_view.guild_clans so button appears
-                if clan_tag not in self.parent_view.clan_management_view.guild_clans:
-                    self.parent_view.clan_management_view.guild_clans.append(clan_tag)  # type: ignore[arg-type]
+                self.parent_view.add_member_clan_candidate(clan_tag)
                 await self.parent_view._refresh_view()  # type: ignore[attr-defined]
             return
         
@@ -4470,10 +4452,7 @@ class SelectClanFamilyDropdownView(discord.ui.View):
             elif selected_value.startswith("clan_"):
                 clan_tag = selected_value.replace("clan_", "")
                 if clan_tag not in self.parent_view.member_clans:
-                    self.parent_view.member_clans.append(clan_tag)  # type: ignore[arg-type]
-                # Also add to clan_management_view.guild_clans (single source of truth)
-                if clan_tag not in self.parent_view.clan_management_view.guild_clans:
-                    self.parent_view.clan_management_view.guild_clans.append(clan_tag)  # type: ignore[arg-type]
+                    self.parent_view.add_member_clan_candidate(clan_tag)
             
             # Delete the selection message
             if self.selection_message:
@@ -4630,6 +4609,113 @@ class ConfirmDeleteClanRolesView(discord.ui.View):
               role_names=self.role_names),
             ephemeral=True,
         )
+
+
+def member_clans_dialog_text(guild_id: int, display_text: str, user_id: Optional[str] = None) -> str:
+    """The Member Clans dialog's text: current selection plus how to add a clan."""
+    return (t('ui_components.prompts.member_clans_header', user_id=user_id, guild_id=guild_id,
+              display_text=display_text)
+            + "\n" + t('ui_components.member_clans_config.add_hint', user_id=user_id, guild_id=guild_id,
+                        button=t('ui_components.member_clans_config.button_add', user_id=user_id, guild_id=guild_id)))
+
+
+async def create_member_clan_roles(guild: discord.Guild, guild_id: str, clan_tags: Any) -> bool:
+    """Create the clan role of each new member clan, alphabetically by name (clan roles on).
+    Shared by the Member Clans dialog's Apply and add_member_clan(). True if any was created."""
+    from clashcontrol import guild_role_manager
+    from clashcontrol.cache_manager import CACHE
+    created = False
+    for clan_tag in sorted(clan_tags, key=lambda tag: (CACHE.get_clan_name(tag, tag) or tag).lower()):  # type: ignore[arg-type]
+        clan_name = CACHE.get_clan_name(clan_tag, clan_tag)  # type: ignore[arg-type]
+        await guild_role_manager.create_clan_role(guild, guild_id, clan_tag, clan_name or clan_tag)
+        logging.info(f"[ROLES] Auto-created clan role for {clan_tag} in guild {guild_id}")
+        created = True
+    return created
+
+
+async def add_member_clan(interaction: discord.Interaction, clan_tag: str) -> None:
+    """Make ``clan_tag`` a member clan of the interaction's server outside the Member Clans dialog
+    (/subscribe's question, qaplop 2026-10-11) — with what that dialog's Apply does for one added
+    clan: tracked, its clan role (clan roles on) and a role sync. The clan must be known
+    (validate_and_add_clan_to_cache)."""
+    from clashcontrol import guild_role_manager
+    from clashcontrol.cache_manager import CACHE
+    guild = interaction.guild
+    if guild is None:
+        return
+    guild_id = str(guild.id)
+    config = CACHE.server_config.setdefault(guild_id, {})
+    member_clans = list(config.get("member_clans", []))
+    if clan_tag in member_clans:
+        return
+    config["member_clans"] = member_clans + [clan_tag]
+    await CACHE.persist_server_config(guild_id)
+    if clan_tag in CACHE.clan_name_cache:
+        await CACHE.persist_clan(clan_tag)
+    await CACHE.update_clan_subscription_status(clan_tag)
+    logging.info(f"[MEMBER-CLANS] {interaction.user} added {clan_tag} as a member clan of guild {guild_id}")
+    if config.get("clan_role_enabled"):
+        if await create_member_clan_roles(guild, guild_id, [clan_tag]):
+            from clashcontrol.bot_permissions import warn_missing_permissions
+            await warn_missing_permissions(interaction, features={"clan_roles"})
+        await guild_role_manager.sync_all_roles_for_guild(guild, guild_id)
+
+
+class AddAsMemberClanView(discord.ui.View):
+    """/subscribe's question for a clan that isn't a member clan yet: add it? A subscription and
+    a member clan are independent (qaplop 2026-10-11) — a leaderboard of a friendly clan is fine."""
+
+    def __init__(self, clan_tag: str, guild_id: Optional[int], user_id: str):
+        super().__init__(timeout=600)
+        self.clan_tag = clan_tag
+        self.guild_id = guild_id
+        self.user_id = user_id
+        for key, callback, style in (("button_yes_member", self._on_yes, discord.ButtonStyle.success),
+                                     ("button_no_member", self._on_no, discord.ButtonStyle.secondary)):
+            button = discord.ui.Button(
+                label=t(f'ui_components.member_clans_config.{key}', user_id=user_id, guild_id=guild_id)[:80],
+                style=style)
+            button.callback = callback  # type: ignore[assignment]
+            self.add_item(button)
+
+    def _name(self) -> str:
+        from clashcontrol.cache_manager import CACHE
+        return CACHE.get_clan_name(self.clan_tag, self.clan_tag) or self.clan_tag  # type: ignore[return-value]
+
+    async def _on_yes(self, interaction: discord.Interaction) -> None:
+        if not await claim_action(self, interaction):
+            return
+        await lock_buttons(self, interaction)
+        await add_member_clan(interaction, self.clan_tag)
+        await interaction.edit_original_response(content=t(
+            'ui_components.member_clans_config.added_member', user_id=self.user_id, guild_id=self.guild_id,
+            clan=self._name()), view=None)
+        self.stop()
+
+    async def _on_no(self, interaction: discord.Interaction) -> None:
+        if not await claim_action(self, interaction):
+            return
+        await interaction.response.edit_message(content=t(
+            'ui_components.member_clans_config.kept_subscription_only', user_id=self.user_id,
+            guild_id=self.guild_id, clan=self._name()), view=None)
+        self.stop()
+
+
+async def ask_add_as_member_clan(interaction: discord.Interaction, clan_tag: str) -> None:
+    """After /subscribe: ask whether a clan that isn't a member clan yet should become one."""
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_guild_member_clan_tags
+    if interaction.guild is None or clan_tag in CACHE.clan_families:
+        return
+    if clan_tag in resolve_guild_member_clan_tags(interaction.guild.id):
+        return
+    user_id = str(interaction.user.id)
+    name = CACHE.get_clan_name(clan_tag, clan_tag) or clan_tag
+    await interaction.followup.send(
+        t('ui_components.member_clans_config.ask_member', user_id=user_id, guild_id=interaction.guild.id,
+          clan=name, tag=clan_tag),
+        view=AddAsMemberClanView(clan_tag, interaction.guild.id, user_id), ephemeral=True,
+    )
 
 
 class MemberClansConfigurationView(discord.ui.View):
@@ -4793,10 +4879,21 @@ class MemberClansConfigurationView(discord.ui.View):
         return callback
     
     def _add_control_buttons(self):
-        """Add Clear All, Apply and Add by Tag buttons."""
+        """Add (by name or tag), Clear All and Apply."""
         from clashcontrol.i18n import t
         guild_id = self.guild.id if self.guild else None
-        
+
+        # The primary way to add a member clan (qaplop 2026-10-11) — no subscription needed.
+        add_button = discord.ui.Button(
+            label=t('ui_components.member_clans_config.button_add', guild_id=guild_id)[:80],
+            emoji="➕",
+            style=discord.ButtonStyle.success,
+            custom_id="add_clan_family",
+            row=4
+        )
+        add_button.callback = self._on_add_clan_family  # type: ignore[assignment]
+        self.add_item(add_button)  # type: ignore[arg-type]
+
         # Clear all button
         clear_button = discord.ui.Button(
             label=t('ui_components.member_clans_config.button_clear_all', guild_id=guild_id),
@@ -4818,17 +4915,13 @@ class MemberClansConfigurationView(discord.ui.View):
         )
         apply_button.callback = self._on_apply  # type: ignore[assignment]
         self.add_item(apply_button)  # type: ignore[arg-type]
-        
-        # Add Clan/Family button
-        add_button = discord.ui.Button(
-            label="Add Clan/Family",
-            emoji="➕",
-            style=discord.ButtonStyle.secondary,
-            custom_id="add_clan_family",
-            row=4
-        )
-        add_button.callback = self._on_add_clan_family  # type: ignore[assignment]
-        self.add_item(add_button)  # type: ignore[arg-type]
+
+    def add_member_clan_candidate(self, clan_tag: str) -> None:
+        """Select ``clan_tag`` in this dialog (saved on Apply) and give it its toggle button."""
+        if clan_tag not in self.member_clans:
+            self.member_clans.append(clan_tag)
+        if clan_tag not in self.clan_management_view.guild_clans:
+            self.clan_management_view.guild_clans.append(clan_tag)  # type: ignore[arg-type]
     
     async def _on_add_clan_family(self, interaction: discord.Interaction):
         """Handle Add Clan/Family button - open modal for searching clan/family by tag or name."""
@@ -4908,12 +5001,7 @@ class MemberClansConfigurationView(discord.ui.View):
         if not self.sent_message:
             return
         await self.sent_message.edit(  # type: ignore[misc]
-            content=(
-                "**Configure Member Clans & Families**\n\n"
-                "Select entire clan families or individual clans to grant the member role.\n\n"
-                f"{display_text}\n\n"
-                "🏰 = Family selected | 🏯 = Family not selected | ✅ = Clan selected | Click **Apply Changes** when done."
-            ),
+            content=member_clans_dialog_text(self.guild.id, display_text),
             view=self
         )
     
@@ -5060,6 +5148,10 @@ class MemberClansConfigurationView(discord.ui.View):
             
             # Save to disk
             await CACHE.persist_server_config(guild_id)
+            # A member clan is tracked (war updates every cycle) even without a subscription — and
+            # a removed one may not be any more.
+            for changed_tag in set(old_member_clans) ^ set(self.member_clans):
+                await CACHE.update_clan_subscription_status(changed_tag)
 
             # ---- Clan-role feature hooks ----
             clan_role_enabled = CACHE.server_config[guild_id].get("clan_role_enabled", False)
@@ -5072,28 +5164,13 @@ class MemberClansConfigurationView(discord.ui.View):
 
                 roles_created = False
 
-                # Create Discord role for any newly added individual clan, alphabetically by name
-                newly_added_clans = sorted(
-                    new_clans_set - old_clans_set,
-                    key=lambda tag: (CACHE.get_clan_name(tag, tag) or tag).lower()  # type: ignore[arg-type]
-                )
-                for added_tag in newly_added_clans:
-                    clan_name = CACHE.get_clan_name(added_tag, added_tag)  # type: ignore[arg-type]
-                    await guild_role_manager.create_clan_role(interaction.guild, guild_id, added_tag, clan_name or added_tag)
-                    logging.info(f"[ROLES] Auto-created clan role for {added_tag} in guild {guild_id}")
-                    roles_created = True
-
-                # Create Discord roles for clans in any newly added family, alphabetically by name
+                # Create Discord roles for newly added clans and the clans of newly added families
+                roles_created = await create_member_clan_roles(
+                    interaction.guild, guild_id, new_clans_set - old_clans_set)
                 for added_family_id in new_families_set - old_families_set:
-                    family_clans = sorted(
-                        CACHE.clan_families.get(added_family_id, {}).get("clans", []),
-                        key=lambda tag: (CACHE.get_clan_name(tag, tag) or tag).lower()  # type: ignore[arg-type]
-                    )
-                    for clan_tag in family_clans:
-                        clan_name = CACHE.get_clan_name(clan_tag, clan_tag)  # type: ignore[arg-type]
-                        await guild_role_manager.create_clan_role(interaction.guild, guild_id, clan_tag, clan_name or clan_tag)
-                        logging.info(f"[ROLES] Auto-created clan role for {clan_tag} (family {added_family_id}) in guild {guild_id}")
-                        roles_created = True
+                    roles_created = await create_member_clan_roles(
+                        interaction.guild, guild_id, CACHE.clan_families.get(added_family_id, {}).get("clans", []),
+                    ) or roles_created
 
                 # Immediately assign new roles to all registered guild members
                 if roles_created or new_clans_set != old_clans_set or new_families_set != old_families_set:

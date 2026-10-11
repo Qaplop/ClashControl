@@ -266,7 +266,7 @@
       "subscribe": {
         "short": "Subscribe channel to clan/family leaderboard updates",
         "title": "📊 Subscribe Command",
-        "detailed": "Subscribe a Discord channel to receive automatic leaderboard updates for a clan or clan family.\n\n**Usage:**\n`/subscribe clan:<clan_tag_or_name> mode:<leaderboard_mode> [cwl_only:<true/false>] [current_year:<true/false>]`\n\n**Parameters:**\n• `clan` - Clan tag (e.g., #ABC123) or clan name, or family tag\n• `mode` - Leaderboard mode (defaults to `attack` if omitted)\n• `cwl_only` - Optional: Restrict subscription to CWL stats only (appends `_cwl` to the mode)\n• `current_year` - Optional: Track the year-to-date period instead of the current month (default: false)\n\n**Example:**\n`/subscribe clan:#L2J0C0PY mode:attack`\n`/subscribe clan:QCrew mode:avgstars current_year:true`"
+        "detailed": "Subscribe a Discord channel to receive automatic leaderboard updates for a clan or clan family.\n\n**Usage:**\n`/subscribe clan:<clan_tag_or_name> mode:<leaderboard_mode> [cwl_only:<true/false>] [current_year:<true/false>]`\n\n**Parameters:**\n• `clan` - Clan tag (e.g., #ABC123) or clan name, or family tag\n• `mode` - Leaderboard mode (defaults to `attack` if omitted)\n• `cwl_only` - Optional: Restrict subscription to CWL stats only (appends `_cwl` to the mode)\n• `current_year` - Optional: Track the year-to-date period instead of the current month (default: false)\n\n**Example:**\n`/subscribe clan:#L2J0C0PY mode:attack`\n`/subscribe clan:QCrew mode:avgstars current_year:true`\n\n**Member clan:** if the clan isn't one of this server's member clans yet, ClashControl asks whether to add it. A subscription alone doesn't make it a member clan — member clans are managed under /clan management → ⚙️ Basic Configuration → ⚔️ Member Clans."
       },
       "unsubscribe": {
         "short": "Unsubscribe channel from updates",
@@ -750,6 +750,13 @@
       "error_guild_required": "This command must be used in a guild."
     },
     "member_clans_config": {
+      "button_add": "Add clan or family (name or tag)",
+      "add_hint": "➕ Your clan isn't listed? **{button}** finds it by name or tag — no subscription needed.",
+      "ask_member": "Is **{clan}** ({tag}) one of this server's own clans? As a **member clan** it counts for registration, roles, reminders and CWL. The leaderboard subscription works either way.",
+      "button_yes_member": "Yes, add as member clan",
+      "button_no_member": "No, just the leaderboard",
+      "added_member": "✅ **{clan}** is now a member clan of this server.",
+      "kept_subscription_only": "👍 OK — **{clan}** stays a leaderboard subscription only.",
       "button_clear_all": "Clear All",
       "button_apply": "Apply Changes"
     },
@@ -1085,7 +1092,6 @@
       "error_deleting_family": "❌ **Error Deleting Family**\n\nFailed to delete '{family_name}':\n{error}",
       "error_no_families_to_edit": "❌ **No Families to Edit**\n\nThis server does not own any clan families.\n\nOnly the guild that created a family can edit it.",
       "error_no_families_to_delete": "❌ **No Families to Delete**\n\nThis server does not own any clan families.\n\nOnly the guild that created a family can delete it.",
-      "error_no_clans_available": "❌ **No Clans Available**\n\nThis server has no clan subscriptions. Use `/subscribe` to add clans first.",
       "error_no_clans_configured": "❌ No clans or families configured",
       "error_adding_selection": "❌ Error adding selection",
       "error_no_clans_selected": "❌ No clans or families selected",

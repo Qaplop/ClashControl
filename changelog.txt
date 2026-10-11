@@ -1,6 +1,21 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-11 (27)
+- Changed (qaplop, /setup on a brand-new server): member clans no longer depend on /subscribe.
+  * Fixed: "Member Clans" refused to open without a subscription ("No Clans Available") — the
+    very screen /setup step 3 sends a new server to. It now always opens.
+  * "➕ Add clan or family (name or tag)" is the primary way to add a member clan: translated,
+    green, first in its row, with a hint in the dialog text (also translated now — the
+    re-rendered text was hard-coded English). A tag the bot doesn't know yet is fetched and
+    registered (validate_and_add_clan_to_cache) instead of only being looked up.
+  * Apply now updates the tracking flag of added/removed member clans, so a member clan without
+    a subscription gets war updates right away.
+  * /subscribe asks, for a clan that isn't a member clan yet: "Yes, add as member clan" / "No,
+    just the leaderboard". Subscriptions and member clans are independent.
+  * Shared: create_member_clan_roles() (the dialog's Apply and /subscribe), add_member_clan().
+  Key error_no_clans_available removed. Build 171.
+
 2026-10-11 (26)
 - Fixed (tracker #0121, qaplop): /tutorial flooded the conversation — every step page and every
   "✅ … done! Ready for the next step?" prompt stayed. Now one tutorial message at a time: the

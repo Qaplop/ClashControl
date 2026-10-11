@@ -266,7 +266,7 @@
       "subscribe": {
         "short": "为频道订阅部落/部落家族排行榜更新",
         "title": "📊 Subscribe 命令",
-        "detailed": "为一个 Discord 频道订阅某个部落或部落家族的自动排行榜更新。\n\n**用法：**\n`/subscribe clan:<部落标签或名称> mode:<排行榜模式> [cwl_only:<true/false>] [current_year:<true/false>]`\n\n**参数：**\n• `clan` - 部落标签（例如 #ABC123）或部落名称，或部落家族标签\n• `mode` - 排行榜模式（省略时默认为 `attack`）\n• `cwl_only` - 可选：将订阅限制为仅统计部落战联赛数据（在模式后附加 `_cwl`）\n• `current_year` - 可选：跟踪年初至今的周期，而非当前月份（默认：false）\n\n**示例：**\n`/subscribe clan:#L2J0C0PY mode:attack`\n`/subscribe clan:QCrew mode:avgstars current_year:true`"
+        "detailed": "为一个 Discord 频道订阅某个部落或部落家族的自动排行榜更新。\n\n**用法：**\n`/subscribe clan:<部落标签或名称> mode:<排行榜模式> [cwl_only:<true/false>] [current_year:<true/false>]`\n\n**参数：**\n• `clan` - 部落标签（例如 #ABC123）或部落名称，或部落家族标签\n• `mode` - 排行榜模式（省略时默认为 `attack`）\n• `cwl_only` - 可选：将订阅限制为仅统计部落战联赛数据（在模式后附加 `_cwl`）\n• `current_year` - 可选：跟踪年初至今的周期，而非当前月份（默认：false）\n\n**示例：**\n`/subscribe clan:#L2J0C0PY mode:attack`\n`/subscribe clan:QCrew mode:avgstars current_year:true`\n\n**成员部落：** 如果该部落还不是本服务器的成员部落，ClashControl 会询问是否添加。仅有订阅并不会使其成为成员部落——成员部落在 /clan management → ⚙️ 基础配置 → ⚔️ 成员部落 中管理。"
       },
       "unsubscribe": {
         "short": "取消该频道的更新订阅",
@@ -750,6 +750,13 @@
       "error_guild_required": "此命令必须在服务器内使用。"
     },
     "member_clans_config": {
+      "button_add": "添加部落或家族（名称或标签）",
+      "add_hint": "➕ 你的部落不在列表中？**{button}** 可按名称或标签查找——无需订阅。",
+      "ask_member": "**{clan}**（{tag}）是本服务器自己的部落吗？作为**成员部落**，它会用于注册、身份组、提醒和部落战联赛。排行榜订阅在两种情况下都有效。",
+      "button_yes_member": "是，添加为成员部落",
+      "button_no_member": "否，仅排行榜",
+      "added_member": "✅ **{clan}** 现在是本服务器的成员部落。",
+      "kept_subscription_only": "👍 好的——**{clan}** 仅保留为排行榜订阅。",
       "button_clear_all": "全部清除",
       "button_apply": "应用更改"
     },
@@ -1084,7 +1091,6 @@
       "error_deleting_family": "❌ **删除家族出错**\n\n删除“{family_name}”失败：\n{error}",
       "error_no_families_to_edit": "❌ **没有可编辑的家族**\n\n本服务器不拥有任何部落家族。\n\n只有创建家族的服务器才能编辑它。",
       "error_no_families_to_delete": "❌ **没有可删除的家族**\n\n本服务器不拥有任何部落家族。\n\n只有创建家族的服务器才能删除它。",
-      "error_no_clans_available": "❌ **没有可用的部落**\n\n本服务器没有任何部落订阅。请先使用 `/subscribe` 添加部落。",
       "error_no_clans_configured": "❌ 未配置任何部落或家族",
       "error_adding_selection": "❌ 添加选择时出错",
       "error_no_clans_selected": "❌ 未选择任何部落或家族",

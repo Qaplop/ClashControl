@@ -266,7 +266,7 @@
       "subscribe": {
         "short": "Suscribir el canal a las actualizaciones de la clasificación del clan/familia",
         "title": "📊 Comando Subscribe",
-        "detailed": "Suscribe un canal de Discord para recibir actualizaciones automáticas de la clasificación de un clan o familia de clanes.\n\n**Uso:**\n`/subscribe clan:<tag_o_nombre_del_clan> mode:<modo_clasificacion> [cwl_only:<true/false>] [current_year:<true/false>]`\n\n**Parámetros:**\n• `clan` - Tag del clan (p. ej., #ABC123) o nombre del clan, o tag de familia\n• `mode` - Modo de clasificación (por defecto `attack` si se omite)\n• `cwl_only` - Opcional: Restringir la suscripción solo a estadísticas de LGC (añade `_cwl` al modo)\n• `current_year` - Opcional: Seguir el periodo del año en curso en vez del mes actual (por defecto: false)\n\n**Ejemplo:**\n`/subscribe clan:#L2J0C0PY mode:attack`\n`/subscribe clan:QCrew mode:avgstars current_year:true`"
+        "detailed": "Suscribe un canal de Discord para recibir actualizaciones automáticas de la clasificación de un clan o familia de clanes.\n\n**Uso:**\n`/subscribe clan:<tag_o_nombre_del_clan> mode:<modo_clasificacion> [cwl_only:<true/false>] [current_year:<true/false>]`\n\n**Parámetros:**\n• `clan` - Tag del clan (p. ej., #ABC123) o nombre del clan, o tag de familia\n• `mode` - Modo de clasificación (por defecto `attack` si se omite)\n• `cwl_only` - Opcional: Restringir la suscripción solo a estadísticas de LGC (añade `_cwl` al modo)\n• `current_year` - Opcional: Seguir el periodo del año en curso en vez del mes actual (por defecto: false)\n\n**Ejemplo:**\n`/subscribe clan:#L2J0C0PY mode:attack`\n`/subscribe clan:QCrew mode:avgstars current_year:true`\n\n**Clan miembro:** si el clan aún no es un clan miembro de este servidor, ClashControl pregunta si quieres añadirlo. Una suscripción por sí sola no lo convierte en clan miembro — los clanes miembro se gestionan en /clan management → ⚙️ Configuración Básica → ⚔️ Clanes Miembros."
       },
       "unsubscribe": {
         "short": "Cancelar la suscripción del canal a las actualizaciones",
@@ -750,6 +750,13 @@
       "error_guild_required": "Este comando debe usarse en un servidor."
     },
     "member_clans_config": {
+      "button_add": "Añadir clan o familia (nombre o etiqueta)",
+      "add_hint": "➕ ¿Tu clan no aparece? **{button}** lo encuentra por nombre o etiqueta — no hace falta una suscripción.",
+      "ask_member": "¿Es **{clan}** ({tag}) uno de los clanes propios de este servidor? Como **clan miembro** cuenta para el registro, los roles, los recordatorios y la LGC. La suscripción a la clasificación funciona en ambos casos.",
+      "button_yes_member": "Sí, añadir como clan miembro",
+      "button_no_member": "No, solo la clasificación",
+      "added_member": "✅ **{clan}** ahora es un clan miembro de este servidor.",
+      "kept_subscription_only": "👍 De acuerdo — **{clan}** queda solo como suscripción a la clasificación.",
       "button_clear_all": "Borrar Todo",
       "button_apply": "Aplicar Cambios"
     },
@@ -1084,7 +1091,6 @@
       "error_deleting_family": "❌ **Error al Eliminar la Familia**\n\nNo se pudo eliminar '{family_name}':\n{error}",
       "error_no_families_to_edit": "❌ **Sin Familias para Editar**\n\nEste servidor no posee ninguna familia de clanes.\n\nSolo el servidor que creó una familia puede editarla.",
       "error_no_families_to_delete": "❌ **Sin Familias para Eliminar**\n\nEste servidor no posee ninguna familia de clanes.\n\nSolo el servidor que creó una familia puede eliminarla.",
-      "error_no_clans_available": "❌ **Sin Clanes Disponibles**\n\nEste servidor no tiene ninguna suscripción de clan. Usa `/subscribe` para añadir clanes primero.",
       "error_no_clans_configured": "❌ No hay clanes o familias configurados",
       "error_adding_selection": "❌ Error al añadir la selección",
       "error_no_clans_selected": "❌ No hay clanes o familias seleccionados",

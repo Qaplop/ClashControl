@@ -1594,6 +1594,7 @@
       "summary_no_activities": "puede que los miembros no puedan abrir sus preferencias de LGC",
       "part_mgmt": "centro de gestión en {channel}",
       "part_player": "centro de jugadores en {channel}",
+      "part_both": "centros en {mgmt} · {player}",
       "part_no_hubs": "rol de coordinador vinculado",
       "what": "Liga de Guerras de Clanes: el Centro de Gestión de LGC de los administradores, el Centro de Ajustes de LGC para jugadores y las opciones de la LGC. La LGC también funciona sin los mensajes hub — desde /clan management.",
       "hubs_title": "📌 Mensajes hub",
@@ -1620,7 +1621,7 @@
       "custodians_none": "No hay custodios configurados."
     },
     "cwl_player_hub": {
-      "summary_hub": "{channel} o /cwl preferences",
+      "summary_hub": "en {channel}",
       "summary_hub_problem": "el centro de jugadores tiene un problema — ver el paso {step}",
       "summary_command": "los miembros usan /cwl preferences",
       "what": "Los miembros definen sus preferencias personales de LGC: un nivel de liga preferido, y si quieren jugar siempre, no jugar nunca o decidir en cada temporada. Los ajustes se aplican por cuenta de Clash y en todos los servidores que los invitan.",

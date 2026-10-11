@@ -1595,6 +1595,7 @@
       "summary_no_activities": "Mitglieder können ihre CWL-Einstellungen evtl. nicht öffnen",
       "part_mgmt": "Verwaltungs-Hub in {channel}",
       "part_player": "Spieler-Hub in {channel}",
+      "part_both": "Hubs in {mgmt} · {player}",
       "part_no_hubs": "Koordinatoren-Rolle verknüpft",
       "what": "Clankriegsliga: der CWL-Verwaltungs-Hub der Admins, der Persönliche CWL-Einstellungs-Hub der Mitglieder und die CWL-Optionen. CWL funktioniert auch ohne die Hub-Nachrichten — über /clan management.",
       "hubs_title": "📌 Hub-Nachrichten",
@@ -1621,7 +1622,7 @@
       "custodians_none": "Keine Betreuer gesetzt."
     },
     "cwl_player_hub": {
-      "summary_hub": "{channel} oder /cwl preferences",
+      "summary_hub": "in {channel}",
       "summary_hub_problem": "der Spieler-Hub hat ein Problem — siehe Schritt {step}",
       "summary_command": "Mitglieder nutzen /cwl preferences",
       "what": "Mitglieder legen ihre persönlichen CWL-Einstellungen fest: eine bevorzugte Liga-Stufe, und ob sie immer spielen, nie spielen oder jede Saison neu entscheiden wollen. Die Einstellungen gelten pro Clash-Account und auf jedem Server, der sie einlädt.",

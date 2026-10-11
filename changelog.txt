@@ -1,6 +1,11 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-11 (24)
+- Changed (tracker #0152, qaplop): /setup steps 10 and 11 still wrapped. Step 10 with both hubs
+  on: "hubs in #mgmt · #player" (new key part_both); step 11: "in #channel" (/cwl preferences
+  is on the step's page). All languages. Build 168.
+
 2026-10-11 (23)
 - Fixed (tracker #0153, qaplop): in the CWL panel opened from /setup ("Open settings"), Refresh
   removed the season select and every button, and the labels switched to English. The panel is

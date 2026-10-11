@@ -1595,6 +1595,7 @@
       "summary_no_activities": "members may not be able to open their CWL preferences",
       "part_mgmt": "management hub in {channel}",
       "part_player": "player hub in {channel}",
+      "part_both": "hubs in {mgmt} · {player}",
       "part_no_hubs": "coordinator role linked",
       "what": "Clan War League: the admins' CWL Management Hub, the members' Player CWL Settings Hub, and the CWL options. CWL works without the hub messages too — through /clan management.",
       "hubs_title": "📌 Hub messages",
@@ -1621,7 +1622,7 @@
       "custodians_none": "No custodians set."
     },
     "cwl_player_hub": {
-      "summary_hub": "{channel} or /cwl preferences",
+      "summary_hub": "in {channel}",
       "summary_hub_problem": "the player hub has a problem — see step {step}",
       "summary_command": "members use /cwl preferences",
       "what": "Members set their personal CWL preferences: a preferred league tier, and whether they always want to play, never play, or decide fresh each season. The settings apply per Clash account and on every server that invites them.",

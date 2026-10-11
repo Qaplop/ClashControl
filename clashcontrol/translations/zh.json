@@ -1594,6 +1594,7 @@
       "summary_no_activities": "成员可能无法打开自己的部落战联赛偏好",
       "part_mgmt": "管理中心在 {channel}",
       "part_player": "玩家中心在 {channel}",
+      "part_both": "中心：{mgmt} · {player}",
       "part_no_hubs": "已绑定协调员身份组",
       "what": "部落战联赛：管理员的部落战联赛管理中心、成员的玩家部落战联赛设置中心，以及部落战联赛选项。没有中心消息时，也可以通过 /clan management 使用部落战联赛。",
       "hubs_title": "📌 中心消息",
@@ -1620,7 +1621,7 @@
       "custodians_none": "未设置值守员。"
     },
     "cwl_player_hub": {
-      "summary_hub": "{channel} 或 /cwl preferences",
+      "summary_hub": "在 {channel}",
       "summary_hub_problem": "玩家中心有问题——请查看第 {step} 步",
       "summary_command": "成员使用 /cwl preferences",
       "what": "成员设置自己的部落战联赛偏好：偏好的联赛级别，以及是总是参加、从不参加还是每个赛季重新决定。设置按每个 Clash 账号生效，并适用于所有邀请他们的服务器。",

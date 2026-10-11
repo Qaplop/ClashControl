@@ -1029,6 +1029,10 @@ def check_cwl_settings(guild: discord.Guild) -> StepResult:
                           findings=findings, data=data)
     def parts(g: Optional[int], u: Optional[str]) -> str:
         tr = _translator(g, u)
+        if mgmt_on and player_on:   # both: the short form, so the line fits (tracker #0152)
+            return tr("config_audit.cwl_settings.part_both",
+                      mgmt=_channel_name(guild, config.get("cwl_management_channel_id")),
+                      player=_channel_name(guild, config.get("cwl_player_hub_channel_id")))
         lines = []
         if mgmt_on:
             lines.append(tr("config_audit.cwl_settings.part_mgmt", channel=_channel_name(guild, config.get("cwl_management_channel_id"))))

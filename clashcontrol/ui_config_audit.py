@@ -1,22 +1,25 @@
-"""``/setup`` — the server configuration checklist (tracker #0151).
+"""``/setup`` — the server configuration checklist and guided setup (tracker #0151).
 
 One ephemeral message, edited in place (Cardinal Rule 7): the overview lists every audit step of
 ``clashcontrol.config_audit.STEPS`` with its status; the select opens a step's detail page; Back
-returns to the overview; Re-check runs the checks again. Everything is read-only, so the handlers
-need no double-click claim: each one computes synchronously and answers with ONE edit.
+returns to the overview; Re-check runs the checks again. "Start guided setup" walks the steps in
+order (Phase 6), with the member-side flows of ``clashcontrol.tutorial_flows`` on steps 5, 6 and
+11. Navigation is read-only and answers with ONE edit; the only writes ("we don't use this" /
+"use it after all") claim the view first (claim_action).
 """
 from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import discord
 
 from clashcontrol.config_audit import (
-    STATUS_ICON, STEPS, STEPS_BY_ID, AuditStatus, StepResult, run_audit,
+    STATUS_ICON, STEPS, STEPS_BY_ID, AuditStatus, StepResult, can_dismiss, run_audit,
 )
 from clashcontrol.i18n import t  # type: ignore[attr-defined]
+from clashcontrol.ui_common import claim_action, release_action
 
 #: Below Discord's 15-minute interaction-token lifetime (Pitfall 41): the timeout restarts on every
 #: click, and every click answers with an edit, so the latest token is always still valid.
@@ -95,8 +98,29 @@ def _log_audit(guild: discord.Guild, user_id: str, results: Dict[str, StepResult
     logging.info(f"[SETUP] {what} for guild {guild.name} ({guild.id}) by user {user_id}: {counts}")
 
 
+#: Guided-setup page after the last step.
+_DONE = "__done__"
+
+#: Member-side flows per step (guided setup, Q-11): (button key, tutorial_flows function name).
+_MEMBER_FLOWS: Dict[str, List[Tuple[str, str]]] = {
+    "registration": [("config_audit.guided.button_link_account", "open_link_account"),
+                     ("config_audit.guided.button_my_accounts", "open_my_accounts")],
+    "war_notifications": [("config_audit.guided.button_war_reminders", "open_war_reminders")],
+    "cwl_player_hub": [("config_audit.guided.button_cwl_preferences", "open_cwl_preferences")],
+}
+
+
+def needs_attention(result: StepResult) -> bool:
+    """A step the guided setup should stop at: broken, incomplete, blocked, or an optional
+    feature not in use that the guild hasn't dismissed."""
+    if result.status in (AuditStatus.BROKEN, AuditStatus.INCOMPLETE, AuditStatus.BLOCKED):
+        return True
+    return result.status == AuditStatus.OFF and not result.data.get("dismissed")
+
+
 class SetupView(discord.ui.View):
-    """Overview ⇄ detail navigation of ``/setup``. ``selected`` None = overview."""
+    """``/setup``: overview ⇄ step detail (``selected``), and the guided setup (``guided``)
+    that walks the steps in order. One ephemeral message, every click answers with one edit."""
 
     def __init__(self, guild: discord.Guild, user_id: str, results: Dict[str, StepResult],
                  selected: Optional[str] = None) -> None:
@@ -105,20 +129,54 @@ class SetupView(discord.ui.View):
         self.user_id = user_id
         self.results = results
         self.selected = selected
+        self.guided = False
         self._last_interaction: Optional[discord.Interaction] = None
         self._rebuild()
 
     # -- rendering ---------------------------------------------------------------------------
 
     def current_embed(self) -> discord.Embed:
+        gid = self.guild.id
         if self.selected is None:
             return build_overview_embed(self.guild, self.user_id, self.results)
-        return build_step_embed(self.guild, self.user_id, self.selected, self.results[self.selected])
+        if self.selected == _DONE:
+            open_steps = sum(needs_attention(r) for r in self.results.values())
+            key = "config_audit.guided.done_open" if open_steps else "config_audit.guided.done_all"
+            return discord.Embed(
+                title=_tr(gid, self.user_id, "config_audit.guided.done_title")[:256],
+                description=_tr(gid, self.user_id, key, count=open_steps)[:_EMBED_DESCRIPTION_LIMIT],
+                color=discord.Color.orange() if open_steps else discord.Color.green(),
+            )
+        embed = build_step_embed(self.guild, self.user_id, self.selected, self.results[self.selected])
+        if self.guided:
+            step = STEPS_BY_ID[self.selected]
+            embed.set_author(name=_tr(gid, self.user_id, "config_audit.guided.header",
+                                      n=step.order, total=len(STEPS))[:256])
+            result = self.results[self.selected]
+            if self.selected in _MEMBER_FLOWS and result.status != AuditStatus.BLOCKED:
+                embed.add_field(name=_tr(gid, self.user_id, "config_audit.guided.member_view_title")[:256],
+                                value=_tr(gid, self.user_id, f"config_audit.guided.member_view_{self.selected}")[:1024],
+                                inline=False)
+            if result.status == AuditStatus.OK:
+                embed.add_field(name="​", value=_tr(gid, self.user_id, "config_audit.guided.ok_next")[:1024],
+                                inline=False)
+        return embed
+
+    def _button(self, key: str, callback: Any, custom_id: str, row: int,
+                style: discord.ButtonStyle = discord.ButtonStyle.secondary) -> None:
+        button: discord.ui.Button[Any] = discord.ui.Button(
+            label=_tr(self.guild.id, self.user_id, key)[:80], style=style, custom_id=custom_id, row=row,
+        )
+        button.callback = callback  # type: ignore[assignment]
+        self.add_item(button)
 
     def _rebuild(self) -> None:
         """Re-create the components for the current page (Rule 8: the select's current entry is
         marked default=True, since string selects have no default_values)."""
         self.clear_items()
+        if self.guided:
+            self._rebuild_guided()
+            return
         gid = self.guild.id
         options = []
         for step in STEPS:
@@ -138,40 +196,59 @@ class SetupView(discord.ui.View):
         self.add_item(select)
 
         if self.selected is not None:
-            back: discord.ui.Button[Any] = discord.ui.Button(
-                label=_tr(gid, self.user_id, "config_audit.button_back")[:80],
-                style=discord.ButtonStyle.secondary, custom_id="setup_back", row=1,
-            )
-            back.callback = self._on_back  # type: ignore[assignment]
-            self.add_item(back)
-        recheck: discord.ui.Button[Any] = discord.ui.Button(
-            label=_tr(gid, self.user_id, "config_audit.button_recheck")[:80],
-            style=discord.ButtonStyle.primary, custom_id="setup_recheck", row=1,
-        )
-        recheck.callback = self._on_recheck  # type: ignore[assignment]
-        self.add_item(recheck)
+            self._button("config_audit.button_back", self._on_back, "setup_back", 1)
+        self._button("config_audit.button_recheck", self._on_recheck, "setup_recheck", 1, discord.ButtonStyle.primary)
+        if self.selected is None:
+            self._button("config_audit.guided.button_start", self._on_start_guided, "setup_guided_start", 1,
+                         discord.ButtonStyle.success)
+            return
+        self._add_step_actions(row=1, dismiss_row=2)
 
-        # "Open settings" (Phase 5): the /clan management screen that fixes this step.
+    def _rebuild_guided(self) -> None:
+        index = self._guided_index()
+        self._button("config_audit.guided.button_previous", self._on_previous, "setup_guided_prev", 0)
+        if self.selected != _DONE:
+            self._button("config_audit.guided.button_next", self._on_next, "setup_guided_next", 0,
+                         discord.ButtonStyle.primary)
+        self._button("config_audit.button_recheck", self._on_recheck, "setup_recheck", 0)
+        self._button("config_audit.guided.button_overview", self._on_back, "setup_back", 0)
+        if index == 0:
+            self.children[0].disabled = True  # type: ignore[attr-defined]  # no step before step 1
+        if self.selected == _DONE:
+            return
+        self._add_step_actions(row=1, dismiss_row=1)
+        result = self.results[self.selected]  # type: ignore[index]
+        if result.status != AuditStatus.BLOCKED:
+            for n, (key, _flow) in enumerate(_MEMBER_FLOWS.get(self.selected or "", [])):
+                self._button(key, self._make_flow_callback(n), f"setup_flow_{n}", 2, discord.ButtonStyle.success)
+
+    def _add_step_actions(self, row: int, dismiss_row: int) -> None:
+        """"Open settings", "we don't use this" / "use it after all", and the detail page's link
+        buttons (step 1's re-authorize link) for the selected step."""
         if self._fix_mode() is not None:
-            open_settings: discord.ui.Button[Any] = discord.ui.Button(
-                label=_tr(gid, self.user_id, "config_audit.button_open_settings")[:80],
-                style=discord.ButtonStyle.success, custom_id="setup_open_settings", row=1,
-            )
-            open_settings.callback = self._on_open_settings  # type: ignore[assignment]
-            self.add_item(open_settings)
+            self._button("config_audit.button_open_settings", self._on_open_settings, "setup_open_settings", row,
+                         discord.ButtonStyle.success)
+        step = STEPS_BY_ID[self.selected]  # type: ignore[index]
+        result = self.results[self.selected]  # type: ignore[index]
+        if result.data.get("dismissed"):
+            self._button("config_audit.button_undismiss", self._on_undismiss, "setup_undismiss", dismiss_row)
+        elif can_dismiss(step, result):
+            self._button("config_audit.button_dismiss", self._on_dismiss, "setup_dismiss", dismiss_row,
+                         discord.ButtonStyle.danger)
+        if step.detail is not None and result.status not in (AuditStatus.PENDING, AuditStatus.BLOCKED):
+            for label, url in step.detail(self.guild, result, self.guild.id, self.user_id).links:
+                self.add_item(discord.ui.Button(label=label[:80], url=url, row=row))
 
-        # Link buttons the step's detail page offers (e.g. step 1's re-authorize link).
-        if self.selected is not None:
-            step = STEPS_BY_ID[self.selected]
-            result = self.results[self.selected]
-            if step.detail is not None and result.status not in (AuditStatus.PENDING, AuditStatus.BLOCKED):
-                for label, url in step.detail(self.guild, result, gid, self.user_id).links:
-                    self.add_item(discord.ui.Button(label=label[:80], url=url, row=1))
+    def _guided_index(self) -> int:
+        """Position of the guided page: 0..len(STEPS)-1, or len(STEPS) for the finish page."""
+        if self.selected == _DONE:
+            return len(STEPS)
+        return next((i for i, s in enumerate(STEPS) if s.id == self.selected), 0)
 
     def _fix_mode(self) -> Optional[str]:
-        """The /clan management mode for the selected step, or None (overview, no settings
-        screen, or a step that is blocked / not checked)."""
-        if self.selected is None:
+        """The /clan management mode for the selected step, or None (overview, finish page, no
+        settings screen, or a step that is blocked / not checked)."""
+        if self.selected is None or self.selected == _DONE:
             return None
         step = STEPS_BY_ID[self.selected]
         result = self.results[self.selected]
@@ -184,7 +261,7 @@ class SetupView(discord.ui.View):
         self._rebuild()
         await interaction.response.edit_message(embed=self.current_embed(), view=self)
 
-    # -- callbacks -----------------------------------------------------------------------------
+    # -- callbacks: navigation -----------------------------------------------------------------
 
     async def _on_select(self, interaction: discord.Interaction) -> None:
         values = (interaction.data or {}).get("values") or []  # type: ignore[union-attr]
@@ -193,12 +270,34 @@ class SetupView(discord.ui.View):
 
     async def _on_back(self, interaction: discord.Interaction) -> None:
         self.selected = None
+        self.guided = False
         await self._show(interaction)
 
     async def _on_recheck(self, interaction: discord.Interaction) -> None:
         self.results = run_audit(self.guild)
         _log_audit(self.guild, self.user_id, self.results, "Re-check")
         await self._show(interaction)
+
+    async def _on_start_guided(self, interaction: discord.Interaction) -> None:
+        """Start at the first step that needs attention (nothing is stored — the checks say where
+        the guild stands), or at step 1 when everything is fine: then it is a tour."""
+        self.results = run_audit(self.guild)
+        self.guided = True
+        self.selected = next((s.id for s in STEPS if needs_attention(self.results[s.id])), STEPS[0].id)
+        logging.info(f"[SETUP] Guided setup started at '{self.selected}' in guild {self.guild.id} by user {self.user_id}")
+        await self._show(interaction)
+
+    async def _on_next(self, interaction: discord.Interaction) -> None:
+        index = self._guided_index() + 1
+        self.selected = STEPS[index].id if index < len(STEPS) else _DONE
+        await self._show(interaction)
+
+    async def _on_previous(self, interaction: discord.Interaction) -> None:
+        index = max(self._guided_index() - 1, 0)
+        self.selected = STEPS[index].id
+        await self._show(interaction)
+
+    # -- callbacks: actions ----------------------------------------------------------------------
 
     async def _on_open_settings(self, interaction: discord.Interaction) -> None:
         """Open the /clan management panel in the step's mode as a separate ephemeral message.
@@ -208,6 +307,43 @@ class SetupView(discord.ui.View):
             await interaction.response.defer()
             return
         await open_settings_panel(interaction, self.guild, mode)
+
+    async def _on_dismiss(self, interaction: discord.Interaction) -> None:
+        """"We don't use this" — stored per server (Q-12), shown as ⏸️ from now on."""
+        if not await claim_action(self, interaction):
+            return
+        await self._set_dismissed(interaction, True)
+
+    async def _on_undismiss(self, interaction: discord.Interaction) -> None:
+        """"Use it after all" — undoes a dismissal (Q-12: needs change)."""
+        if not await claim_action(self, interaction):
+            return
+        await self._set_dismissed(interaction, False)
+
+    async def _set_dismissed(self, interaction: discord.Interaction, dismissed: bool) -> None:
+        from clashcontrol.cache_manager import CACHE
+        step_id = self.selected
+        try:
+            if step_id and step_id != _DONE:
+                await CACHE.set_setup_step_dismissed(self.guild.id, step_id, dismissed)
+                logging.info(f"[SETUP] Step '{step_id}' {'dismissed' if dismissed else 'restored'} "
+                              f"in guild {self.guild.id} by user {self.user_id}")
+            self.results = run_audit(self.guild)
+        finally:
+            release_action(self)
+        await self._show(interaction)
+
+    def _make_flow_callback(self, n: int) -> Any:
+        """Callback for the n-th member flow of the selected step. The flow must be the click's
+        first response (modal / own message / Activity launch), so nothing is awaited before."""
+        async def _callback(interaction: discord.Interaction) -> None:
+            from clashcontrol import tutorial_flows
+            flows = _MEMBER_FLOWS.get(self.selected or "", [])
+            if n >= len(flows):
+                await interaction.response.defer()
+                return
+            await getattr(tutorial_flows, flows[n][1])(interaction, self.guild.id)
+        return _callback
 
     async def on_timeout(self) -> None:
         """Grey out the components; the checklist itself stays readable."""

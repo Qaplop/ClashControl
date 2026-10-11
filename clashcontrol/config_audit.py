@@ -92,6 +92,9 @@ class AuditStep:
     #: /clan management mode that fixes this step ("⚙️ Open settings", Phase 5) — chosen per
     #: result, since one step can need different screens; None = no settings screen.
     fix_mode: Optional[Callable[["StepResult"], Optional[str]]] = None
+    #: The guild may mark this step "we don't use this" (Phase 6). Not for the basics every
+    #: server needs (permissions, language, clans).
+    dismissable: bool = True
 
     @property
     def title_key(self) -> str:
@@ -1261,9 +1264,12 @@ def _registration_fix_mode(result: StepResult) -> Optional[str]:
 
 
 STEPS: Tuple[AuditStep, ...] = (
-    AuditStep("bot_permissions", 1, "admin", check=check_bot_permissions, detail=detail_bot_permissions),
-    AuditStep("basics", 2, "admin", check=check_basics, detail=detail_basics, fix_mode=_CONFIG),
-    AuditStep("clans", 3, "admin", check=check_clans, detail=detail_clans, fix_mode=_CONFIG),
+    AuditStep("bot_permissions", 1, "admin", check=check_bot_permissions, detail=detail_bot_permissions,
+              dismissable=False),
+    AuditStep("basics", 2, "admin", check=check_basics, detail=detail_basics, fix_mode=_CONFIG,
+              dismissable=False),
+    AuditStep("clans", 3, "admin", check=check_clans, detail=detail_clans, fix_mode=_CONFIG,
+              dismissable=False),
     AuditStep("welcome", 4, "admin", check=check_welcome, detail=detail_welcome,
               permission_features=("welcome",), fix_mode=_CONFIG),
     AuditStep("registration", 5, "both", requires=("clans",),
@@ -1309,12 +1315,36 @@ def run_step(step: AuditStep, guild: discord.Guild) -> StepResult:
         return StepResult(AuditStatus.INFO, "config_audit.summary_check_failed")
 
 
+#: Statuses a guild can answer with "we don't use this". Never BROKEN: an automation that is
+#: switched on but can't work must stay visible.
+DISMISSABLE_STATUSES = (AuditStatus.OFF, AuditStatus.INCOMPLETE)
+
+
+def dismissed_steps(guild_id: Any) -> Set[str]:
+    """Step ids the guild marked "we don't use this" (CACHE.guild_setup_dismissed)."""
+    from clashcontrol.cache_manager import CACHE
+    return set(CACHE.guild_setup_dismissed.get(str(guild_id), set()))
+
+
+def can_dismiss(step: AuditStep, result: StepResult) -> bool:
+    """Whether the "we don't use this" button applies to this step right now."""
+    return step.dismissable and not result.data.get("dismissed") and result.status in DISMISSABLE_STATUSES
+
+
 def run_audit(guild: discord.Guild) -> Dict[str, StepResult]:
     """Every step's result for ``guild``, in registry order, with prerequisites applied: a step
-    whose prerequisite is not set up shows BLOCKED (one root cause, one red line)."""
+    whose prerequisite is not set up shows BLOCKED (one root cause, one red line). A step the
+    guild dismissed shows OFF while it would be OFF/INCOMPLETE; OK and BROKEN show as they are
+    (configured after all / switched on but broken)."""
     results: Dict[str, StepResult] = {}
+    dismissed = dismissed_steps(guild.id)
     for step in STEPS:
         result = run_step(step, guild)
+        if step.id in dismissed:
+            if result.status in DISMISSABLE_STATUSES:
+                result = StepResult(AuditStatus.OFF, "config_audit.summary_dismissed",
+                                    findings=result.findings, data=result.data)
+            result.data["dismissed"] = True
         # Not checked yet, or switched off: nothing to block (a disabled feature stays ⏸️).
         if result.status not in (AuditStatus.PENDING, AuditStatus.OFF) and any(
             results.get(req) is not None and results[req].status in _BLOCKING for req in step.requires

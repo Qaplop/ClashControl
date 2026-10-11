@@ -1,6 +1,6 @@
 # /setup (config audit + admin setup guide) and /tutorial (#0121): concept & stepped plan
 
-Status: **Concept agreed 2026-10-11. Phase 1 implemented 2026-10-11 (Build 151, v1.3.43), Phase 2 implemented 2026-10-11 (Build 152), Phase 3 implemented 2026-10-11 (Build 155), Phase 4 implemented 2026-10-11 (Build 156), Phase 5 implemented 2026-10-11 (Build 157); Phases 6–7 open.**
+Status: **Concept agreed 2026-10-11. Phase 1 implemented 2026-10-11 (Build 151, v1.3.43), Phase 2 implemented 2026-10-11 (Build 152), Phase 3 implemented 2026-10-11 (Build 155), Phase 4 implemented 2026-10-11 (Build 156), Phase 5 implemented 2026-10-11 (Build 157), Phase 6 implemented 2026-10-11 (Build 158); Phase 7 (/tutorial, #0121) open.**
 Tracker: #0151 (this feature), #0121 (tutorials). Owner: qaplop. Builds on `/admin Permission Audit` (Build 135, `clashcontrol/bot_permissions.py`)
 and is the foundation for tracker #0121 (tutorials).
 
@@ -216,6 +216,12 @@ class StepResult:
   Manage Messages and Use Slash Commands, Q-1) — single source for step 1 and the re-authorize URL's `permissions=`.
 
 ### 4.1 How layer B builds on it (Phase 6)
+- **As built (Build 158):** the guided setup walks ALL 13 steps in order (Previous / Next), starting
+  at the first step that needs attention — OK and ℹ️ pages are part of the walk (a tour of the
+  member side), not skipped. Table name `guild_setup_dismissed` (guild_id, step_id,
+  dismissed_at; no user column — no new personal data, so no privacy-policy change). "We don't use
+  this" only for ⏸️/⚠️ and never for steps 1–3; a dismissed step that becomes ✅ or ❌ shows its
+  real status. Member flows: `clashcontrol/tutorial_flows.py`.
 - `/setup` → *Start guided setup* walks `STEPS` in order with `audience in (admin, both)`: for the first step
   not `ok`/`off`/`info`-already-seen, show the detail page + howto + buttons *Open settings* /
   *Re-check* / *Skip — we don't use this* / *Next*.

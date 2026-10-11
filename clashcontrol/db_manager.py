@@ -1893,6 +1893,10 @@ class WarHistoryDB:
         logging.info("[DB-SCHEMA] Verifying guild guest clans table...")
         await self._create_guild_guest_clans_schema()
 
+        # /setup: steps a guild said it doesn't use (tracker #0151 Phase 6)
+        logging.info("[DB-SCHEMA] Verifying guild setup dismissals table...")
+        await self._create_guild_setup_dismissed_schema()
+
         # Bot-level tester list (DM-testing allowlist, global — not per-guild)
         logging.info("[DB-SCHEMA] Verifying bot testers table...")
         await self._create_bot_testers_schema()
@@ -3384,6 +3388,59 @@ class WarHistoryDB:
         await self._conn.commit()
         await self.set_bot_metadata(self.GUILD_GUEST_CLANS_BACKFILL_KEY, "done")
         logging.info(f"[DB-MIGRATE] guild_guest_clans seeded with {seeded} guest clan(s) from existing CWL seasons")
+
+    async def _create_guild_setup_dismissed_schema(self) -> None:
+        """Create guild_setup_dismissed (idempotent): /setup steps a guild marked "we don't use
+        this" (tracker #0151 Phase 6). One row per (guild, step); undoing deletes the row. Config,
+        not time-series: hot DB only, no history mirror. Deliberately no user column — who
+        clicked is not stored (no new personal data)."""
+        await self._ensure_connection()
+        await self._conn.execute("""
+            CREATE TABLE IF NOT EXISTS guild_setup_dismissed (
+                guild_id     TEXT NOT NULL,
+                step_id      TEXT NOT NULL,
+                dismissed_at TEXT NOT NULL DEFAULT (datetime('now')),
+                UNIQUE (guild_id, step_id)
+            )
+        """)
+        await self._conn.commit()
+
+    def get_all_guild_setup_dismissed_sync(self) -> Dict[str, Set[str]]:
+        """Every dismissed /setup step, as guild_id -> {step_id} (CACHE load shape)."""
+        import sqlite3
+
+        if not self.db_path:
+            raise RuntimeError("Database not initialized. Call initialize() first.")
+        result: Dict[str, Set[str]] = {}
+        with self._sync_conn() as conn:
+            try:
+                rows = conn.execute("SELECT guild_id, step_id FROM guild_setup_dismissed").fetchall()
+            except sqlite3.Error as e:
+                logging.error(f"[DB-QUERY-SYNC] get_all_guild_setup_dismissed_sync failed: {e}")
+                return result
+        for row in rows:
+            result.setdefault(row["guild_id"], set()).add(row["step_id"])
+        return result
+
+    def set_guild_setup_step_dismissed_sync(self, guild_id: str, step_id: str, dismissed: bool) -> bool:
+        """Mark (dismissed=True) or unmark a /setup step for a guild. Idempotent both ways."""
+        import sqlite3
+
+        if not self.db_path:
+            raise RuntimeError("Database not initialized. Call initialize() first.")
+        sql = ("INSERT OR IGNORE INTO guild_setup_dismissed (guild_id, step_id) VALUES (?, ?)" if dismissed
+               else "DELETE FROM guild_setup_dismissed WHERE guild_id = ? AND step_id = ?")
+        with self._sync_conn() as conn:
+            try:
+                with self._sync_write_lock:
+                    conn.execute(sql, (guild_id, step_id))
+                    if self._should_commit():
+                        conn.commit()
+                return True
+            except sqlite3.Error as e:
+                logging.error(f"[DB-WRITE-SYNC] set_guild_setup_step_dismissed_sync failed for guild {guild_id}: {e}")
+                conn.rollback()
+                return False
 
     def get_all_guild_guest_clans_sync(self) -> Dict[str, Dict[str, Dict[str, Any]]]:
         """Every persisted guest clan, as guild_id -> clan_tag -> row dict (CACHE load shape)."""

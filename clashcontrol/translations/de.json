@@ -301,7 +301,7 @@
       "setup": {
         "short": "Einrichtung von ClashControl auf diesem Server prüfen (Admins)",
         "title": "🛠️ Setup-Befehl",
-        "detailed": "Zeigt eine Checkliste mit allem, was ClashControl auf diesem Server braucht, mit einem Status je Schritt: ✅ OK, ❌ muss behoben werden, ⚠️ unvollständig, ⏸️ nicht genutzt, 🔒 braucht einen früheren Schritt, ⚪ noch nicht geprüft. Wähle einen Schritt für die Details: was nicht stimmt, warum es wichtig ist und wie du es behebst.\n\n**Verwendung:**\n`/setup`\n\n**Was geprüft wird:**\n• Bot-Berechtigungen — „Administrator“, jede fehlende Berechtigung mit dem Grund, warum sie gebraucht wird, und ein Button, um den Bot mit einem Klick neu zu autorisieren\n• Sprache & Zeitzone, Clans & Familien (private Kriegsprotokolle, von Supercell gelöschte Clans), Willkommensnachricht\n• Registrierung (sehen neue Mitglieder sie, wie viele Accounts sind verknüpft), Kriegs-Erinnerungen per DM, Kriegs- und Raid-Erinnerungen im Kanal\n• Server-Rollen (Einfache, CoC- und Clan-Rollen), CWL-Einstellungen, „Deine CWL-Einstellungen“, die CWL-Saison im Kalender, Bestenlisten\n\n**Hinweise:**\n• Nur für Server-Administratoren\n• Nur du siehst das Ergebnis\n• Es wird nichts geändert — „🔄 Erneut prüfen“ prüft noch einmal, nachdem du etwas behoben hast"
+        "detailed": "Zeigt eine Checkliste mit allem, was ClashControl auf diesem Server braucht, mit einem Status je Schritt: ✅ OK, ❌ muss behoben werden, ⚠️ unvollständig, ⏸️ nicht genutzt, 🔒 braucht einen früheren Schritt, ⚪ noch nicht geprüft. Wähle einen Schritt für die Details: was nicht stimmt, warum es wichtig ist und wie du es behebst.\n\n**Verwendung:**\n`/setup`\n\n**Was geprüft wird:**\n• Bot-Berechtigungen — „Administrator“, jede fehlende Berechtigung mit dem Grund, warum sie gebraucht wird, und ein Button, um den Bot mit einem Klick neu zu autorisieren\n• Sprache & Zeitzone, Clans & Familien (private Kriegsprotokolle, von Supercell gelöschte Clans), Willkommensnachricht\n• Registrierung (sehen neue Mitglieder sie, wie viele Accounts sind verknüpft), Kriegs-Erinnerungen per DM, Kriegs- und Raid-Erinnerungen im Kanal\n• Server-Rollen (Einfache, CoC- und Clan-Rollen), CWL-Einstellungen, „Deine CWL-Einstellungen“, die CWL-Saison im Kalender, Bestenlisten\n\n**Hinweise:**\n• Nur für Server-Administratoren\n• Nur du siehst das Ergebnis\n• „⚙️ Einstellungen öffnen“ öffnet den passenden Bildschirm von /clan management; „🔄 Erneut prüfen“ prüft noch einmal\n• „🧭 Geführte Einrichtung starten“ geht alle Schritte der Reihe nach durch, auch wie es für deine Mitglieder aussieht\n• „🚫 Nutzen wir nicht“ markiert einen optionalen Schritt als auf deinem Server nicht genutzt (rückgängig: „↩️ Doch nutzen“)"
       },
       "clan management": {
         "short": "Zentrale Server- und Clan-Konfiguration",
@@ -1622,6 +1622,28 @@
       "coordinators_title": "🧑‍✈️ CWL-Koordinatoren",
       "coordinators": "{count} Clan(s) haben CWL-Koordinatoren. Koordinatoren führen die Saison ihres Clans durch, ohne Server-Admins zu sein: {button}.",
       "where_hub": "oder die Nachricht {hub} (Schritt 10)"
+    },
+    "summary_dismissed": "auf diesem Server nicht genutzt",
+    "button_dismiss": "🚫 Nutzen wir nicht",
+    "button_undismiss": "↩️ Doch nutzen",
+    "guided": {
+      "header": "🧭 Geführte Einrichtung · Schritt {n} von {total}",
+      "button_start": "🧭 Geführte Einrichtung starten",
+      "button_previous": "◀ Zurück",
+      "button_next": "Weiter ▶",
+      "button_overview": "📋 Übersicht",
+      "done_title": "🧭 Geführte Einrichtung — fertig",
+      "done_open": "Du bist alle Schritte durchgegangen. {count} Schritt(e) brauchen noch Aufmerksamkeit — sie sind in der Übersicht markiert, und /setup bringt dich jederzeit hierher zurück.",
+      "done_all": "Alles ist eingerichtet. 🎉 Nutze /setup jederzeit für eine neue Prüfung, zum Beispiel nachdem du Rollen oder Kanäle geändert hast.",
+      "ok_next": "✅ Hier ist nichts zu tun — weiter mit Weiter.",
+      "member_view_title": "👤 Aus Sicht eines Mitglieds",
+      "member_view_registration": "Verknüpfe jetzt einen deiner eigenen Clash-Accounts: Du durchläufst genau das, was deine Mitglieder sehen. Nichts zu verknüpfen oder schon verknüpft? Sieh dir stattdessen deine Accounts an — oder überspringe mit Weiter.",
+      "member_view_war_notifications": "Öffne deine eigenen Kriegs-Erinnerungen, um zu sehen, was deine Mitglieder einstellen können.",
+      "member_view_cwl_player_hub": "Öffne deine eigenen CWL-Einstellungen — den Bildschirm, den deine Mitglieder nutzen.",
+      "button_link_account": "🔗 Meinen Account verknüpfen",
+      "button_my_accounts": "📋 Meine Accounts",
+      "button_war_reminders": "🔔 Meine Kriegs-Erinnerungen",
+      "button_cwl_preferences": "🛡️ Meine CWL-Einstellungen"
     },
     "step": {
       "bot_permissions": { "title": "Bot-Berechtigungen", "desc": "Die Server-Berechtigungen, die ClashControl braucht, um seine Nachrichten zu posten und Rollen zu vergeben." },

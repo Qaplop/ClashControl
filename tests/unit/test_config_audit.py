@@ -104,6 +104,7 @@ def _isolate(monkeypatch):
     monkeypatch.setattr(CACHE, "guild_guest_clans", {})
     monkeypatch.setattr(CACHE, "user_accounts", {})
     monkeypatch.setattr(CACHE, "db_manager", FakeCwlDb())
+    monkeypatch.setattr(CACHE, "guild_setup_dismissed", {})
     monkeypatch.setattr(QBcore, "bot", SimpleNamespace(application_id=1234))
 
 
@@ -774,3 +775,200 @@ class TestBuildClanManagementPanel:
         assert view.sent_message.guild is guild and view.clan_tag is None
         assert fmt.await_args.args[0] is None
         view.stop()
+
+
+# ---------------------------------------------------------------------------------------------
+# Phase 6: "we don't use this" + guided setup + member flows
+# ---------------------------------------------------------------------------------------------
+
+class TestDismissal:
+    def test_dismissed_off_or_incomplete_shows_off(self):
+        CACHE.guild_setup_dismissed[str(GID)] = {"welcome", "leaderboards", "registration"}
+        _cfg(member_clans=["#A"])
+        results = ca.run_audit(_guild(ADMIN))
+        for sid in ("welcome", "leaderboards", "registration"):     # OFF, OFF, INCOMPLETE before
+            assert results[sid].status == AuditStatus.OFF
+            assert results[sid].summary_key == "config_audit.summary_dismissed"
+            assert results[sid].data["dismissed"] is True
+
+    def test_dismissed_but_broken_shows_the_real_status(self):
+        CACHE.guild_setup_dismissed[str(GID)] = {"welcome"}
+        _cfg(welcome_message_enabled=True)                            # no system channel -> broken
+        r = ca.run_audit(_guild(ADMIN))["welcome"]
+        assert r.status == AuditStatus.BROKEN and r.data["dismissed"] is True
+
+    def test_what_can_be_dismissed(self):
+        incomplete = ca.StepResult(AuditStatus.INCOMPLETE, "x")
+        assert not ca.can_dismiss(ca.STEPS_BY_ID["clans"], incomplete)          # basics: never
+        assert not ca.can_dismiss(ca.STEPS_BY_ID["bot_permissions"], incomplete)
+        assert ca.can_dismiss(ca.STEPS_BY_ID["welcome"], incomplete)
+        assert not ca.can_dismiss(ca.STEPS_BY_ID["welcome"], ca.StepResult(AuditStatus.BROKEN, "x"))
+        assert not ca.can_dismiss(ca.STEPS_BY_ID["welcome"],
+                                  ca.StepResult(AuditStatus.OFF, "x", data={"dismissed": True}))
+
+    @pytest.mark.asyncio
+    async def test_db_round_trip_and_cache_write_through(self, tmp_path, monkeypatch):
+        from clashcontrol.db_manager import WarHistoryDB
+        db = WarHistoryDB()
+        await db.initialize(str(tmp_path / "setup_dismissed.db"))
+        try:
+            monkeypatch.setattr(CACHE, "db_manager", db)
+            assert await CACHE.set_setup_step_dismissed(GID, "welcome", True)
+            assert await CACHE.set_setup_step_dismissed(GID, "welcome", True)     # idempotent
+            assert db.get_all_guild_setup_dismissed_sync() == {str(GID): {"welcome"}}
+            assert CACHE.guild_setup_dismissed == {str(GID): {"welcome"}}
+            assert await CACHE.set_setup_step_dismissed(GID, "welcome", False)
+            assert db.get_all_guild_setup_dismissed_sync() == {}
+            assert CACHE.guild_setup_dismissed[str(GID)] == set()
+        finally:
+            await db.close()
+
+
+def _click_it():
+    it = MagicMock()
+    it.data = {}
+    it.user.id = 1
+    it.response.edit_message = AsyncMock()
+    it.response.defer = AsyncMock()
+    it.response.is_done = MagicMock(return_value=False)
+    return it
+
+
+def _ids(view):
+    return {getattr(c, "custom_id", None) for c in view.children}
+
+
+class TestGuidedSetup:
+    @pytest.mark.asyncio
+    async def test_starts_at_first_step_needing_attention_and_walks_to_done(self):
+        from clashcontrol import ui_config_audit as ui
+        guild = _guild(ADMIN)                 # no clans: step 3 is the first to need attention
+        view = ui.SetupView(guild, "1", ca.run_audit(guild))
+        assert "setup_guided_start" in _ids(view)
+        await view._on_start_guided(_click_it())
+        assert view.guided and view.selected == "clans"
+        assert "🧭" in (view.current_embed().author.name or "")
+        await view._on_previous(_click_it())
+        assert view.selected == "basics"
+        view.selected = "leaderboards"
+        await view._on_next(_click_it())
+        assert view.selected == ui._DONE
+        assert "setup_guided_next" not in _ids(view)
+        await view._on_back(_click_it())
+        assert view.selected is None and not view.guided
+        view.stop()
+
+    @pytest.mark.asyncio
+    async def test_tour_from_step_1_when_nothing_needs_attention(self):
+        from clashcontrol import ui_config_audit as ui
+        CACHE.guild_setup_dismissed[str(GID)] = {s.id for s in ca.STEPS if s.dismissable}
+        _cfg(member_clans=["#A"])
+        guild = _guild(ADMIN)
+        view = ui.SetupView(guild, "1", ca.run_audit(guild))
+        await view._on_start_guided(_click_it())
+        assert view.selected == "bot_permissions"
+        assert view.children[0].disabled                                    # no "Previous" on step 1
+        view.stop()
+
+    @pytest.mark.asyncio
+    async def test_member_flow_buttons_on_steps_5_6_11(self, monkeypatch):
+        from clashcontrol import tutorial_flows, ui_config_audit as ui
+        _cfg(member_clans=["#A"])
+        guild = _guild(ADMIN)
+        view = ui.SetupView(guild, "1", ca.run_audit(guild))
+        view.guided = True
+        flows = {}
+        for sid in ("registration", "war_notifications", "cwl_player_hub", "roles"):
+            view.selected = sid
+            view._rebuild()
+            flows[sid] = sorted(i for i in _ids(view) if str(i).startswith("setup_flow_"))
+        assert flows == {"registration": ["setup_flow_0", "setup_flow_1"], "war_notifications": ["setup_flow_0"],
+                         "cwl_player_hub": ["setup_flow_0"], "roles": []}
+        opened = AsyncMock()
+        monkeypatch.setattr(tutorial_flows, "open_my_accounts", opened)
+        view.selected = "registration"
+        view._rebuild()
+        it = _click_it()
+        await view._make_flow_callback(1)(it)
+        opened.assert_awaited_once_with(it, GID)
+        view.stop()
+
+    @pytest.mark.asyncio
+    async def test_dismiss_and_undo_from_the_page(self, monkeypatch):
+        from clashcontrol import ui_config_audit as ui
+
+        async def fake_set(guild_id, step_id, dismissed):
+            steps = CACHE.guild_setup_dismissed.setdefault(str(guild_id), set())
+            (steps.add if dismissed else steps.discard)(step_id)
+            return True
+        monkeypatch.setattr(CACHE, "set_setup_step_dismissed", fake_set)
+        guild = _guild(ADMIN)
+        view = ui.SetupView(guild, "1", ca.run_audit(guild), selected="welcome")
+        assert "setup_dismiss" in _ids(view)
+        await view._on_dismiss(_click_it())
+        assert view.results["welcome"].summary_key == "config_audit.summary_dismissed"
+        assert "setup_undismiss" in _ids(view) and "setup_dismiss" not in _ids(view)
+        await view._on_undismiss(_click_it())
+        assert view.results["welcome"].status == AuditStatus.OFF and "setup_dismiss" in _ids(view)
+        view.selected = "clans"
+        view._rebuild()
+        assert "setup_dismiss" not in _ids(view)                               # never for the basics
+        view.stop()
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("lang", LANGS)
+    async def test_guided_pages_render_in_every_language(self, lang):
+        from clashcontrol import ui_config_audit as ui
+        _cfg(language=lang, member_clans=["#A"])
+        guild = _guild(ADMIN)
+        view = ui.SetupView(guild, "1", ca.run_audit(guild))
+        view.guided = True
+        for sid in [s.id for s in ca.STEPS] + [ui._DONE]:
+            view.selected = sid
+            view._rebuild()
+            e = view.current_embed()
+            texts = [e.title or "", e.description or "", (e.author.name or "")] + \
+                [f.name for f in e.fields] + [f.value for f in e.fields]
+            assert not any("config_audit." in x for x in texts), (sid, texts)
+            labels = [getattr(c, "label", "") or "" for c in view.children]
+            assert not any("config_audit." in x for x in labels), labels
+        view.stop()
+
+
+class TestTutorialFlows:
+    @pytest.mark.asyncio
+    async def test_registration_buttons_run_behind_the_hub_gate(self, monkeypatch):
+        from clashcontrol import tutorial_flows, ui_registration
+        calls = []
+
+        class FakeHub:
+            def __init__(self, guild_id):
+                calls.append(("init", guild_id))
+                self.link_account_button = SimpleNamespace(
+                    callback=AsyncMock(side_effect=lambda i: calls.append("link")))
+
+            async def interaction_check(self, interaction):
+                calls.append("check")
+                return True
+
+            def stop(self):
+                calls.append("stop")
+
+        monkeypatch.setattr(ui_registration, "RegistrationView", FakeHub)
+        await tutorial_flows.open_link_account(_click_it(), GID)
+        assert calls == [("init", GID), "check", "link", "stop"]
+
+    @pytest.mark.asyncio
+    async def test_cwl_preferences_launch_the_real_activity(self, monkeypatch):
+        from clashcontrol import tutorial_flows, ui_cwl_roster
+        launch = AsyncMock()
+        monkeypatch.setattr(ui_cwl_roster, "_launch_cwl_activity", launch)
+        it = _click_it()
+        await tutorial_flows.open_cwl_preferences(it, GID)
+        launch.assert_awaited_once_with(it, GID, "player_prefs")
+
+    def test_has_linked_accounts(self):
+        from clashcontrol.tutorial_flows import user_has_linked_accounts
+        assert not user_has_linked_accounts("u1")
+        _accounts(u1=[{"player_tag": "#1"}])
+        assert user_has_linked_accounts("u1")

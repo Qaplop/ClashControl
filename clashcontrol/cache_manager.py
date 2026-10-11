@@ -378,6 +378,9 @@ class CacheManager:
         # member-list refreshes and grants the member role like a family clan does — but is NOT
         # part of the guild's family for any CWL logic (resolve_guild_member_clan_tags excludes it).
         self.guild_guest_clans: Dict[str, Dict[str, Dict[str, Any]]] = {}
+        # /setup steps a guild marked "we don't use this" (guild_setup_dismissed, tracker #0151):
+        # guild_id -> {step_id}. Write-through via set_setup_step_dismissed().
+        self.guild_setup_dismissed: Dict[str, Set[str]] = {}
         # Bot-wide (not per-guild) DM-testing allowlist — Discord user IDs who receive DMs
         # alongside CONFIG.server_admin wherever a feature is gated behind a
         # cwl_dm_restrict_to_admin-style live-testing guard. Managed via /admin's
@@ -2752,6 +2755,25 @@ class CacheManager:
 
     # ─── Guild Guest Clan Write-Through Methods ───────────────────────
 
+    async def load_guild_setup_dismissed(self) -> None:
+        """Load the /setup steps each guild dismissed (guild_setup_dismissed)."""
+        if not self.db_manager:
+            return
+        self.guild_setup_dismissed = await asyncio.to_thread(self.db_manager.get_all_guild_setup_dismissed_sync)
+        logging.info(f"[DB-READ] Loaded /setup dismissals for {len(self.guild_setup_dismissed)} guild(s)")
+
+    async def set_setup_step_dismissed(self, guild_id: Union[int, str], step_id: str, dismissed: bool) -> bool:
+        """Mark or unmark a /setup step as "we don't use this" for a guild. Write-through: DB
+        first, CACHE only when the write succeeded."""
+        if not self.db_manager:
+            return False
+        gid = str(guild_id)
+        ok = await asyncio.to_thread(self.db_manager.set_guild_setup_step_dismissed_sync, gid, step_id, dismissed)
+        if ok:
+            steps = self.guild_setup_dismissed.setdefault(gid, set())
+            (steps.add if dismissed else steps.discard)(step_id)
+        return ok
+
     async def load_guild_guest_clans(self) -> None:
         """Load persisted CWL guest clans (guild_guest_clans) into self.guild_guest_clans."""
         if not self.db_manager:
@@ -2961,6 +2983,7 @@ class CacheManager:
         self._current_load_operation = "load_guild_guest_clans"
         logging.info("Starting cache load_all() - loading CWL guest clans...")
         await self.load_guild_guest_clans()
+        await self.load_guild_setup_dismissed()
         self._current_load_operation = "load_testers"
         logging.info("Starting cache load_all() - loading testers...")
         await self.load_testers()

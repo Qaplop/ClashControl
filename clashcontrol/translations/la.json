@@ -301,7 +301,7 @@
       "setup": {
         "short": "Institutionem ClashControl in hoc servitore inspice (administratores)",
         "title": "🛠️ Mandatum Setup",
-        "detailed": "Indicem omnium quae ClashControl in hoc servitore requirit ostendit, cum statu cuiusque gradus: ✅ recte, ❌ emendandum, ⚠️ imperfectum, ⏸️ non adhibitum, 🔒 gradum priorem requirit, ⚪ nondum inspectum. Elige gradum ut singula videas: quid erret, cur referat et quomodo emendes.\n\n**Usus:**\n`/setup`\n\n**Quid inspiciatur:**\n• Permissiones automati — “Administrator”, quaeque permissio deficiens cum causa cur requiratur, et globulus ut automatum uno ictu iterum auctorizes\n• Lingua et zona horaria, gentes et familiae (commentarii belli privati, gentes a Supercell deletae), nuntius salutationis\n• Inscriptio (an novi sodales eam videant, quot rationes iunctae sint), monita belli per nuntium privatum, monita belli et incursionum in canalibus\n• Munera servitoris (Simplicia, CoC, gentis), optiones CWL, «Praeferentiae Tuae CWL», tempus CWL ad calendarium, tabulae ordinum\n\n**Notae:**\n• Solis administratoribus servitoris\n• Solus tu eventum vides\n• Nihil mutatur — «🔄 Iterum inspice» inspectiones repetit postquam aliquid emendasti"
+        "detailed": "Indicem omnium quae ClashControl in hoc servitore requirit ostendit, cum statu cuiusque gradus: ✅ recte, ❌ emendandum, ⚠️ imperfectum, ⏸️ non adhibitum, 🔒 gradum priorem requirit, ⚪ nondum inspectum. Elige gradum ut singula videas: quid erret, cur referat et quomodo emendes.\n\n**Usus:**\n`/setup`\n\n**Quid inspiciatur:**\n• Permissiones automati — “Administrator”, quaeque permissio deficiens cum causa cur requiratur, et globulus ut automatum uno ictu iterum auctorizes\n• Lingua et zona horaria, gentes et familiae (commentarii belli privati, gentes a Supercell deletae), nuntius salutationis\n• Inscriptio (an novi sodales eam videant, quot rationes iunctae sint), monita belli per nuntium privatum, monita belli et incursionum in canalibus\n• Munera servitoris (Simplicia, CoC, gentis), optiones CWL, «Praeferentiae Tuae CWL», tempus CWL ad calendarium, tabulae ordinum\n\n**Notae:**\n• Solis administratoribus servitoris\n• Solus tu eventum vides\n• «⚙️ Optiones aperi» tabulam congruentem /clan management aperit; «🔄 Iterum inspice» inspectiones repetit\n• «🧭 Institutionem ductam incipe» omnes gradus ordine percurrit, cum eo quomodo sodalibus appareat\n• «🚫 Hoc non adhibemus» gradum optionalem ut in servitore tuo non adhibitum notat (rescindere: «↩️ Tamen adhibere»)"
       },
       "clan management": {
         "short": "Configuratio centralis servitoris et gentium",
@@ -1621,6 +1621,28 @@
       "coordinators_title": "🧑‍✈️ Coordinatores CWL",
       "coordinators": "{count} gens(tes) coordinatores CWL habent. Coordinatores tempus gentis suae gerunt sine administratoribus servitoris esse: {button}.",
       "where_hub": "vel nuntius {hub} (gradus 10)"
+    },
+    "summary_dismissed": "in hoc servitore non adhibitum",
+    "button_dismiss": "🚫 Hoc non adhibemus",
+    "button_undismiss": "↩️ Tamen adhibere",
+    "guided": {
+      "header": "🧭 Institutio ducta · gradus {n} ex {total}",
+      "button_start": "🧭 Institutionem ductam incipe",
+      "button_previous": "◀ Prior",
+      "button_next": "Proximus ▶",
+      "button_overview": "📋 Conspectus",
+      "done_title": "🧭 Institutio ducta — perfecta",
+      "done_open": "Omnes gradus percurristi. {count} gradus adhuc curam requirunt — in conspectu notati sunt, et /setup te huc quovis tempore reducit.",
+      "done_all": "Omnia instituta sunt. 🎉 /setup quovis tempore adhibe ut iterum inspicias, exempli gratia post munera vel canales mutatos.",
+      "ok_next": "✅ Hic nihil agendum — perge per Proximus.",
+      "member_view_title": "👤 Ut sodalis vide",
+      "member_view_registration": "Nunc unam ex tuis rationibus Clash iunge: idem percurres quod sodales tui vident. Nihil iungendum aut iam iunctum? Rationes tuas potius inspice — aut per Proximus praeteri.",
+      "member_view_war_notifications": "Optiones monitorum belli tuas aperi ut videas quid sodales tui eligere possint.",
+      "member_view_cwl_player_hub": "Praeferentias tuas CWL aperi — tabulam quam sodales tui adhibent.",
+      "button_link_account": "🔗 Rationem meam iunge",
+      "button_my_accounts": "📋 Rationes meae",
+      "button_war_reminders": "🔔 Monita belli mea",
+      "button_cwl_preferences": "🛡️ Praeferentiae meae CWL"
     },
     "step": {
       "bot_permissions": { "title": "Permissiones automati", "desc": "Permissiones servitoris quibus ClashControl eget ut nuntia sua mittat et munera tribuat." },

@@ -434,6 +434,11 @@ rebuilding `war_summary` in both DBs (Cardinal Rule 1). `/whois clan` reports th
   guild's CWL family (`resolve_guild_member_clan_tags()` excludes it). No FK — listed in
   `CLAN_TAG_REFERENCING_TABLES` instead. Seeded once from existing seasons (bot_metadata key
   `guild_guest_clans_backfill_v1`). Mirrored in `CACHE.guild_guest_clans`.
+- `guild_setup_dismissed` - /setup steps a guild marked "we don't use this" (tracker #0151,
+  2026-10-11): `guild_id`, `step_id` (a `config_audit.STEPS` id), `dismissed_at`;
+  `UNIQUE(guild_id, step_id)`, undo deletes the row. No user column on purpose (no personal
+  data). Config only: hot DB, no history mirror, no FK. Mirrored in `CACHE.guild_setup_dismissed`
+  (guild_id -> {step_id}), written through `CACHE.set_setup_step_dismissed()`.
 - `guild_welcome_families` - Junction: guilds ↔ families selected (as a whole) for the welcome
   message's clan-link mode. Independent from `guild_member_families` (member-role granting).
 - `guild_welcome_clans` - Junction: guilds ↔ individually-selected clans for the welcome

@@ -301,7 +301,7 @@
       "setup": {
         "short": "Comprobar la configuración de ClashControl en este servidor (administradores)",
         "title": "🛠️ Comando Setup",
-        "detailed": "Muestra una lista de todo lo que ClashControl necesita en este servidor, con un estado por paso: ✅ OK, ❌ hay que corregirlo, ⚠️ incompleto, ⏸️ no se usa, 🔒 requiere un paso anterior, ⚪ aún no comprobado. Elige un paso para ver los detalles: qué falla, por qué importa y cómo solucionarlo.\n\n**Uso:**\n`/setup`\n\n**Qué comprueba:**\n• Permisos del bot — «Administrador», cada permiso que falta con el motivo por el que se necesita, y un botón para volver a autorizar el bot con un clic\n• Idioma y zona horaria, clanes y familias (registros de guerra privados, clanes eliminados por Supercell), mensaje de bienvenida\n• Registro (si los nuevos miembros lo ven, cuántas cuentas están vinculadas), recordatorios de guerra por MD, recordatorios de guerra e incursiones en canales\n• Roles del servidor (Simples, de CoC y de Clan), ajustes de la LGC, «Tus Preferencias de LGC», la temporada de LGC según el calendario, clasificaciones\n\n**Notas:**\n• Solo para administradores del servidor\n• Solo tú ves el resultado\n• No se cambia nada — «🔄 Comprobar de nuevo» repite las comprobaciones cuando hayas corregido algo"
+        "detailed": "Muestra una lista de todo lo que ClashControl necesita en este servidor, con un estado por paso: ✅ OK, ❌ hay que corregirlo, ⚠️ incompleto, ⏸️ no se usa, 🔒 requiere un paso anterior, ⚪ aún no comprobado. Elige un paso para ver los detalles: qué falla, por qué importa y cómo solucionarlo.\n\n**Uso:**\n`/setup`\n\n**Qué comprueba:**\n• Permisos del bot — «Administrador», cada permiso que falta con el motivo por el que se necesita, y un botón para volver a autorizar el bot con un clic\n• Idioma y zona horaria, clanes y familias (registros de guerra privados, clanes eliminados por Supercell), mensaje de bienvenida\n• Registro (si los nuevos miembros lo ven, cuántas cuentas están vinculadas), recordatorios de guerra por MD, recordatorios de guerra e incursiones en canales\n• Roles del servidor (Simples, de CoC y de Clan), ajustes de la LGC, «Tus Preferencias de LGC», la temporada de LGC según el calendario, clasificaciones\n\n**Notas:**\n• Solo para administradores del servidor\n• Solo tú ves el resultado\n• «⚙️ Abrir ajustes» abre la pantalla correspondiente de /clan management; «🔄 Comprobar de nuevo» repite las comprobaciones\n• «🧭 Iniciar configuración guiada» recorre todos los pasos en orden, incl. cómo lo ven tus miembros\n• «🚫 No lo usamos» marca un paso opcional como no usado en tu servidor (deshacer: «↩️ Usarlo después de todo»)"
       },
       "clan management": {
         "short": "Configuración central del servidor y de los clanes",
@@ -1621,6 +1621,28 @@
       "coordinators_title": "🧑‍✈️ Coordinadores de LGC",
       "coordinators": "{count} clan(es) tienen coordinadores de LGC. Los coordinadores llevan la temporada de su clan sin ser administradores del servidor: {button}.",
       "where_hub": "o el mensaje {hub} (paso 10)"
+    },
+    "summary_dismissed": "no se usa en este servidor",
+    "button_dismiss": "🚫 No lo usamos",
+    "button_undismiss": "↩️ Usarlo después de todo",
+    "guided": {
+      "header": "🧭 Configuración guiada · paso {n} de {total}",
+      "button_start": "🧭 Iniciar configuración guiada",
+      "button_previous": "◀ Anterior",
+      "button_next": "Siguiente ▶",
+      "button_overview": "📋 Resumen",
+      "done_title": "🧭 Configuración guiada — terminada",
+      "done_open": "Has recorrido todos los pasos. {count} paso(s) aún necesitan atención — están marcados en el resumen, y /setup te trae de vuelta aquí en cualquier momento.",
+      "done_all": "Todo está configurado. 🎉 Usa /setup cuando quieras para volver a comprobarlo, por ejemplo después de cambiar roles o canales.",
+      "ok_next": "✅ Aquí no hay nada que hacer — continúa con Siguiente.",
+      "member_view_title": "👤 Verlo como miembro",
+      "member_view_registration": "Vincula ahora una de tus propias cuentas de Clash: recorrerás exactamente lo que ven tus miembros. ¿Nada que vincular o ya vinculada? Mira tus cuentas en su lugar — o sáltalo con Siguiente.",
+      "member_view_war_notifications": "Abre tus propios ajustes de recordatorios de guerra para ver lo que pueden elegir tus miembros.",
+      "member_view_cwl_player_hub": "Abre tus propias preferencias de LGC — la pantalla que usan tus miembros.",
+      "button_link_account": "🔗 Vincular mi cuenta",
+      "button_my_accounts": "📋 Mis cuentas",
+      "button_war_reminders": "🔔 Mis recordatorios de guerra",
+      "button_cwl_preferences": "🛡️ Mis preferencias de LGC"
     },
     "step": {
       "bot_permissions": { "title": "Permisos del bot", "desc": "Los permisos del servidor que ClashControl necesita para publicar sus mensajes y asignar roles." },

@@ -301,7 +301,7 @@
       "setup": {
         "short": "Check ClashControl's setup on this server (admins)",
         "title": "🛠️ Setup Command",
-        "detailed": "Shows a checklist of everything ClashControl needs on this server, with a status for each step: ✅ OK, ❌ needs fixing, ⚠️ incomplete, ⏸️ not in use, 🔒 needs an earlier step, ⚪ not checked yet. Pick a step for the details: what is wrong, why it matters and how to fix it.\n\n**Usage:**\n`/setup`\n\n**What it checks:**\n• Bot permissions — “Administrator”, every missing permission with the reason it is needed, and a button to re-authorize the bot in one click\n• Language & timezone, clans & families (private war logs, clans deleted by Supercell), welcome message\n• Registration (can new members see it, how many accounts are linked), war reminders by DM, war and raid reminders in channels\n• Server roles (Simple, CoC and clan roles), CWL settings, “Your CWL Preferences”, the CWL season against the calendar, leaderboards\n\n**Notes:**\n• Server administrators only\n• Only you see the result\n• Nothing is changed — “🔄 Check again” re-runs the checks after you fixed something"
+        "detailed": "Shows a checklist of everything ClashControl needs on this server, with a status for each step: ✅ OK, ❌ needs fixing, ⚠️ incomplete, ⏸️ not in use, 🔒 needs an earlier step, ⚪ not checked yet. Pick a step for the details: what is wrong, why it matters and how to fix it.\n\n**Usage:**\n`/setup`\n\n**What it checks:**\n• Bot permissions — “Administrator”, every missing permission with the reason it is needed, and a button to re-authorize the bot in one click\n• Language & timezone, clans & families (private war logs, clans deleted by Supercell), welcome message\n• Registration (can new members see it, how many accounts are linked), war reminders by DM, war and raid reminders in channels\n• Server roles (Simple, CoC and clan roles), CWL settings, “Your CWL Preferences”, the CWL season against the calendar, leaderboards\n\n**Notes:**\n• Server administrators only\n• Only you see the result\n• “⚙️ Open settings” opens the matching /clan management screen; “🔄 Check again” re-runs the checks\n• “🧭 Start guided setup” walks through every step in order, incl. how it looks for your members\n• “🚫 We don't use this” marks an optional step as not used on your server (undo: “↩️ Use it after all”)"
       },
       "clan management": {
         "short": "Central server and clan configuration",
@@ -1622,6 +1622,28 @@
       "coordinators_title": "🧑‍✈️ CWL coordinators",
       "coordinators": "{count} clan(s) have CWL coordinators. Coordinators run their clan's season without being server admins: {button}.",
       "where_hub": "or the {hub} message (step 10)"
+    },
+    "summary_dismissed": "not used on this server",
+    "button_dismiss": "🚫 We don't use this",
+    "button_undismiss": "↩️ Use it after all",
+    "guided": {
+      "header": "🧭 Guided setup · step {n} of {total}",
+      "button_start": "🧭 Start guided setup",
+      "button_previous": "◀ Previous",
+      "button_next": "Next ▶",
+      "button_overview": "📋 Overview",
+      "done_title": "🧭 Guided setup — done",
+      "done_open": "You went through every step. {count} step(s) still need attention — they are marked in the overview, and /setup brings you back here any time.",
+      "done_all": "Everything is set up. 🎉 Run /setup any time to check again, for example after changing roles or channels.",
+      "ok_next": "✅ Nothing to do here — continue with Next.",
+      "member_view_title": "👤 See it as a member",
+      "member_view_registration": "Link one of your own Clash accounts now: you go through exactly what your members see. Nothing to link, or already linked? Look at your accounts instead — or skip with Next.",
+      "member_view_war_notifications": "Open your own war reminder settings to see what your members can choose.",
+      "member_view_cwl_player_hub": "Open your own CWL preferences — the screen your members use.",
+      "button_link_account": "🔗 Link my account",
+      "button_my_accounts": "📋 My accounts",
+      "button_war_reminders": "🔔 My war reminders",
+      "button_cwl_preferences": "🛡️ My CWL preferences"
     },
     "step": {
       "bot_permissions": { "title": "Bot permissions", "desc": "The server permissions ClashControl needs to post its messages and assign roles." },

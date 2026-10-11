@@ -810,6 +810,15 @@ all rebuild/button-handler paths so the reference is never lost.
   mode)` — the same builder /clan management uses for its public post. The ephemeral panel is
   closed with a notice after 14 minutes (`SETTINGS_PANEL_LIFETIME_SECONDS`): it is edited through
   the token of the click that opened it, which dies at 15 minutes (Pitfall 41).
+- Guided setup (Phase 6, Build 158): "🧭 Start guided setup" turns `SetupView` into a linear walk
+  over `STEPS` (Previous / Next / Check again / Overview), starting at the first step that
+  `needs_attention()` (broken, incomplete, blocked, or off and not dismissed) — no stored cursor,
+  the checks say where the guild stands. "🚫 We don't use this" (`can_dismiss()`: OFF/INCOMPLETE
+  only, not steps 1–3) stores the step in `guild_setup_dismissed`; `run_audit()` then shows it
+  ⏸️ while it would be ⏸️/⚠️, and the real status once it is ✅/❌. Steps 5, 6 and 11 offer the
+  member side through `clashcontrol/tutorial_flows.py` — the registration hub's own button
+  callbacks (behind `RegistrationView.interaction_check`) and the CWL preferences Activity —
+  shared with the planned /tutorial (#0121); never re-implement those screens.
 
 🟫 clashcontrol/log_throttle.py (tracker #0150)
 - `log_throttled(level, key, message, interval_s=DAY_S)` — log a recurring failure once per

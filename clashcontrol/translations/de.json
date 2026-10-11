@@ -1575,6 +1575,8 @@
     "on": "an",
     "off": "aus",
     "registration": {
+      "why_title": "🔑 Warum das wichtig ist",
+      "why": "Die Registrierung ist das Herz von ClashControl: Sie verknüpft die Clash-of-Clans-Accounts jedes Mitglieds mit seinem Discord-Benutzer. Fast alles baut darauf auf — automatische Rollen (Mitglieds-, CoC- und Clan-Rollen), Kriegs- und Raid-Erinnerungen per DM, CWL-Anmeldungen und Aufstellungen, {whois} und Bestenlisten mit Discord-Namen. In der Registrierungsnachricht erledigen neue Mitglieder das selbst — lass sie also aktiv, in einem Kanal, den sie sehen können.",
       "summary_hub_off": "Registrierungsnachricht aus",
       "summary_no_channel": "an, aber kein Kanal gesetzt",
       "summary_hidden_from_newcomers": "neue Mitglieder sehen die Registrierungsnachricht nicht",

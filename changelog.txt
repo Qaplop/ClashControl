@@ -1,6 +1,13 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-11 (36)
+- Changed (tracker #0151, qaplop): /setup step 5 explains why registration matters — it links
+  members' Clash accounts to Discord, the base for roles, war/raid reminders, CWL sign-ups and
+  rosters, /whois and leaderboards with Discord names — as the first "About this step" section
+  ("🔑 Why it matters", all languages). The guided setup's /tutorial tip moved from the bottom of
+  the page to the top. Build 180.
+
 2026-10-11 (35)
 - Changed (qaplop): the Welcome Message dialog explains its two modes properly — what a new
   member gets (Clan Link: one link per selected clan that opens it in Clash of Clans to join or

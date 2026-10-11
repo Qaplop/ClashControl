@@ -1574,6 +1574,8 @@
     "on": "accensum",
     "off": "exstinctum",
     "registration": {
+      "why_title": "🔑 Cur magni momenti sit",
+      "why": "Inscriptio cor ClashControl est: rationes Clash of Clans cuiusque sodalis cum usore Discord eius conectit. Fere omnia in eo nituntur — munera automatica (sodalium, CoC et gentium), admonitiones belli et incursionum per nuntium privatum, inscriptiones et ordines CWL, {whois}, et tabulae cum nominibus Discord. Nuntium inscriptionis est ubi novi sodales id ipsi faciunt, itaque accensum serva, in canali quem videre possunt.",
       "summary_hub_off": "nuntius inscriptionis exstinctus",
       "summary_no_channel": "accensus, sed nullus canalis",
       "summary_hidden_from_newcomers": "novi sodales nuntium inscriptionis non vident",

@@ -1574,6 +1574,8 @@
     "on": "activado",
     "off": "desactivado",
     "registration": {
+      "why_title": "🔑 Por qué importa",
+      "why": "El registro es el corazón de ClashControl: vincula las cuentas de Clash of Clans de cada miembro con su usuario de Discord. Casi todo se basa en eso: roles automáticos (de miembro, de CoC y de clan), recordatorios de guerra y de incursiones por MD, inscripciones y alineaciones de la LGC, {whois} y clasificaciones con nombres de Discord. El mensaje de registro es donde los nuevos miembros lo hacen por sí mismos, así que mantenlo activo, en un canal que puedan ver.",
       "summary_hub_off": "mensaje de registro desactivado",
       "summary_no_channel": "activado, pero sin canal",
       "summary_hidden_from_newcomers": "los nuevos miembros no ven el mensaje de registro",

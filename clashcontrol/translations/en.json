@@ -1575,6 +1575,8 @@
     "on": "on",
     "off": "off",
     "registration": {
+      "why_title": "🔑 Why it matters",
+      "why": "Registration is the heart of ClashControl: it links each member's Clash of Clans accounts to their Discord user. Almost everything builds on that — automatic roles (member, CoC and clan roles), war and raid reminders by DM, CWL sign-ups and rosters, {whois}, and leaderboards with Discord names. The registration message is where new members do it themselves, so keep it on, in a channel they can see.",
       "summary_hub_off": "registration message off",
       "summary_no_channel": "on, but no channel set",
       "summary_hidden_from_newcomers": "new members can't see the registration message",

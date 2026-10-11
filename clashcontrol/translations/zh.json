@@ -1574,6 +1574,8 @@
     "on": "开启",
     "off": "关闭",
     "registration": {
+      "why_title": "🔑 为什么重要",
+      "why": "注册是 ClashControl 的核心：它把每位成员的部落冲突账号与其 Discord 用户关联起来。几乎所有功能都以此为基础——自动身份组（成员、部落冲突和部落身份组）、通过私信发送的部落战和突袭提醒、部落战联赛报名和阵容、{whois}，以及显示 Discord 名称的排行榜。新成员在注册消息中自行完成注册，所以请保持开启，并放在他们能看到的频道中。",
       "summary_hub_off": "注册消息已关闭",
       "summary_no_channel": "已开启，但未设置频道",
       "summary_hidden_from_newcomers": "新成员看不到注册消息",

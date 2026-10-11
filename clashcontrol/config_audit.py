@@ -892,7 +892,9 @@ def detail_registration(guild: discord.Guild, result: StepResult, guild_id: Opti
     about = (tr("config_audit.registration.hub_in", channel=f"<#{channel_id}>")
              if channel_id and "hub_off" not in codes else tr("config_audit.registration.hub_off"))
     about += "\n" + tr("config_audit.registration.command_hint", registration=registration)
-    return StepDetail([("", about)], problem=problem)
+    # Why it matters (qaplop 2026-10-11): linked accounts are what almost every feature runs on.
+    why = tr("config_audit.registration.why", whois=command_mention("whois"))
+    return StepDetail([(tr("config_audit.registration.why_title"), why), ("", about)], problem=problem)
 
 
 # ---------------------------------------------------------------------------------------------

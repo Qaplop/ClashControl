@@ -52,7 +52,8 @@ from clashcontrol.ui_tracker import (
     post_test_cases,
     reply_and_invite_for_agent,
     start_tracker_item,
-    _build_testcase_action_options,
+    _testcase_option_pages,
+    TrackerTestCaseActionPrompt,
     _chunk_lines_for_discord,
     _format_testcase_lines,
     _grant_or_invite_from_interaction,
@@ -1902,24 +1903,39 @@ def test_format_testcase_lines_shows_failed_box_and_note():
 
 # -- TrackerTestCaseActionSelect option-building (2026-09-05) --------------------------------
 
-def test_build_testcase_action_options_offers_reversal_only():
+def test_testcase_options_one_entry_per_case_with_its_state():
     testcases = [
         {"id": 1, "environment": "DEV", "seq": 1, "description": "pending", "passed": 0, "failed": 0},
         {"id": 2, "environment": "DEV", "seq": 2, "description": "already passed", "passed": 1, "failed": 0},
         {"id": 3, "environment": "PROD", "seq": 1, "description": "already failed", "passed": 0, "failed": 1},
     ]
-    options = _build_testcase_action_options(testcases)
-    values = {o.value for o in options}
-    assert values == {"pass:1", "fail:1", "fail:2", "pass:3"}
+    [(options, _range)] = _testcase_option_pages(testcases)
+    assert [o.value for o in options] == ["case:1", "case:2", "case:3"]
+    assert [o.label[0] for o in options] == ["☐", "✅", "❌"]
 
 
-def test_build_testcase_action_options_truncates_to_25():
+def test_long_case_lists_get_one_select_per_25_cases():
+    """2026-10-11 (qaplop): #0151 had 43 cases; the single select (two options per case, cut at
+    25) reached only the first ~12."""
     testcases = [
-        {"id": i, "environment": "DEV", "seq": i, "description": f"case {i}", "passed": 0, "failed": 0}
-        for i in range(1, 20)
+        {"id": i, "environment": "DEV" if i <= 30 else "PROD", "seq": i, "description": f"case {i}",
+         "passed": 0, "failed": 0}
+        for i in range(1, 44)
     ]
-    options = _build_testcase_action_options(testcases)
-    assert len(options) == 25  # 19 cases * 2 options each = 38, truncated
+    view = build_tracker_testcase_view(151, testcases)
+    selects = [c for c in view.children if isinstance(c, TrackerTestCaseActionSelect)]
+    assert [len(s.item.options) for s in selects] == [25, 18]
+    assert [s.item.custom_id for s in selects] == ["tracker:test:case:151", "tracker:test:case:151:1"]
+    assert [s.item.row for s in selects] == [1, 2]
+    assert selects[1].item.placeholder.endswith("(DEV #26 – PROD #43)")
+    values = {o.value for s in selects for o in s.item.options}
+    assert values == {f"case:{i}" for i in range(1, 44)}
+
+
+def test_more_than_100_cases_stop_at_four_selects():
+    testcases = [{"id": i, "environment": "DEV", "seq": i, "description": "x", "passed": 0, "failed": 0}
+                 for i in range(1, 130)]
+    assert len(_testcase_option_pages(testcases)) == 4
 
 
 def test_build_tracker_testcase_view_includes_case_select():
@@ -1946,7 +1962,7 @@ async def test_testcase_select_pass_action_marks_passed(db, monkeypatch, mock_in
     cases = await db.get_tracker_testcases(item_number)
     testcase_id = cases[0]["id"]
 
-    select = TrackerTestCaseActionSelect(item_number, cases)
+    select = TrackerTestCaseActionSelect(item_number, [])  # old pass:/fail: values still work
     select.item._values = [f"pass:{testcase_id}"]
 
     await select.callback(mock_interaction)
@@ -1965,7 +1981,7 @@ async def test_testcase_select_fail_action_opens_modal_without_mutating_yet(db, 
     cases = await db.get_tracker_testcases(item_number)
     testcase_id = cases[0]["id"]
 
-    select = TrackerTestCaseActionSelect(item_number, cases)
+    select = TrackerTestCaseActionSelect(item_number, [])  # old pass:/fail: values still work
     select.item._values = [f"fail:{testcase_id}"]
 
     await select.callback(mock_interaction)
@@ -1986,7 +2002,7 @@ async def test_testcase_select_denies_non_admin_non_tester(db, monkeypatch, mock
     cases = await db.get_tracker_testcases(item_number)
     testcase_id = cases[0]["id"]
 
-    select = TrackerTestCaseActionSelect(item_number, cases)
+    select = TrackerTestCaseActionSelect(item_number, [])  # old pass:/fail: values still work
     select.item._values = [f"pass:{testcase_id}"]
 
     await select.callback(mock_interaction)  # mock_interaction.user.id defaults to a non-admin id
@@ -3050,3 +3066,44 @@ async def test_apply_status_change_done_without_implemented_channel_does_not_rev
     await apply_status_change(item_number, "done", actor_id="1")
 
     old_reports_channel.set_permissions.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_picking_a_case_opens_the_pass_fail_prompt(db, monkeypatch, mock_interaction):
+    _wire_bot(monkeypatch, channel=None)
+    mock_interaction.user.id = int(ADMIN_ID)
+    item_number = await _make_item(db)
+    await db.set_tracker_testcases(item_number, [{"environment": "PROD", "description": "the case text"}])
+    cases = await db.get_tracker_testcases(item_number)
+    testcase_id = cases[0]["id"]
+
+    select = TrackerTestCaseActionSelect(item_number, [])
+    select.item._values = [f"case:{testcase_id}"]
+    await select.callback(mock_interaction)
+
+    mock_interaction.response.send_message.assert_awaited_once()
+    args, kwargs = mock_interaction.response.send_message.call_args
+    assert "the case text" in args[0] and kwargs["ephemeral"] is True
+    prompt = kwargs["view"]
+    assert isinstance(prompt, TrackerTestCaseActionPrompt)
+    assert len(prompt.children) == 2                      # pending: Pass and Fail
+    assert (await db.get_tracker_testcase_by_id(testcase_id))["passed"] == 0  # nothing marked yet
+
+
+@pytest.mark.asyncio
+async def test_prompt_pass_marks_the_case_and_offers_only_the_reversal(db, monkeypatch, mock_interaction):
+    _wire_bot(monkeypatch, channel=None)
+    item_number = await _make_item(db)
+    await db.set_tracker_testcases(item_number, [{"environment": "PROD", "description": "x"},
+                                                 {"environment": "PROD", "description": "y"}])
+    await db.update_tracker_item(item_number, status="testing")
+    cases = await db.get_tracker_testcases(item_number)
+    prompt = TrackerTestCaseActionPrompt(item_number, cases[0], ADMIN_ID, None)
+    await prompt._on_pass(mock_interaction)
+    assert (await db.get_tracker_testcase_by_id(cases[0]["id"]))["passed"] == 1
+    mock_interaction.edit_original_response.assert_awaited()
+
+    passed = await db.get_tracker_testcase_by_id(cases[0]["id"])
+    only_fail = TrackerTestCaseActionPrompt(item_number, passed, ADMIN_ID, None)
+    assert [b.style for b in only_fail.children] == [discord.ButtonStyle.danger]
+

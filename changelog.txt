@@ -1,6 +1,15 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-11 (25)
+- Fixed (qaplop, #cc-testing): the "Mark an individual test case…" dropdown didn't work for long
+  test-case lists. It had two entries per case (Pass and Fail) and was cut off at Discord's 25 —
+  on #0151 (43 cases) only the first ~12 cases were reachable. Now one entry per case (☐/✅/❌,
+  number, environment, text); picking one opens a private prompt with the whole case and
+  "✅ Pass" / "❌ Fail" (only the one that changes its state). Lists over 25 get one dropdown per
+  25 cases (up to 4 = 100), each showing its range. Already-posted dropdowns keep working until
+  their message is refreshed. Files: ui_tracker.py, translations (5), tests. Build 169.
+
 2026-10-11 (24)
 - Changed (tracker #0152, qaplop): /setup steps 10 and 11 still wrapped. Step 10 with both hubs
   on: "hubs in #mgmt · #player" (new key part_both); step 11: "in #channel" (/cwl preferences

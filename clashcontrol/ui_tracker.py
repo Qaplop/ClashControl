@@ -2396,8 +2396,11 @@ def build_tracker_testcase_view(item_number: int, testcases: List[Dict[str, Any]
     # Only when there's at least one case -- Discord rejects a Select with zero options, and an
     # empty test-case list already can't happen here in practice (post_test_cases() never posts
     # a message for an empty set), but this guard costs nothing and avoids relying on that.
-    if testcases:
-        view.add_item(TrackerTestCaseActionSelect(item_number, testcases))
+    # One select per 25 cases (Discord's option cap), rows 1-4 below the buttons.
+    pages = _testcase_option_pages(testcases)
+    for page, (options, case_range) in enumerate(pages):
+        view.add_item(TrackerTestCaseActionSelect(
+            item_number, options, page=page, case_range=case_range if len(pages) > 1 else ""))
     return view
 
 
@@ -2863,7 +2866,7 @@ class ConfirmItemDoneView(discord.ui.View):
 TRACKER_TEST_PASS_TEMPLATE = r'^tracker:test:pass:(?P<item_number>\d+):(?P<environment>DEV|PROD)$'
 TRACKER_TEST_FAIL_TEMPLATE = r'^tracker:test:fail:(?P<item_number>\d+)$'
 TRACKER_TEST_MOVEDONE_TEMPLATE = r'^tracker:test:movedone:(?P<item_number>\d+)$'
-TRACKER_TEST_CASE_TEMPLATE = r'^tracker:test:case:(?P<item_number>\d+)$'
+TRACKER_TEST_CASE_TEMPLATE = r'^tracker:test:case:(?P<item_number>\d+)(?::(?P<page>\d+))?$'
 
 
 
@@ -2970,23 +2973,39 @@ class TrackerTestFailButton(
         await mark_testing_failed(self.item_number, user_id)
 
 
-def _build_testcase_action_options(testcases: List[Dict[str, Any]]) -> List[discord.SelectOption]:
-    """One option per (case, action) pair for TrackerTestCaseActionSelect -- but only the action
-    that would actually CHANGE that case's state, never the no-op matching its current one. A
-    resolved case (passed or failed) still offers exactly the one option that reverses it, which
-    is the only "undo a mistake" path this feature needs (tracker item request 2026-09-05).
-    Truncated to Discord's 25-option Select cap if ever exceeded -- same defensive `[:25]` idiom
-    ui_clan_management.py already uses for its family_select ("Discord limit")."""
-    options: List[discord.SelectOption] = []
-    for case in sorted(testcases, key=lambda c: (c["environment"], c["seq"])):
-        label_base = f"#{case['seq']} ({case['environment']}): {case['description']}"
-        if len(label_base) > 90:
-            label_base = label_base[:89] + "…"
-        if not case["passed"]:
-            options.append(discord.SelectOption(label=f"✅ Pass — {label_base}"[:100], value=f"pass:{case['id']}"))
-        if not case.get("failed"):
-            options.append(discord.SelectOption(label=f"❌ Fail — {label_base}"[:100], value=f"fail:{case['id']}"))
-    return options[:25]
+#: Discord caps a select at 25 options; the test-case message keeps row 0 for its buttons, so it
+#: has room for four selects (rows 1-4) -- 100 cases.
+TESTCASE_SELECT_PAGE_SIZE = 25
+TESTCASE_SELECT_MAX_PAGES = 4
+
+
+def _testcase_status_icon(case: Dict[str, Any]) -> str:
+    return "✅" if case.get("passed") else ("❌" if case.get("failed") else "☐")
+
+
+def _testcase_option_pages(testcases: List[Dict[str, Any]]) -> List[Tuple[List[discord.SelectOption], str]]:
+    """The options for TrackerTestCaseActionSelect: ONE per case (its state icon, number,
+    environment and text), the action chosen afterwards in TrackerTestCaseActionPrompt -- split
+    into pages of 25, each with its range ("DEV #1 – PROD #3") for the select's placeholder.
+
+    2026-10-11 (qaplop): there used to be two options per case (Pass and Fail) in one select cut
+    off at 25 -- on #0151 (43 cases) only the first ~12 cases could be marked at all."""
+    ordered = sorted(testcases, key=lambda c: (c["environment"], c["seq"]))
+    pages: List[Tuple[List[discord.SelectOption], str]] = []
+    for start in range(0, len(ordered), TESTCASE_SELECT_PAGE_SIZE):
+        chunk = ordered[start:start + TESTCASE_SELECT_PAGE_SIZE]
+        options = []
+        for case in chunk:
+            label = f"{_testcase_status_icon(case)} #{case['seq']} ({case['environment']}): {case['description']}"
+            if len(label) > 100:
+                label = label[:99] + "…"
+            options.append(discord.SelectOption(label=label, value=f"case:{case['id']}"))
+        first, last = chunk[0], chunk[-1]
+        pages.append((options, f"{first['environment']} #{first['seq']} – {last['environment']} #{last['seq']}"))
+    if len(pages) > TESTCASE_SELECT_MAX_PAGES:
+        logging.warning(f"[TRACKER] {len(ordered)} test cases: only the first "
+                        f"{TESTCASE_SELECT_MAX_PAGES * TESTCASE_SELECT_PAGE_SIZE} get a select entry")
+    return pages[:TESTCASE_SELECT_MAX_PAGES]
 
 
 class TrackerTestCaseActionSelect(
@@ -3005,19 +3024,26 @@ class TrackerTestCaseActionSelect(
     Each option encodes both the target case and the action in its value (`pass:<id>` /
     `fail:<id>`) so one select handles both directions without needing state remembered between
     two separate interactions (a "which case did they last pick" button pair would be unreliable
-    across concurrent users or a bot restart on this restart-safe DynamicItem)."""
+    across concurrent users or a bot restart on this restart-safe DynamicItem).
 
-    def __init__(self, item_number: int, testcases: List[Dict[str, Any]]):
+    Since 2026-10-11 an option picks a CASE (`case:<id>`); Pass/Fail follow in an ephemeral
+    TrackerTestCaseActionPrompt, and long lists get one select per 25 cases (`page` 1-3 add
+    `:<page>` to the custom_id; page 0 keeps the old id). Old `pass:`/`fail:` values from
+    messages posted before that still work until the message is refreshed."""
+
+    def __init__(self, item_number: int, options: List[discord.SelectOption], page: int = 0,
+                 case_range: str = ""):
         self.item_number = item_number
-        options = _build_testcase_action_options(testcases) or [
-            discord.SelectOption(label="No actionable test cases", value="noop:0")
-        ]
+        placeholder = t('ui_components.tracker.testcase_select_placeholder')
+        if case_range:
+            placeholder = f"{placeholder} ({case_range})"
         super().__init__(
             discord.ui.Select(
-                custom_id=f"tracker:test:case:{item_number}",
-                placeholder=t('ui_components.tracker.testcase_select_placeholder'),
-                options=options,
+                custom_id=f"tracker:test:case:{item_number}" + (f":{page}" if page else ""),
+                placeholder=placeholder[:150],
+                options=options or [discord.SelectOption(label="No actionable test cases", value="noop:0")],
                 min_values=1, max_values=1,
+                row=1 + page,
             )
         )
 
@@ -3030,7 +3056,7 @@ class TrackerTestCaseActionSelect(
         # (discord/ui/select.py's `values` property reads a context-var populated during
         # dispatch), independent of whatever options this throwaway reconstruction claims to
         # have -- so no DB round trip is needed just to rebuild the "real" option list here.
-        return cls(item_number=int(match["item_number"]), testcases=[])
+        return cls(item_number=int(match["item_number"]), options=[], page=int(match["page"] or 0))
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         import QBcore
@@ -3054,12 +3080,27 @@ class TrackerTestCaseActionSelect(
 
         values = self.item.values
         action, _, raw_id = (values[0] if values else "").partition(":")
-        if action not in ("pass", "fail") or not raw_id.isdigit():
+        if action not in ("case", "pass", "fail") or not raw_id.isdigit():
             await interaction.response.send_message(
                 t('ui_components.tracker.testcase_no_actionable_cases', guild_id=guild_id), ephemeral=True
             )
             return
         testcase_id = int(raw_id)
+
+        if action == "case":
+            from clashcontrol.cache_manager import CACHE
+            case = await CACHE.db_manager.get_tracker_testcase_by_id(testcase_id)  # type: ignore[union-attr]
+            if case is None or case["item_number"] != self.item_number:
+                await interaction.response.send_message(
+                    t('ui_components.tracker.testcase_no_actionable_cases', guild_id=guild_id), ephemeral=True
+                )
+                return
+            await interaction.response.send_message(
+                testcase_prompt_text(case, guild_id),
+                view=TrackerTestCaseActionPrompt(self.item_number, case, user_id, guild_id),
+                ephemeral=True,
+            )
+            return
 
         if action == "fail":
             await interaction.response.send_modal(
@@ -3083,6 +3124,62 @@ class TrackerTestCaseActionSelect(
                 ),
                 ephemeral=True,
             )
+
+
+def testcase_prompt_text(case: Dict[str, Any], guild_id: Optional[int]) -> str:
+    """The ephemeral prompt's text: the whole case, its state, then the question."""
+    state = "passed" if case.get("passed") else ("failed" if case.get("failed") else "pending")
+    return t('ui_components.tracker.testcase_prompt', guild_id=guild_id,
+             icon=_testcase_status_icon(case), seq=case["seq"], environment=case["environment"],
+             status=t(f'ui_components.tracker.testcase_state_{state}', guild_id=guild_id),
+             description=str(case["description"])[:1700])
+
+
+class TrackerTestCaseActionPrompt(discord.ui.View):
+    """Pass / Fail for the one case picked in TrackerTestCaseActionSelect (ephemeral, only for
+    whoever picked it). Offers only the action that changes the case's state -- a passed case
+    can only fail and vice versa, same "undo a mistake" rule as before."""
+
+    def __init__(self, item_number: int, case: Dict[str, Any], user_id: str, guild_id: Optional[int]):
+        super().__init__(timeout=600)
+        self.item_number = item_number
+        self.testcase_id = int(case["id"])
+        self.user_id = user_id
+        self.guild_id = guild_id
+        if not case.get("passed"):
+            button = discord.ui.Button(label=t('ui_components.tracker.testcase_button_pass', guild_id=guild_id),
+                                       style=discord.ButtonStyle.success)
+            button.callback = self._on_pass  # type: ignore[assignment]
+            self.add_item(button)
+        if not case.get("failed"):
+            button = discord.ui.Button(label=t('ui_components.tracker.testcase_button_fail', guild_id=guild_id),
+                                       style=discord.ButtonStyle.danger)
+            button.callback = self._on_fail  # type: ignore[assignment]
+            self.add_item(button)
+
+    async def _on_pass(self, interaction: discord.Interaction) -> None:
+        if not await claim_action(self, interaction):
+            return
+        await interaction.response.defer(thinking=False, ephemeral=True)
+        try:
+            result = await mark_testcase_by_id_and_refresh(self.item_number, self.testcase_id, "passed", self.user_id)
+        except ValueError as e:
+            await interaction.edit_original_response(content=str(e), view=None)
+            return
+        await interaction.edit_original_response(
+            content=t('ui_components.tracker.testcase_single_pass_ack', guild_id=self.guild_id,
+                      seq=result["testcase"]["seq"]),
+            view=None,
+        )
+        if result["just_completed"]:
+            await _send_testcases_moved_followup(interaction, self.item_number, result, self.guild_id)
+        self.stop()
+
+    async def _on_fail(self, interaction: discord.Interaction) -> None:
+        # Only opens the modal -- the modal's submit does the marking, so nothing to guard here.
+        await interaction.response.send_modal(
+            TrackerTestCaseFailNoteModal(self.item_number, self.testcase_id, self.user_id)
+        )
 
 
 class TrackerTestCaseFailNoteModal(discord.ui.Modal, title="Mark test case failed"):

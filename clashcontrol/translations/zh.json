@@ -301,7 +301,7 @@
       "setup": {
         "short": "检查 ClashControl 在此服务器上的设置（管理员）",
         "title": "🛠️ Setup 命令",
-        "detailed": "显示 ClashControl 在此服务器上所需一切的检查清单，每个步骤都有状态：✅ 正常、❌ 需要修复、⚠️ 不完整、⏸️ 未使用、🔒 需要先完成前面的步骤、⚪ 尚未检查。选择一个步骤查看详情：哪里有问题、为什么重要以及如何修复。\n\n**用法：**\n`/setup`\n\n**目前已检查：**\n• 机器人权限——“管理员”权限、每个缺少的权限及其用途，以及一键重新授权机器人的按钮\n• 语言和时区、部落和家族（包括私密战争日志和被 Supercell 删除的部落）、欢迎消息、频道中的战争和突袭提醒、排行榜\n• 注册（新成员能否看到、已绑定多少账号）、服务器身份组（简单、部落冲突和部落身份组）、部落战联赛设置（中心消息、选项、成员能否打开部落战联赛偏好）\n\n战争通知、「你的部落战联赛偏好」中心和部落战联赛赛季管理将在后续更新中提供。\n\n**注意：**\n• 仅限服务器管理员\n• 只有你能看到结果\n• 不会更改任何内容——修复问题后，「🔄 重新检查」会再次运行检查"
+        "detailed": "显示 ClashControl 在此服务器上所需一切的检查清单，每个步骤都有状态：✅ 正常、❌ 需要修复、⚠️ 不完整、⏸️ 未使用、🔒 需要先完成前面的步骤、⚪ 尚未检查。选择一个步骤查看详情：哪里有问题、为什么重要以及如何修复。\n\n**用法：**\n`/setup`\n\n**检查内容：**\n• 机器人权限——“管理员”权限、每个缺少的权限及其用途，以及一键重新授权机器人的按钮\n• 语言和时区、部落和家族（私密战争日志、被 Supercell 删除的部落）、欢迎消息\n• 注册（新成员能否看到、已绑定多少账号）、私信战争提醒、频道中的战争和突袭提醒\n• 服务器身份组（简单、部落冲突和部落身份组）、部落战联赛设置、「你的部落战联赛偏好」、对照日历的部落战联赛赛季、排行榜\n\n**注意：**\n• 仅限服务器管理员\n• 只有你能看到结果\n• 不会更改任何内容——修复问题后，「🔄 重新检查」会再次运行检查"
       },
       "clan management": {
         "short": "服务器与部落的集中配置",
@@ -1574,6 +1574,49 @@
       "settings": "数据保留：{retention}\n纳入所有已绑定账号：{include_all}\n协调员身份组：{coordinator}\n扩展报名（替补）：{bench}",
       "player_hub_hidden": "你的成员所拥有的身份组（@everyone 或 ClashControl 分配的身份组）都无法查看玩家中心所在频道或阅读其历史记录，因此成员无法使用玩家中心。",
       "no_activities": "你的成员的身份组在玩家中心所在频道中没有 {perm}。{button} 按钮会打开一个 Discord 小活动，可能需要该权限——请在该频道为 @everyone 允许它。"
+    },
+    "war_notifications": {
+      "summary_nobody_linked": "尚无已绑定的成员",
+      "summary_none_on": "没有人开启战争提醒",
+      "summary_ok": "{members} 名成员中有 {war_on} 名接收战争提醒",
+      "what": "每位成员自行决定 ClashControl 是否通过私信提醒其未完成的部落战进攻（以及部落都城突袭进攻）：所有战争或仅部落战联赛、一次或重复，以及结束前多久提醒。",
+      "coverage_title": "📊 谁会收到提醒",
+      "coverage": "在你的成员部落中拥有账号的 {members} 名成员里，{war_on} 名接收战争提醒，{raid_on} 名接收突袭提醒。",
+      "nobody_linked": "还没有成员绑定账号（第 5 步）——提醒需要已绑定的账号。",
+      "members_title": "👤 成员如何开启",
+      "members_how": "在注册消息中，或使用 {registration} → {button}。",
+      "admin_tools": "管理员可以为成员设置：{path} → {clan}（整个部落）或 {user}（单个成员）。",
+      "custodians_title": "🛡️ 值守员",
+      "custodians_what": "值守员（{button}）会在其部落的频道战争提醒（第 7 步）中被 @提及，以便有人主动关注遗漏的进攻。",
+      "custodians_none": "未设置值守员。"
+    },
+    "cwl_player_hub": {
+      "summary_hub": "成员使用 {channel} 或 /cwl preferences",
+      "summary_command": "成员使用 /cwl preferences",
+      "what": "成员设置自己的部落战联赛偏好：偏好的联赛级别，以及是总是参加、从不参加还是每个赛季重新决定。设置按每个 Clash 账号生效，并适用于所有邀请他们的服务器。",
+      "how_title": "👤 成员如何进入",
+      "how_hub": "在 {channel} 中：{button} 按钮。任何地方：{preferences}，也可在与机器人的私信中使用。",
+      "how_command": "使用 {preferences}，在服务器上或与机器人的私信中。玩家部落战联赛设置中心消息（第 10 步）会为他们提供一个按钮。",
+      "admin_title": "🛠️ 管理员",
+      "admin": "在频道中向成员显示按钮：{path}。"
+    },
+    "cwl_season": {
+      "summary_off": "尚无部落战联赛赛季",
+      "summary_missing": "{season} 赛季尚未创建",
+      "summary_between": "没有即将开始的赛季——每月 {day} 日起开始准备",
+      "summary_no_clans": "{season} 赛季：尚无参赛部落",
+      "summary_no_start": "{season} 赛季：{count} 个部落没有开始时间",
+      "summary_phase": "{season} 赛季：{phase}（{clans} 个部落）",
+      "summary_finished": "{season} 赛季已结束",
+      "what": "运行一个部落战联赛赛季：哪些部落参赛、谁参加，以及阵容。由首领或部落战联赛协调员负责。",
+      "season_title": "🗓️ {season} 赛季",
+      "no_start_time": "没有开始时间",
+      "no_clans": "尚无参赛部落。",
+      "workflow_title": "🔁 赛季步骤",
+      "workflow": "1. {new}（每月 {day} 日起，为下个月的部落战联赛）\n2. {clans}：部落、阵容人数和开始时间\n3. {enrollment}：成员收到私信并回复\n4. {teams}：组建阵容\n5. {preparation}：公布阵容\n当第一个部落的部落战联赛开始时，战争阶段会自动开始。",
+      "coordinators_title": "🧑‍✈️ 部落战联赛协调员",
+      "coordinators": "{count} 个部落有部落战联赛协调员。协调员无需成为服务器管理员即可运行其部落的赛季：{button}。",
+      "where_hub": "或 {hub} 消息（第 10 步）"
     },
     "step": {
       "bot_permissions": { "title": "机器人权限", "desc": "ClashControl 发布消息和分配身份组所需的服务器权限。" },

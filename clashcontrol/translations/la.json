@@ -301,7 +301,7 @@
       "setup": {
         "short": "Institutionem ClashControl in hoc servitore inspice (administratores)",
         "title": "🛠️ Mandatum Setup",
-        "detailed": "Indicem omnium quae ClashControl in hoc servitore requirit ostendit, cum statu cuiusque gradus: ✅ recte, ❌ emendandum, ⚠️ imperfectum, ⏸️ non adhibitum, 🔒 gradum priorem requirit, ⚪ nondum inspectum. Elige gradum ut singula videas: quid erret, cur referat et quomodo emendes.\n\n**Usus:**\n`/setup`\n\n**Adhuc inspectum:**\n• Permissiones automati — “Administrator”, quaeque permissio deficiens cum causa cur requiratur, et globulus ut automatum uno ictu iterum auctorizes\n• Lingua et zona horaria, gentes et familiae (cum commentariis belli privatis et gentibus a Supercell deletis), nuntius salutationis, monita belli et incursionum in canalibus, tabulae ordinum\n• Inscriptio (an novi sodales eam videant, quot rationes iunctae sint), munera servitoris (Simplicia, CoC, gentis), optiones CWL (centra, optiones, an sodales praeferentias suas CWL aperire possint)\n\nNuntiationes belli, centrum «Praeferentiae Tuae CWL» et administratio temporis CWL in renovatione posteriore sequentur.\n\n**Notae:**\n• Solis administratoribus servitoris\n• Solus tu eventum vides\n• Nihil mutatur — «🔄 Iterum inspice» inspectiones repetit postquam aliquid emendasti"
+        "detailed": "Indicem omnium quae ClashControl in hoc servitore requirit ostendit, cum statu cuiusque gradus: ✅ recte, ❌ emendandum, ⚠️ imperfectum, ⏸️ non adhibitum, 🔒 gradum priorem requirit, ⚪ nondum inspectum. Elige gradum ut singula videas: quid erret, cur referat et quomodo emendes.\n\n**Usus:**\n`/setup`\n\n**Quid inspiciatur:**\n• Permissiones automati — “Administrator”, quaeque permissio deficiens cum causa cur requiratur, et globulus ut automatum uno ictu iterum auctorizes\n• Lingua et zona horaria, gentes et familiae (commentarii belli privati, gentes a Supercell deletae), nuntius salutationis\n• Inscriptio (an novi sodales eam videant, quot rationes iunctae sint), monita belli per nuntium privatum, monita belli et incursionum in canalibus\n• Munera servitoris (Simplicia, CoC, gentis), optiones CWL, «Praeferentiae Tuae CWL», tempus CWL ad calendarium, tabulae ordinum\n\n**Notae:**\n• Solis administratoribus servitoris\n• Solus tu eventum vides\n• Nihil mutatur — «🔄 Iterum inspice» inspectiones repetit postquam aliquid emendasti"
       },
       "clan management": {
         "short": "Configuratio centralis servitoris et gentium",
@@ -1574,6 +1574,49 @@
       "settings": "Retentio datorum: {retention}\nOmnes rationes nexas includere: {include_all}\nMunus coordinatoris: {coordinator}\nInscriptio ampliata (subsellium): {bench}",
       "player_hub_hidden": "Nullum munerum sodalium tuorum (@everyone vel munera quae ClashControl tribuit) canalem centri lusorum videre aut historiam eius legere potest, itaque sodales centro lusorum uti non possunt.",
       "no_activities": "Munera sodalium tuorum in canali centri lusorum {perm} non habent. Globulus {button} Activitatem Discord aperit, quae hac permissione egere potest — eam ibi pro @everyone permitte."
+    },
+    "war_notifications": {
+      "summary_nobody_linked": "nulli sodales iuncti adhuc",
+      "summary_none_on": "nemo monita belli accensa habet",
+      "summary_ok": "{war_on} ex {members} sodalibus monita belli accipiunt",
+      "what": "Quisque sodalis ipse decernit an ClashControl eum per nuntium privatum de impetibus belli apertis (et incursionum Capitis Gentis) moneat: omnia bella vel solum CWL, semel vel saepius, et quanto ante finem.",
+      "coverage_title": "📊 Qui monita accipiant",
+      "coverage": "{war_on} ex {members} sodalibus cum rationibus in gentibus tuis sodalibus monita belli accipiunt, {raid_on} monita incursionum.",
+      "nobody_linked": "Nullus sodalis rationem adhuc iunxit (gradus 5) — monita rationem iunctam requirunt.",
+      "members_title": "👤 Quomodo sodales ea accendant",
+      "members_how": "In nuntio inscriptionis vel per {registration} → {button}.",
+      "admin_tools": "Administratores ea pro sodalibus constituere possunt: {path} → {clan} (tota gens) vel {user} (unus sodalis).",
+      "custodians_title": "🛡️ Custodes",
+      "custodians_what": "Custodes ({button}) in monito belli gentis suae in canali (gradus 7) @memorantur, ut aliquis impetus omissos diligenter observet.",
+      "custodians_none": "Nulli custodes constituti."
+    },
+    "cwl_player_hub": {
+      "summary_hub": "sodales {channel} vel /cwl preferences adhibent",
+      "summary_command": "sodales /cwl preferences adhibent",
+      "what": "Sodales praeferentias suas CWL constituunt: gradum foederis praelatum, et an semper ludere, numquam ludere, an quoque tempore de novo decernere velint. Optiones per rationem Clash valent et in omni servitore qui eos invitat.",
+      "how_title": "👤 Quomodo sodales eo perveniant",
+      "how_hub": "In {channel}: globulus {button}. Ubique: {preferences}, etiam in nuntio privato cum automato.",
+      "how_command": "Per {preferences}, in servitore vel in nuntio privato cum automato. Nuntius Centri Optionum CWL Lusoris (gradus 10) eis globulum daret.",
+      "admin_title": "🛠️ Administratoribus",
+      "admin": "Globulum sodalibus in canali ostende: {path}."
+    },
+    "cwl_season": {
+      "summary_off": "nullum tempus CWL adhuc",
+      "summary_missing": "tempus {season} nondum creatum",
+      "summary_between": "nullum tempus venturum — praeparatio a die {day} incipit",
+      "summary_no_clans": "tempus {season}: nulla gens participans adhuc",
+      "summary_no_start": "tempus {season}: {count} gens(tes) sine tempore initii",
+      "summary_phase": "tempus {season}: {phase} ({clans} gens(tes))",
+      "summary_finished": "tempus {season} finitum est",
+      "what": "Tempus CWL gerere: quae gentes participent, qui ludant, et ordines. Duces vel coordinatores CWL id gerunt.",
+      "season_title": "🗓️ Tempus {season}",
+      "no_start_time": "nullum tempus initii",
+      "no_clans": "Nulla gens participans adhuc.",
+      "workflow_title": "🔁 Gradus temporis",
+      "workflow": "1. {new} (a die {day}, pro CWL mensis proximi)\n2. {clans}: gentes, magnitudo ordinis et tempus initii\n3. {enrollment}: sodales nuntium privatum accipiunt et respondent\n4. {teams}: ordines componere\n5. {preparation}: ordines nuntiare\nPhasis belli sponte incipit cum CWL primae gentis incipit.",
+      "coordinators_title": "🧑‍✈️ Coordinatores CWL",
+      "coordinators": "{count} gens(tes) coordinatores CWL habent. Coordinatores tempus gentis suae gerunt sine administratoribus servitoris esse: {button}.",
+      "where_hub": "vel nuntius {hub} (gradus 10)"
     },
     "step": {
       "bot_permissions": { "title": "Permissiones automati", "desc": "Permissiones servitoris quibus ClashControl eget ut nuntia sua mittat et munera tribuat." },

@@ -53,6 +53,20 @@ def _channel(cid: int, **perms: bool) -> MagicMock:
 EVERYONE = FakeRole(GID, 0)
 
 
+class FakeCwlDb:
+    """The two sync reads step 12 does (cwl_events / cwl_event_clans)."""
+
+    def __init__(self, events=None, clans=None):
+        self.events = events or []          # newest season first, like list_cwl_events_sync
+        self.clans = clans or {}            # event id -> clan rows
+
+    def list_cwl_events_sync(self, guild_id, status=None):
+        return list(self.events)
+
+    def get_cwl_event_clans_sync(self, event_id):
+        return list(self.clans.get(event_id, []))
+
+
 def _guild(perms: Optional[discord.Permissions], channels: Optional[Dict[int, MagicMock]] = None,
            system_channel: Optional[MagicMock] = None, roles: Optional[Dict[int, FakeRole]] = None) -> SimpleNamespace:
     me = None if perms is None else SimpleNamespace(guild_permissions=perms, top_role=FakeRole(1, 10))
@@ -89,6 +103,7 @@ def _isolate(monkeypatch):
     monkeypatch.setattr(CACHE, "clan_families", {})
     monkeypatch.setattr(CACHE, "guild_guest_clans", {})
     monkeypatch.setattr(CACHE, "user_accounts", {})
+    monkeypatch.setattr(CACHE, "db_manager", FakeCwlDb())
     monkeypatch.setattr(QBcore, "bot", SimpleNamespace(application_id=1234))
 
 
@@ -167,9 +182,7 @@ class TestRegistry:
         assert [s.id for s in ca.STEPS if results[s.id].status == AuditStatus.PENDING] == [
             s.id for s in ca.STEPS if s.check is None
         ]
-        assert {s.id for s in ca.STEPS if s.check is None} == {  # Phase 4
-            "war_notifications", "cwl_player_hub", "cwl_season",
-        }
+        assert all(s.check is not None and s.detail is not None for s in ca.STEPS)  # Phase 4: all 13
 
     def test_switched_off_feature_is_not_blocked(self):
         # No member clans (step 3 ⚠️): raid reminders off → ⏸️, not 🔒; switched on → 🔒.
@@ -401,7 +414,7 @@ class TestRenderingConfigured:
         chans = {i: _channel(i, **perms) for i in (5, 10, 20)}
         guild = _guild(_all_but("attach_files") if problems else ADMIN, chans, chans[10])
         results = ca.run_audit(guild)
-        assert all(results[s.id].status != AuditStatus.INFO for s in ca.STEPS), results
+        assert all(results[s.id].summary_key != "config_audit.summary_check_failed" for s in ca.STEPS), results
         embeds = [build_overview_embed(guild, "1", results)] + [
             build_step_embed(guild, "1", s.id, results[s.id]) for s in ca.STEPS
         ]
@@ -603,4 +616,86 @@ class TestRenderingPhase3:
             e = build_step_embed(guild, "1", sid, results[sid])
             texts = [e.title or "", e.description or ""] + [f.name for f in e.fields] + [f.value for f in e.fields]
             assert not any(k in x for x in texts for k in ("config_audit.", "permissions.", "ui_components.", "cwl.")), texts
+            assert all(len(f.value) <= 1024 for f in e.fields)
+
+
+class TestStepWarNotifications:
+    def test_info_without_linked_members(self):
+        _cfg(member_clans=["#A"])
+        assert ca.check_war_notifications(_guild(ADMIN)).status == AuditStatus.INFO
+
+    def test_counts_and_none_on(self):
+        _cfg(member_clans=["#A"], clan_custodians={"#A": ["11"], "#B": []})
+        _accounts(u1=[{"player_tag": "#1", "current_clan_tag": "#A"}],
+                  u2=[{"player_tag": "#2", "current_clan_tag": "#A"}],
+                  UNASSIGNED=[{"player_tag": "#3", "current_clan_tag": "#A"}])
+        r = ca.check_war_notifications(_guild(ADMIN))
+        assert r.status == AuditStatus.INCOMPLETE
+        CACHE.user_accounts["u1"]["notification_settings"] = {"war_reminders": True, "raid_reminders": True}
+        r = ca.check_war_notifications(_guild(ADMIN))
+        assert r.status == AuditStatus.OK and r.summary_params == {"war_on": 1, "members": 2}
+        assert r.data["raid_on"] == 1 and r.data["custodians"] == {"#A": ["11"]}
+        assert "<@11>" in _body(ca.detail_war_notifications(_guild(ADMIN), r, GID, "1"))
+
+
+class TestStepCwlPlayerHub:
+    def test_always_info(self):
+        assert ca.check_cwl_player_hub(_guild(ADMIN)).summary_key.endswith("summary_command")
+        _cfg(cwl_player_hub_message_enabled=True, cwl_player_hub_channel_id="40")
+        r = ca.check_cwl_player_hub(_guild(ADMIN, {40: _channel(40)}))
+        assert r.status == AuditStatus.INFO and r.summary_params == {"channel": "#ch40"}
+
+
+class TestStepCwlSeason:
+    from datetime import datetime as _dt, timezone as _tz
+    IN_WINDOW = _dt(2026, 10, 25, 12, tzinfo=_tz.utc)    # next season 2026-11
+    BEFORE = _dt(2026, 10, 5, 12, tzinfo=_tz.utc)
+
+    def _db(self, monkeypatch, events=None, clans=None):
+        monkeypatch.setattr(CACHE, "db_manager", FakeCwlDb(events, clans))
+
+    def test_off_when_cwl_never_used(self):
+        assert ca.check_cwl_season(_guild(ADMIN), self.IN_WINDOW).status == AuditStatus.OFF
+
+    def test_sign_up_window(self, monkeypatch):
+        _cfg(cwl_management_message_enabled=True)
+        r = ca.check_cwl_season(_guild(ADMIN), self.IN_WINDOW)
+        assert r.status == AuditStatus.INCOMPLETE and r.summary_params == {"season": "2026-11"}
+        event = {"id": 1, "cwl_season": "2026-11", "status": "draft"}
+        self._db(monkeypatch, [event])
+        assert ca.check_cwl_season(_guild(ADMIN), self.IN_WINDOW).summary_key.endswith("summary_no_clans")
+        self._db(monkeypatch, [event], {1: [{"clan_tag": "#A", "participating": 1, "cwl_start_at": None}]})
+        r = ca.check_cwl_season(_guild(ADMIN), self.IN_WINDOW)
+        assert r.summary_key.endswith("summary_no_start") and r.summary_params["count"] == 1
+        self._db(monkeypatch, [event], {1: [{"clan_tag": "#A", "participating": 1, "cwl_start_at": "2026-11-01T08:00"}]})
+        r = ca.check_cwl_season(_guild(ADMIN), self.IN_WINDOW)
+        assert r.status == AuditStatus.OK and r.summary_params["phase"] == "Setup"
+
+    def test_outside_the_window(self, monkeypatch):
+        _cfg(cwl_management_message_enabled=True)
+        assert ca.check_cwl_season(_guild(ADMIN), self.BEFORE).status == AuditStatus.INFO
+        self._db(monkeypatch, [{"id": 2, "cwl_season": "2026-10", "status": "war"}],
+                 {2: [{"clan_tag": "#A", "participating": 1, "cwl_start_at": "2026-10-01T08:00", "locked_at": "x"}]})
+        r = ca.check_cwl_season(_guild(ADMIN), self.BEFORE)
+        assert r.status == AuditStatus.OK and r.summary_params["season"] == "2026-10"
+
+
+class TestRenderingPhase4:
+    @pytest.mark.parametrize("lang", LANGS)
+    def test_steps_6_11_12_render_in_every_language(self, lang, monkeypatch):
+        from clashcontrol.ui_config_audit import build_step_embed
+        monkeypatch.setattr(CACHE, "db_manager", FakeCwlDb(
+            [{"id": 1, "cwl_season": "2026-11", "status": "draft"}],
+            {1: [{"clan_tag": "#A", "participating": 1, "cwl_start_at": None}]}))
+        _cfg(language=lang, member_clans=["#A"], clan_custodians={"#A": ["11"]},
+             cwl_player_hub_message_enabled=True, cwl_player_hub_channel_id="40",
+             cwl_clan_coordinators={"#A": ["12"]})
+        _accounts(u1=[{"player_tag": "#1", "current_clan_tag": "#A"}])
+        guild = _guild(ADMIN, {40: _channel(40)})
+        for sid in ("war_notifications", "cwl_player_hub", "cwl_season"):
+            r = ca.run_step(ca.STEPS_BY_ID[sid], guild)
+            assert r.summary_key != "config_audit.summary_check_failed", (sid, r)
+            e = build_step_embed(guild, "1", sid, r)
+            texts = [e.title or "", e.description or ""] + [f.name for f in e.fields] + [f.value for f in e.fields]
+            assert not any(k in x for x in texts for k in ("config_audit.", "permissions.", "ui_components.", "cwl.", "playerregistration.")), texts
             assert all(len(f.value) <= 1024 for f in e.fields)

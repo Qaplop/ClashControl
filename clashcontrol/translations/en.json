@@ -301,7 +301,7 @@
       "setup": {
         "short": "Check ClashControl's setup on this server (admins)",
         "title": "🛠️ Setup Command",
-        "detailed": "Shows a checklist of everything ClashControl needs on this server, with a status for each step: ✅ OK, ❌ needs fixing, ⚠️ incomplete, ⏸️ not in use, 🔒 needs an earlier step, ⚪ not checked yet. Pick a step for the details: what is wrong, why it matters and how to fix it.\n\n**Usage:**\n`/setup`\n\n**Checked so far:**\n• Bot permissions — “Administrator”, every missing permission with the reason it is needed, and a button to re-authorize the bot in one click\n• Language & timezone, clans & families (incl. private war logs and clans deleted by Supercell), welcome message, war and raid reminders in channels, leaderboards\n• Registration (can new members see it, how many accounts are linked), server roles (Simple, CoC and clan roles), CWL settings (hubs, options, can members open their CWL preferences)\n\nWar notifications, the “Your CWL Preferences” hub and CWL season management follow in a later update.\n\n**Notes:**\n• Server administrators only\n• Only you see the result\n• Nothing is changed — “🔄 Check again” re-runs the checks after you fixed something"
+        "detailed": "Shows a checklist of everything ClashControl needs on this server, with a status for each step: ✅ OK, ❌ needs fixing, ⚠️ incomplete, ⏸️ not in use, 🔒 needs an earlier step, ⚪ not checked yet. Pick a step for the details: what is wrong, why it matters and how to fix it.\n\n**Usage:**\n`/setup`\n\n**What it checks:**\n• Bot permissions — “Administrator”, every missing permission with the reason it is needed, and a button to re-authorize the bot in one click\n• Language & timezone, clans & families (private war logs, clans deleted by Supercell), welcome message\n• Registration (can new members see it, how many accounts are linked), war reminders by DM, war and raid reminders in channels\n• Server roles (Simple, CoC and clan roles), CWL settings, “Your CWL Preferences”, the CWL season against the calendar, leaderboards\n\n**Notes:**\n• Server administrators only\n• Only you see the result\n• Nothing is changed — “🔄 Check again” re-runs the checks after you fixed something"
       },
       "clan management": {
         "short": "Central server and clan configuration",
@@ -1575,6 +1575,49 @@
       "settings": "Data Retention: {retention}\nInclude All Linked Accounts: {include_all}\nCoordinator Role: {coordinator}\nExtended Sign-up (Bench): {bench}",
       "player_hub_hidden": "None of the roles your members have (@everyone or the roles ClashControl assigns) can see the player hub's channel or read its history, so members can't use the player hub.",
       "no_activities": "Your members' roles don't have {perm} in the player hub's channel. The {button} button opens a Discord Activity, which may need that permission — allow it for @everyone in that channel."
+    },
+    "war_notifications": {
+      "summary_nobody_linked": "no linked members yet",
+      "summary_none_on": "nobody has war reminders on",
+      "summary_ok": "{war_on} of {members} members get war reminders",
+      "what": "Every member decides whether ClashControl reminds them by DM about open war attacks (and Clan Capital raid attacks): all wars or CWL only, once or repeatedly, and how long before the end.",
+      "coverage_title": "📊 Who gets reminders",
+      "coverage": "{war_on} of {members} members with accounts in your member clans get war reminders, {raid_on} get raid reminders.",
+      "nobody_linked": "No member has linked an account yet (step 5) — reminders need a linked account.",
+      "members_title": "👤 How members switch them on",
+      "members_how": "In the registration message or with {registration} → {button}.",
+      "admin_tools": "Admins can set them for members: {path} → {clan} (the whole clan) or {user} (one member).",
+      "custodians_title": "🛡️ Custodians",
+      "custodians_what": "Custodians ({button}) are @mentioned in their clan's channel war reminder (step 7), so someone actively watches for missed attacks.",
+      "custodians_none": "No custodians set."
+    },
+    "cwl_player_hub": {
+      "summary_hub": "members use {channel} or /cwl preferences",
+      "summary_command": "members use /cwl preferences",
+      "what": "Members set their personal CWL preferences: a preferred league tier, and whether they always want to play, never play, or decide fresh each season. The settings apply per Clash account and on every server that invites them.",
+      "how_title": "👤 How members get there",
+      "how_hub": "In {channel}: the {button} button. Anywhere: {preferences}, also in a DM with the bot.",
+      "how_command": "With {preferences}, on the server or in a DM with the bot. A Player CWL Settings Hub message (step 10) would give them a button for it.",
+      "admin_title": "🛠️ For admins",
+      "admin": "Show members the button in a channel: {path}."
+    },
+    "cwl_season": {
+      "summary_off": "no CWL season yet",
+      "summary_missing": "season {season} not set up yet",
+      "summary_between": "no upcoming season — preparation starts from the {day}th",
+      "summary_no_clans": "season {season}: no participating clan yet",
+      "summary_no_start": "season {season}: {count} clan(s) without a start time",
+      "summary_phase": "season {season}: {phase} ({clans} clan(s))",
+      "summary_finished": "season {season} is over",
+      "what": "Running a CWL season: which clans take part, who plays, and the rosters. Leaders or CWL coordinators run it.",
+      "season_title": "🗓️ Season {season}",
+      "no_start_time": "no start time",
+      "no_clans": "No participating clan yet.",
+      "workflow_title": "🔁 Steps of a season",
+      "workflow": "1. {new} (from the {day}th, for next month's CWL)\n2. {clans}: clans, roster size and start time\n3. {enrollment}: members get a DM and answer\n4. {teams}: put the rosters together\n5. {preparation}: announce the rosters\nThe War phase starts by itself when the first clan's CWL begins.",
+      "coordinators_title": "🧑‍✈️ CWL coordinators",
+      "coordinators": "{count} clan(s) have CWL coordinators. Coordinators run their clan's season without being server admins: {button}.",
+      "where_hub": "or the {hub} message (step 10)"
     },
     "step": {
       "bot_permissions": { "title": "Bot permissions", "desc": "The server permissions ClashControl needs to post its messages and assign roles." },

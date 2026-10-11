@@ -212,8 +212,9 @@ action. There is no separate `/clans`, `/list_families`, `/list_players`, `/list
   setup step with a status (✅/❌/⚠️/⏸️/🔒/⚪) and a detail page explaining what is wrong and how to
   fix it. Checks so far: bot permissions (incl. a one-click re-authorize link), language and
   timezone, clans (private war log, deleted clans), welcome message, registration (visibility,
-  linked accounts), war and raid reminders in channels, server roles, CWL settings, leaderboards;
-  war notifications, the CWL preferences hub and CWL season management follow (tracker #0151, `plans/tracker-0151-setup-config-audit.md`).
+  linked accounts), DM war reminders, war and raid reminders in channels, server roles, CWL
+  settings, "Your CWL Preferences", the CWL season against the calendar, leaderboards. The guided
+  setup on top of it follows (tracker #0151, `plans/tracker-0151-setup-config-audit.md`).
 - `/admin` - Administrative diagnostic actions and utilities; pick an `action` (permission scope
   noted per action — "admin" = server admin, "bot admin" = bot's configured `SERVER_ADMIN` only):
   - **CLEANUP_MESSAGES** - Clean up orphaned messages in current channel (admin)

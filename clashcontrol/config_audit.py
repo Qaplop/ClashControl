@@ -1037,6 +1037,210 @@ def detail_cwl_settings(guild: discord.Guild, result: StepResult, guild_id: Opti
 
 
 # ---------------------------------------------------------------------------------------------
+# Step 6: war notifications (personal DMs)
+# ---------------------------------------------------------------------------------------------
+
+def notification_coverage(guild: discord.Guild) -> Tuple[int, int, int]:
+    """(members, war_on, raid_on): Discord users with at least one account in this server's
+    member clans, and how many of them have DM war / raid reminders switched on
+    (``notification_settings.war_reminders`` / ``raid_reminders``, as war_notifications reads them)."""
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import resolve_guild_member_clan_tags
+
+    tags = set(resolve_guild_member_clan_tags(guild.id))
+    members = war_on = raid_on = 0
+    if not tags:
+        return 0, 0, 0
+    for user_id, account in CACHE.user_accounts.items():
+        if user_id == "UNASSIGNED" or not account:
+            continue
+        if not any(p.get("current_clan_tag") in tags for p in account.get("players", []) or []):
+            continue
+        members += 1
+        settings = account.get("notification_settings") or {}
+        war_on += bool(settings.get("war_reminders"))
+        raid_on += bool(settings.get("raid_reminders"))
+    return members, war_on, raid_on
+
+
+def check_war_notifications(guild: discord.Guild) -> StepResult:
+    """Linked members with DM reminders. Same rule as link coverage (Q-6): the number only when
+    someone has them on, ⚠️ only when linked members exist and nobody does."""
+    members, war_on, raid_on = notification_coverage(guild)
+    custodians = {t: ids for t, ids in (_config(guild).get("clan_custodians") or {}).items() if ids}
+    data = {"members": members, "war_on": war_on, "raid_on": raid_on, "custodians": custodians}
+    if not members:
+        return StepResult(AuditStatus.INFO, "config_audit.war_notifications.summary_nobody_linked", data=data)
+    if not war_on:
+        return StepResult(AuditStatus.INCOMPLETE, "config_audit.war_notifications.summary_none_on",
+                          findings=[Finding(AuditStatus.INCOMPLETE, "none_on")], data=data)
+    return StepResult(AuditStatus.OK, "config_audit.war_notifications.summary_ok",
+                      {"war_on": war_on, "members": members}, data=data)
+
+
+def detail_war_notifications(guild: discord.Guild, result: StepResult, guild_id: Optional[int],
+                             user_id: Optional[str]) -> StepDetail:
+    from clashcontrol.QBdiscocmdshelper import command_mention
+    tr = _translator(guild_id, user_id)
+    d = result.data
+    sections: List[Tuple[str, str]] = [("", tr("config_audit.war_notifications.what"))]
+    if d["members"]:
+        sections.append((tr("config_audit.war_notifications.coverage_title"), tr(
+            "config_audit.war_notifications.coverage", members=d["members"], war_on=d["war_on"],
+            raid_on=d["raid_on"])))
+    else:
+        sections.append(("", tr("config_audit.war_notifications.nobody_linked")))
+    sections.append((tr("config_audit.war_notifications.members_title"), tr(
+        "config_audit.war_notifications.members_how", registration=command_mention("registration"),
+        button=tr("playerregistration.button_war_notifications"))))
+    sections.append((tr("config_audit.registration.admin_tools_title"), tr(
+        "config_audit.war_notifications.admin_tools",
+        path=_ui_path(tr, "ui_components.clan_management.mode_notifications_label"),
+        clan=tr("ui_components.clan_management.button_clan_notifications"),
+        user=tr("ui_components.clan_management.button_user_notifications"))))
+    custodians: Dict[str, List[Any]] = d.get("custodians", {})
+    lines = [f"{_clan_name(t)}: " + " ".join(f"<@{u}>" for u in ids) for t, ids in custodians.items()]
+    sections.append((tr("config_audit.war_notifications.custodians_title"), tr(
+        "config_audit.war_notifications.custodians_what",
+        button=tr("ui_components.clan_management.button_custodians")) + "\n" + (
+        _join_limited(lines, 800, lambda n: tr("permissions.warning_more", count=n)) if lines
+        else tr("config_audit.war_notifications.custodians_none"))))
+    return StepDetail(sections)
+
+
+# ---------------------------------------------------------------------------------------------
+# Step 11: "Your CWL Preferences" (what members see)
+# ---------------------------------------------------------------------------------------------
+
+def check_cwl_player_hub(guild: discord.Guild) -> StepResult:
+    """ℹ️ only: the member side of CWL. Whether the player hub works is step 10's job, so a
+    problem there is never shown twice."""
+    config = _config(guild)
+    channel_id = config.get("cwl_player_hub_channel_id") if config.get("cwl_player_hub_message_enabled") else None
+    if channel_id:
+        return StepResult(AuditStatus.INFO, "config_audit.cwl_player_hub.summary_hub",
+                          {"channel": _channel_name(guild, channel_id)}, data={"channel_id": channel_id})
+    return StepResult(AuditStatus.INFO, "config_audit.cwl_player_hub.summary_command", data={"channel_id": None})
+
+
+def detail_cwl_player_hub(guild: discord.Guild, result: StepResult, guild_id: Optional[int],
+                          user_id: Optional[str]) -> StepDetail:
+    from clashcontrol.QBdiscocmdshelper import command_mention
+    tr = _translator(guild_id, user_id)
+    preferences = command_mention("cwl preferences")
+    button = tr("cwl.player_hub.button_preferences")
+    channel_id = result.data.get("channel_id")
+    how = (tr("config_audit.cwl_player_hub.how_hub", channel=f"<#{channel_id}>", button=button, preferences=preferences)
+           if channel_id else tr("config_audit.cwl_player_hub.how_command", preferences=preferences))
+    return StepDetail([
+        ("", tr("config_audit.cwl_player_hub.what")),
+        (tr("config_audit.cwl_player_hub.how_title"), how),
+        (tr("config_audit.cwl_player_hub.admin_title"), tr(
+            "config_audit.cwl_player_hub.admin",
+            path=_ui_path(tr, "ui_components.clan_management.mode_cwl_settings_label",
+                          "cwl.settings.button_activate_player_hub"))),
+    ])
+
+
+# ---------------------------------------------------------------------------------------------
+# Step 12: CWL season management
+# ---------------------------------------------------------------------------------------------
+
+#: From this day of the month leaders prepare next month's CWL (CWL itself starts on the 1st and
+#: runs about ten days — resolve_current_cwl_season()'s reasoning).
+CWL_SIGNUP_WINDOW_START_DAY = 20
+
+
+def check_cwl_season(guild: discord.Guild, now: Optional[Any] = None) -> StepResult:
+    """Season state against the calendar (DB reads via the sync helpers the CWL screens use; a
+    DB in maintenance raises and run_step shows "could not be checked").
+
+    From the 20th: next month's season must exist, with participating clans that all have a start
+    time → else ⚠️. Before the 20th: the most relevant season's phase (resolve_cwl_phase) as ✅,
+    or ℹ️ when there is none. A guild that never ran a season and has no CWL hub → ⏸️."""
+    from datetime import datetime, timezone
+
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import (
+        get_current_cwl_event_sync, resolve_current_cwl_season, resolve_cwl_phase,
+    )
+    now = now or datetime.now(timezone.utc)
+    db = CACHE.db_manager
+    if db is None:
+        return StepResult(AuditStatus.INFO, "config_audit.summary_check_failed")
+    config = _config(guild)
+    events = db.list_cwl_events_sync(str(guild.id))
+    next_season = resolve_current_cwl_season(now)
+    data: Dict[str, Any] = {"next_season": next_season, "event": None, "clans": [], "phase": None,
+                            "coordinated": len([t for t, ids in (config.get("cwl_clan_coordinators") or {}).items() if ids])}
+    cwl_used = bool(events) or config.get("cwl_management_message_enabled") or config.get("cwl_player_hub_message_enabled")
+    if not cwl_used:
+        return StepResult(AuditStatus.OFF, "config_audit.cwl_season.summary_off", data=data)
+
+    in_window = now.day >= CWL_SIGNUP_WINDOW_START_DAY
+    event = next((e for e in events if str(e.get("cwl_season", ""))[:7] == next_season), None) if in_window \
+        else get_current_cwl_event_sync(guild.id)
+    if event is not None and event.get("status") == "cancelled":
+        event = None
+    if event is None:
+        if in_window:
+            return StepResult(AuditStatus.INCOMPLETE, "config_audit.cwl_season.summary_missing",
+                              {"season": next_season}, [Finding(AuditStatus.INCOMPLETE, "season_missing")], data)
+        return StepResult(AuditStatus.INFO, "config_audit.cwl_season.summary_between",
+                          {"day": CWL_SIGNUP_WINDOW_START_DAY}, data=data)
+
+    clans = db.get_cwl_event_clans_sync(int(event["id"]))
+    participating = [c for c in clans if c.get("participating", 1)]
+    phase = resolve_cwl_phase(event, clans)
+    data.update(event=event, clans=participating, phase=phase)
+    season = str(event.get("cwl_season", ""))[:7]
+    if in_window and phase["phase"] <= 1:   # still in Setup: is it ready to start enrollment?
+        if not participating:
+            return StepResult(AuditStatus.INCOMPLETE, "config_audit.cwl_season.summary_no_clans",
+                              {"season": season}, [Finding(AuditStatus.INCOMPLETE, "no_clans")], data)
+        no_start = [c for c in participating if not c.get("cwl_start_at")]
+        if no_start:
+            return StepResult(AuditStatus.INCOMPLETE, "config_audit.cwl_season.summary_no_start",
+                              {"season": season, "count": len(no_start)},
+                              [Finding(AuditStatus.INCOMPLETE, "no_start_time", (("count", len(no_start)),))], data)
+    tr = _translator(guild.id, None)
+    phase_label = tr(f"cwl.phase.step_{phase['key']}") if phase.get("key") else "?"
+    key = "summary_finished" if phase.get("finished") else "summary_phase"
+    return StepResult(AuditStatus.OK, f"config_audit.cwl_season.{key}",
+                      {"season": season, "phase": phase_label, "clans": len(participating)}, data=data)
+
+
+def detail_cwl_season(guild: discord.Guild, result: StepResult, guild_id: Optional[int],
+                      user_id: Optional[str]) -> StepDetail:
+    tr = _translator(guild_id, user_id)
+    d = result.data
+    sections: List[Tuple[str, str]] = [("", tr("config_audit.cwl_season.what"))]
+    if d.get("event"):
+        lines = []
+        for c in d.get("clans", []):
+            start = c.get("cwl_start_at")
+            lines.append(f"{_clan_name(c['clan_tag'])}: " + (start.replace("T", " ") + " UTC" if start
+                                                              else "⚠️ " + tr("config_audit.cwl_season.no_start_time")))
+        body = "\n".join(lines) or tr("config_audit.cwl_season.no_clans")
+        sections.append((tr("config_audit.cwl_season.season_title", season=str(d["event"].get("cwl_season", ""))[:7]),
+                         _join_limited(lines, 1024, lambda n: tr("permissions.warning_more", count=n)) if lines else body))
+    sections.append((tr("config_audit.cwl_season.workflow_title"), tr(
+        "config_audit.cwl_season.workflow",
+        new=tr("cwl.management.button_add_season"), clans=tr("cwl.management.button_configure_clans"),
+        enrollment=tr("cwl.management.button_start_enrollment"), teams=tr("cwl.management.button_manage_assignment"),
+        preparation=tr("cwl.management.button_announce_rosters"), day=CWL_SIGNUP_WINDOW_START_DAY)))
+    sections.append((tr("config_audit.cwl_season.coordinators_title"), tr(
+        "config_audit.cwl_season.coordinators", count=d.get("coordinated", 0),
+        button=tr("cwl.management.button_manage_coordinators"))))
+    sections.append(_where_section(
+        tr,
+        _ui_path(tr, "ui_components.clan_management.mode_cwl_management_label"),
+        tr("config_audit.cwl_season.where_hub", hub=tr("permissions.feature.cwl_management")),
+    ))
+    return StepDetail(sections)
+
+
+# ---------------------------------------------------------------------------------------------
 # Registry (plan §3). Every step is listed so the checklist shows the whole structure; a step
 # whose check comes in a later phase reports PENDING until then.
 # ---------------------------------------------------------------------------------------------
@@ -1050,7 +1254,8 @@ STEPS: Tuple[AuditStep, ...] = (
     AuditStep("registration", 5, "both", requires=("clans",),
               check=check_registration, detail=detail_registration,
               permission_features=("registration",)),
-    AuditStep("war_notifications", 6, "both", requires=("clans",)),
+    AuditStep("war_notifications", 6, "both", requires=("clans",),
+              check=check_war_notifications, detail=detail_war_notifications),
     AuditStep("channel_war_notifications", 7, "admin", requires=("clans",),
               check=check_channel_war_notifications, detail=detail_channel_war_notifications,
               permission_features=("war_notifications",)),
@@ -1062,8 +1267,11 @@ STEPS: Tuple[AuditStep, ...] = (
     AuditStep("cwl_settings", 10, "admin", requires=("clans",),
               check=check_cwl_settings, detail=detail_cwl_settings,
               permission_features=("cwl_management", "cwl_player_hub", "cwl_coordinator_role")),
-    AuditStep("cwl_player_hub", 11, "both", requires=("cwl_settings",)),
-    AuditStep("cwl_season", 12, "admin", requires=("cwl_settings",)),
+    # 11 and 12 need clans only: a CWL hub setting problem (step 10) must not lock them.
+    AuditStep("cwl_player_hub", 11, "both", requires=("clans",),
+              check=check_cwl_player_hub, detail=detail_cwl_player_hub),
+    AuditStep("cwl_season", 12, "admin", requires=("clans",),
+              check=check_cwl_season, detail=detail_cwl_season),
     # No prerequisite: any clan can be subscribed, member clan or not.
     AuditStep("leaderboards", 13, "admin", check=check_leaderboards, detail=detail_leaderboards,
               permission_features=("leaderboard",)),

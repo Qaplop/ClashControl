@@ -222,7 +222,7 @@ def resolve_selected_cwl_season(guild_id: int) -> str:
     return event["cwl_season"] if event else resolve_current_cwl_season()
 
 
-def resolve_current_cwl_season() -> str:
+def resolve_current_cwl_season(now: Optional[datetime] = None) -> str:
     """Default cwl_season key for a newly-created event: the *upcoming* calendar month (UTC).
 
     CWL itself runs in roughly the first ten days of each month, so a given month's war league
@@ -232,7 +232,7 @@ def resolve_current_cwl_season() -> str:
     (normalize_cwl_season() in clashcontrol/constants.py) available yet to normalize against at setup
     time — this is a simple calendar default, not an API-observed value.
     """
-    now = datetime.now(timezone.utc)
+    now = now or datetime.now(timezone.utc)  # `now`: reference time (tests, /setup's check)
     if now.month == 12:
         return f"{now.year + 1}-01"
     return f"{now.year}-{now.month + 1:02d}"

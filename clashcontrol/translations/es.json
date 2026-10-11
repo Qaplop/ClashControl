@@ -301,7 +301,7 @@
       "setup": {
         "short": "Comprobar la configuración de ClashControl en este servidor (administradores)",
         "title": "🛠️ Comando Setup",
-        "detailed": "Muestra una lista de todo lo que ClashControl necesita en este servidor, con un estado por paso: ✅ OK, ❌ hay que corregirlo, ⚠️ incompleto, ⏸️ no se usa, 🔒 requiere un paso anterior, ⚪ aún no comprobado. Elige un paso para ver los detalles: qué falla, por qué importa y cómo solucionarlo.\n\n**Uso:**\n`/setup`\n\n**Comprobado hasta ahora:**\n• Permisos del bot — «Administrador», cada permiso que falta con el motivo por el que se necesita, y un botón para volver a autorizar el bot con un clic\n• Idioma y zona horaria, clanes y familias (incl. registros de guerra privados y clanes eliminados por Supercell), mensaje de bienvenida, recordatorios de guerra e incursiones en canales, clasificaciones\n• Registro (si los nuevos miembros lo ven, cuántas cuentas están vinculadas), roles del servidor (Simples, de CoC y de Clan), ajustes de la LGC (hubs, opciones, si los miembros pueden abrir sus preferencias de LGC)\n\nLas notificaciones de guerra, el hub «Tus Preferencias de LGC» y la gestión de la temporada de LGC llegarán en una próxima actualización.\n\n**Notas:**\n• Solo para administradores del servidor\n• Solo tú ves el resultado\n• No se cambia nada — «🔄 Comprobar de nuevo» repite las comprobaciones cuando hayas corregido algo"
+        "detailed": "Muestra una lista de todo lo que ClashControl necesita en este servidor, con un estado por paso: ✅ OK, ❌ hay que corregirlo, ⚠️ incompleto, ⏸️ no se usa, 🔒 requiere un paso anterior, ⚪ aún no comprobado. Elige un paso para ver los detalles: qué falla, por qué importa y cómo solucionarlo.\n\n**Uso:**\n`/setup`\n\n**Qué comprueba:**\n• Permisos del bot — «Administrador», cada permiso que falta con el motivo por el que se necesita, y un botón para volver a autorizar el bot con un clic\n• Idioma y zona horaria, clanes y familias (registros de guerra privados, clanes eliminados por Supercell), mensaje de bienvenida\n• Registro (si los nuevos miembros lo ven, cuántas cuentas están vinculadas), recordatorios de guerra por MD, recordatorios de guerra e incursiones en canales\n• Roles del servidor (Simples, de CoC y de Clan), ajustes de la LGC, «Tus Preferencias de LGC», la temporada de LGC según el calendario, clasificaciones\n\n**Notas:**\n• Solo para administradores del servidor\n• Solo tú ves el resultado\n• No se cambia nada — «🔄 Comprobar de nuevo» repite las comprobaciones cuando hayas corregido algo"
       },
       "clan management": {
         "short": "Configuración central del servidor y de los clanes",
@@ -1574,6 +1574,49 @@
       "settings": "Retención de datos: {retention}\nIncluir todas las cuentas vinculadas: {include_all}\nRol de coordinador: {coordinator}\nInscripción ampliada (banquillo): {bench}",
       "player_hub_hidden": "Ninguno de los roles de tus miembros (@everyone o los roles que asigna ClashControl) puede ver el canal del centro de jugadores ni leer su historial, así que los miembros no pueden usarlo.",
       "no_activities": "Los roles de tus miembros no tienen {perm} en el canal del centro de jugadores. El botón {button} abre una Actividad de Discord, que puede necesitar ese permiso — permítelo para @everyone en ese canal."
+    },
+    "war_notifications": {
+      "summary_nobody_linked": "aún no hay miembros vinculados",
+      "summary_none_on": "nadie tiene activados los recordatorios de guerra",
+      "summary_ok": "{war_on} de {members} miembros reciben recordatorios de guerra",
+      "what": "Cada miembro decide si ClashControl le recuerda por MD los ataques de guerra pendientes (y los de incursiones de la Capital del Clan): todas las guerras o solo LGC, una vez o repetidamente, y cuánto antes del final.",
+      "coverage_title": "📊 Quién recibe recordatorios",
+      "coverage": "{war_on} de {members} miembros con cuentas en tus clanes miembro reciben recordatorios de guerra, {raid_on} reciben recordatorios de incursiones.",
+      "nobody_linked": "Ningún miembro ha vinculado una cuenta todavía (paso 5) — los recordatorios necesitan una cuenta vinculada.",
+      "members_title": "👤 Cómo los activan los miembros",
+      "members_how": "En el mensaje de registro o con {registration} → {button}.",
+      "admin_tools": "Los administradores pueden configurarlos para los miembros: {path} → {clan} (todo el clan) o {user} (un miembro).",
+      "custodians_title": "🛡️ Custodios",
+      "custodians_what": "Los custodios ({button}) reciben una @mención en el recordatorio de guerra de su clan en el canal (paso 7), para que alguien vigile activamente los ataques olvidados.",
+      "custodians_none": "No hay custodios configurados."
+    },
+    "cwl_player_hub": {
+      "summary_hub": "los miembros usan {channel} o /cwl preferences",
+      "summary_command": "los miembros usan /cwl preferences",
+      "what": "Los miembros definen sus preferencias personales de LGC: un nivel de liga preferido, y si quieren jugar siempre, no jugar nunca o decidir en cada temporada. Los ajustes se aplican por cuenta de Clash y en todos los servidores que los invitan.",
+      "how_title": "👤 Cómo llegan los miembros",
+      "how_hub": "En {channel}: el botón {button}. En cualquier lugar: {preferences}, también en un MD con el bot.",
+      "how_command": "Con {preferences}, en el servidor o en un MD con el bot. Un mensaje del Centro de Ajustes de LGC para jugadores (paso 10) les daría un botón para ello.",
+      "admin_title": "🛠️ Para administradores",
+      "admin": "Mostrar el botón a los miembros en un canal: {path}."
+    },
+    "cwl_season": {
+      "summary_off": "aún no hay temporada de LGC",
+      "summary_missing": "temporada {season} aún no creada",
+      "summary_between": "no hay temporada próxima — la preparación empieza a partir del día {day}",
+      "summary_no_clans": "temporada {season}: aún no hay clanes participantes",
+      "summary_no_start": "temporada {season}: {count} clan(es) sin hora de inicio",
+      "summary_phase": "temporada {season}: {phase} ({clans} clan(es))",
+      "summary_finished": "la temporada {season} ha terminado",
+      "what": "Llevar una temporada de LGC: qué clanes participan, quién juega y las alineaciones. La llevan los líderes o los coordinadores de LGC.",
+      "season_title": "🗓️ Temporada {season}",
+      "no_start_time": "sin hora de inicio",
+      "no_clans": "Aún no hay clanes participantes.",
+      "workflow_title": "🔁 Pasos de una temporada",
+      "workflow": "1. {new} (a partir del día {day}, para la LGC del mes siguiente)\n2. {clans}: clanes, tamaño de la alineación y hora de inicio\n3. {enrollment}: los miembros reciben un MD y responden\n4. {teams}: armar las alineaciones\n5. {preparation}: anunciar las alineaciones\nLa fase de guerra empieza sola cuando comienza la LGC del primer clan.",
+      "coordinators_title": "🧑‍✈️ Coordinadores de LGC",
+      "coordinators": "{count} clan(es) tienen coordinadores de LGC. Los coordinadores llevan la temporada de su clan sin ser administradores del servidor: {button}.",
+      "where_hub": "o el mensaje {hub} (paso 10)"
     },
     "step": {
       "bot_permissions": { "title": "Permisos del bot", "desc": "Los permisos del servidor que ClashControl necesita para publicar sus mensajes y asignar roles." },

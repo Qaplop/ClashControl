@@ -1,6 +1,6 @@
 # /setup (config audit + admin setup guide) and /tutorial (#0121): concept & stepped plan
 
-Status: **Concept agreed 2026-10-11. Phase 1 implemented 2026-10-11 (Build 151, v1.3.43), Phase 2 implemented 2026-10-11 (Build 152), Phase 3 implemented 2026-10-11 (Build 155); Phases 4–7 open.**
+Status: **Concept agreed 2026-10-11. Phase 1 implemented 2026-10-11 (Build 151, v1.3.43), Phase 2 implemented 2026-10-11 (Build 152), Phase 3 implemented 2026-10-11 (Build 155), Phase 4 implemented 2026-10-11 (Build 156); Phases 5–7 open.**
 Tracker: #0151 (this feature), #0121 (tutorials). Owner: qaplop. Builds on `/admin Permission Audit` (Build 135, `clashcontrol/bot_permissions.py`)
 and is the foundation for tracker #0121 (tutorials).
 
@@ -148,6 +148,8 @@ so upcoming features work without re-authorizing".
   response).
 
 ### 11. "Your CWL Preferences" hub (user view) — Phase 4
+- **As built (Build 156):** always ℹ️ — whether the player hub works is step 10's job, so a
+  problem there is never red twice. Steps 11 and 12 require step 3 (clans) only, not step 10.
 - ℹ️ explanation of what users see and can set; ✅/⚠️ only for "hub enabled and visible".
   Content shared with layer C.
 

@@ -787,11 +787,14 @@ all rebuild/button-handler paths so the reference is never lost.
   there, not as a second list.
 - `permission_features` on a step: the `bot_permissions` feature keys whose channel/role
   problems that step reports. Step 1 lists only problems of features no implemented step owns,
-  so one problem shows red once. Steps with a check so far (Build 155): 1 bot permissions,
-  2 language/timezone, 3 clans (deleted / private war log from `CACHE.clan_name_cache`),
-  4 welcome, 5 registration, 7 channel war reminders, 8 raid reminders, 9 server roles,
-  10 CWL settings, 13 leaderboards. Since Phase 3 every audited feature belongs to a step, so
-  step 1 is server-level permissions only.
+  so one problem shows red once. All 13 steps have a check since Build 156 (Phase 4):
+  1 bot permissions, 2 language/timezone, 3 clans (deleted / private war log from
+  `CACHE.clan_name_cache`), 4 welcome, 5 registration, 6 DM war reminders
+  (`notification_coverage()`, custodians), 7 channel war reminders, 8 raid reminders, 9 server
+  roles, 10 CWL settings, 11 "Your CWL Preferences" (always ℹ️ — player-hub problems are step
+  10's), 12 CWL season (`cwl_events` via the sync DB helpers + `resolve_cwl_phase()`; from the
+  20th next month's season must exist with clans and start times), 13 leaderboards. Every
+  audited feature belongs to a step, so step 1 is server-level permissions only.
 - Member-side checks (Phase 3): `_any_role_can(channel, roles, *perms)` over `_newcomer_roles()`
   (@everyone + the newbie role Simple Roles gives on join) for the registration hub and
   `_member_roles()` (@everyone + every role ClashControl assigns) for the player hub, incl.

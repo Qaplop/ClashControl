@@ -1,6 +1,19 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-11 (12)
+- Added (tracker #0151, Phase 4): the last three /setup steps — all 13 are checked now.
+  6 War notifications (DM): how many linked members get war / raid reminders (⚠️ only when
+  linked members exist and nobody has them on), how members switch them on, the admin tools and
+  the custodians per clan. 11 "Your CWL Preferences": ℹ️ explanation of what members set and how
+  they get there (player-hub problems stay in step 10). 12 CWL season: from the 20th next month's
+  season must exist with participating clans that all have a start time (⚠️ otherwise); before
+  that the current season's phase (resolve_cwl_phase), plus the season workflow and coordinators.
+  Steps 11/12 now require clans only. resolve_current_cwl_season() takes an optional `now`.
+  /help lists everything that is checked.
+  Files: clashcontrol/config_audit.py, QBdiscocmdshelper_cwl.py, translations (5), docs, tests.
+  3850 tests pass. Build 156.
+
 2026-10-11 (11)
 - Added (tracker #0151, Phase 3): /setup checks three more steps.
   5 Registration: registration message on/channel/permissions; ⚠️ when neither @everyone nor

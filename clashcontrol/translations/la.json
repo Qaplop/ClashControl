@@ -1632,7 +1632,7 @@
     "cwl_season": {
       "summary_off": "nullum tempus CWL adhuc",
       "summary_missing": "tempus {season} nondum creatum",
-      "summary_between": "nullum tempus venturum — praeparatio a die {day} incipit",
+      "summary_between": "nullum tempus venturum — proximum creari potest simul ac CWL huius mensis finita est (a die {day} ad summum)",
       "summary_no_clans": "tempus {season}: nulla gens participans adhuc",
       "summary_no_start": "tempus {season}: {count} gens(tes) sine tempore initii",
       "summary_phase": "tempus {season}: {phase} ({clans} gens(tes))",
@@ -1642,7 +1642,7 @@
       "no_start_time": "nullum tempus initii",
       "no_clans": "Nulla gens participans adhuc.",
       "workflow_title": "🔁 Gradus temporis",
-      "workflow": "1. {new} (a die {day}, pro CWL mensis proximi)\n2. {clans}: gentes, magnitudo ordinis et tempus initii\n3. {enrollment}: sodales nuntium privatum accipiunt et respondent\n4. {teams}: ordines componere\n5. {preparation}: ordines nuntiare\nPhasis belli sponte incipit cum CWL primae gentis incipit.",
+      "workflow": "1. {new} (pro CWL mensis proximi — simul ac CWL huius mensis omnibus gentibus finita est, a die {day} ad summum)\n2. {clans}: gentes, magnitudo ordinis et tempus initii\n3. {enrollment}: sodales nuntium privatum accipiunt et respondent\n4. {teams}: ordines componere\n5. {preparation}: ordines nuntiare\nPhasis belli sponte incipit cum CWL primae gentis incipit.",
       "coordinators_title": "🧑‍✈️ Coordinatores CWL",
       "coordinators": "{count} gens(tes) coordinatores CWL habent. Coordinatores tempus gentis suae gerunt sine administratoribus servitoris esse: {button}."
     },

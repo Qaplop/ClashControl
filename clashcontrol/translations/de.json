@@ -1633,7 +1633,7 @@
     "cwl_season": {
       "summary_off": "noch keine CWL-Saison",
       "summary_missing": "Saison {season} noch nicht angelegt",
-      "summary_between": "keine anstehende Saison — Vorbereitung ab dem {day}.",
+      "summary_between": "keine anstehende Saison — die nächste kann angelegt werden, sobald die CWL dieses Monats vorbei ist (spätestens ab dem {day}.)",
       "summary_no_clans": "Saison {season}: noch kein teilnehmender Clan",
       "summary_no_start": "Saison {season}: {count} Clan(s) ohne Startzeit",
       "summary_phase": "Saison {season}: {phase} ({clans} Clan(s))",
@@ -1643,7 +1643,7 @@
       "no_start_time": "keine Startzeit",
       "no_clans": "Noch kein teilnehmender Clan.",
       "workflow_title": "🔁 Ablauf einer Saison",
-      "workflow": "1. {new} (ab dem {day}., für die CWL im nächsten Monat)\n2. {clans}: Clans, Kadergröße und Startzeit\n3. {enrollment}: Mitglieder bekommen eine DM und antworten\n4. {teams}: die Aufstellungen zusammenstellen\n5. {preparation}: die Aufstellungen bekanntgeben\nDie Kriegsphase beginnt von selbst, sobald die CWL des ersten Clans startet.",
+      "workflow": "1. {new} (für die CWL im nächsten Monat — sobald die CWL dieses Monats für alle Clans vorbei ist, spätestens ab dem {day}.)\n2. {clans}: Clans, Kadergröße und Startzeit\n3. {enrollment}: Mitglieder bekommen eine DM und antworten\n4. {teams}: die Aufstellungen zusammenstellen\n5. {preparation}: die Aufstellungen bekanntgeben\nDie Kriegsphase beginnt von selbst, sobald die CWL des ersten Clans startet.",
       "coordinators_title": "🧑‍✈️ CWL-Koordinatoren",
       "coordinators": "{count} Clan(s) haben CWL-Koordinatoren. Koordinatoren führen die Saison ihres Clans durch, ohne Server-Admins zu sein: {button}."
     },

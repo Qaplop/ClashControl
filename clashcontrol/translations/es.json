@@ -1632,7 +1632,7 @@
     "cwl_season": {
       "summary_off": "aún no hay temporada de LGC",
       "summary_missing": "temporada {season} aún no creada",
-      "summary_between": "no hay temporada próxima — la preparación empieza a partir del día {day}",
+      "summary_between": "no hay temporada próxima — la siguiente se puede crear en cuanto termine la LGC de este mes (a más tardar el día {day})",
       "summary_no_clans": "temporada {season}: aún no hay clanes participantes",
       "summary_no_start": "temporada {season}: {count} clan(es) sin hora de inicio",
       "summary_phase": "temporada {season}: {phase} ({clans} clan(es))",
@@ -1642,7 +1642,7 @@
       "no_start_time": "sin hora de inicio",
       "no_clans": "Aún no hay clanes participantes.",
       "workflow_title": "🔁 Pasos de una temporada",
-      "workflow": "1. {new} (a partir del día {day}, para la LGC del mes siguiente)\n2. {clans}: clanes, tamaño de la alineación y hora de inicio\n3. {enrollment}: los miembros reciben un MD y responden\n4. {teams}: armar las alineaciones\n5. {preparation}: anunciar las alineaciones\nLa fase de guerra empieza sola cuando comienza la LGC del primer clan.",
+      "workflow": "1. {new} (para la LGC del mes siguiente — en cuanto la LGC de este mes haya terminado para todos los clanes, a más tardar el día {day})\n2. {clans}: clanes, tamaño de la alineación y hora de inicio\n3. {enrollment}: los miembros reciben un MD y responden\n4. {teams}: armar las alineaciones\n5. {preparation}: anunciar las alineaciones\nLa fase de guerra empieza sola cuando comienza la LGC del primer clan.",
       "coordinators_title": "🧑‍✈️ Coordinadores de LGC",
       "coordinators": "{count} clan(es) tienen coordinadores de LGC. Los coordinadores llevan la temporada de su clan sin ser administradores del servidor: {button}."
     },

@@ -1632,7 +1632,7 @@
     "cwl_season": {
       "summary_off": "尚无部落战联赛赛季",
       "summary_missing": "{season} 赛季尚未创建",
-      "summary_between": "没有即将开始的赛季——每月 {day} 日起开始准备",
+      "summary_between": "没有即将开始的赛季——本月部落战联赛结束后即可创建下一个赛季（最迟从 {day} 日起）",
       "summary_no_clans": "{season} 赛季：尚无参赛部落",
       "summary_no_start": "{season} 赛季：{count} 个部落没有开始时间",
       "summary_phase": "{season} 赛季：{phase}（{clans} 个部落）",
@@ -1642,7 +1642,7 @@
       "no_start_time": "没有开始时间",
       "no_clans": "尚无参赛部落。",
       "workflow_title": "🔁 赛季步骤",
-      "workflow": "1. {new}（每月 {day} 日起，为下个月的部落战联赛）\n2. {clans}：部落、阵容人数和开始时间\n3. {enrollment}：成员收到私信并回复\n4. {teams}：组建阵容\n5. {preparation}：公布阵容\n当第一个部落的部落战联赛开始时，战争阶段会自动开始。",
+      "workflow": "1. {new}（为下个月的部落战联赛——本月部落战联赛对所有部落都结束后即可，最迟从 {day} 日起）\n2. {clans}：部落、阵容人数和开始时间\n3. {enrollment}：成员收到私信并回复\n4. {teams}：组建阵容\n5. {preparation}：公布阵容\n当第一个部落的部落战联赛开始时，战争阶段会自动开始。",
       "coordinators_title": "🧑‍✈️ 部落战联赛协调员",
       "coordinators": "{count} 个部落有部落战联赛协调员。协调员无需成为服务器管理员即可运行其部落的赛季：{button}。"
     },

@@ -1,6 +1,13 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-11 (19)
+- Fixed (tracker #0151, qaplop): /setup step 12 said next month's CWL season could only be
+  started "from the 20th" and only expected it from then. The real rule: as soon as this month's
+  CWL is over for all participating clans (their season window has passed — the 11th at the
+  latest). The check now opens the window then (CWL_LATEST_END_DAY = 11 replaces
+  CWL_SIGNUP_WINDOW_START_DAY = 20); texts in all languages updated. Build 163.
+
 2026-10-11 (18)
 - Changed (tracker #0151, qaplop): /setup no longer knows the "⚪ not checked yet" status — every
   step has had a real check since Phase 4. Removed from the legend, the status enum and the

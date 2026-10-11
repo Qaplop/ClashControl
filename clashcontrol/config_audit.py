@@ -1182,23 +1182,27 @@ def detail_cwl_player_hub(guild: discord.Guild, result: StepResult, guild_id: Op
 # Step 12: CWL season management
 # ---------------------------------------------------------------------------------------------
 
-#: From this day of the month leaders prepare next month's CWL (CWL itself starts on the 1st and
-#: runs about ten days — resolve_current_cwl_season()'s reasoning).
-CWL_SIGNUP_WINDOW_START_DAY = 20
+#: CWL starts on the 1st and runs about ten days (resolve_current_cwl_season()'s reasoning): by
+#: this day of the month it is over for every clan. Next month's season can be started as soon as
+#: this month's is over for all member clans — this day at the latest (qaplop 2026-10-11).
+CWL_LATEST_END_DAY = 11
 
 
 def check_cwl_season(guild: discord.Guild, now: Optional[Any] = None) -> StepResult:
     """Season state against the calendar (DB reads via the sync helpers the CWL screens use; a
     DB in maintenance raises and run_step shows "could not be checked").
 
-    From the 20th: next month's season must exist, with participating clans that all have a start
-    time → else ⚠️. Before the 20th: the most relevant season's phase (resolve_cwl_phase) as ✅,
-    or ℹ️ when there is none. A guild that never ran a season and has no CWL hub → ⏸️."""
+    Once this month's CWL is over for all participating clans (its season window has passed, or
+    the CWL_LATEST_END_DAY at the latest): next month's season must exist, with participating clans
+    that all have a start time → else ⚠️. Before that: the most relevant season's phase
+    (resolve_cwl_phase) as ✅, or ℹ️ when there is none. A guild that never ran a season and has
+    no CWL hub → ⏸️."""
     from datetime import datetime, timezone
 
     from clashcontrol.cache_manager import CACHE
     from clashcontrol.QBdiscocmdshelper_cwl import (
-        get_current_cwl_event_sync, resolve_current_cwl_season, resolve_cwl_phase,
+        get_current_cwl_event_sync, is_cwl_event_active_or_upcoming, resolve_current_cwl_season,
+        resolve_cwl_phase,
     )
     now = now or datetime.now(timezone.utc)
     db = CACHE.db_manager
@@ -1213,7 +1217,15 @@ def check_cwl_season(guild: discord.Guild, now: Optional[Any] = None) -> StepRes
     if not cwl_used:
         return StepResult(AuditStatus.OFF, "config_audit.cwl_season.summary_off", data=data)
 
-    in_window = now.day >= CWL_SIGNUP_WINDOW_START_DAY
+    # Is this month's CWL over for every participating clan? Then next month's season is due.
+    this_month = f"{now.year:04d}-{now.month:02d}"
+    current = next((e for e in events if str(e.get("cwl_season", ""))[:7] == this_month
+                    and e.get("status") != "cancelled"), None)
+    in_window = now.day >= CWL_LATEST_END_DAY
+    if current is not None and not in_window:
+        starts = [c["cwl_start_at"] for c in db.get_cwl_event_clans_sync(int(current["id"]))
+                  if c.get("participating", 1) and c.get("cwl_start_at")]
+        in_window = not is_cwl_event_active_or_upcoming({**current, "clan_cwl_start_ats": starts}, now)
     event = next((e for e in events if str(e.get("cwl_season", ""))[:7] == next_season), None) if in_window \
         else get_current_cwl_event_sync(guild.id)
     if event is not None and event.get("status") == "cancelled":
@@ -1223,7 +1235,7 @@ def check_cwl_season(guild: discord.Guild, now: Optional[Any] = None) -> StepRes
             return StepResult(AuditStatus.INCOMPLETE, "config_audit.cwl_season.summary_missing",
                               {"season": next_season}, [Finding(AuditStatus.INCOMPLETE, "season_missing")], data)
         return StepResult(AuditStatus.INFO, "config_audit.cwl_season.summary_between",
-                          {"day": CWL_SIGNUP_WINDOW_START_DAY}, data=data)
+                          {"day": CWL_LATEST_END_DAY}, data=data)
 
     clans = db.get_cwl_event_clans_sync(int(event["id"]))
     participating = [c for c in clans if c.get("participating", 1)]
@@ -1278,7 +1290,7 @@ def detail_cwl_season(guild: discord.Guild, result: StepResult, guild_id: Option
         "config_audit.cwl_season.workflow",
         new=tr("cwl.management.button_add_season"), clans=tr("cwl.management.button_configure_clans"),
         enrollment=tr("cwl.management.button_start_enrollment"), teams=tr("cwl.management.button_manage_assignment"),
-        preparation=tr("cwl.management.button_announce_rosters"), day=CWL_SIGNUP_WINDOW_START_DAY)))
+        preparation=tr("cwl.management.button_announce_rosters"), day=CWL_LATEST_END_DAY)))
     sections.append((tr("config_audit.cwl_season.coordinators_title"), tr(
         "config_audit.cwl_season.coordinators", count=d.get("coordinated", 0),
         button=tr("cwl.management.button_manage_coordinators"))))

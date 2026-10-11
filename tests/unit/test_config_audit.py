@@ -703,6 +703,25 @@ class TestStepCwlSeason:
         r = ca.check_cwl_season(_guild(ADMIN), self.BEFORE)
         assert r.status == AuditStatus.OK and r.summary_params["season"] == "2026-10"
 
+    def test_window_opens_when_this_months_cwl_is_over(self, monkeypatch):
+        # qaplop 2026-10-11: next month's season can start as soon as this month's CWL is over for
+        # all clans (the 11th at the latest) — not only from the 20th.
+        _cfg(cwl_management_message_enabled=True)
+        from datetime import datetime, timezone
+        october = [{"id": 2, "cwl_season": "2026-10", "status": "war"}]
+        clans = {2: [{"clan_tag": "#A", "participating": 1, "cwl_start_at": "2026-10-01T08:00", "locked_at": "x"},
+                     {"clan_tag": "#B", "participating": 1, "cwl_start_at": "2026-10-02T08:00", "locked_at": "x"}]}
+        self._db(monkeypatch, october, clans)
+        still_running = datetime(2026, 10, 10, 12, tzinfo=timezone.utc)   # #B's CWL ends 10-11 08:00
+        assert ca.check_cwl_season(_guild(ADMIN), still_running).status == AuditStatus.OK
+        over = datetime(2026, 10, 11, 9, tzinfo=timezone.utc)
+        r = ca.check_cwl_season(_guild(ADMIN), over)
+        assert r.status == AuditStatus.INCOMPLETE and r.summary_params == {"season": "2026-11"}
+        clans[2].pop()                                                    # only #A: over on the 10th
+        assert ca.check_cwl_season(_guild(ADMIN), still_running).status == AuditStatus.INCOMPLETE
+        self._db(monkeypatch, [], {})                                     # no season this month
+        assert ca.check_cwl_season(_guild(ADMIN), over).status == AuditStatus.INCOMPLETE
+
 
 class TestRenderingPhase4:
     @pytest.mark.parametrize("lang", LANGS)

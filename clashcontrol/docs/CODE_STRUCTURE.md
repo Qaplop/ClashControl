@@ -792,8 +792,9 @@ all rebuild/button-handler paths so the reference is never lost.
   `CACHE.clan_name_cache`), 4 welcome, 5 registration message, 6 DM war reminders
   (`notification_coverage()`, custodians), 7 channel war reminders, 8 raid reminders, 9 server
   roles, 10 CWL settings, 11 "Your CWL Preferences" (always ℹ️ — player-hub problems are step
-  10's), 12 CWL season (`cwl_events` via the sync DB helpers + `resolve_cwl_phase()`; from the
-  20th next month's season must exist with clans and start times), 13 leaderboards,
+  10's), 12 CWL season (`cwl_events` via the sync DB helpers + `resolve_cwl_phase()`; once this
+  month's CWL is over for all clans — the 11th at the latest — next month's season must exist
+  with clans and start times), 13 leaderboards,
   14 linked accounts (`link_coverage()`; split out of step 5 on 2026-10-11 — ongoing work, not
   configuration, so it comes last). Every
   audited feature belongs to a step, so step 1 is server-level permissions only.

@@ -230,7 +230,7 @@ async def test_delete_leaderboard_messages_for_context_builds_mode_string(monkey
 async def test_split_and_post_leaderboard_helper_short_message(monkeypatch: pytest.MonkeyPatch) -> None:
     channel = _FakeChannel()
 
-    async def _discord_retry(op: Any, _name: str) -> Any:
+    async def _discord_retry(op: Any, _name: str, **_k: Any) -> Any:
         return await op()
 
     monkeypatch.setattr(hf, "discord_retry", _discord_retry)
@@ -247,7 +247,7 @@ async def test_split_and_post_leaderboard_helper_short_message(monkeypatch: pyte
 async def test_split_and_post_leaderboard_helper_truncates_overlong_player_line(monkeypatch: pytest.MonkeyPatch) -> None:
     channel = _FakeChannel()
 
-    async def _discord_retry(op: Any, _name: str) -> Any:
+    async def _discord_retry(op: Any, _name: str, **_k: Any) -> Any:
         return await op()
 
     monkeypatch.setattr(hf, "discord_retry", _discord_retry)
@@ -283,7 +283,7 @@ async def test_sentinel_combined_single_message(monkeypatch: pytest.MonkeyPatch)
     """Short plain + code: must produce exactly one message containing both parts."""
     channel = _FakeChannel()
 
-    async def _discord_retry(op: Any, _name: str) -> Any:
+    async def _discord_retry(op: Any, _name: str, **_k: Any) -> Any:
         return await op()
 
     monkeypatch.setattr(hf, "discord_retry", _discord_retry)
@@ -311,7 +311,7 @@ async def test_sentinel_combined_prefix_absorbed(monkeypatch: pytest.MonkeyPatch
     """The header prefix before the sentinel must appear in the same message."""
     channel = _FakeChannel()
 
-    async def _discord_retry(op: Any, _name: str) -> Any:
+    async def _discord_retry(op: Any, _name: str, **_k: Any) -> Any:
         return await op()
 
     monkeypatch.setattr(hf, "discord_retry", _discord_retry)
@@ -332,7 +332,7 @@ async def test_sentinel_combined_too_long_falls_back_to_two_messages(monkeypatch
     """When plain+code exceeds 2000 chars, they must be posted as separate messages."""
     channel = _FakeChannel()
 
-    async def _discord_retry(op: Any, _name: str) -> Any:
+    async def _discord_retry(op: Any, _name: str, **_k: Any) -> Any:
         return await op()
 
     monkeypatch.setattr(hf, "discord_retry", _discord_retry)
@@ -358,7 +358,7 @@ async def test_sentinel_plain_only_no_code_segment(monkeypatch: pytest.MonkeyPat
     """Plain sentinel with no following code block posts plain text only (no ``` wrap)."""
     channel = _FakeChannel()
 
-    async def _discord_retry(op: Any, _name: str) -> Any:
+    async def _discord_retry(op: Any, _name: str, **_k: Any) -> Any:
         return await op()
 
     monkeypatch.setattr(hf, "discord_retry", _discord_retry)

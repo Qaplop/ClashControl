@@ -1,6 +1,20 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-13 (1)
+- Changed (tracker #0156): permission (403) log lines now say where and what — guild name (id),
+  channel #name (id) and the permissions the bot lacks there (new
+  bot_permissions.describe_channel_for_log()). discord_retry() takes channel=/required_perms=;
+  with a channel its 403 warning is throttled per channel (one failing channel used to hide all
+  others behind its hourly slot) and no longer claims "not retrying" (the next cycle retries).
+  Leaderboard/cwlinfo sends pass the channel; [LEADERBOARD-POST] names guild + missing perms;
+  anchored-message repost 403s (registration, CWL hubs) are a daily WARNING with that context
+  instead of an ERROR every bump cycle.
+- Fixed (tracker #0155): nightly "VACUUM skipped (... < 500 threshold)" reported the old flat
+  threshold; it now prints the real proportional one.
+  Files: clashcontrol/bot_permissions.py, clashcontrol/discord_health.py, QBhelperfunctions.py,
+  ClashControl.py, clashcontrol/db_manager.py, tests. Build 190. 3962 tests pass.
+
 2026-10-11 (45)
 - Changed (tracker #0151, qaplop): the guided setup's finish page adds "⚙️ All settings can be
   found and changed any time in /clan management." (both variants, all languages); /clan

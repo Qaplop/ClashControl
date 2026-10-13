@@ -384,7 +384,7 @@ async def test_long_raid_table_splits_on_its_header(monkeypatch, caplog, mode):
             sent.append(content)
             return SimpleNamespace(id=len(sent))
 
-    async def _retry(op: Any, _name: str) -> Any:
+    async def _retry(op: Any, _name: str, **_k: Any) -> Any:
         return await op()
 
     monkeypatch.setattr(qh, "discord_retry", _retry)

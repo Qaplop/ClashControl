@@ -4550,6 +4550,9 @@ async def post_discord_content_with_tracking(
             return msg.edit(embeds=embeds)
         return msg.edit(attachments=[discord.File(fp=BytesIO(file_bytes), filename=file_name)])  # type: ignore[arg-type]
 
+    # What a new post needs, for a 403's log line (tracker #0156).
+    send_perms = ("view_channel", "send_messages", "embed_links" if embeds is not None else "attach_files")
+
     if update_existing:
         # ── Edit-in-place path ─────────────────────────────────────────────
         existing_key: Optional[str] = None
@@ -4622,6 +4625,8 @@ async def post_discord_content_with_tracking(
         new_msg = await discord_retry(
             _send_call,
             f"send_{mode}",
+            channel=channel,
+            required_perms=send_perms,
         )
         if new_msg:  # type: ignore[truthy-bool]
             await CACHE.set_leaderboard_message(timestamp, {
@@ -5349,7 +5354,8 @@ async def _split_and_post_leaderboard_helper(channel: Union[discord.TextChannel,
                 if len(combined) <= DISCORD_MESSAGE_MAX_LENGTH:
                     combined_msg = await discord_retry(
                         lambda m=combined: channel.send(m),
-                        "send_combined_plain_and_code"
+                        "send_combined_plain_and_code",
+                        channel=channel,
                     )
                     all_ids.append(combined_msg.id)  # type: ignore[union-attr]
                     continue
@@ -5375,7 +5381,8 @@ async def _split_and_post_leaderboard_helper(channel: Union[discord.TextChannel,
                     if chunk.strip():
                         plain_msg = await discord_retry(
                             lambda p=chunk: channel.send(p),
-                            "send_roster_plain_text"
+                            "send_roster_plain_text",
+                            channel=channel,
                         )
                         all_ids.append(plain_msg.id)  # type: ignore[union-attr]
             if code:
@@ -5390,7 +5397,8 @@ async def _split_and_post_leaderboard_helper(channel: Union[discord.TextChannel,
     if len(formatted_text) <= DISCORD_LIMIT:
         msg = await discord_retry(
             lambda: channel.send(formatted_text),
-            "send_short_leaderboard"
+            "send_short_leaderboard",
+            channel=channel,
         )
         messages_posted.append(msg.id)  # type: ignore[union-attr]
         logging.debug(f"Posted short message {msg.id} ({len(formatted_text)} chars) without splitting")  # type: ignore[union-attr]
@@ -5444,7 +5452,8 @@ async def _split_and_post_leaderboard_helper(channel: Union[discord.TextChannel,
             formatted_header = '```ansi\n' + header_content + '```'
             msg = await discord_retry(
                 lambda: channel.send(formatted_header),
-                "send_leaderboard_header"
+                "send_leaderboard_header",
+                channel=channel,
             )
             messages_posted.append(msg.id)  # type: ignore[union-attr]
             logging.debug(f"Posted header-only message {msg.id} ({len(formatted_header)} chars)")  # type: ignore[union-attr]
@@ -5489,7 +5498,8 @@ async def _split_and_post_leaderboard_helper(channel: Union[discord.TextChannel,
         first_message = '```ansi\n' + '\n'.join(first_content_parts) + '```'  # type: ignore[arg-type]
         msg1 = await discord_retry(
             lambda: channel.send(first_message),
-            "send_leaderboard_first_chunk"
+            "send_leaderboard_first_chunk",
+            channel=channel,
         )
         messages_posted.append(msg1.id)  # type: ignore[union-attr]
         logging.debug(f"Posted first chunk message {msg1.id} ({len(first_message)} chars) with {len(first_chunk_players)} players")  # type: ignore[union-attr]
@@ -5521,7 +5531,8 @@ async def _split_and_post_leaderboard_helper(channel: Union[discord.TextChannel,
             continuation_message = '```ansi\n' + '\n'.join(chunk_players) + '```'  # type: ignore[arg-type]
             msg = await discord_retry(
                 lambda: channel.send(continuation_message),
-                f"send_leaderboard_continuation_{len(messages_posted)}"  # type: ignore[arg-type]
+                f"send_leaderboard_continuation_{len(messages_posted)}",  # type: ignore[arg-type]
+                channel=channel,
             )
             messages_posted.append(msg.id)  # type: ignore[union-attr]
             logging.debug(f"Posted continuation message {msg.id} ({len(continuation_message)} chars) with {len(chunk_players)} players")  # type: ignore[union-attr]

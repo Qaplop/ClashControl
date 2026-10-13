@@ -7,7 +7,7 @@ import logging
 import time
 import aiohttp
 import discord
-from typing import TypeVar, Callable, Any, Dict, Optional
+from typing import TypeVar, Callable, Any, Dict, Optional, Sequence
 
 T = TypeVar('T')
 
@@ -63,16 +63,24 @@ def _mark_discord_5xx() -> None:
 async def discord_retry(
     operation: Callable[[], T], 
     operation_name: str = "discord_api_call",
-    max_retries: int = 3
+    max_retries: int = 3,
+    *,
+    channel: Any = None,
+    required_perms: Optional[Sequence[str]] = None,
 ) -> T:
     """
     Simple retry wrapper for Discord API calls with rate limit handling.
-    
+
     Args:
         operation: Async function to execute
         operation_name: Name for logging purposes
         max_retries: Maximum retry attempts (default: 3)
-    
+        channel: The channel the operation acts in, if any. A 403 is then logged with guild
+            name (id), channel and the permissions the bot lacks there (tracker #0156), and
+            throttled per channel instead of per operation.
+        required_perms: Permission names the operation needs in ``channel``
+            (default: view_channel + send_messages).
+
     Returns:
         Result of the operation
         
@@ -112,15 +120,27 @@ async def discord_retry(
                 # These are permanent — retrying will never succeed.
                 _stats['api_errors'] += 1
                 if e.status == 403:
-                    # Tracker #0150: a missing guild permission repeats on every attempt and the
-                    # caller re-raises/reports it with its own context (channel, clan), so here
-                    # once an hour per operation + error code is plenty.
+                    # Tracker #0150: a missing guild permission repeats on every cycle, so once
+                    # an hour per key. Tracker #0156: with the channel known, say where and what
+                    # is missing, and key per channel — keyed per operation only, one failing
+                    # channel hid every other channel's 403 behind its hourly slot.
                     from clashcontrol.log_throttle import log_throttled
-                    log_throttled(
-                        logging.WARNING, ("discord-403", operation_name, getattr(e, "code", 0)),
-                        f"{operation_name} failed: {e.status} {e} (not retrying — client error)",
-                        interval_s=3600,
-                    )
+                    if channel is not None:
+                        from clashcontrol.bot_permissions import POST_PERMS, describe_channel_for_log
+                        where = describe_channel_for_log(channel, required_perms or POST_PERMS)
+                        log_throttled(
+                            logging.WARNING,
+                            ("discord-403", operation_name, getattr(e, "code", 0), getattr(channel, "id", None)),
+                            f"{operation_name} failed: {e} — {where} (no immediate retry; the "
+                            f"next cycle tries again until a server admin fixes the permission)",
+                            interval_s=3600,
+                        )
+                    else:
+                        log_throttled(
+                            logging.WARNING, ("discord-403", operation_name, getattr(e, "code", 0)),
+                            f"{operation_name} failed: {e} (no immediate retry — client error)",
+                            interval_s=3600,
+                        )
                 else:
                     logging.error(f"{operation_name} failed: {e.status} {e} (not retrying — client error)")
                 raise

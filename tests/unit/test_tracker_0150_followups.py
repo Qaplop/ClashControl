@@ -67,6 +67,40 @@ class TestLogThrottled:
         assert find_discord_forbidden(RuntimeError("plain")) is None
 
 
+class TestDescribeChannelForLog:
+    """Tracker #0156: log context for a 403 — guild name (id), channel, missing permissions."""
+
+    def _channel(self, perms: discord.Permissions) -> MagicMock:
+        ch = MagicMock(spec=discord.TextChannel)
+        ch.id, ch.name = 1547508198246981713, "leaderboard"
+        ch.guild.name, ch.guild.id = "INTL BootCamp", 1228000883581911091
+        ch.permissions_for.return_value = perms
+        return ch
+
+    def test_no_view_reports_only_view(self):
+        from clashcontrol.bot_permissions import describe_channel_for_log
+        text = describe_channel_for_log(self._channel(discord.Permissions.none()))
+        assert text == ("guild INTL BootCamp (1228000883581911091), channel #leaderboard "
+                        "(1547508198246981713), missing: view_channel")
+
+    def test_cache_shows_nothing_missing(self):
+        from clashcontrol.bot_permissions import describe_channel_for_log
+        text = describe_channel_for_log(self._channel(discord.Permissions(view_channel=True, send_messages=True)))
+        assert text.endswith("missing: none of view_channel, send_messages per cached permissions")
+
+    def test_bot_member_not_cached(self):
+        from clashcontrol.bot_permissions import describe_channel_for_log
+        ch = self._channel(discord.Permissions.none())
+        ch.guild.me = None
+        assert describe_channel_for_log(ch).endswith("missing permissions unknown (bot member not cached)")
+
+    def test_no_guild(self):
+        from clashcontrol.bot_permissions import describe_channel_for_log
+        ch = MagicMock(spec=discord.TextChannel)
+        ch.id, ch.name, ch.guild = 5, "x", None
+        assert describe_channel_for_log(ch) == "guild unknown, channel #x (5)"
+
+
 class TestDiscordRetry403:
     @pytest.mark.asyncio
     async def test_403_logged_once_per_hour_as_warning(self, caplog):
@@ -79,6 +113,31 @@ class TestDiscordRetry403:
         recs = [r for r in caplog.records if "send_short_leaderboard failed" in r.getMessage()]
         assert len(recs) == 1 and recs[0].levelno == logging.WARNING
         assert op.await_count == 3  # still raised to the caller every time, never retried
+
+    @pytest.mark.asyncio
+    async def test_403_with_channel_names_guild_channel_and_missing_perm(self, caplog):
+        """Tracker #0156: the line says where and what is missing, throttled per channel — one
+        failing channel must not hide another channel's 403 behind the same hourly slot."""
+        from clashcontrol.discord_health import discord_retry
+
+        def _channel(cid: int, name: str) -> MagicMock:
+            ch = MagicMock(spec=discord.TextChannel)
+            ch.id, ch.name = cid, name
+            ch.guild.name, ch.guild.id = "The QCrew", 1145641080621109312
+            ch.permissions_for.return_value = discord.Permissions(view_channel=True, send_messages=False)
+            return ch
+
+        op = AsyncMock(side_effect=_forbidden())
+        with caplog.at_level(logging.WARNING):
+            for ch in (_channel(1, "cwl-info"), _channel(2, "leaderboard"), _channel(1, "cwl-info")):
+                with pytest.raises(discord.Forbidden):
+                    await discord_retry(op, "send_cwlinfo", channel=ch,
+                                        required_perms=("view_channel", "send_messages", "embed_links"))
+        msgs = [r.getMessage() for r in caplog.records if "send_cwlinfo failed" in r.getMessage()]
+        assert len(msgs) == 2  # channel 1 twice -> once; channel 2 -> own line
+        assert "guild The QCrew (1145641080621109312), channel #cwl-info (1)" in msgs[0]
+        assert "missing: send_messages, embed_links" in msgs[0]
+        assert "not retrying" not in msgs[0]
 
     @pytest.mark.asyncio
     async def test_other_4xx_still_error_every_time(self, caplog):

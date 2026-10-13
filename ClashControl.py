@@ -985,10 +985,13 @@ async def post_leaderboards_to_subscribed_channels() -> None:
                         # from. Only an admin can fix that, and it recurs every cycle — 310
                         # identical ERRORs (with tracebacks) in 28 h on 2026-10-09. Once a day
                         # per channel, no traceback; the post is still retried every cycle.
+                        # Tracker #0156: name the guild and the missing permission(s).
+                        from clashcontrol.bot_permissions import CHANNEL_FEATURES, describe_channel_for_log
                         log_throttled(
                             logging.WARNING, ("leaderboard-forbidden", str(channel_id)),
-                            f"[LEADERBOARD-POST] No permission to post {failed_count_label} in "
-                            f"channel {channel_id} — a server admin must grant the bot access: {e}",
+                            f"[LEADERBOARD-POST] No permission to post {failed_count_label} — "
+                            f"{describe_channel_for_log(channel, CHANNEL_FEATURES['leaderboard'])} "
+                            f"— a server admin must grant the bot access: {e}",
                         )
                     else:
                         logging.error(f"[LEADERBOARD-POST] Error processing subscription {failed_count_label}: {e}", exc_info=True)
@@ -4999,9 +5002,10 @@ def _warn_anchored_channel_unreachable(log_label: str, channel_id: int, guild_id
     per channel. Forbidden is a guild-side permission change that only an admin can fix, so
     repeating it every bump cycle (tracker #0150: ~280/day) adds noise, not information."""
     from clashcontrol.log_throttle import log_throttled
+    guild_name = getattr(QBcore.bot.get_guild(guild_id), "name", "?")
     log_throttled(
         logging.WARNING, ("anchored-unreachable", log_label, channel_id),
-        f"Could not reach {log_label} channel {channel_id} for guild {guild_id} (not in cache, "
+        f"Could not reach {log_label} channel {channel_id} in guild {guild_name} ({guild_id}) (not in cache, "
         f"live fetch failed without NotFound — missing access?). Keeping the config",
     )
 
@@ -5241,7 +5245,21 @@ async def repost_anchored_message(
             logging.info(f"Reposted {log_label} message in {channel.guild.name}#{channel_name} (new message ID: {new_message.id})")
 
         except Exception as e:
-            logging.error(f"Failed to repost {log_label} message in channel {channel_id}: {e}")
+            from clashcontrol.log_throttle import find_discord_forbidden, log_throttled
+            if find_discord_forbidden(e) is not None:
+                # Tracker #0156: a guild-side permission problem that recurs every bump cycle
+                # (22 ERRORs in 3 days for one QCrew channel) — once a day per channel, with
+                # the guild and the missing permission(s).
+                from clashcontrol.bot_permissions import CHANNEL_FEATURES, describe_channel_for_log
+                feature = {"registration": "registration", "CWL Management Hub": "cwl_management",
+                           "Player CWL Settings Hub": "cwl_player_hub"}.get(log_label, "cwl_management")
+                required = CHANNEL_FEATURES[feature]
+                log_throttled(
+                    logging.WARNING, ("anchored-repost-forbidden", log_label, str(channel_id)),
+                    f"Failed to repost {log_label} message: {e} — {describe_channel_for_log(channel, required)}",
+                )
+            else:
+                logging.error(f"Failed to repost {log_label} message in channel {channel_id}: {e}")
 
     return posted_count, filtered_count
 

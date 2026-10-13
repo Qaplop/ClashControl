@@ -147,6 +147,37 @@ def missing_channel_permissions(channel: Any, member: Any, required: Sequence[st
     return tuple(missing)
 
 
+#: What any message post needs at minimum — the default for ``describe_channel_for_log()``.
+POST_PERMS: Tuple[str, ...] = ("view_channel", "send_messages")
+
+
+def describe_channel_for_log(channel: Any, required: Sequence[str] = POST_PERMS) -> str:
+    """Log context for a channel the bot was refused in (tracker #0156): guild name (id), channel
+    name (id) and which of ``required`` the bot lacks there.
+
+    Reads the bot's cached member/channel state only, so it is cheap enough for every 403. The
+    cache can disagree with what Discord just refused (stale overrides, an archived thread), which
+    the text then says instead of naming a wrong cause. Never raises.
+    """
+    try:
+        ch_id = getattr(channel, "id", "?")
+        ch_name = getattr(channel, "name", None)
+        ch_text = f"channel #{ch_name} ({ch_id})" if ch_name else f"channel {ch_id}"
+        guild = getattr(channel, "guild", None)
+        if guild is None:
+            return f"guild unknown, {ch_text}"
+        where = f"guild {getattr(guild, 'name', '?')} ({getattr(guild, 'id', '?')}), {ch_text}"
+        me = _me(guild)
+        if me is None:
+            return f"{where}, missing permissions unknown (bot member not cached)"
+        missing = missing_channel_permissions(channel, me, required)
+        if missing:
+            return f"{where}, missing: {', '.join(missing)}"
+        return f"{where}, missing: none of {', '.join(required)} per cached permissions"
+    except Exception as e:  # pragma: no cover - log context must never break the error path
+        return f"channel {getattr(channel, 'id', '?')} (context unavailable: {e})"
+
+
 def check_channel_feature(guild: discord.Guild, feature: str, channel_id: Any) -> List[PermissionIssue]:
     """Issues for posting feature ``feature`` in channel ``channel_id`` of ``guild``."""
     required = CHANNEL_FEATURES[feature]

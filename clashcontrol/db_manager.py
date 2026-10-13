@@ -14082,7 +14082,9 @@ class WarHistoryDB:
                                     logging.warning(f"[DB-MAINT] REINDEX {idx} failed: {_e_idx}")
                         logging.info(f"[DB-MAINT] Step 2/3: REINDEX done in {_time.monotonic() - t_step:.1f}s")
                         msgs.append(f"REINDEX ({reindexed}/{len(major_indexes)})")
-                        logging.info(f"[DB-MAINT] Step 2/3: VACUUM skipped (freelist={freelist} pages < 500 threshold)")
+                        # Tracker #0155: the threshold is proportional now (_vacuum_threshold), not
+                        # the old flat 500 pages this line used to claim.
+                        logging.info(f"[DB-MAINT] Step 2/3: VACUUM skipped (freelist={freelist} pages <= threshold {_vacuum_threshold} pages)")
                         msgs.append(f"VACUUM skipped (freelist={freelist} pages)")
 
                     # 3. ANALYZE (always last)

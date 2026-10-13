@@ -1897,6 +1897,10 @@ class WarHistoryDB:
         logging.info("[DB-SCHEMA] Verifying guild setup dismissals table...")
         await self._create_guild_setup_dismissed_schema()
 
+        # Guilds the bot was removed from: when, for the 30-day purge (tracker #0154)
+        logging.info("[DB-SCHEMA] Verifying guild absences table...")
+        await self._create_guild_absences_schema()
+
         # /tutorial progress per user (tracker #0121)
         logging.info("[DB-SCHEMA] Verifying user tutorial progress table...")
         await self._create_user_tutorial_progress_schema()
@@ -3409,6 +3413,20 @@ class WarHistoryDB:
         """)
         await self._conn.commit()
 
+    async def _create_guild_absences_schema(self) -> None:
+        """Create guild_absences (idempotent): guilds with stored data the bot is no longer in,
+        and since when (tracker #0154). Drives the nightly purge after GUILD_ABSENCE_PURGE_DAYS.
+        Hot DB only, no history mirror. absent_since is UTC ISO-8601."""
+        await self._ensure_connection()
+        await self._conn.execute("""
+            CREATE TABLE IF NOT EXISTS guild_absences (
+                guild_id     TEXT PRIMARY KEY,
+                guild_name   TEXT,
+                absent_since TEXT NOT NULL
+            )
+        """)
+        await self._conn.commit()
+
     async def _create_user_tutorial_progress_schema(self) -> None:
         """Create user_tutorial_progress (idempotent): where a user is in /tutorial (tracker #0121).
         One row per (user, track); ``done_steps`` is a comma-separated list of step ids. Hot DB
@@ -3514,6 +3532,93 @@ class WarHistoryDB:
                 logging.error(f"[DB-WRITE-SYNC] set_guild_setup_step_dismissed_sync failed for guild {guild_id}: {e}")
                 conn.rollback()
                 return False
+
+    def get_all_guild_absences_sync(self) -> Dict[str, Dict[str, Any]]:
+        """Every recorded guild absence, as guild_id -> {"guild_name", "absent_since"} (CACHE
+        load shape, tracker #0154)."""
+        import sqlite3
+
+        if not self.db_path:
+            raise RuntimeError("Database not initialized. Call initialize() first.")
+        with self._sync_conn() as conn:
+            try:
+                rows = conn.execute("SELECT guild_id, guild_name, absent_since FROM guild_absences").fetchall()
+            except sqlite3.Error as e:
+                logging.error(f"[DB-QUERY-SYNC] get_all_guild_absences_sync failed: {e}")
+                return {}
+        return {row["guild_id"]: {"guild_name": row["guild_name"], "absent_since": row["absent_since"]} for row in rows}
+
+    def set_guild_absent_sync(self, guild_id: str, guild_name: Optional[str], absent_since: str) -> bool:
+        """Record that the bot left ``guild_id``. Keeps an existing row's absent_since, so a repeated
+        removal event or startup reconciliation never restarts the 30-day clock."""
+        import sqlite3
+
+        if not self.db_path:
+            raise RuntimeError("Database not initialized. Call initialize() first.")
+        with self._sync_conn() as conn:
+            try:
+                with self._sync_write_lock:
+                    conn.execute(
+                        "INSERT OR IGNORE INTO guild_absences (guild_id, guild_name, absent_since) VALUES (?, ?, ?)",
+                        (guild_id, guild_name, absent_since),
+                    )
+                    if self._should_commit():
+                        conn.commit()
+                return True
+            except sqlite3.Error as e:
+                logging.error(f"[DB-WRITE-SYNC] set_guild_absent_sync failed for guild {guild_id}: {e}")
+                conn.rollback()
+                return False
+
+    def clear_guild_absent_sync(self, guild_id: str) -> bool:
+        """Forget a guild absence (the bot is back in the guild). Idempotent."""
+        import sqlite3
+
+        if not self.db_path:
+            raise RuntimeError("Database not initialized. Call initialize() first.")
+        with self._sync_conn() as conn:
+            try:
+                with self._sync_write_lock:
+                    conn.execute("DELETE FROM guild_absences WHERE guild_id = ?", (guild_id,))
+                    if self._should_commit():
+                        conn.commit()
+                return True
+            except sqlite3.Error as e:
+                logging.error(f"[DB-WRITE-SYNC] clear_guild_absent_sync failed for guild {guild_id}: {e}")
+                conn.rollback()
+                return False
+
+    def purge_guild_rows_sync(self, guild_id: str) -> Optional[Dict[str, int]]:
+        """Delete a removed guild's own rows in one transaction (tracker #0154): guild_config —
+        whose FK cascade removes member clans/families, welcome clans/families, clan roles,
+        custodians, CWL coordinators and coordinator roles — plus guest clans, /setup dismissals,
+        guild-scoped bot_settings and the guild_absences row. Returns deleted row counts per
+        table, or None on failure (rolled back).
+
+        Callers must first delete the guild's CWL events (shared-clan guard included),
+        subscriptions and owned clan families — see guild_presence.purge_guild_data(), the only
+        caller. Never touches the global scope: bot_settings rows with guild_id '' are bot-wide."""
+        import sqlite3
+
+        if not self.db_path:
+            raise RuntimeError("Database not initialized. Call initialize() first.")
+        if not guild_id:
+            raise ValueError("purge_guild_rows_sync needs a guild id (empty = bot-wide settings)")
+        counts: Dict[str, int] = {}
+        with self._sync_conn() as conn:
+            try:
+                with self._sync_write_lock:
+                    for table in ("guild_guest_clans", "guild_setup_dismissed", "bot_settings",
+                                  "guild_config", "guild_absences"):
+                        cur = conn.execute(f"DELETE FROM {table} WHERE guild_id = ?", (guild_id,))
+                        counts[table] = cur.rowcount
+                    if self._should_commit():
+                        conn.commit()
+                return counts
+            except sqlite3.Error as e:
+                logging.error(f"[DB-WRITE-SYNC] purge_guild_rows_sync failed for guild {guild_id}: {e}")
+                conn.rollback()
+                return None
 
     def get_all_guild_guest_clans_sync(self) -> Dict[str, Dict[str, Dict[str, Any]]]:
         """Every persisted guest clan, as guild_id -> clan_tag -> row dict (CACHE load shape)."""

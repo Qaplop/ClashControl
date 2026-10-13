@@ -87,7 +87,7 @@ BOT_VERSION: str = "1.3.44"
 # .github/copilot-instructions.md.  BOT_VERSION answers "which release is this?";
 # BOT_BUILD answers "which edit of it is actually running?", which is the question that
 # matters when reading the server-machine's log after a file-copy deploy.
-BOT_BUILD: int = 190
+BOT_BUILD: int = 191
 
 
 def source_fingerprint() -> str:
@@ -871,17 +871,21 @@ async def on_guild_remove(guild: discord.Guild) -> None:
     Tracker #0150 follow-up: nothing reacted to this before, so a removed guild's registration /
     CWL hub / reminder settings kept being served every cycle ("Could not reach ... channel"
     daily). Its config is deliberately KEPT — re-adding the bot restores everything — and the
-    automations skip it via clashcontrol.guild_presence.is_guild_absent(). This only logs.
+    automations skip it via clashcontrol.guild_presence.is_guild_absent(). Tracker #0154: kept for
+    GUILD_ABSENCE_PURGE_DAYS (30) — this starts that clock; the nightly maintenance purges after it.
     """
     import logging
     try:
-        from clashcontrol.guild_presence import configured_guild_summary
+        from clashcontrol.guild_presence import configured_guild_summary, purge_due_date, record_guild_removed
         s = configured_guild_summary(str(guild.id))
         if s["has_config"] or s["subscription_channels"]:
+            since = await record_guild_removed(guild.id, guild.name)
+            purge_note = f", deleted on {purge_due_date(since)} unless the bot is re-added before then" if since else ""
             logging.warning(
                 f"[GUILD-REMOVE] Bot removed from guild {guild.name} ({guild.id}) — config kept "
                 f"(enabled: {', '.join(s['enabled']) or 'nothing'}; {s['subscription_channels']} "
                 f"subscription channel(s)); its automations are paused until the bot is re-added"
+                f"{purge_note}"
             )
         else:
             logging.info(f"[GUILD-REMOVE] Bot removed from guild {guild.name} ({guild.id}) — no stored config")
@@ -896,8 +900,11 @@ async def on_guild_join(guild: discord.Guild) -> None:
     Then DMs whoever added the bot a pointer to /setup (tracker #0151)."""
     import logging
     try:
+        from clashcontrol.cache_manager import CACHE
         from clashcontrol.guild_presence import configured_guild_summary, mark_guild_present
         mark_guild_present(guild.id)
+        # Tracker #0154: back within 30 days — cancel the scheduled data deletion.
+        cancelled = " — scheduled data deletion cancelled" if await CACHE.clear_guild_absent(guild.id) is True else ""
         s = configured_guild_summary(str(guild.id))
         restored = (
             f" — stored config is active again (enabled: {', '.join(s['enabled']) or 'nothing'}; "
@@ -907,7 +914,7 @@ async def on_guild_join(guild: discord.Guild) -> None:
         _perms = guild.me.guild_permissions if guild.me is not None else None  # type: ignore[reportUnnecessaryComparison]
         logging.info(
             f"[GUILD-JOIN] Bot added to guild {guild.name} ({guild.id}), owner {guild.owner_id}, "
-            f"Administrator: {'yes' if _perms is not None and _perms.administrator else 'NO'}{restored}"
+            f"Administrator: {'yes' if _perms is not None and _perms.administrator else 'NO'}{restored}{cancelled}"
         )
     except Exception as e:
         logging.error(f"[GUILD-JOIN] Error handling join of guild {guild.id}: {e}")

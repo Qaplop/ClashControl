@@ -439,6 +439,15 @@ rebuilding `war_summary` in both DBs (Cardinal Rule 1). `/whois clan` reports th
   `UNIQUE(guild_id, step_id)`, undo deletes the row. No user column on purpose (no personal
   data). Config only: hot DB, no history mirror, no FK. Mirrored in `CACHE.guild_setup_dismissed`
   (guild_id -> {step_id}), written through `CACHE.set_setup_step_dismissed()`.
+- `guild_absences` - Guilds with stored data the bot is no longer in (tracker #0154, 2026-10-13):
+  `guild_id` (PK), `guild_name`, `absent_since` (UTC ISO). Written by `on_guild_remove` and the
+  startup reconciliation (`INSERT OR IGNORE` — the clock never restarts), deleted on re-join. The
+  nightly maintenance (Step 0.9, `guild_presence.purge_expired_absent_guilds()`) deletes a guild's
+  data 30 days after `absent_since`: CWL seasons (shared-clan guard first), subscriptions and their
+  tracked leaderboard messages, families it owns that no other guild uses, then
+  `purge_guild_rows_sync()` (`guild_config` + its FK cascade, guest clans, /setup dismissals,
+  guild-scoped `bot_settings`, this row). Users, war data and tracker items are kept. Hot DB only.
+  Mirrored in `CACHE.guild_absences`.
 - `user_tutorial_progress` - Where a user is in /tutorial (tracker #0121, 2026-10-11):
   `discord_id`, `track` ('user'), `step_id`, `done_steps` (comma list), `updated_at`;
   PK (discord_id, track). Personal data (listed in the privacy policy). No FK to `users` — a

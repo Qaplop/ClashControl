@@ -2723,6 +2723,13 @@ async def run_nightly_maintenance_routine(db_mgr: Any, run_migration: bool, skip
             await asyncio.to_thread(db_mgr.backfill_clan_created_at_from_first_war_sync)
         except Exception as _created_exc:
             logging.error(f"[CLAN-CREATED-AT] Failed, continuing with maintenance: {_created_exc}", exc_info=True)
+        # Step 0.9: delete the data of guilds the bot left more than 30 days ago (tracker #0154).
+        # Before the REINDEX/VACUUM pass like 0.6; same never-abort rule.
+        try:
+            from clashcontrol.guild_presence import purge_expired_absent_guilds
+            await purge_expired_absent_guilds()
+        except Exception as _gp_exc:
+            logging.error(f"[GUILD-PURGE] Failed, continuing with maintenance: {_gp_exc}", exc_info=True)
         if skip_db_maintenance:
             _result = "[DB-MAINT] Skipped on request (skip_db_maintenance) — no WAL checkpoint, REINDEX/VACUUM or ANALYZE"
             logging.info(_result)
@@ -4505,8 +4512,10 @@ async def _run_startup_initialization() -> None:
         # Tracker #0150: configured guilds the bot was removed from (also while it was offline,
         # which on_guild_remove cannot see) — one line, config kept, automations paused.
         try:
-            from clashcontrol.guild_presence import log_absent_configured_guilds
+            from clashcontrol.guild_presence import log_absent_configured_guilds, reconcile_guild_absences
             log_absent_configured_guilds()
+            # Tracker #0154: start/stop the 30-day purge clock for changes made while offline.
+            await reconcile_guild_absences()
         except Exception as e:
             logging.warning(f"[GUILD-ABSENT] Startup check failed: {e}")
         # One-time, on the start that migrated test cases to per-ticket numbering: re-render the

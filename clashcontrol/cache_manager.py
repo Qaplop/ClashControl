@@ -381,6 +381,10 @@ class CacheManager:
         # /setup steps a guild marked "we don't use this" (guild_setup_dismissed, tracker #0151):
         # guild_id -> {step_id}. Write-through via set_setup_step_dismissed().
         self.guild_setup_dismissed: Dict[str, Set[str]] = {}
+        # Guilds with stored data the bot was removed from (guild_absences, tracker #0154):
+        # guild_id -> {"guild_name", "absent_since" (UTC ISO)}. Purged after 30 days by the
+        # nightly maintenance. Write-through via mark_guild_absent()/clear_guild_absent().
+        self.guild_absences: Dict[str, Dict[str, Any]] = {}
         # /tutorial progress (user_tutorial_progress, tracker #0121): discord_id -> track ->
         # {"step", "done": set, "updated_at"}. Write-through via set_tutorial_progress().
         self.tutorial_progress: Dict[str, Dict[str, Dict[str, Any]]] = {}
@@ -2780,6 +2784,55 @@ class CacheManager:
             (steps.add if dismissed else steps.discard)(step_id)
         return ok
 
+    async def load_guild_absences(self) -> None:
+        """Load the recorded guild absences (guild_absences, tracker #0154)."""
+        if not self.db_manager:
+            return
+        self.guild_absences = await asyncio.to_thread(self.db_manager.get_all_guild_absences_sync)
+        logging.info(f"[DB-READ] Loaded {len(self.guild_absences)} recorded guild absence(s)")
+
+    async def mark_guild_absent(self, guild_id: Union[int, str], guild_name: Optional[str]) -> Optional[str]:
+        """Record that the bot is no longer in ``guild_id`` and return its absent_since. An existing
+        record is kept as is (the 30-day clock never restarts). Write-through: DB first."""
+        gid = str(guild_id)
+        if gid in self.guild_absences:
+            return self.guild_absences[gid]["absent_since"]
+        if not self.db_manager:
+            return None
+        from datetime import datetime, timezone
+        since = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        ok = await asyncio.to_thread(self.db_manager.set_guild_absent_sync, gid, guild_name, since)
+        if not ok:
+            return None
+        self.guild_absences[gid] = {"guild_name": guild_name, "absent_since": since}
+        return since
+
+    async def clear_guild_absent(self, guild_id: Union[int, str]) -> bool:
+        """Forget a guild absence (the bot is back). True if one was recorded."""
+        gid = str(guild_id)
+        if gid not in self.guild_absences or not self.db_manager:
+            return False
+        if await asyncio.to_thread(self.db_manager.clear_guild_absent_sync, gid):
+            self.guild_absences.pop(gid, None)
+            return True
+        return False
+
+    async def purge_guild_rows(self, guild_id: Union[int, str]) -> Optional[Dict[str, int]]:
+        """Delete a removed guild's config rows (see WarHistoryDB.purge_guild_rows_sync) and drop
+        the matching CACHE entries. Only for guild_presence.purge_guild_data() (tracker #0154)."""
+        if not self.db_manager:
+            return None
+        gid = str(guild_id)
+        counts = await asyncio.to_thread(self.db_manager.purge_guild_rows_sync, gid)
+        if counts is None:
+            return None
+        self.server_config.pop(gid, None)
+        self.guild_guest_clans.pop(gid, None)
+        self.guild_setup_dismissed.pop(gid, None)
+        self.guild_absences.pop(gid, None)
+        await self.update_all_clan_subscription_statuses()
+        return counts
+
     async def load_tutorial_progress(self) -> None:
         """Load every user's /tutorial progress (user_tutorial_progress)."""
         if not self.db_manager:
@@ -3012,6 +3065,7 @@ class CacheManager:
         logging.info("Starting cache load_all() - loading CWL guest clans...")
         await self.load_guild_guest_clans()
         await self.load_guild_setup_dismissed()
+        await self.load_guild_absences()
         await self.load_tutorial_progress()
         self._current_load_operation = "load_testers"
         logging.info("Starting cache load_all() - loading testers...")

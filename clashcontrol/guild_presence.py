@@ -5,9 +5,11 @@ The 2026-10-10 permission audit found two guilds (Odyssey COC 153787627798842983
 subscriptions still stored, although the bot was no longer in either. Nothing reacted to the
 removal, so every cycle kept trying to serve them and logged "Could not reach ... channel" daily.
 
-Policy: **keep the configuration, pause the automations.** A server that re-adds the bot gets
-everything back without setting it up again; deleting a guild's data needs an explicit decision
-by the bot owner and is deliberately not done here.
+Policy: **keep the configuration, pause the automations** — for ``GUILD_ABSENCE_PURGE_DAYS``
+(30, qaplop 2026-10-13, tracker #0154). A server that re-adds the bot within that time gets
+everything back without setting it up again (The QCrew was removed and re-added three times on
+2026-10-10). After it, the nightly maintenance deletes the guild's data
+(``purge_expired_absent_guilds()``); the clock is the ``guild_absences`` table.
 
 ``bot_guild_presence()`` answers True / False / None. None means "not known yet": before the
 gateway has delivered the guild list, ``get_guild()`` returns None for EVERY guild, and treating
@@ -17,11 +19,15 @@ from __future__ import annotations
 
 import inspect
 import logging
-from typing import Any, Dict, List, Optional
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional, Set
 
 from clashcontrol.log_throttle import forget_log_throttle, log_throttled
 
 _ABSENT_KEY = "guild-absent"
+
+#: Days a removed guild's data is kept before the nightly purge deletes it (tracker #0154).
+GUILD_ABSENCE_PURGE_DAYS = 30
 
 
 def bot_guild_presence(guild_id: Any) -> Optional[bool]:
@@ -143,3 +149,158 @@ def log_absent_configured_guilds() -> List[str]:
             f"kept, automations paused: " + "; ".join(parts)
         )
     return absent
+
+
+# ---------------------------------------------------------------------------------------------
+# Absence clock and 30-day purge (tracker #0154)
+# ---------------------------------------------------------------------------------------------
+
+def purge_due_date(absent_since: str) -> str:
+    """The UTC date (YYYY-MM-DD) from which a guild absent since ``absent_since`` is purged."""
+    since = datetime.fromisoformat(absent_since)
+    return (since + timedelta(days=GUILD_ABSENCE_PURGE_DAYS)).date().isoformat()
+
+
+async def record_guild_removed(guild_id: Any, guild_name: Optional[str]) -> Optional[str]:
+    """Start (or keep) the absence clock for a guild with stored data. Returns absent_since."""
+    from clashcontrol.cache_manager import CACHE
+
+    if expected_absence(guild_id):
+        return None
+    return await CACHE.mark_guild_absent(guild_id, guild_name)
+
+
+async def reconcile_guild_absences() -> None:
+    """Startup: start the clock for configured guilds the bot left while it was offline, and stop
+    it for guilds it is back in. Does nothing while presence is unknown (bot not ready)."""
+    from clashcontrol.cache_manager import CACHE
+
+    for gid in absent_configured_guilds():
+        if gid not in CACHE.guild_absences and not expected_absence(gid):
+            since = await CACHE.mark_guild_absent(gid, None)
+            if since:
+                logging.warning(
+                    f"[GUILD-ABSENT] Guild {gid} was left while the bot was offline — its data is "
+                    f"deleted on {purge_due_date(since)} unless the bot is re-added before then"
+                )
+    for gid in list(CACHE.guild_absences):
+        if bot_guild_presence(gid) is True:
+            await CACHE.clear_guild_absent(gid)
+            logging.info(f"[GUILD-ABSENT] Bot is back in guild {gid} — scheduled data deletion cancelled")
+
+
+def _families_used_by_other_guilds(guild_id: str) -> Set[str]:
+    """Family tags another guild still references (member/welcome families, subscriptions)."""
+    from clashcontrol.cache_manager import CACHE
+
+    used: Set[str] = set()
+    for gid, cfg in CACHE.server_config.items():
+        if str(gid) == guild_id or not isinstance(cfg, dict):
+            continue
+        used.update(cfg.get("member_families") or [])
+        used.update(cfg.get("welcome_family_tags") or [])
+    for gid, channels in CACHE.subscriptions.items():
+        if str(gid) == guild_id:
+            continue
+        for subs in (channels or {}).values():
+            used.update(str(s.get("clan_tag")) for s in (subs or []) if isinstance(s, dict) and s.get("clan_tag"))
+    return used
+
+
+async def purge_guild_data(guild_id: str) -> Dict[str, Any]:
+    """Delete everything stored for a guild the bot left (tracker #0154). Kept: users and their
+    accounts, war/raid data, tracker items, cwl_player_season_status audit rows. Returns counts;
+    raises if the final config delete fails (the absence row then stays, so the next night retries)."""
+    import asyncio
+
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import prune_or_detach_shared_clans_before_deletion
+
+    db = CACHE.db_manager
+    if db is None:
+        raise RuntimeError("Database manager not initialized")
+    gid = str(guild_id)
+    result: Dict[str, Any] = {}
+
+    # 1. CWL seasons — the shared-clan guard first, as Delete Season does (keeps a shared roster for
+    #    the other guilds, repoints ownership), then the event and its cascade.
+    events = await asyncio.to_thread(db.list_cwl_events_sync, gid)
+    for ev in events:
+        await prune_or_detach_shared_clans_before_deletion(int(gid), ev["id"], ev["cwl_season"])
+        await asyncio.to_thread(db.delete_cwl_event_sync, ev["id"])
+    result["cwl_events"] = len(events)
+
+    # 2. Leaderboard messages tracked in the guild's subscription channels, then the subscriptions.
+    channels = {str(c) for c in (CACHE.subscriptions.get(gid) or {})}
+    lb_keys = [k for k, v in CACHE.leaderboard_messages.items() if str(v.get("channel_id")) in channels]
+    for key in lb_keys:
+        await CACHE.delete_leaderboard_message(key)
+    result["leaderboard_messages"] = len(lb_keys)
+    result["subscription_channels"] = len(channels)
+    if channels:
+        await CACHE.delete_subscriptions_for_guild(gid)
+
+    # 3. Clan families this guild created, unless another guild still uses them.
+    used_elsewhere = _families_used_by_other_guilds(gid)
+    deleted_families: List[str] = []
+    kept_families: List[str] = []
+    for tag, fam in list(CACHE.clan_families.items()):
+        if str(fam.get("owned_by_guild") or "") != gid:
+            continue
+        if tag in used_elsewhere:
+            kept_families.append(tag)
+        else:
+            await CACHE.delete_clan_family(tag)
+            deleted_families.append(tag)
+    result["families_deleted"] = deleted_families
+    result["families_kept"] = kept_families
+
+    # 4. The guild's own config rows (guild_config cascade + guest clans, /setup dismissals,
+    #    guild-scoped bot_settings, the absence row).
+    counts = await CACHE.purge_guild_rows(gid)
+    if counts is None:
+        raise RuntimeError(f"config delete failed for guild {gid}")
+    result["rows"] = counts
+    return result
+
+
+async def purge_expired_absent_guilds(now: Optional[datetime] = None) -> List[str]:
+    """Nightly maintenance Step 0.9: purge guilds absent for GUILD_ABSENCE_PURGE_DAYS or longer.
+    Only on a definite absence; a guild the bot is back in has its clock cleared instead, and an
+    unknown presence (bot not ready) skips the night. Returns the purged guild ids."""
+    from clashcontrol.cache_manager import CACHE
+
+    now = now or datetime.now(timezone.utc)
+    cutoff = now - timedelta(days=GUILD_ABSENCE_PURGE_DAYS)
+    purged: List[str] = []
+    for gid, rec in sorted(CACHE.guild_absences.items()):
+        try:
+            since = datetime.fromisoformat(rec["absent_since"])
+        except (KeyError, TypeError, ValueError):
+            logging.warning(f"[GUILD-PURGE] Guild {gid}: unreadable absent_since {rec!r} — skipped")
+            continue
+        if since > cutoff:
+            continue
+        presence = bot_guild_presence(gid)
+        if presence is True:
+            await CACHE.clear_guild_absent(gid)
+            logging.info(f"[GUILD-PURGE] Bot is back in guild {gid} — absence cleared, nothing deleted")
+            continue
+        if presence is None or expected_absence(gid):
+            continue
+        name = rec.get("guild_name") or "?"
+        try:
+            res = await purge_guild_data(gid)
+        except Exception as e:
+            logging.error(f"[GUILD-PURGE] Failed for guild {name} ({gid}), retried next night: {e}", exc_info=True)
+            continue
+        purged.append(gid)
+        logging.warning(
+            f"[GUILD-PURGE] Deleted the data of guild {name} ({gid}), absent since "
+            f"{rec['absent_since']} (> {GUILD_ABSENCE_PURGE_DAYS} days): {res['cwl_events']} CWL "
+            f"season(s), {res['subscription_channels']} subscription channel(s), "
+            f"{res['leaderboard_messages']} tracked leaderboard message(s), families deleted "
+            f"{res['families_deleted'] or 'none'}, kept (used by another guild) "
+            f"{res['families_kept'] or 'none'}, rows {res['rows']}"
+        )
+    return purged

@@ -1,6 +1,20 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-13 (2)
+- Added (tracker #0154, qaplop): a removed guild's data is kept 30 days, then deleted. New table
+  guild_absences (+ CACHE.guild_absences) holds when the bot left; on_guild_remove starts the
+  clock, on_guild_join and the startup reconciliation stop it (reconciliation also starts it for
+  removals while offline). Nightly Step 0.9 purge_expired_absent_guilds() deletes the guild's CWL
+  seasons (shared-clan guard first), subscriptions + tracked leaderboard messages, families it
+  owns that no other guild uses, and guild_config with its FK cascade, guest clans, /setup
+  dismissals and guild-scoped bot_settings. Users, war data and tracker items are kept. Never
+  on DEV's PROD-copy guilds (expected_absence). [GUILD-REMOVE] states the deletion date.
+  Privacy policy retention line updated. Plan: plans/implemented/tracker-0154-purge-removed-guilds.md.
+  Files: clashcontrol/guild_presence.py, clashcontrol/db_manager.py, clashcontrol/cache_manager.py,
+  QBcore.py, ClashControl.py, activity/client/public/privacy.html, docs, tests. Build 191.
+  3972 tests pass.
+
 2026-10-13 (1)
 - Changed (tracker #0156): permission (403) log lines now say where and what — guild name (id),
   channel #name (id) and the permissions the bot lacks there (new

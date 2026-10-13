@@ -152,7 +152,7 @@ async def send_setup_welcome_dm(guild: discord.Guild) -> DmOutcome:
     user_id = str(recipient)
     text = t(
         'commands.dm.setup_welcome', guild_id=guild.id, user_id=user_id, guild=guild.name,
-        setup=command_mention("setup"), help=command_mention("help"),
+        setup=command_mention("setup"), help=command_mention("help"), about=command_mention("about"),
     )
     _sent, outcome = await CACHE.send_user_dm_detailed(user_id, text)
     logging.info(

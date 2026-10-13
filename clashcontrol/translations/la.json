@@ -471,7 +471,7 @@
       "fallback_tutorial_hint": "🎓 Novus hic? {tutorial} tibi omnia paucis gradibus ostendit.",
       "fallback_tutorial_continue_hint": "🎓 In gradu {step} ex {total} doctrinae es — {tutorial} pergit ubi desiisti.",
       "fallback_setup_hint": "🛠️ Administrator servitoris? {setup} in servitore tuo adhibe ut institutionem ClashControl ibi inspicias.",
-      "setup_welcome": "👋 Gratias quod ClashControl ad **{guild}** addidisti!\n🛠️ Gradus proximus: {setup} in illo servitore adhibe. Permissiones automati inspicit et gradatim ostendit quid institutum sit et quid adhuc desit.\n📖 {help} omnia mandata enumerat.",
+      "setup_welcome": "👋 Gratias quod ClashControl ad **{guild}** addidisti!\n🛠️ Gradus proximus: {setup} in illo servitore adhibe. Permissiones automati inspicit et gradatim ostendit quid institutum sit et quid adhuc desit.\n📖 {help} omnia mandata enumerat.\nℹ️ {about} summam omnium quae automaton facere potest praebet.",
       "fallback_tracker_hint": "🐞 Vitia per {bug} nuntia, aut si emendationem proponere vis, eam per {feature} propone, hic in colloquio.",
       "guild_picker_prompt": "In pluribus quam uno servitore rationibus iunctus es. Cui servitori hoc applicari debet?",
       "guild_picker_placeholder": "Elige servitorem...",

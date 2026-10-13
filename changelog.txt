@@ -1,6 +1,12 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-13 (3)
+- Changed (qaplop): the /setup welcome DM sent when the bot is added to a server ends with
+  "ℹ️ /about gives an overview of what the bot can do." (clickable, all languages; key
+  commands.dm.setup_welcome gets an {about} placeholder). Files: clashcontrol/greeting_dm.py,
+  clashcontrol/translations/*.json. Build 192. 3972 tests pass.
+
 2026-10-13 (2)
 - Added (tracker #0154, qaplop): a removed guild's data is kept 30 days, then deleted. New table
   guild_absences (+ CACHE.guild_absences) holds when the bot left; on_guild_remove starts the

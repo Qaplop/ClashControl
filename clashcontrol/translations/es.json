@@ -471,7 +471,7 @@
       "fallback_tutorial_hint": "🎓 ¿Eres nuevo? {tutorial} te lo enseña todo en unos pocos pasos.",
       "fallback_tutorial_continue_hint": "🎓 Vas por el paso {step} de {total} del tutorial — {tutorial} continúa donde lo dejaste.",
       "fallback_setup_hint": "🛠️ ¿Administras un servidor? Usa {setup} en tu servidor para comprobar allí la configuración de ClashControl.",
-      "setup_welcome": "👋 ¡Gracias por añadir ClashControl a **{guild}**!\n🛠️ Siguiente paso: usa {setup} en ese servidor. Comprueba los permisos del bot y muestra paso a paso qué está configurado y qué falta todavía.\n📖 {help} muestra todos los comandos.",
+      "setup_welcome": "👋 ¡Gracias por añadir ClashControl a **{guild}**!\n🛠️ Siguiente paso: usa {setup} en ese servidor. Comprueba los permisos del bot y muestra paso a paso qué está configurado y qué falta todavía.\n📖 {help} muestra todos los comandos.\nℹ️ {about} ofrece un resumen de todo lo que puede hacer el bot.",
       "fallback_tracker_hint": "🐞 Informa de errores con {bug} o, si tienes una sugerencia de mejora, propónla con {feature}, aquí mismo en el chat.",
       "guild_picker_prompt": "Estás vinculado a cuentas en más de un servidor. ¿A qué servidor debería aplicarse esto?",
       "guild_picker_placeholder": "Selecciona un servidor...",

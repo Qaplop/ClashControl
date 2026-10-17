@@ -556,6 +556,14 @@ async def test_leaderboard_command(mock_interaction, mock_cache):
     mock_interaction.followup.send.assert_called()
 ```
 
+**Never patch `time.monotonic` inside an async test.** `patch("some_module.time.monotonic", ...)`
+patches the global `time` module, so the running asyncio loop's clock (`loop.time()`) freezes too,
+and the loop waits forever for a callback whose time never comes. Test time-window logic through a
+synchronous helper instead (e.g. `coc_health._record_dns_failure()`), or freeze time only where no
+event loop is running. On 2026-10-17 this hung the whole suite for 40+ minutes with no output;
+`faulthandler_timeout` + `faulthandler_exit_on_timeout` in `pyproject.toml` now end such a run
+after 120 s with every thread's stack.
+
 ---
 
 ## 11. Test Data Management

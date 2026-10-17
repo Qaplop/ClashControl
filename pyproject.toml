@@ -1,6 +1,10 @@
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+# A hung test dumps every thread's stack and ends the run instead of blocking it forever
+# (2026-10-17: a patched time.monotonic froze the event loop and the suite sat for 40+ min).
+faulthandler_timeout = 120
+faulthandler_exit_on_timeout = true
 markers = [
     "smoke: fast offline unit smoke (no network, no Discord, no CoC)",
     "live: DEV live smoke (network + real Discord; CoC optional depending on test)",

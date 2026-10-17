@@ -1,6 +1,20 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-17 (2)
+- Changed (tracker #0155, qaplop): nightly maintenance no longer REINDEXes every night (~1,900 s
+  with Discord commands blocked, every night since 10-07, nothing needed it). A full REINDEX now
+  runs only when requested: a root-logger watcher sets QBcore.db_reindex_requested on any ERROR
+  line with SQLite's "database disk image is malformed".
+- Changed (tracker #0155): idx_wa_player_tag and idx_ws_clan_tag (prefixes of
+  idx_wa_player_tag_date / idx_ws_clan_date) are no longer created; nightly maintenance drops them
+  once on both schemas, only where the composite exists. Measured on a copy of the PROD DBs:
+  hot->history migration 1,264 -> 3,688 rows/s, 52 -> 31 KB written per moved row; query plans
+  unchanged. The next migration days (Aug 3-8, CWL) hold 2.0-2.3M rows each, which the old rate
+  could not keep up with.
+  Files: clashcontrol/db_manager.py, QBcore.py, ClashControl.py, docs, tests. Build 194.
+  3995 tests pass.
+
 2026-10-17 (1)
 - Fixed: the CoC DNS-outage breaker now refuses calls once tripped (>= 10 DNS failures in 60 s),
   like the gateway breaker. A failed lookup takes ~25 s on the server-machine, so the old flag

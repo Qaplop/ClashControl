@@ -165,6 +165,52 @@ USER_PLAYER_CWL_PREF_COLUMNS: Tuple[str, ...] = (
     "cwl_default_preferred_league_rank",
 )
 
+# Indexes that a composite index with the same leading column makes redundant (tracker #0155).
+# Every war_attacks/war_summary row the nightly migration moves had to be removed from / added to
+# them on both sides; dropping them took a measured 1,264 -> 3,688 rows/s and 52 -> 31 KB written
+# per row on a copy of the PROD DBs (2026-10-17), with unchanged query plans (SQLite picks the
+# composite for player_tag= / clan_tag= lookups). Nightly maintenance drops them once, only where
+# the superseding index exists in the same schema. (index, superseded_by)
+SUPERSEDED_INDEXES: Tuple[Tuple[str, str], ...] = (
+    ("idx_wa_player_tag", "idx_wa_player_tag_date"),
+    ("idx_ws_clan_tag", "idx_ws_clan_date"),
+)
+
+# SQLite's text for SQLITE_CORRUPT. An index REINDEX can repair shows up exactly like this.
+_SQLITE_CORRUPT_TEXT = "database disk image is malformed"
+
+
+class _DbCorruptionLogWatcher(logging.Handler):
+    """Requests a REINDEX at the next nightly maintenance when any ERROR log line carries SQLite's
+    corruption message (tracker #0155: REINDEX is no longer routine). Watching the log covers every
+    call site that catches sqlite3.Error and logs it, without touching each one."""
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            if record.levelno < logging.ERROR:
+                return
+            text = record.getMessage()
+            if record.exc_info and record.exc_info[1] is not None:
+                text += f" {record.exc_info[1]}"
+            if _SQLITE_CORRUPT_TEXT not in text:
+                return
+            import QBcore as _qbcore
+            if _qbcore.db_reindex_requested:
+                return
+            _qbcore.db_reindex_requested = text[:200]
+            # WARNING without the trigger text, so this line cannot re-trigger the watcher.
+            logging.warning("[DB-MAINT] SQLite reported a corrupt page — the next nightly maintenance will REINDEX")
+        except Exception:  # a log handler must never raise
+            pass
+
+
+def install_db_corruption_watcher() -> None:
+    """Attach the corruption watcher to the root logger once (idempotent: ClashControl.py is
+    imported twice, see Pitfall 22)."""
+    root = logging.getLogger()
+    if not any(type(h).__name__ == "_DbCorruptionLogWatcher" for h in root.handlers):
+        root.addHandler(_DbCorruptionLogWatcher(level=logging.ERROR))
+
 
 def _create_history_schema_sync(conn: Any, build_expensive_indexes: bool = True) -> None:
     """Create the 4 history.* time-series tables on a plain ``sqlite3`` connection (idempotent).
@@ -225,15 +271,17 @@ def _create_history_schema_sync(conn: Any, build_expensive_indexes: bool = True)
             UNIQUE(war_id, player_tag, attack_order)
         )
     """)
-    conn.execute("CREATE INDEX IF NOT EXISTS history.idx_wa_player_tag ON war_attacks(player_tag)")
     conn.execute("CREATE INDEX IF NOT EXISTS history.idx_wa_war_clan ON war_attacks(war_id, clan_tag)")
     conn.execute("CREATE INDEX IF NOT EXISTS history.idx_wa_clan_date ON war_attacks(clan_tag, date)")
     conn.execute("CREATE INDEX IF NOT EXISTS history.idx_wa_zero_attacks ON war_attacks(attack_order) WHERE attack_order = 0")
     # Composite (player_tag, date) — get_player_attack_history_sync (leaderboard scope="all")
     # filters by both; without date in the index, SQLite would rowid-fetch every historical
-    # row for that player_tag just to filter down to one month. idx_wa_player_tag (above) is
-    # kept rather than dropped: DROP INDEX on the multi-million-row war_attacks table is slow
-    # enough that it must only run during nightly maintenance, never on a connection open.
+    # row for that player_tag just to filter down to one month.
+    # OUTDATED: "idx_wa_player_tag (above) is kept rather than dropped: DROP INDEX on the
+    # multi-million-row war_attacks table is slow enough that it must only run during nightly
+    # maintenance, never on a connection open."
+    # Since 2026-10-17 (tracker #0155) idx_wa_player_tag is no longer created and nightly
+    # maintenance drops it (SUPERSEDED_INDEXES) — this composite serves player_tag lookups.
     # See build_expensive_indexes docstring above — this call is intentionally gated,
     # not just IF-NOT-EXISTS-guarded, because the *first* build on a large production
     # table is what caused the 2026-07-30 startup-hang incident.
@@ -274,7 +322,6 @@ def _create_history_schema_sync(conn: Any, build_expensive_indexes: bool = True)
             UNIQUE(war_id, clan_tag)
         )
     """)
-    conn.execute("CREATE INDEX IF NOT EXISTS history.idx_ws_clan_tag ON war_summary(clan_tag)")
     conn.execute("CREATE INDEX IF NOT EXISTS history.idx_ws_clan_date ON war_summary(clan_tag, date)")
     conn.execute("CREATE INDEX IF NOT EXISTS history.idx_ws_cwl_season ON war_summary(clan_tag, cwl_season)")
     conn.execute("CREATE INDEX IF NOT EXISTS history.idx_ws_war_id ON war_summary(war_id)")
@@ -1675,10 +1722,6 @@ class WarHistoryDB:
             )
         """)
         await self._create_index_if_missing(
-            "", "idx_wa_player_tag", "war_attacks",
-            "CREATE INDEX IF NOT EXISTS idx_wa_player_tag ON war_attacks(player_tag)",
-        )
-        await self._create_index_if_missing(
             "", "idx_wa_war_clan", "war_attacks",
             "CREATE INDEX IF NOT EXISTS idx_wa_war_clan ON war_attacks(war_id, clan_tag)",
         )
@@ -1696,9 +1739,12 @@ class WarHistoryDB:
         # Composite (player_tag, date) — get_player_attack_history_sync (leaderboard
         # scope="all") filters by both; without date in the index, SQLite would
         # rowid-fetch every historical row for that player_tag just to filter down to
-        # one month. idx_wa_player_tag (above) is kept rather than dropped: DROP INDEX
+        # one month.
+        # OUTDATED: "idx_wa_player_tag (above) is kept rather than dropped: DROP INDEX
         # on this multi-million-row table is slow enough that it must only run during
-        # nightly maintenance, never on every connection/startup.
+        # nightly maintenance, never on every connection/startup."
+        # Since 2026-10-17 (tracker #0155) it is no longer created and nightly maintenance
+        # drops it (SUPERSEDED_INDEXES); this composite serves player_tag lookups.
         #
         # Its FIRST build on a multi-million-row table is a full scan + sort that can
         # take minutes — safe here (2026-07-30) because ClashControl.py's initialize_database()
@@ -1777,10 +1823,6 @@ class WarHistoryDB:
                 UNIQUE(war_id, clan_tag)
             )
         """)
-        await self._create_index_if_missing(
-            "", "idx_ws_clan_tag", "war_summary",
-            "CREATE INDEX IF NOT EXISTS idx_ws_clan_tag ON war_summary(clan_tag)",
-        )
         await self._create_index_if_missing(
             "", "idx_ws_clan_date", "war_summary",
             "CREATE INDEX IF NOT EXISTS idx_ws_clan_date ON war_summary(clan_tag, date)",
@@ -2204,10 +2246,6 @@ class WarHistoryDB:
             )
         """)
         await self._create_index_if_missing(
-            "history.", "idx_wa_player_tag", "war_attacks",
-            "CREATE INDEX IF NOT EXISTS history.idx_wa_player_tag ON war_attacks(player_tag)",
-        )
-        await self._create_index_if_missing(
             "history.", "idx_wa_war_clan", "war_attacks",
             "CREATE INDEX IF NOT EXISTS history.idx_wa_war_clan ON war_attacks(war_id, clan_tag)",
         )
@@ -2265,10 +2303,6 @@ class WarHistoryDB:
                 UNIQUE(war_id, clan_tag)
             )
         """)
-        await self._create_index_if_missing(
-            "history.", "idx_ws_clan_tag", "war_summary",
-            "CREATE INDEX IF NOT EXISTS history.idx_ws_clan_tag ON war_summary(clan_tag)",
-        )
         await self._create_index_if_missing(
             "history.", "idx_ws_clan_date", "war_summary",
             "CREATE INDEX IF NOT EXISTS history.idx_ws_clan_date ON war_summary(clan_tag, date)",
@@ -13579,7 +13613,6 @@ class WarHistoryDB:
     _WAR_ATTACKS_SECONDARY_INDEX_DDL: List[Tuple[str, str]] = [
         # (index_name, CREATE INDEX statement — unqualified, targets whichever
         # schema the caller prefixes onto the statement/name at execution time)
-        ("idx_wa_player_tag", "CREATE INDEX IF NOT EXISTS {schema}idx_wa_player_tag ON war_attacks(player_tag)"),
         ("idx_wa_war_clan", "CREATE INDEX IF NOT EXISTS {schema}idx_wa_war_clan ON war_attacks(war_id, clan_tag)"),
         ("idx_wa_clan_date", "CREATE INDEX IF NOT EXISTS {schema}idx_wa_clan_date ON war_attacks(clan_tag, date)"),
         ("idx_wa_zero_attacks", "CREATE INDEX IF NOT EXISTS {schema}idx_wa_zero_attacks ON war_attacks(attack_order) WHERE attack_order = 0"),
@@ -13842,8 +13875,10 @@ class WarHistoryDB:
           1. WAL checkpoint (TRUNCATE) — unqualified, so it also checkpoints the attached
              'history' schema (SQLite checkpoints every attached WAL-mode DB when no schema
              name is given).
-          2. VACUUM (if freelist > 500 or page_size migration pending) or REINDEX (otherwise)
-             — mutually exclusive: VACUUM rebuilds all indexes, so REINDEX is skipped when VACUUM runs.
+          1b. Drop SUPERSEDED_INDEXES once (tracker #0155).
+          2. VACUUM (if the free list exceeds the proportional threshold or a page_size migration
+             is pending), else REINDEX — but only when QBcore.db_reindex_requested is set
+             (tracker #0155: SQLite reported corruption). VACUUM rebuilds all indexes anyway.
              Main-only: 'history' only ever receives bulk INSERTs (never DELETEs) in normal
              operation, so it doesn't accumulate the freelist bloat VACUUM exists to reclaim.
           3. ANALYZE + PRAGMA optimize (always last, so statistics reflect the final B-tree
@@ -13968,22 +14003,37 @@ class WarHistoryDB:
                     logging.info(f"[DB-MAINT] Step 1/3: WAL checkpoint done in {_time.monotonic() - t_step:.1f}s — busy={_ckpt_busy}, frames={_ckpt_total}, moved={_ckpt_moved}")
                     msgs.append(f"WAL checkpoint (moved={_ckpt_moved})")
 
+                    # 1b. Drop indexes a composite makes redundant (tracker #0155) — once; after
+                    # that each check is a sqlite_master lookup. Only where the superseding index
+                    # exists in the same schema, so a lookup never loses its index.
+                    _schemas = ["main"] + (["history"] if self.history_db_path else [])
+                    for _sch in _schemas:
+                        for _old, _new in SUPERSEDED_INDEXES:
+                            _have = {
+                                r["name"] for r in conn.execute(
+                                    f"SELECT name FROM {_sch}.sqlite_master WHERE type='index' AND name IN (?, ?)",
+                                    (_old, _new),
+                                )
+                            }
+                            if _old in _have and _new in _have:
+                                t_step = _time.monotonic()
+                                conn.execute(f"DROP INDEX {_sch}.{_old}")
+                                logging.info(
+                                    f"[DB-MAINT] Dropped redundant index {_sch}.{_old} (served by {_new}) "
+                                    f"in {_time.monotonic() - t_step:.1f}s"
+                                )
+                                msgs.append(f"dropped {_sch}.{_old}")
+
                     # 2. REINDEX or VACUUM (mutually exclusive)
                     freelist = _freelist_early
                     page_size = _page_size_early
 
-                    major_indexes = [
-                        # war_attacks (6): idx_wa_clan_tag / idx_wa_war_id dropped 2026-04-25;
-                        # idx_wa_player_tag_date added 2026-07-30 (leaderboard scope="all");
-                        # idx_wa_date added 2026-09-01 (nightly migration date window)
-                        "idx_wa_player_tag", "idx_wa_war_clan", "idx_wa_clan_date", "idx_wa_zero_attacks",
-                        "idx_wa_player_tag_date", "idx_wa_date",
-                        # war_summary (5): idx_ws_date added 2026-09-01 (same reason)
-                        "idx_ws_clan_tag", "idx_ws_clan_date", "idx_ws_cwl_season", "idx_ws_war_id",
-                        "idx_ws_date",
-                        # clans (2)
-                        "idx_clans_has_subs", "idx_clans_last_war_update",
-                    ]
+                    # REINDEX only on request (tracker #0155). The routine nightly REINDEX of 13
+                    # indexes took ~1,900 s every night (2026-10-12..17) whatever had changed, and
+                    # SQLite B-trees do not degrade from inserts/deletes; the only REINDEX this
+                    # project ever needed repaired a corrupt index. _DbCorruptionLogWatcher sets
+                    # the request when SQLite reports corruption.
+                    _reindex_reason = getattr(_qbcore, "db_reindex_requested", None) if _qbcore else None
 
                     if _do_vacuum:
                         if _page_size_migration:
@@ -14172,21 +14222,23 @@ class WarHistoryDB:
                                 except Exception:
                                     pass
                     else:
-                        t_step = _time.monotonic()
-                        logging.info(f"[DB-MAINT] Step 2/3: REINDEX {len(major_indexes)} indexes...")
-                        reindexed = 0
-                        for idx in major_indexes:
-                            exists = conn.execute(
-                                "SELECT 1 FROM sqlite_master WHERE type='index' AND name=?", (idx,)
-                            ).fetchone()
-                            if exists:
-                                try:
-                                    conn.execute(f"REINDEX {idx}")
-                                    reindexed += 1
-                                except Exception as _e_idx:
-                                    logging.warning(f"[DB-MAINT] REINDEX {idx} failed: {_e_idx}")
-                        logging.info(f"[DB-MAINT] Step 2/3: REINDEX done in {_time.monotonic() - t_step:.1f}s")
-                        msgs.append(f"REINDEX ({reindexed}/{len(major_indexes)})")
+                        if _reindex_reason:
+                            # Whole REINDEX (every index, main and history): a corrupt page can be
+                            # in any of them. Slow, but only as a repair.
+                            t_step = _time.monotonic()
+                            logging.warning(f"[DB-MAINT] Step 2/3: REINDEX (all indexes) requested — {_reindex_reason}")
+                            try:
+                                conn.execute("REINDEX")
+                                logging.info(f"[DB-MAINT] Step 2/3: REINDEX done in {_time.monotonic() - t_step:.1f}s")
+                                msgs.append("REINDEX (requested)")
+                                if _qbcore is not None:
+                                    _qbcore.db_reindex_requested = None
+                            except Exception as _e_idx:
+                                logging.warning(f"[DB-MAINT] Step 2/3: REINDEX failed, retried next night: {_e_idx}")
+                                msgs.append("REINDEX failed")
+                        else:
+                            logging.info("[DB-MAINT] Step 2/3: REINDEX skipped — no index problem reported")
+                            msgs.append("REINDEX skipped")
                         # Tracker #0155: the threshold is proportional now (_vacuum_threshold), not
                         # the old flat 500 pages this line used to claim.
                         logging.info(f"[DB-MAINT] Step 2/3: VACUUM skipped (freelist={freelist} pages <= threshold {_vacuum_threshold} pages)")

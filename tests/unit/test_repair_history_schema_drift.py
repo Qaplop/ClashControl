@@ -53,7 +53,7 @@ async def _rebuild_history_war_summary_with_swapped_columns(db: WarHistoryDB) ->
             UNIQUE(war_id, clan_tag)
         )
     """)
-    await db._conn.execute("CREATE INDEX IF NOT EXISTS history.idx_ws_clan_tag ON war_summary(clan_tag)")
+    await db._conn.execute("CREATE INDEX IF NOT EXISTS history.idx_ws_clan_date ON war_summary(clan_tag, date)")
     await db._conn.commit()
 
 
@@ -216,7 +216,7 @@ class TestRepairHistorySchemaDrift:
 
                 # The original named index survived the swap, now on the real (repaired) table.
                 cur = await db2._conn.execute(
-                    "SELECT name, tbl_name FROM history.sqlite_master WHERE type='index' AND name='idx_ws_clan_tag'"
+                    "SELECT name, tbl_name FROM history.sqlite_master WHERE type='index' AND name='idx_ws_clan_date'"
                 )
                 idx_row = await cur.fetchone()
                 assert idx_row is not None

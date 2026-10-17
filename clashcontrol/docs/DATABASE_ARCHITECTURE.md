@@ -1239,6 +1239,9 @@ re-check) rather than trusting them long-term.
      nightly maintenance, not something to run unconditionally on every connection open/startup
      the way `CREATE INDEX IF NOT EXISTS` safely can. Added `idx_wa_player_tag_date` to
      `major_indexes` in `run_nightly_maintenance_routine()`'s REINDEX list.
+     **Superseded 2026-10-17 (tracker #0155):** `idx_wa_player_tag` is no longer created and
+     nightly maintenance drops it once; `major_indexes` and the routine REINDEX are gone — see
+     "2026-10-17: Nightly maintenance without routine REINDEX" below.
   2. **Roster fetch (the dominant cost in practice)**: `QBdiscordcmds.leaderboard()`'s scope="all"
      roster resolution awaited `CACHE.coc_clan_cache.get_clan()` **one clan at a time in a plain
      for-loop**. A cache miss/expiry there is a live CoC API call — with no clan/family filter
@@ -2174,6 +2177,42 @@ on Linux (unlink/rename on an open file just detaches the directory entry) but f
 with WinError 5/32 (can't delete/rename a file with an open handle). Fix: close the connection
 FIRST, then remove/replace, then reopen. Bit DEV testing on Windows; PROD (Linux) was unaffected,
 but the ordering is now correct on both.
+
+### 2026-10-17: Nightly maintenance without routine REINDEX (tracker #0155)
+- **Why**: on PROD the nightly run took 2,569-4,106 s (2026-10-14..17). REINDEX of 13 indexes
+  cost ~1,900 s every night regardless of churn, with Discord commands blocked; HIST-MIGRATE
+  moved only 376-1,008 rows/s and on 10-17 hit its 30-min budget. The next days due (2026-08-03..08,
+  CWL) hold 2.0-2.3M `war_attacks` rows each, so at that rate the walk falls further behind
+  every night (keeping pace needs ~1,300 rows/s).
+- **REINDEX is on demand only.** SQLite B-trees do not degrade from inserts/deletes; the only
+  REINDEX this project ever needed repaired a corrupt index (section below). Nightly maintenance
+  runs a full `REINDEX` (all indexes, main + history) only when `QBcore.db_reindex_requested` is
+  set — by `_DbCorruptionLogWatcher`, a root-logger handler (installed in `initialize_database()`)
+  that fires on any ERROR line carrying "database disk image is malformed".
+- **Two redundant indexes dropped**: `idx_wa_player_tag` (prefix of `idx_wa_player_tag_date`) and
+  `idx_ws_clan_tag` (prefix of `idx_ws_clan_date`), on both schemas (`SUPERSEDED_INDEXES`). No
+  longer created at startup; nightly maintenance step 1b drops each once, only where the
+  superseding index exists in the same schema. Query plans checked on the PROD copy: the
+  composites serve the same lookups at the same speed (e.g. the CWL last-attack seed for 300
+  players: 3.3/2.9 s cold before, 2.3/2.4 s after).
+- **Measured** on a copy of the 2026-10-17 PROD DBs (DEV machine; 400k `war_attacks` + one day of
+  `war_summary` per run, production migration SQL, WAL bytes counted with autocheckpoint off):
+
+  | Variant | rows/s | written per row |
+  |---|---|---|
+  | as on PROD | 1,224 / 1,264 (warm) | 48-52 KB |
+  | cache 256/512 MB | 1,974 | 48 KB |
+  | cache 256/512 MB + 100k batches | 2,224 | 36 KB |
+  | redundant indexes dropped | 3,688 | 31 KB |
+  | dropped + 100k batches | 3,776 | 24 KB |
+  | dropped + 100k batches + big cache | 4,062 | 23 KB |
+
+  Each moved row rewrote ~50 KB of index pages: random `player_tag`/`clan_tag` keys put every row
+  on a different leaf page of a 40 GB file. Kept as is: the 20k batch (100k writes ~20% less but
+  would hold the write lock > 1 min per batch on the NAS while commands still run) and the
+  small cache sizes (the swap rule in `config.py`; the gain is small once the indexes are gone).
+- The drop frees ~2.6 GB in history (reused by the migration's inserts) and leaves main's free
+  list ~11%, under the 15% VACUUM threshold — no surprise VACUUM.
 
 ### Random pre-existing index corruption — always run a quick_check after big DB ops
 After a migration+VACUUM on the DEV DB (2026-07-12), `PRAGMA integrity_check` found

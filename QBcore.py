@@ -87,7 +87,7 @@ BOT_VERSION: str = "1.3.44"
 # .github/copilot-instructions.md.  BOT_VERSION answers "which release is this?";
 # BOT_BUILD answers "which edit of it is actually running?", which is the question that
 # matters when reading the server-machine's log after a file-copy deploy.
-BOT_BUILD: int = 193
+BOT_BUILD: int = 194
 
 
 def source_fingerprint() -> str:
@@ -641,6 +641,15 @@ All slash commands are blocked with a short "DB optimization in progress" messag
 This is the HARD block, and it is correct only for operations that genuinely lock readers
 out — they drain the sync connection pool and/or hold an EXCLUSIVE lock. Do NOT set it for
 ordinary batched writes; see db_migration_active below.
+"""
+
+db_reindex_requested: Optional[str] = None
+"""
+Why the next nightly maintenance should REINDEX, or None (tracker #0155). REINDEX is not
+routine any more: it took ~32 min every night and nothing ever needed it. Set by
+db_manager's corruption log watcher when SQLite reports a corrupt page ("database disk image
+is malformed"); cleared by nightly_db_maintenance() once the REINDEX ran. In memory only: after
+a restart a still-corrupt index fails again and sets it again.
 """
 
 db_migration_active: bool = False

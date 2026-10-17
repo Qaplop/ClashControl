@@ -559,7 +559,10 @@ async def initialize_database() -> None:
     logging.info("💾 Initializing database (includes any pending first-run schema migrations)...")
     QBcore.db_maintenance_mode = True
     try:
-        from clashcontrol.db_manager import WarHistoryDB
+        from clashcontrol.db_manager import WarHistoryDB, install_db_corruption_watcher
+        # Before the first query: a corruption error from now on requests a REINDEX at the next
+        # nightly maintenance (tracker #0155 — REINDEX is no longer routine).
+        install_db_corruption_watcher()
         db_manager = WarHistoryDB()
         await asyncio.wait_for(
             db_manager.initialize(CONFIG.db_path, CONFIG.history_db_path),

@@ -334,7 +334,8 @@ class TestCompositePlayerTagDateIndex:
             ).fetchall()
         }
         assert "idx_wa_player_tag_date" in names
-        assert "idx_wa_player_tag" in names  # kept — DROP INDEX on this table is maintenance-only
+        # No longer created (tracker #0155): the composite serves player_tag lookups.
+        assert "idx_wa_player_tag" not in names
 
     def test_composite_index_used_for_player_and_date_query(self, tmp_path):
         """EXPLAIN QUERY PLAN should reference idx_wa_player_tag_date, not a full scan."""
@@ -377,7 +378,6 @@ class TestCompositePlayerTagDateIndex:
             ).fetchall()
         }
         assert "idx_wa_player_tag_date" not in names
-        assert "idx_wa_player_tag" in names
         assert "idx_wa_clan_date" in names
 
     async def test_initialize_builds_composite_index_on_both_schemas(self, tmp_path):

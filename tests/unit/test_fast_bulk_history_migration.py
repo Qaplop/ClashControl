@@ -24,7 +24,6 @@ from clashcontrol.db_manager import WarHistoryDB
 import clashcontrol.db_manager as db_manager_module
 
 _SECONDARY_INDEX_NAMES = {
-    "idx_wa_player_tag",
     "idx_wa_war_clan",
     "idx_wa_clan_date",
     "idx_wa_zero_attacks",

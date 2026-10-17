@@ -3087,6 +3087,14 @@ async def periodic_main() -> None:
             await QBcore.backfill_idle_event.wait()
             logging.info("[CYCLE] CWL group backfill finished — starting update cycle.")
 
+        # Gate: wait for nightly DB maintenance (scheduled or /admin) to finish. Here at the top
+        # of the loop, so every path waits — including DEV's NO_DEV_MODE_UPDATES skip branch
+        # below, which used to log a [CYCLE-START] + "Sleeping" mid-maintenance (2026-10-17).
+        if not QBcore.db_maintenance_idle_event.is_set():
+            logging.info("[CYCLE] Waiting for nightly DB maintenance to complete before starting next cycle...")
+            await QBcore.db_maintenance_idle_event.wait()
+            logging.info("[CYCLE] DB maintenance finished — resuming update cycle.")
+
         QBcore.cycle_idle_event.clear()  # signal: cycle is now running
         QBcore.in_main_cycle = True
         _cycle_start = datetime.now(timezone.utc)
@@ -3653,13 +3661,7 @@ async def periodic_main() -> None:
                 except Exception:
                     pass
 
-            # Gate: wait for nightly DB maintenance to finish before starting the
-            # next update cycle.  Normally already set (maintenance takes ~30s within
-            # the 5-min sleep); only blocks on very slow disks or if sleep was skipped.
-            if not QBcore.db_maintenance_idle_event.is_set():
-                logging.info("[CYCLE] Waiting for nightly DB maintenance to complete before starting next cycle...")
-                await QBcore.db_maintenance_idle_event.wait()
-                logging.info("[CYCLE] DB maintenance finished — resuming update cycle.")
+            # The wait for nightly DB maintenance is at the top of the loop (see there).
             continue
         QBcore.in_main_cycle = False
         QBcore.cycle_idle_event.set()  # signal: cycle finished (fallthrough)

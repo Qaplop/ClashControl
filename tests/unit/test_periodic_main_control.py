@@ -72,3 +72,14 @@ async def test_returns_when_shutdown_set_while_uninitialised_flag_false(monkeypa
     monkeypatch.setattr(ClashControl.asyncio, "sleep", _boom)
 
     await ClashControl.periodic_main()
+
+
+def test_maintenance_gate_runs_before_every_cycle_path():
+    """The wait for nightly DB maintenance sits at the top of the loop, before [CYCLE-START]
+    and before DEV's NO_DEV_MODE_UPDATES skip branch (2026-10-17: that branch logged a cycle
+    start + "Sleeping" in the middle of a maintenance run because the gate came after it)."""
+    import inspect
+    src = inspect.getsource(ClashControl.periodic_main)
+    gate = src.index("await QBcore.db_maintenance_idle_event.wait()")
+    assert gate < src.index("[CYCLE-START] Beginning update cycle")
+    assert gate < src.index("if NO_DEV_MODE_UPDATES and CONFIG.is_dev_mode")

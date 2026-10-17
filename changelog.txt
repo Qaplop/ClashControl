@@ -1,6 +1,13 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-17 (3)
+- Fixed: the update loop's wait for nightly DB maintenance (scheduled or /admin) moved to the top
+  of periodic_main()'s loop, before [CYCLE-START]. It sat after the sleep, so DEV's
+  NO_DEV_MODE_UPDATES skip branch never reached it and logged a cycle start + "Sleeping for 300
+  seconds" in the middle of a maintenance run. PROD behaviour unchanged (it already waited).
+  Files: ClashControl.py, tests/unit/test_periodic_main_control.py. Build 195. 3996 tests pass.
+
 2026-10-17 (2)
 - Changed (tracker #0155, qaplop): nightly maintenance no longer REINDEXes every night (~1,900 s
   with Discord commands blocked, every night since 10-07, nothing needed it). A full REINDEX now

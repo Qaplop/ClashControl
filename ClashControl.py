@@ -319,7 +319,7 @@ from clashcontrol.constants import (
     PLAYERREGISTRATION_BUMP_COOLDOWN_SECONDS
 )
 from clashcontrol.discord_health import discord_retry, bulk_sync_global_commands
-from clashcontrol.coc_health import reset_cycle_stats, get_coc_stats, clear_maintenance_detection, is_maintenance_detected, clear_dns_detection, clear_gateway_outage_detection, is_gateway_outage_detected, get_gateway_fast_failed_count
+from clashcontrol.coc_health import reset_cycle_stats, get_coc_stats, clear_maintenance_detection, is_maintenance_detected, clear_dns_detection, is_dns_failure_detected, get_dns_fast_failed_count, clear_gateway_outage_detection, is_gateway_outage_detected, get_gateway_fast_failed_count
 from QBhelperfunctions import (
     generate_leaderboard_text, generate_cwlinfo_embeds, generate_cwlinfo_comp_embeds, post_discord_content_with_tracking,
     post_leaderboard_to_discord, calculate_content_hash,
@@ -1675,6 +1675,9 @@ async def main() -> None:
                 # coc.GatewayError surfaces here wrapped in WarDataFetchError, so match on the
                 # wrapped text (type name, or coc.py's timeout message) rather than the type.
                 _is_gateway = "gatewayerror" in _emsg or "timed out waiting" in _emsg
+                # Same for DNS failures: aiohttp's ClientConnectorDNSError, or the breaker's own
+                # CocDnsOutageError once it has tripped.
+                _is_dns = "name resolution" in _emsg or "dnserror" in _emsg or "dnsoutage" in _emsg
                 if _is_maint and is_maintenance_detected():
                     # Maintenance already flagged globally; suppress per-clan ERROR spam.
                     # coc_health.py already logged one WARNING on first detection.
@@ -1684,10 +1687,15 @@ async def main() -> None:
                     # [COC-GATEWAY-OUTAGE] WARNING from coc_health.py plus the Phase-1 summary
                     # below, instead of one ERROR per clan (2,521 of them on 2026-10-03).
                     logging.debug(f"[PHASE-1] Gateway-outage fast-fail: {clan_tag}")
-                elif _is_gateway:
+                elif _is_dns and is_dns_failure_detected():
+                    # One [COC-DNS-OUTAGE] WARNING plus the Phase-1 summary below instead of one
+                    # ERROR per clan (1,654 on 2026-10-16).
+                    logging.debug(f"[PHASE-1] DNS-outage fast-fail: {clan_tag}")
+                elif _is_gateway or _is_dns:
                     # External and transient (retried next cycle, since a failed fetch never
                     # stamps last_war_update) — a WARNING, not an ERROR.
-                    logging.warning(f"[PHASE-1] CoC gateway error fetching clan {clan_tag}: {e}")
+                    _kind = "gateway" if _is_gateway else "DNS"
+                    logging.warning(f"[PHASE-1] CoC {_kind} error fetching clan {clan_tag}: {e}")
                 else:
                     logging.error(f"[PHASE-1] Exception fetching clan {clan_tag}: {e}")
                 # Bucket the failure reason for the cycle summary
@@ -1701,6 +1709,8 @@ async def main() -> None:
                     _bucket = "NotFound"
                 elif _is_gateway:
                     _bucket = "Gateway"
+                elif _is_dns:
+                    _bucket = "DNS"
                 elif "maintenance" in _emsg or "503" in _emsg:
                     _bucket = "Maintenance"
                 elif "network" in _emsg or "connection" in _emsg or "ssl" in _emsg:
@@ -1759,6 +1769,13 @@ async def main() -> None:
         logging.warning(
             f"[PHASE-1] CoC API gateway outage this cycle — {_gw_n} clan fetch(es) failed "
             f"({get_gateway_fast_failed_count()} CoC call(s) refused without a network attempt). "
+            f"Failed clans keep their last_war_update and are retried next cycle."
+        )
+    if is_dns_failure_detected():
+        _dns_n = CACHE.cycle_stats.get("api_fail:DNS", 0)
+        logging.warning(
+            f"[PHASE-1] DNS outage this cycle — {_dns_n} clan fetch(es) failed "
+            f"({get_dns_fast_failed_count()} CoC call(s) refused without a network attempt). "
             f"Failed clans keep their last_war_update and are retried next cycle."
         )
 

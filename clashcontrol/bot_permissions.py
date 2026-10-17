@@ -178,6 +178,27 @@ def describe_channel_for_log(channel: Any, required: Sequence[str] = POST_PERMS)
         return f"channel {getattr(channel, 'id', '?')} (context unavailable: {e})"
 
 
+def role_assign_blocker(role: Any) -> Optional[str]:
+    """Why the bot cannot add/remove ``role`` per its cached state, as log text; None when it can
+    (or when the bot member is not cached yet — then Discord decides). Same rules as
+    ``check_role_feature()``. Never raises."""
+    try:
+        # Identity checks: these are plain bools on real objects, and a test double's
+        # auto-attributes must not read as "blocked".
+        if role.managed is True or role.is_default() is True:
+            return "managed by an integration (bot, booster or subscription role) — no bot can assign it"
+        me = _me(role.guild)
+        if not isinstance(me, discord.Member):
+            return None
+        if me.guild_permissions.manage_roles is False:
+            return "missing: manage_roles"
+        if role >= me.top_role:
+            return "at or above the bot's highest role in the server's role list"
+        return None
+    except Exception:  # pragma: no cover - log context must never break the sync
+        return None
+
+
 def check_channel_feature(guild: discord.Guild, feature: str, channel_id: Any) -> List[PermissionIssue]:
     """Issues for posting feature ``feature`` in channel ``channel_id`` of ``guild``."""
     required = CHANNEL_FEATURES[feature]

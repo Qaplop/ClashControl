@@ -39,6 +39,9 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 
 import discord
 
+from clashcontrol.bot_permissions import role_assign_blocker
+from clashcontrol.log_throttle import log_throttled
+
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
@@ -525,6 +528,29 @@ def _get_highest_coc_role_for_user(user_id: str, guild_clans: Optional[Set[str]]
     return best_role
 
 
+def _log_role_refused(member: discord.Member, role: discord.Role, action: str, why: str) -> None:
+    """Once a day per (guild, role, action): a role the bot cannot touch fails on every sync until a
+    server admin changes the setting (2026-10-16: 292 identical ERRORs for the bot's own integration
+    role picked as a member role). The /setup and config-time checks already tell the admin."""
+    guild = member.guild
+    log_throttled(
+        logging.WARNING,
+        ("role-sync-refused", guild.id, role.id, action),
+        f"[ROLE-SYNC] Cannot {action} role '{role.name}' ({role.id}) in guild {guild.name} ({guild.id}): "
+        f"{why} — a server admin must pick another role or fix the bot's role",
+    )
+
+
+def _role_blocked(member: discord.Member, role: discord.Role, action: str) -> bool:
+    """True (and logged, throttled) when the cached state says Discord will refuse ``action`` on
+    ``role`` — skips the doomed API call."""
+    why = role_assign_blocker(role)
+    if why is None:
+        return False
+    _log_role_refused(member, role, action, why)
+    return True
+
+
 async def assign_role_to_member(member: discord.Member, role: discord.Role, reason: str = "ClashControl role sync") -> bool:
     """
     Add a Discord role to a guild member if not already present.
@@ -539,12 +565,14 @@ async def assign_role_to_member(member: discord.Member, role: discord.Role, reas
     """
     if role in member.roles:
         return True
+    if _role_blocked(member, role, "assign"):
+        return False
     try:
         await member.add_roles(role, reason=reason)
         logging.info(f"[ROLE-SYNC] Assigned role '{role.name}' to {member.display_name} ({member.id})")
         return True
     except discord.Forbidden:
-        logging.error(f"[ROLE-SYNC] Missing permission to assign role '{role.name}' in guild {member.guild.name} ({member.guild.id})")
+        _log_role_refused(member, role, "assign", "Discord refused it (403) although the cached permissions allow it")
         return False
     except discord.HTTPException as e:
         logging.error(f"[ROLE-SYNC] HTTPException assigning role '{role.name}' to {member.id}: {e}")
@@ -565,12 +593,14 @@ async def remove_role_from_member(member: discord.Member, role: discord.Role, re
     """
     if role not in member.roles:
         return True
+    if _role_blocked(member, role, "remove"):
+        return False
     try:
         await member.remove_roles(role, reason=reason)
         logging.info(f"[ROLE-SYNC] Removed role '{role.name}' from {member.display_name} ({member.id})")
         return True
     except discord.Forbidden:
-        logging.error(f"[ROLE-SYNC] Missing permission to remove role '{role.name}' in guild {member.guild.name} ({member.guild.id})")
+        _log_role_refused(member, role, "remove", "Discord refused it (403) although the cached permissions allow it")
         return False
     except discord.HTTPException as e:
         logging.error(f"[ROLE-SYNC] HTTPException removing role '{role.name}' from {member.id}: {e}")

@@ -229,6 +229,96 @@ class TestCocRetryGatewayOutage:
         assert not is_gateway_outage_detected()
 
 
+class TestCocRetryDnsOutage:
+    """DNS-outage breaker. On 2026-10-16 each failed lookup took ~25 s and the flag-only breaker
+    never refused a call, so all 604 clans of a cycle waited out their own lookup (cycle 1,564 s)."""
+
+    def setup_method(self):
+        from clashcontrol.coc_health import clear_dns_detection
+        clear_dns_detection()
+
+    def teardown_method(self):
+        from clashcontrol.coc_health import clear_dns_detection
+        clear_dns_detection()
+
+    @staticmethod
+    def _dns():
+        import aiohttp
+        key = MagicMock(host="api.clashofclans.com", port=443, ssl=True)
+        return aiohttp.ClientConnectorDNSError(key, OSError(-3, "Temporary failure in name resolution"))
+
+    @pytest.mark.asyncio
+    async def test_dns_error_is_not_retried(self):
+        import aiohttp
+        from clashcontrol.coc_health import coc_retry
+        op = AsyncMock(side_effect=self._dns())
+        with patch("clashcontrol.coc_health.asyncio.sleep", new_callable=AsyncMock):
+            with pytest.raises(aiohttp.ClientConnectorDNSError):
+                await coc_retry(op, "dns_once", max_retries=2)
+        assert op.await_count == 1
+
+    @pytest.mark.asyncio
+    async def test_isolated_failure_does_not_trip(self):
+        import aiohttp
+        import clashcontrol.coc_health as _ch
+        op = AsyncMock(side_effect=self._dns())
+        for _ in range(_ch._DNS_TRIP_COUNT - 1):
+            with pytest.raises(aiohttp.ClientConnectorDNSError):
+                await _ch.coc_retry(op, "dns_below")
+        assert not _ch.is_dns_failure_detected()
+        healthy = AsyncMock(return_value="ok")
+        assert await _ch.coc_retry(healthy, "dns_still_open") == "ok"
+
+    @pytest.mark.asyncio
+    async def test_trips_and_then_fast_fails_without_calling(self):
+        import aiohttp
+        import clashcontrol.coc_health as _ch
+        failing = AsyncMock(side_effect=self._dns())
+        for _ in range(_ch._DNS_TRIP_COUNT):
+            with pytest.raises(aiohttp.ClientConnectorDNSError):
+                await _ch.coc_retry(failing, "dns_trip")
+        assert _ch.is_dns_failure_detected()
+
+        healthy = AsyncMock(return_value="ok")
+        with pytest.raises(_ch.CocDnsOutageError) as exc_info:
+            await _ch.coc_retry(healthy, "dns_after_trip")
+        healthy.assert_not_awaited()  # refused before reaching the network
+        assert _ch.get_dns_fast_failed_count() == 1
+        # Callers that handle connection errors handle the fast-fail too.
+        assert isinstance(exc_info.value, aiohttp.ClientConnectionError)
+        # Phase-1 classifies the wrapped text "<TypeName>: <msg>" by substring.
+        assert "dnsoutage" in f"{type(exc_info.value).__name__}: {exc_info.value}".lower()
+
+    def test_failures_outside_window_do_not_count(self):
+        # Sync on purpose: patching time.monotonic patches the global time module, which would
+        # also freeze a running asyncio loop's clock and hang the test (it did, 2026-10-17).
+        import clashcontrol.coc_health as _ch
+        clock = [1000.0]
+        with patch("clashcontrol.coc_health.time.monotonic", side_effect=lambda: clock[0]):
+            for _ in range(_ch._DNS_TRIP_COUNT * 2):
+                clock[0] += _ch._DNS_TRIP_WINDOW_S + 1
+                _ch._record_dns_failure("dns_spread", self._dns())
+        assert not _ch.is_dns_failure_detected()
+
+    def test_failures_inside_window_trip(self):
+        import clashcontrol.coc_health as _ch
+        clock = [1000.0]
+        with patch("clashcontrol.coc_health.time.monotonic", side_effect=lambda: clock[0]):
+            for _ in range(_ch._DNS_TRIP_COUNT):
+                clock[0] += 1
+                _ch._record_dns_failure("dns_burst", self._dns())
+        assert _ch.is_dns_failure_detected()
+
+    @pytest.mark.asyncio
+    async def test_clear_resets_breaker(self):
+        import clashcontrol.coc_health as _ch
+        _ch._dns_failure_detected = True
+        _ch.clear_dns_detection()
+        op = AsyncMock(return_value="ok")
+        assert await _ch.coc_retry(op, "dns_cleared") == "ok"
+        assert _ch.get_dns_fast_failed_count() == 0
+
+
 class TestCocRetryRateLimit:
     def _make_429(self, retry_after=None):
         exc = coc.HTTPException(MagicMock(), "rate limited")

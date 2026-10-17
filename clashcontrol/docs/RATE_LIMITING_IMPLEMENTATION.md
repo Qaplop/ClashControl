@@ -320,8 +320,8 @@ clan fetches within the same cycle is pointless and caused extreme cycle bloat:
 
 `coc.GatewayError` is raised by coc.py only **after its own 5 internal attempts** — for a timeout
 that is 5 × the 30 s client timeout plus 1+3+5+7 s of backoff, **~170 s per call**. Unlike a
-maintenance 503 (fast) or a DNS failure (instant), a gateway outage is *slow*, so a flag alone is
-not enough.
+maintenance 503 (fast), a gateway outage is *slow*, so a flag alone is not enough. (A DNS failure
+was once listed here as "instant" — it is not; see the DNS-outage breaker below.)
 
 > 2026-10-03: the CoC API timed out from 02:03 to 07:01. Without a breaker each clan cost
 > ~9 min (3 wrapper attempts × ~170 s), 50 at a time — one cycle ran **11,376 s** and logged
@@ -349,3 +349,27 @@ not enough.
   file as an orphan. Any new per-clan API step that runs after Phase 1 should do the same.
 - Verified on PROD 2026-10-04 02:06-05:02: 36 tripped cycles of 190-209 s each, vs one
   11,376 s cycle on 2026-10-03.
+
+## CoC API DNS-Outage Circuit Breaker (Build 193)
+
+A DNS failure (`aiohttp.ClientConnectorDNSError`, "Temporary failure in name resolution") is
+never retried, but it is **not fast**: on the server-machine each lookup waited ~25 s for the
+resolver. The original breaker only set a flag and stopped retries, so every clan still made its
+own doomed lookup.
+
+> 2026-10-16: the NAS lost DNS 10:41–11:12 and 18:55–18:58. Phase 1 of the 10:41 cycle took
+> 321 s for 604 clans (all failed), the cycle 1,564 s, and the day logged 1,654 per-clan
+> `[PHASE-1]` ERRORs plus 56 `[RAID-UPDATE]` warnings.
+
+Same shape as the gateway breaker: **≥ 10 DNS failures within 60 s** trip
+`_dns_failure_detected` (one `[WARNING] [COC-DNS-OUTAGE]`); `coc_retry()` then refuses calls up
+front with `CocDnsOutageError` (a `aiohttp.ClientConnectionError`); Phase 1 logs per-clan DNS
+failures at DEBUG once tripped (WARNING before), buckets them as `api_fail:DNS` and writes one
+`[PHASE-1]` summary WARNING; the raid update and `process_orphaned_cwl_wars()` skip their fan-out
+when either breaker is tripped. A real outage fails the whole Phase-1 concurrency within a second;
+an isolated resolver hiccup (2 lines on 2026-10-07) stays far below the threshold. Cleared at each
+cycle start by `clear_dns_detection()`.
+
+Not covered: Discord-side DNS failures in the same window (leaderboard posts retried 4× with 15 s
+waits) kept the 10:41 cycle running another ~20 min after Phase 1. Discord was unreachable then
+anyway, so this only delays the next cycle.

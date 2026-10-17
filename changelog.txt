@@ -1,6 +1,21 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-17 (1)
+- Fixed: the CoC DNS-outage breaker now refuses calls once tripped (>= 10 DNS failures in 60 s),
+  like the gateway breaker. A failed lookup takes ~25 s on the server-machine, so the old flag
+  never saved anything: on 2026-10-16 (NAS lost DNS 10:41-11:12, 18:55-18:58) one cycle ran
+  1,564 s and the day logged 1,654 per-clan [PHASE-1] ERRORs. Now one [COC-DNS-OUTAGE] warning,
+  per-clan DEBUG, an api_fail:DNS bucket and one [PHASE-1] summary; raid update and orphaned-CWL
+  fetch skip their fan-out during either outage.
+- Fixed: role sync no longer calls Discord for a role it can never touch (integration-managed,
+  above the bot, no Manage Roles — new bot_permissions.role_assign_blocker()); the refusal is a
+  WARNING once a day per guild+role naming guild, role and reason. 2026-10-16: 292 ERRORs from a
+  server that picked the bot's own "ClashControl" role.
+  Files: clashcontrol/coc_health.py, ClashControl.py, QBhelperfunctions.py,
+  clashcontrol/bot_permissions.py, clashcontrol/guild_role_manager.py, docs, tests. Build 193.
+  3986 tests pass.
+
 2026-10-13 (3)
 - Changed (qaplop): the /setup welcome DM sent when the bot is added to a server ends with
   "ℹ️ /about gives an overview of what the bot can do." (clickable, all languages; key

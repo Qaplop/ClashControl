@@ -68,13 +68,27 @@ _reconnect_callback: Optional[Callable[[], Any]] = None
 # Cleared at the start of each update cycle via clear_maintenance_detection().
 _maintenance_detected: bool = False
 
-# Per-cycle DNS failure detection flag.
-# Set by the first coc_retry() call that encounters a DNS resolution failure.
-# All subsequent concurrent coc_retry() calls with a DNS error fast-fail
-# immediately — no retry sleep — because a DNS outage affects all hostnames
-# equally: retrying per-clan wastes time and floods the log.
-# Cleared at the start of each update cycle via clear_dns_detection().
+# Per-cycle DNS-outage circuit breaker.
+# A DNS failure is never retried (a resolver outage affects every hostname equally). It is NOT
+# fast, though: on the server-machine each lookup sat ~25 s before "Temporary failure in name
+# resolution" came back. On 2026-10-16 the old flag-only breaker therefore still let all 604
+# clans of a cycle wait out their own lookup (Phase 1: 321 s), logged one ERROR per clan (1,654
+# that day) and the cycle ran 1,564 s. So, like the gateway breaker below: once tripped,
+# coc_retry() refuses new calls up front.
+# Trip threshold: _DNS_TRIP_COUNT failures within _DNS_TRIP_WINDOW_S. A real outage fails the
+# whole Phase-1 concurrency (50) within a second; an isolated resolver hiccup (2 lines on
+# 2026-10-07) stays far below it.
+# Cleared at the start of each update cycle via clear_dns_detection(), so every cycle re-probes.
+_DNS_TRIP_COUNT: int = 10
+_DNS_TRIP_WINDOW_S: float = 60.0
+_dns_failure_times: "deque[float]" = deque()
 _dns_failure_detected: bool = False
+_dns_fast_failed: int = 0  # calls refused while tripped, this cycle (for the Phase-1 summary)
+
+
+class CocDnsOutageError(aiohttp.ClientConnectionError):
+    """Raised by coc_retry() without a network attempt while the DNS-outage breaker is tripped.
+    A ClientConnectionError, so callers that handle connection failures handle this too."""
 
 # Per-cycle CoC gateway-outage circuit breaker (tracker #0150).
 # coc.py raises GatewayError when the API keeps timing out (or keeps answering 500/502/504)
@@ -282,13 +296,34 @@ def clear_maintenance_detection() -> None:
     _maintenance_detected = False
 
 def clear_dns_detection() -> None:
-    """Reset the per-cycle DNS failure flag.  Called at the start of each update cycle."""
-    global _dns_failure_detected
+    """Reset the per-cycle DNS-outage breaker.  Called at the start of each update cycle."""
+    global _dns_failure_detected, _dns_fast_failed
     _dns_failure_detected = False
+    _dns_fast_failed = 0
+    _dns_failure_times.clear()
 
 def is_dns_failure_detected() -> bool:
-    """Return True if a DNS resolution failure was seen during the current cycle."""
+    """Return True if the DNS-outage breaker tripped during the current cycle."""
     return _dns_failure_detected
+
+def get_dns_fast_failed_count() -> int:
+    """Number of CoC calls refused without a network attempt since the DNS breaker tripped."""
+    return _dns_fast_failed
+
+def _record_dns_failure(operation_name: str, error: BaseException) -> None:
+    """Count one DNS failure toward the breaker and trip it when the window threshold is hit."""
+    global _dns_failure_detected
+    now = time.monotonic()
+    _dns_failure_times.append(now)
+    while _dns_failure_times and now - _dns_failure_times[0] > _DNS_TRIP_WINDOW_S:
+        _dns_failure_times.popleft()
+    if not _dns_failure_detected and len(_dns_failure_times) >= _DNS_TRIP_COUNT:
+        _dns_failure_detected = True
+        logging.warning(
+            f"[COC-DNS-OUTAGE] {len(_dns_failure_times)} DNS resolution failures within "
+            f"{_DNS_TRIP_WINDOW_S:.0f}s (last: {operation_name}). Fast-failing all further CoC API "
+            f"calls this cycle; next cycle will re-probe. Error: {error}"
+        )
 
 def clear_gateway_outage_detection() -> None:
     """Reset the per-cycle CoC gateway-outage breaker.  Called at the start of each update cycle,
@@ -427,6 +462,13 @@ async def coc_retry(
             _stats['api_errors'] += 1
             logging.debug(f"[COC-GATEWAY-OUTAGE] Fast-fail (outage active): {operation_name}")
             raise coc.GatewayError("fast-fail: CoC API gateway outage detected this cycle")
+        # Same for the DNS-outage breaker: a lookup that cannot succeed still costs ~25 s.
+        if _dns_failure_detected:
+            global _dns_fast_failed
+            _dns_fast_failed += 1
+            _stats['api_errors'] += 1
+            logging.debug(f"[COC-DNS-OUTAGE] Fast-fail (outage active): {operation_name}")
+            raise CocDnsOutageError("fast-fail: DNS resolution outage detected this cycle")
         try:
             # DEV-only global rate limiter: enforce min gap between API calls
             if _DEV_API_THROTTLE_S > 0 and CONFIG.is_dev_mode:
@@ -602,20 +644,11 @@ async def coc_retry(
                 )
                 raise
 
-            # DNS failure circuit breaker — mirrors the CoC maintenance pattern.
-            # During an ISP/resolver outage, every concurrent clan fetch will get the
-            # same error.  Retrying is pointless and floods the log.
+            # DNS failure: never retried (a resolver outage affects every hostname equally);
+            # counted toward the DNS-outage breaker, which refuses further calls once tripped.
             if isinstance(e, aiohttp.ClientConnectorDNSError):
-                global _dns_failure_detected
-                if not _dns_failure_detected:
-                    _dns_failure_detected = True
-                    logging.warning(
-                        f"[COC-DNS-OUTAGE] DNS resolution failure detected via "
-                        f"{operation_name}. Fast-failing all CoC API calls this cycle; "
-                        f"next cycle will re-probe. Error: {e}"
-                    )
-                else:
-                    logging.debug(f"[COC-DNS-OUTAGE] Fast-fail (DNS outage active): {operation_name}")
+                _record_dns_failure(operation_name, e)
+                logging.debug(f"[COC-DNS] {operation_name} failed: {e}")
                 raise
 
             # Detect closed aiohttp session.  If maintenance is active the session was

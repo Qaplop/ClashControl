@@ -8616,9 +8616,11 @@ async def update_capital_raids_for_member_clans(now: Optional[datetime] = None) 
     # CoC gateway outage tripped earlier this cycle (tracker #0150): every call would fast-fail
     # and log two warnings per clan (1,562 on 2026-10-04). Skip as a whole; unfinalized
     # seasons are still due next cycle, so nothing is lost.
-    from clashcontrol.coc_health import is_gateway_outage_detected
-    if is_gateway_outage_detected():
-        logging.warning(f"[RAID-UPDATE] CoC API gateway outage this cycle — skipping {len(due)} clan(s); retried next cycle.")
+    # Same for a tripped DNS-outage breaker (2026-10-16: 56 roster/raid warnings in one outage).
+    from clashcontrol.coc_health import is_dns_failure_detected, is_gateway_outage_detected
+    if is_gateway_outage_detected() or is_dns_failure_detected():
+        _why = "gateway outage" if is_gateway_outage_detected() else "DNS outage"
+        logging.warning(f"[RAID-UPDATE] CoC API {_why} this cycle — skipping {len(due)} clan(s); retried next cycle.")
         totals["errors"] = len(due)
         return totals
     results = await asyncio.gather(*(update_capital_raid_for_clan(t, now) for t in due), return_exceptions=True)
@@ -9083,10 +9085,11 @@ async def process_orphaned_cwl_wars(
     # 2026-10-04 that grew to ~4,500 doomed fetches and as many WARNING lines per cycle
     # (64,055 in three hours). Nothing here can succeed this cycle; the files stay put and are
     # re-evaluated next cycle.
-    from clashcontrol.coc_health import is_gateway_outage_detected
-    if orphaned_wars and is_gateway_outage_detected():
+    # Same for a tripped DNS-outage breaker.
+    from clashcontrol.coc_health import is_dns_failure_detected, is_gateway_outage_detected
+    if orphaned_wars and (is_gateway_outage_detected() or is_dns_failure_detected()):
         logging.warning(
-            f"[ORPHANED-CWL] CoC API gateway outage this cycle — skipping "
+            f"[ORPHANED-CWL] CoC API unreachable this cycle (gateway or DNS outage) — skipping "
             f"{len(orphaned_wars)} orphaned CWL war fetch(es); re-evaluated next cycle."  # type: ignore[arg-type]
         )
         return None

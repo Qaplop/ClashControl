@@ -126,7 +126,7 @@ def test_dm_texts_use_the_app_icons_not_unicode():
     from clashcontrol.i18n import t
 
     emojis._resolved.update({"GCHECK": "<:gcheck:1552060584176914601>", "REDX": "<:redx:1552060584176914602>"})
-    body = t('cwl.template.dm_body_bench', guild_id=None, season="2026-10", player_name="Alpha",
+    body = t('cwl.template.dm_body_bench', guild_id=None, season="2026-10", player_name="Alpha", guild_name="Home",
              **emojis.signup_dm_icons())
     confirmed = t('cwl.template.confirmed_msg', guild_id=None, player_name="Alpha", **emojis.signup_dm_icons())
 
@@ -157,7 +157,7 @@ def test_dm_body_and_finalize_text_render_the_resolved_emoji():
 
     emojis._resolved["CWL_BENCH"] = "<:cwl_bench:1455513859715629077>"
 
-    body = t('cwl.template.dm_body_bench', guild_id=None, season="2026-10",
+    body = t('cwl.template.dm_body_bench', guild_id=None, season="2026-10", guild_name="Home",
              player_name="Alpha", **emojis.signup_dm_icons())
     finalize = t('cwl.template.bench_msg', guild_id=None, player_name="Alpha",
                  **emojis.signup_dm_icons())

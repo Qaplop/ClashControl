@@ -3897,11 +3897,21 @@ def build_cwl_signup_dm(
         # gets exactly one enrollment DM per season, sent by whichever guild's event got there
         # first, so a guild-only rule would hand out the option by luck of who sent it.
         bench = cwl_bench_enabled_for(discord_id, guild_id)
+    # The DM arrives outside any server, so its first line names the sending guild — a player in
+    # several ClashControl guilds can't otherwise tell which one is asking. Gateway cache only.
+    import QBcore
+
+    bot = getattr(QBcore, "bot", None)
+    guild = bot.get_guild(int(guild_id)) if bot is not None else None
+    guild_name = getattr(guild, "name", None)
+    if not isinstance(guild_name, str) or not guild_name:
+        guild_name = str(guild_id)
     content = t(
         'cwl.template.dm_body_bench' if bench and with_legend else 'cwl.template.dm_body',
         guild_id=guild_id,
         user_id=discord_id,
         season=season,
+        guild_name=guild_name,
         player_name=player_name or player_tag,
         **signup_dm_icons(),
     )

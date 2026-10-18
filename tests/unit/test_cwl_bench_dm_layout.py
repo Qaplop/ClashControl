@@ -82,6 +82,28 @@ def test_extended_mode_legend_only_when_asked_and_at_the_top():
     assert len(view.children) == 3
 
 
+@pytest.mark.parametrize("bench, with_legend", [(False, True), (True, True), (True, False)])
+def test_signup_dm_first_line_names_the_sending_guild(monkeypatch, bench, with_legend):
+    """2026-10-18: a player in several ClashControl guilds couldn't tell which one sent the DM."""
+    from clashcontrol.QBdiscocmdshelper_cwl import build_cwl_signup_dm
+
+    guild = MagicMock()
+    guild.name = "Clan Castle HQ"
+    monkeypatch.setitem(sys.modules, "QBcore", MagicMock(bot=MagicMock(get_guild=MagicMock(return_value=guild))))
+
+    content, _ = build_cwl_signup_dm(7, 1, "2026-10", "777", "#P1", "Alpha", with_legend=with_legend, bench=bench)
+    assert "**Clan Castle HQ**" in content.split("\n", 1)[0]
+
+
+def test_signup_dm_falls_back_when_the_guild_is_not_cached(monkeypatch):
+    from clashcontrol.QBdiscocmdshelper_cwl import build_cwl_signup_dm
+
+    monkeypatch.setitem(sys.modules, "QBcore", MagicMock(bot=MagicMock(get_guild=MagicMock(return_value=None))))
+
+    content, _ = build_cwl_signup_dm(7, 1, "2026-10", "777", "#P1", "Alpha", with_legend=True, bench=False)
+    assert "{guild_name}" not in content and "**1**" in content.split("\n", 1)[0]
+
+
 # ---------------------------------------------------------------------------
 # Upgrade == fresh send
 # ---------------------------------------------------------------------------

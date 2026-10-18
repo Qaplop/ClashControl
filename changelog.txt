@@ -1,6 +1,15 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-18
+- Changed: the CWL sign-up DM's first line now names the guild that sent it ("Sign-up for CWL
+  season **2026-11** on the **<guild>** server!"), in all five languages, with and without the
+  Bench legend. A DM arrives outside any server, so a player in several ClashControl guilds
+  couldn't tell which one was asking. Name from the gateway cache; falls back to the guild id.
+  Files: clashcontrol/QBdiscocmdshelper_cwl.py (build_cwl_signup_dm), translations/*.json
+  (cwl.template.dm_body / dm_body_bench), tests/unit/test_cwl_bench_dm_layout.py,
+  tests/unit/test_bench_emoji_consistency.py. Build 196. 4000 tests pass.
+
 2026-10-17 (3)
 - Fixed: the update loop's wait for nightly DB maintenance (scheduled or /admin) moved to the top
   of periodic_main()'s loop, before [CYCLE-START]. It sat after the sleep, so DEV's

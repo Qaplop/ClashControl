@@ -6372,7 +6372,6 @@ class ClanManagementLinkAccountView(discord.ui.View):
         
         # Pagination state for player selector (max 50 players in clan)
         self.player_offset = 0
-        self.players_per_page = 24  # Show 24 + "Load more..." = 25 total
         
         # Selected values (to be populated by user)
         self.selected_player_tag: Optional[str] = None
@@ -6415,9 +6414,9 @@ class ClanManagementLinkAccountView(discord.ui.View):
         
         # Calculate pagination
         total_players = len(player_activity)
-        start_idx = self.player_offset
-        end_idx = start_idx + self.players_per_page
-        has_more = end_idx < total_players
+        from clashcontrol.ui_common import select_page_bounds
+        start_idx, end_idx, has_more = select_page_bounds(self.player_offset, total_players)
+        self._page_end = end_idx  # "Load more…" continues here
         
         # Get current page of players
         current_page = player_activity[start_idx:end_idx]
@@ -6658,7 +6657,7 @@ class ClanManagementLinkAccountView(discord.ui.View):
         # Check if "Load more..." was selected
         elif selected_value == "__load_more__":
             # Update offset to next page
-            self.player_offset += self.players_per_page
+            self.player_offset = self._page_end
             
             # Rebuild view with new page
             self._rebuild_view_with_new_page()
@@ -7046,7 +7045,6 @@ class ClanManagementUnlinkPlayerView(discord.ui.View):
 
         # Pagination state for player selector (max 50 players in a clan)
         self.player_offset = 0
-        self.players_per_page = 24  # Show 24 + "Load more..." = 25 total
 
         self._add_player_select()  # row 0
 
@@ -7058,9 +7056,9 @@ class ClanManagementUnlinkPlayerView(discord.ui.View):
         players_sorted = sorted(self.linked_players, key=lambda p: (p.get("name") or "").lower())
 
         total_players = len(players_sorted)
-        start_idx = self.player_offset
-        end_idx = start_idx + self.players_per_page
-        has_more = end_idx < total_players
+        from clashcontrol.ui_common import select_page_bounds
+        start_idx, end_idx, has_more = select_page_bounds(self.player_offset, total_players)
+        self._page_end = end_idx  # "Load more…" continues here
         current_page = players_sorted[start_idx:end_idx]
 
         player_options = []
@@ -7130,7 +7128,7 @@ class ClanManagementUnlinkPlayerView(discord.ui.View):
             return
 
         if selected_value == "__load_more__":
-            self.player_offset += self.players_per_page
+            self.player_offset = self._page_end
             self.clear_items()
             self._add_player_select()
             await interaction.response.edit_message(view=self)

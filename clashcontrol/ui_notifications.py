@@ -1091,7 +1091,6 @@ class NotificationSettingsView(discord.ui.View):
         
         # Pagination state for user selector (user scope only)
         self.user_offset = 0
-        self.users_per_page = 24
         
         # Selected values
         self.selected_user_id: Optional[str] = None  # Only for user scope
@@ -1120,9 +1119,9 @@ class NotificationSettingsView(discord.ui.View):
         total_users = len(user_ids)
         
         # Calculate pagination
-        start_idx = self.user_offset
-        end_idx = min(start_idx + self.users_per_page, total_users)
-        has_more = end_idx < total_users
+        from clashcontrol.ui_common import select_page_bounds
+        start_idx, end_idx, has_more = select_page_bounds(self.user_offset, total_users)
+        self._page_end = end_idx  # "Load more…" continues here
         
         # Get current page of users
         page_user_ids = user_ids[start_idx:end_idx]
@@ -1339,7 +1338,7 @@ class NotificationSettingsView(discord.ui.View):
             
         elif value == "__load_more__":
             await interaction.response.defer(thinking=False, ephemeral=False)
-            self.user_offset += self.users_per_page
+            self.user_offset = self._page_end
             self._rebuild_view()
             await interaction.edit_original_response(view=self)
         else:

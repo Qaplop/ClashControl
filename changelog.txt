@@ -1,6 +1,18 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-18 (5)
+- Fixed: "Load more…" in the Link Account player select failed on servers with more than 48
+  unlinked players (PROD 2026-10-18 14:05/14:07, "That's Test Server": 50035 "Must be between 1
+  and 25 in length", no reply to the user). Every page showed 24 players, plus "Back to first
+  page" and "Load more…" from page 2 on = 26 options. The Unlink Player select and the
+  notification-settings user select had the same layout. All three use the new
+  ui_common.select_page_bounds(): 24 entries on page 1, 23 on later pages, "Load more…"
+  continues where the page ended.
+  Files: clashcontrol/ui_common.py, clashcontrol/ui_clan_management.py,
+  clashcontrol/ui_notifications.py, .github/copilot-instructions.md,
+  tests/discord/test_select_pagination_limit.py. Build 200. 4027 tests pass.
+
 2026-10-18 (4)
 - Changed (tracker #0155): the global stats no longer COUNT(*) history.war_attacks every night.
   Since idx_wa_player_tag was dropped (Build 194) that count scans idx_wa_player_tag_date (47 s on

@@ -10,7 +10,7 @@ Contains:
 """
 import discord
 import logging
-from typing import List, Callable, Any, Optional, Dict
+from typing import List, Callable, Any, Optional, Dict, Tuple
 
 from clashcontrol.cache_manager import CACHE
 
@@ -344,3 +344,22 @@ async def unlock_buttons(view: discord.ui.View, interaction: discord.Interaction
         await interaction.edit_original_response(view=view)
     except discord.HTTPException as e:
         logging.info(f"[{type(view).__name__}] Could not re-enable buttons: {e}")
+
+
+#: Discord's hard limit on options in one select menu.
+SELECT_MAX_OPTIONS = 25
+
+
+def select_page_bounds(offset: int, total: int) -> Tuple[int, int, bool]:
+    """``(start, end, has_more)`` for a select that pages through ``total`` entries with its
+    navigation inside the option list: page 1 keeps one slot for "Load more…", every later page
+    two ("Back to first page" + "Load more…"), so a page never exceeds SELECT_MAX_OPTIONS.
+    "Load more…" continues at ``end``, not at a fixed step.
+
+    2026-10-18 (PROD): three views used 24 entries on every page, so page 2 of a list with more
+    than 48 entries had 26 options and Discord refused it (50035, "Must be between 1 and 25").
+    """
+    size = SELECT_MAX_OPTIONS - (2 if offset > 0 else 1)
+    start = max(0, min(offset, total))
+    end = min(start + size, total)
+    return start, end, end < total

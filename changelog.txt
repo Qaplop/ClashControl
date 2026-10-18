@@ -1,6 +1,21 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-18 (3)
+- Fixed: CWL DM answer buttons (sign-up and reminder) acknowledge the click before writing the
+  answer, then edit the DM through the interaction token. The write used to come first and could
+  queue behind the update cycle's bulk war writes past Discord's 3 s deadline (10062, 3 clicks on
+  2026-10-17). If even the acknowledgement fails, the answer is still saved and the DM edited
+  directly. Playbook Cardinal Rule 7 states the general rule.
+- Changed (tracker #0155): nightly Step 0.8 (clans.created_at back to the first war) checks only
+  clans stored in the last 30 days (CLAN_CREATED_AT_WINDOW_DAYS), with indexed MIN(date) lookups,
+  instead of a full GROUP BY over both war_summary tables plus ~281k UPDATEs. It took 80-327 s on
+  PROD to correct 3-20 clans; on the 10-18 PROD copy it now finds the same clan in 0.3 s.
+- Changed: a CoC 404 for a player ("no such tag") is logged at INFO, not WARNING — the Activity's
+  guest search looks up every partial tag a user types.
+  Files: clashcontrol/ui_cwl_roster.py, clashcontrol/db_manager.py, clashcontrol/cache_manager.py,
+  .github/copilot-instructions.md, tests. Build 198. 4010 tests pass.
+
 2026-10-18 (2)
 - Changed: an answered CWL sign-up DM keeps its season + guild line above the "thanks" (it used
   to keep only the Bench legend). The line is its own key now, cwl.template.dm_header, shared by

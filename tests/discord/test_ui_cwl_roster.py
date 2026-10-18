@@ -2762,7 +2762,7 @@ class TestCwlSignupResponseButton:
         db.upsert_cwl_signup_sync(event_id, "#P1", "Alpha", "123456789", None, "template_confirm", "pending")
 
         mock_interaction.user.id = 123456789  # matches the signup's discord_id
-        mock_interaction.response.edit_message = AsyncMock()
+        mock_interaction.edit_original_response = AsyncMock()
 
         button = CwlSignupResponseButton("confirm", event_id, "#P1")
         await button.callback(mock_interaction)
@@ -2770,8 +2770,8 @@ class TestCwlSignupResponseButton:
         signup = db.get_cwl_signup_sync(event_id, "#P1")
         assert signup["status"] == "confirmed"
         assert signup["responded_at"] is not None
-        mock_interaction.response.edit_message.assert_awaited_once()
-        _, kwargs = mock_interaction.response.edit_message.call_args
+        mock_interaction.edit_original_response.assert_awaited_once()
+        _, kwargs = mock_interaction.edit_original_response.call_args
         assert kwargs["view"] is None
         # The confirmation must name whose sign-up this was — the DM only ever mentions one
         # player_tag, but a Discord account can have several linked accounts, so restating the
@@ -2796,7 +2796,7 @@ class TestCwlSignupResponseButton:
         db.upsert_cwl_signup_sync(event_id, "#P1", "Alpha", "123456789", None, "auto_optin", "auto_confirmed")
 
         mock_interaction.user.id = 123456789
-        mock_interaction.response.edit_message = AsyncMock()
+        mock_interaction.edit_original_response = AsyncMock()
 
         # The member decides NOT to play this season after all — declines their own auto-seeded row.
         button = CwlSignupResponseButton("optout", event_id, "#P1")
@@ -2827,7 +2827,7 @@ class TestCwlSignupResponseButton:
         db.upsert_cwl_signup_sync(event_id, "#P1", "Alpha", "123456789", None, "template_confirm", "pending")
 
         mock_interaction.user.id = 123456789
-        mock_interaction.response.edit_message = AsyncMock()
+        mock_interaction.edit_original_response = AsyncMock()
 
         bump_spy = AsyncMock(wraps=web_bridge_module.bump_enrollment_version)
         monkeypatch.setattr(web_bridge_module, "bump_enrollment_version", bump_spy)
@@ -2870,7 +2870,7 @@ class TestCwlSignupResponseButton:
         db.upsert_cwl_signup_sync(other_event_id, "#P1", "Alpha", "123456789", None, "guest_invite", "pending")
 
         mock_interaction.user.id = 123456789
-        mock_interaction.response.edit_message = AsyncMock()
+        mock_interaction.edit_original_response = AsyncMock()
 
         bump_spy = AsyncMock(wraps=web_bridge_module.bump_enrollment_version)
         monkeypatch.setattr(web_bridge_module, "bump_enrollment_version", bump_spy)
@@ -2901,7 +2901,7 @@ class TestCwlSignupResponseButton:
         db.upsert_cwl_signup_sync(event_id, "#P1", "Alpha", "123456789", None, "template_confirm", "pending")
 
         mock_interaction.user.id = 123456789
-        mock_interaction.response.edit_message = AsyncMock()
+        mock_interaction.edit_original_response = AsyncMock()
 
         button = CwlSignupResponseButton("optout", event_id, "#P1")
         await button.callback(mock_interaction)
@@ -2909,8 +2909,8 @@ class TestCwlSignupResponseButton:
         signup = db.get_cwl_signup_sync(event_id, "#P1")
         assert signup["status"] == "declined"
         assert signup["source"] == "template_optout"
-        mock_interaction.response.edit_message.assert_awaited_once()
-        _, kwargs = mock_interaction.response.edit_message.call_args
+        mock_interaction.edit_original_response.assert_awaited_once()
+        _, kwargs = mock_interaction.edit_original_response.call_args
         assert "Alpha" in kwargs["content"]
 
     @pytest.mark.discord
@@ -2923,11 +2923,11 @@ class TestCwlSignupResponseButton:
         CACHE.db_manager = db
         event_id = db.create_cwl_event_sync("9103", "2026-08", "discordid1")
 
-        mock_interaction.response.send_message = AsyncMock()
+        mock_interaction.followup.send = AsyncMock()
         button = CwlSignupResponseButton("confirm", event_id, "#NEVERUP")
         await button.callback(mock_interaction)
 
-        mock_interaction.response.send_message.assert_awaited_once()
+        mock_interaction.followup.send.assert_awaited_once()
         assert db.get_cwl_signup_sync(event_id, "#NEVERUP") is None
 
     @pytest.mark.discord
@@ -2944,12 +2944,12 @@ class TestCwlSignupResponseButton:
         db.upsert_cwl_signup_sync(event_id, "#P1", "Alpha", "111111111", None, "template_confirm", "pending")
 
         mock_interaction.user.id = 999999999  # different account
-        mock_interaction.response.send_message = AsyncMock()
+        mock_interaction.followup.send = AsyncMock()
 
         button = CwlSignupResponseButton("confirm", event_id, "#P1")
         await button.callback(mock_interaction)
 
-        mock_interaction.response.send_message.assert_awaited_once()
+        mock_interaction.followup.send.assert_awaited_once()
         assert db.get_cwl_signup_sync(event_id, "#P1")["status"] == "pending"  # unchanged
 
     @pytest.mark.discord
@@ -2978,7 +2978,7 @@ class TestCwlSignupResponseButton:
         await db.conn.commit()
 
         mock_interaction.user.id = 222222222  # the CURRENT owner
-        mock_interaction.response.edit_message = AsyncMock()
+        mock_interaction.edit_original_response = AsyncMock()
 
         button = CwlSignupResponseButton("confirm", event_id, "#P1")
         await button.callback(mock_interaction)
@@ -3011,7 +3011,7 @@ class TestCwlSignupResponseButton:
         await db.conn.commit()
 
         mock_interaction.user.id = 111111111  # the SNAPSHOT owner, who actually received the DM
-        mock_interaction.response.edit_message = AsyncMock()
+        mock_interaction.edit_original_response = AsyncMock()
 
         button = CwlSignupResponseButton("confirm", event_id, "#P1")
         await button.callback(mock_interaction)
@@ -3040,12 +3040,12 @@ class TestCwlSignupResponseButton:
         await db.conn.commit()
 
         mock_interaction.user.id = 999999999  # neither owner
-        mock_interaction.response.send_message = AsyncMock()
+        mock_interaction.followup.send = AsyncMock()
 
         button = CwlSignupResponseButton("confirm", event_id, "#P1")
         await button.callback(mock_interaction)
 
-        mock_interaction.response.send_message.assert_awaited_once()
+        mock_interaction.followup.send.assert_awaited_once()
         assert db.get_cwl_signup_sync(event_id, "#P1")["status"] == "pending"  # unchanged
 
     @pytest.mark.discord
@@ -3063,12 +3063,12 @@ class TestCwlSignupResponseButton:
         db.update_cwl_event_status_sync(event_id, "finalized")  # closed since the DM was sent
 
         mock_interaction.user.id = 123456789
-        mock_interaction.response.send_message = AsyncMock()
+        mock_interaction.followup.send = AsyncMock()
 
         button = CwlSignupResponseButton("confirm", event_id, "#P1")
         await button.callback(mock_interaction)
 
-        mock_interaction.response.send_message.assert_awaited_once()
+        mock_interaction.followup.send.assert_awaited_once()
         assert db.get_cwl_signup_sync(event_id, "#P1")["status"] == "pending"  # unchanged
 
     @pytest.mark.discord
@@ -3171,14 +3171,14 @@ class TestCwlReminderResponseButton:
         )
 
         mock_interaction.user.id = 123456789
-        mock_interaction.response.edit_message = AsyncMock()
+        mock_interaction.edit_original_response = AsyncMock()
 
         button = CwlReminderResponseButton("confirm", event_id, "#P1")
         await button.callback(mock_interaction)
 
         assert db.get_cwl_signup_sync(event_id, "#P1")["status"] == "confirmed"
-        mock_interaction.response.edit_message.assert_awaited_once()
-        _, kwargs = mock_interaction.response.edit_message.call_args
+        mock_interaction.edit_original_response.assert_awaited_once()
+        _, kwargs = mock_interaction.edit_original_response.call_args
         assert kwargs["view"] is None
         assert "Alpha" in kwargs["content"]
 
@@ -3219,15 +3219,15 @@ class TestCwlReminderResponseButton:
         )
 
         mock_interaction.user.id = 123456789
-        mock_interaction.response.edit_message = AsyncMock()
+        mock_interaction.edit_original_response = AsyncMock()
 
         button = CwlReminderResponseButton("confirm", event_id, "#ALT1")
         await button.callback(mock_interaction)
 
         assert db.get_cwl_signup_sync(event_id, "#ALT1")["status"] == "confirmed"
         assert db.get_cwl_signup_sync(event_id, "#ALT2")["status"] == "pending"  # sibling untouched
-        mock_interaction.response.edit_message.assert_awaited_once()
-        _, kwargs = mock_interaction.response.edit_message.call_args
+        mock_interaction.edit_original_response.assert_awaited_once()
+        _, kwargs = mock_interaction.edit_original_response.call_args
         assert kwargs["view"] is not None  # still has AltTwo's buttons — not wiped
 
     @pytest.mark.discord
@@ -3246,14 +3246,14 @@ class TestCwlReminderResponseButton:
         db.upsert_cwl_signup_sync(event_id, "#P1", "Alpha", "111111111", None, "template_confirm", "pending")
 
         mock_interaction.user.id = 999999999  # different account
-        mock_interaction.response.send_message = AsyncMock()
-        mock_interaction.response.edit_message = AsyncMock()
+        mock_interaction.followup.send = AsyncMock()
+        mock_interaction.edit_original_response = AsyncMock()
 
         button = CwlReminderResponseButton("confirm", event_id, "#P1")
         await button.callback(mock_interaction)
 
-        mock_interaction.response.send_message.assert_awaited_once()
-        mock_interaction.response.edit_message.assert_not_awaited()
+        mock_interaction.followup.send.assert_awaited_once()
+        mock_interaction.edit_original_response.assert_not_awaited()
         assert db.get_cwl_signup_sync(event_id, "#P1")["status"] == "pending"  # unchanged
 
 
@@ -3800,23 +3800,23 @@ async def test_repaired_signup_row_revives_a_dead_dm_button(db, mock_interaction
     )
 
     mock_interaction.user.id = 123456789
-    mock_interaction.response.send_message = AsyncMock()
-    mock_interaction.response.edit_message = AsyncMock()
+    mock_interaction.followup.send = AsyncMock()
+    mock_interaction.edit_original_response = AsyncMock()
 
     button = CwlSignupResponseButton("optout", event_id, "#DEADBTN")
     await button.callback(mock_interaction)
 
     # Before the repair: rejected outright, nothing recorded.
-    mock_interaction.response.send_message.assert_awaited_once()
+    mock_interaction.followup.send.assert_awaited_once()
     assert db.get_cwl_signup_sync(event_id, "#DEADBTN") is None
 
     await db._repair_cwl_signups_for_sent_dms()
 
-    mock_interaction.response.send_message.reset_mock()
+    mock_interaction.followup.send.reset_mock()
     await button.callback(mock_interaction)
 
     # After: the same click on the same untouched DM now records the response.
-    mock_interaction.response.send_message.assert_not_awaited()
+    mock_interaction.followup.send.assert_not_awaited()
     assert db.get_cwl_signup_sync(event_id, "#DEADBTN")["status"] == "declined"
 
 

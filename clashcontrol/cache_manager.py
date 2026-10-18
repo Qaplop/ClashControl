@@ -1885,6 +1885,12 @@ class CacheManager:
             self._enforce_player_cache_cap()
             return player
 
+        except coc.NotFound:
+            # "No player with this tag" is an answer, not a failure: the Activity's guest search
+            # looks up every partial tag a user types (2026-10-17: #2CGGVVV, #2CGGVVVJ, ... as
+            # daily-summary warnings). Callers already handle None.
+            logging.info(f"[COC-PLAYER] No player {player_tag} (CoC API 404)")
+            return None
         except Exception as e:
             logging.warning(f"Failed to fetch player {player_tag} from CoC API: {e}")
             return None

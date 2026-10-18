@@ -153,22 +153,47 @@ async def test_clan_whois_stats_unknown_clan(db):
 @pytest.mark.asyncio
 async def test_created_at_pulled_back_to_first_war(db):
     """Nightly step 0.8: created_at moves back to the first war (main or history, same-day
-    comparisons included), never forward, and a second run changes nothing."""
+    comparisons included), never forward, and a second run changes nothing. Only clans stored
+    within CLAN_CREATED_AT_WINDOW_DAYS are checked (tracker #0155) — older ones were corrected on
+    an earlier night."""
+    from datetime import datetime, timedelta, timezone
+
+    from clashcontrol.db_manager import CLAN_CREATED_AT_WINDOW_DAYS
+
+    now = datetime.now(timezone.utc).replace(second=0, microsecond=0)
+
+    def stamp(d: datetime) -> str:  # clans.created_at format
+        return d.strftime("%Y-%m-%d %H:%M:%S")
+
+    def war(d: datetime) -> str:  # war_summary.date format
+        return d.strftime("%Y-%m-%dT%H:%M")
+
+    created = now - timedelta(days=2)
+    same_day = (now - timedelta(days=1)).replace(hour=19)
+    stale = now - timedelta(days=CLAN_CREATED_AT_WINDOW_DAYS + 5)
     with db._sync_conn() as conn:
-        conn.execute("INSERT INTO main.clans (clan_tag, name, created_at) VALUES ('#CLAN', 'Clan', '2026-02-17 19:14:54')")
-        conn.execute("INSERT INTO main.clans (clan_tag, name, created_at) VALUES ('#SAME', 'Same', '2026-03-01 19:00:00')")
-        conn.execute("INSERT INTO main.clans (clan_tag, name, created_at) VALUES ('#OLD', 'Old', '2025-01-01 00:00:00')")
-        _insert_war(conn, "history", "w0", 0, "win", "2025-11-20T20:18")
-        _insert_war(conn, "main", "w1", 0, "win", "2026-09-01T10:00")
-        conn.execute("INSERT INTO main.war_summary (war_id, clan_tag, opponent_tag, date) VALUES ('s1', '#SAME', '#X', '2026-03-01T08:30')")
-        conn.execute("INSERT INTO main.war_summary (war_id, clan_tag, opponent_tag, date) VALUES ('o1', '#OLD', '#X', '2025-12-01T08:30')")
+        for tag, ca in (("#CLAN", created), ("#SAME", same_day), ("#OLD", created), ("#STALE", stale)):
+            conn.execute("INSERT INTO main.clans (clan_tag, name, created_at) VALUES (?, ?, ?)", (tag, tag, stamp(ca)))
+        _insert_war(conn, "history", "w0", 0, "win", war(now - timedelta(days=10)))
+        _insert_war(conn, "main", "w1", 0, "win", war(now - timedelta(days=1)))
+        conn.execute("INSERT INTO main.war_summary (war_id, clan_tag, opponent_tag, date) VALUES ('s1', '#SAME', '#X', ?)",
+                     (war(same_day.replace(hour=8, minute=30)),))
+        conn.execute("INSERT INTO main.war_summary (war_id, clan_tag, opponent_tag, date) VALUES ('o1', '#OLD', '#X', ?)",
+                     (war(now),))
+        conn.execute("INSERT INTO main.war_summary (war_id, clan_tag, opponent_tag, date) VALUES ('t1', '#STALE', '#X', ?)",
+                     (war(stale - timedelta(days=3)),))
         conn.commit()
 
     assert db.backfill_clan_created_at_from_first_war_sync() == 2
     assert db.backfill_clan_created_at_from_first_war_sync() == 0
     with db._sync_conn() as conn:
         got = {r["clan_tag"]: r["created_at"] for r in conn.execute("SELECT clan_tag, created_at FROM clans")}
-    assert got == {"#CLAN": "2025-11-20 20:18:00", "#SAME": "2026-03-01 08:30:00", "#OLD": "2025-01-01 00:00:00"}
+    assert got == {
+        "#CLAN": stamp(now - timedelta(days=10)),            # pulled back to the history war
+        "#SAME": stamp(same_day.replace(hour=8, minute=30)),  # same-day comparison
+        "#OLD": stamp(created),                               # never moved forward
+        "#STALE": stamp(stale),                               # outside the window: left alone
+    }
 
 
 @pytest.mark.asyncio

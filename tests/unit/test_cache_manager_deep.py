@@ -233,3 +233,20 @@ class TestGetPlayer:
             mock_retry.side_effect = Exception("API error")
             result = await cm.get_player("#ABC12345")
             assert result is None
+
+    @pytest.mark.asyncio
+    async def test_unknown_tag_is_info_not_warning(self, caplog):
+        """A 404 is an answer ("no such player"), e.g. the Activity's guest search looking up
+        every partial tag a user types — it must not reach the daily summary as a WARNING."""
+        import logging
+
+        import coc
+        cm = _make_cm()
+        cm.coc_client = MagicMock()
+        with patch("clashcontrol.cache_manager.coc_retry", new_callable=AsyncMock) as mock_retry:
+            mock_retry.side_effect = coc.NotFound(MagicMock(status=404), "notFound")
+            with caplog.at_level(logging.DEBUG):
+                result = await cm.get_player("#2CGGVVV")
+        assert result is None
+        assert not [r for r in caplog.records if r.levelno >= logging.WARNING]
+        assert any("No player" in r.getMessage() for r in caplog.records)

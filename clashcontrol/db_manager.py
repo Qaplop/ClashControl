@@ -152,6 +152,11 @@ PLAYER_NAME_FTS_ROWID_SCHEME_VALUE = "player_name_search_rowid_v2"
 # would make fresh databases disagree with every existing one.
 CWL_RETENTION_MONTHS_NEW_GUILD = 12
 
+# Nightly Step 0.8 (backfill_clan_created_at_from_first_war_sync) only checks clans stored this
+# recently (tracker #0155). Older clans were corrected on an earlier night; a clan's first war is
+# stored within days of the clan itself, so 30 days leaves a wide margin.
+CLAN_CREATED_AT_WINDOW_DAYS = 30
+
 # How old a CWL sign-up DM must be before nightly maintenance drops its stored message reference
 # (purge_stale_cwl_dm_refs_sync, 2026-09-23). Only ever for a season whose month has passed, so a
 # running season is safe whatever this is set to.
@@ -7030,8 +7035,12 @@ class WarHistoryDB:
         and self-healing: only rows whose first war (main + history ``war_summary``) is earlier
         are touched, so after the first run it only ever adjusts newly added clans.
 
-        Cost: one ``GROUP BY clan_tag`` per schema over the covering index idx_ws_clan_date
-        (~0.7 s for ~8M wars on the 2026-09 PROD copy) plus the few UPDATEs that are needed.
+        Scope: only clans stored within ``CLAN_CREATED_AT_WINDOW_DAYS`` (tracker #0155). Every
+        older clan was already corrected on an earlier night, and a re-added clan gets a fresh
+        row, so it is recent too. The old full pass (``GROUP BY clan_tag`` over both
+        ``war_summary`` tables, then one UPDATE per clan with a war — ~281k) took 80-327 s on PROD
+        right after the migration (2026-10-14..18) to correct 3-20 clans. Now one indexed
+        MIN(date) lookup per schema per recent clan (~27k for 30 days) and UPDATEs only where needed.
 
         Returns:
             How many clans were corrected (0 on failure — never raises).
@@ -7046,22 +7055,25 @@ class WarHistoryDB:
                 # war_summary.date is "YYYY-MM-DDTHH:MM", clans.created_at is SQLite's
                 # "YYYY-MM-DD HH:MM:SS" — normalized so a plain string comparison orders them
                 # ('T' sorts after ' ', which would otherwise lose same-day comparisons).
-                first_war: Dict[str, str] = {}
-                for schema in ("main", "history"):
-                    for row in conn.execute(
-                        f"SELECT clan_tag, MIN(date) AS first_date FROM {schema}.war_summary GROUP BY clan_tag"
-                    ):
-                        if not row["first_date"]:
-                            continue
-                        stamp = str(row["first_date"])[:16].replace("T", " ") + ":00"
-                        known = first_war.get(row["clan_tag"])
-                        if known is None or stamp < known:
-                            first_war[row["clan_tag"]] = stamp
+                updates: List[Tuple[str, str, str]] = []
+                for row in conn.execute(
+                    "SELECT c.clan_tag, c.created_at, "
+                    "(SELECT MIN(date) FROM main.war_summary w WHERE w.clan_tag = c.clan_tag) AS main_first, "
+                    "(SELECT MIN(date) FROM history.war_summary h WHERE h.clan_tag = c.clan_tag) AS hist_first "
+                    "FROM clans c WHERE c.created_at >= datetime('now', ?)",
+                    (f"-{CLAN_CREATED_AT_WINDOW_DAYS} days",),
+                ):
+                    firsts = [str(d) for d in (row["main_first"], row["hist_first"]) if d]
+                    if not firsts:
+                        continue
+                    stamp = min(firsts)[:16].replace("T", " ") + ":00"
+                    if row["created_at"] and str(row["created_at"]) > stamp:
+                        updates.append((stamp, row["clan_tag"], stamp))
                 with self._sync_write_lock:
                     before = conn.total_changes
                     conn.executemany(
                         "UPDATE clans SET created_at = ? WHERE clan_tag = ? AND created_at > ?",
-                        [(stamp, tag, stamp) for tag, stamp in first_war.items()],
+                        updates,
                     )
                     corrected = conn.total_changes - before
                     if self._should_commit():

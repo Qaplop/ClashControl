@@ -3368,6 +3368,7 @@ async def _apply_cwl_signup_response(
 async def rerender_cwl_dm_after_response(
     message: Any, event_id: int, season: str, discord_id: str,
     *, action: str, player_name: str, interaction: Optional[discord.Interaction] = None,
+    deferred: bool = False,
 ) -> None:
     """Re-render one enrollment/reminder DM from live state after its owner answered — from a
     button click, from the Activity (Phase 5c, a later session), or from anywhere else.
@@ -3403,6 +3404,11 @@ async def rerender_cwl_dm_after_response(
     `message.edit()` otherwise — deliberately tolerant of failure there (discord.HTTPException,
     caught and logged) since a non-interaction caller (Phase 5c) has already committed the
     underlying status write by the time this runs; a DM that can't be edited must never undo it.
+
+    ``deferred=True``: the caller already acknowledged the click (``_ack_cwl_dm_click()``), so
+    the edit goes through ``interaction.edit_original_response()`` (tracker #0155 log review,
+    2026-10-17: three clicks hit 10062 because the DB write before the first response queued
+    behind the update cycle's bulk war writes).
     """
     from clashcontrol.i18n import t
 
@@ -3466,7 +3472,24 @@ async def rerender_cwl_dm_after_response(
             content = f"{header}\n\n{content}" if legend in original else f"{header}\n{content}"
         view = None
 
-    if interaction is not None:
+    if interaction is not None and deferred:
+        # The click was acknowledged first (_ack_cwl_dm_click); edit the same message through
+        # the interaction's token, falling back to a plain message edit.
+        try:
+            await interaction.edit_original_response(content=content, view=view)
+        except discord.HTTPException as e:
+            logging.warning(
+                f"[rerender_cwl_dm_after_response] edit_original_response failed ({e}); "
+                f"editing DM message {message.id} directly: event={event_id} discord_id={discord_id}"
+            )
+            try:
+                await message.edit(content=content, view=view)
+            except discord.HTTPException as e2:
+                logging.warning(
+                    f"[rerender_cwl_dm_after_response] Could not edit DM message {message.id} for "
+                    f"event={event_id} discord_id={discord_id}: {e2}"
+                )
+    elif interaction is not None:
         try:
             await interaction.response.edit_message(content=content, view=view)
         except discord.NotFound as e:
@@ -3485,6 +3508,34 @@ async def rerender_cwl_dm_after_response(
                 f"[rerender_cwl_dm_after_response] Could not edit DM message {message.id} for "
                 f"event={event_id} discord_id={discord_id}: {e}"
             )
+
+
+async def _ack_cwl_dm_click(interaction: discord.Interaction, event_id: int) -> bool:
+    """Acknowledge a CWL DM answer button before any DB work. The answer is written first and
+    the DM re-rendered afterwards; when that write queued behind the update cycle's bulk war
+    writes (~1 s each, back to back), the first response missed Discord's 3 s deadline (10062,
+    3x on 2026-10-17). Returns False when even this acknowledgement failed — the caller then still
+    saves the answer and edits the DM directly, so the click is never lost."""
+    try:
+        await interaction.response.defer()
+        return True
+    except discord.HTTPException as e:
+        logging.warning(
+            f"[CWL-DM-CLICK] Could not acknowledge the click in time ({e}); saving the answer and "
+            f"editing the DM directly: event={event_id} discord_id={interaction.user.id}"
+        )
+        return False
+
+
+async def _answer_cwl_dm_click_error(interaction: discord.Interaction, acked: bool, text: str) -> None:
+    """The ephemeral error reply for a refused answer, on whichever channel is still open."""
+    try:
+        if acked:
+            await interaction.followup.send(text, ephemeral=True)
+        else:
+            await interaction.response.send_message(text, ephemeral=True)
+    except discord.HTTPException as e:
+        logging.warning(f"[CWL-DM-CLICK] Could not send the error reply to {interaction.user.id}: {e}")
 
 
 class CwlSignupResponseButton(
@@ -3532,12 +3583,13 @@ class CwlSignupResponseButton(
         from clashcontrol.i18n import t
 
         user_id_str = str(interaction.user.id)
+        acked = await _ack_cwl_dm_click(interaction, self.event_id)
         result = await _apply_cwl_signup_response(self.event_id, self.player_tag, self.action, user_id_str)
         guild_id = result["guild_id"]
 
         if result["code"] != "ok":
-            await interaction.response.send_message(
-                t(f'cwl.template.{result["code"]}', user_id=user_id_str, guild_id=guild_id), ephemeral=True
+            await _answer_cwl_dm_click_error(
+                interaction, acked, t(f'cwl.template.{result["code"]}', user_id=user_id_str, guild_id=guild_id)
             )
             return
 
@@ -3548,7 +3600,8 @@ class CwlSignupResponseButton(
         # rendered result is unchanged — this is a pure refactor of HOW that result is reached.
         await rerender_cwl_dm_after_response(
             interaction.message, self.event_id, result["season"], user_id_str,
-            action=self.action, player_name=result["player_name"], interaction=interaction,
+            action=self.action, player_name=result["player_name"],
+            interaction=interaction if acked else None, deferred=acked,
         )
 
 
@@ -3641,12 +3694,13 @@ class CwlReminderResponseButton(
         from clashcontrol.i18n import t
 
         user_id_str = str(interaction.user.id)
+        acked = await _ack_cwl_dm_click(interaction, self.event_id)
         result = await _apply_cwl_signup_response(self.event_id, self.player_tag, self.action, user_id_str)
         guild_id = result["guild_id"]
 
         if result["code"] != "ok":
-            await interaction.response.send_message(
-                t(f'cwl.template.{result["code"]}', user_id=user_id_str, guild_id=guild_id), ephemeral=True
+            await _answer_cwl_dm_click_error(
+                interaction, acked, t(f'cwl.template.{result["code"]}', user_id=user_id_str, guild_id=guild_id)
             )
             return
 
@@ -3661,7 +3715,8 @@ class CwlReminderResponseButton(
         # cap), which message-id scoping can no longer do.
         await rerender_cwl_dm_after_response(
             interaction.message, self.event_id, result["season"], user_id_str,
-            action=self.action, player_name=result["player_name"], interaction=interaction,
+            action=self.action, player_name=result["player_name"],
+            interaction=interaction if acked else None, deferred=acked,
         )
 
 

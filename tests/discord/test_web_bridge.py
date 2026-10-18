@@ -5879,8 +5879,10 @@ async def test_player_dm_button_overrides_a_later_admin_status_last_action_wins(
 
     interaction = MagicMock()
     interaction.user.id = 70
-    interaction.response.edit_message = AsyncMock()
-    interaction.response.send_message = AsyncMock()
+    # The button acknowledges first, then edits through the interaction token.
+    interaction.response.defer = AsyncMock()
+    interaction.edit_original_response = AsyncMock()
+    interaction.followup.send = AsyncMock()
     CACHE.db_manager = db
 
     await CwlSignupResponseButton("optout", event_id, "#P1").callback(interaction)

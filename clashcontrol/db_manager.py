@@ -152,6 +152,15 @@ PLAYER_NAME_FTS_ROWID_SCHEME_VALUE = "player_name_search_rowid_v2"
 # would make fresh databases disagree with every existing one.
 CWL_RETENTION_MONTHS_NEW_GUILD = 12
 
+# Running row count of history.war_attacks for the global stats (tracker #0155). COUNT(*) on it
+# used to scan the small idx_wa_player_tag; since that index was dropped it scans the much larger
+# idx_wa_player_tag_date (51 -> 92 s stats warm-up on PROD, 2026-10-18). history only grows through
+# the migration, which adds each batch's inserted rows to this key in the same transaction. A full
+# recount runs when the key is missing or older than HISTORY_WA_RECOUNT_DAYS, which also corrects
+# drift from manual scripts that write history directly. Value: {"count": N, "recounted_at_utc": iso}.
+HISTORY_WA_COUNT_KEY = "history_war_attacks_count"
+HISTORY_WA_RECOUNT_DAYS = 7
+
 # Nightly Step 0.8 (backfill_clan_created_at_from_first_war_sync) only checks clans stored this
 # recently (tracker #0155). Older clans were corrected on an earlier night; a clan's first war is
 # stored within days of the clan itself, so 30 days leaves a wide margin.
@@ -10181,14 +10190,16 @@ class WarHistoryDB:
             # count instead of doing a filtered scan. Summed across main + history (each
             # computed independently so each half can still use its own
             # idx_wa_zero_attacks partial index).
+            # history's total comes from the running count (_history_war_attacks_total), not a
+            # COUNT(*) over 100M+ rows every night (tracker #0155).
             with self._sync_conn() as conn:
-                return conn.execute("""
-                    SELECT (
-                        (SELECT COUNT(*) FROM main.war_attacks) - (SELECT COUNT(*) FROM main.war_attacks WHERE attack_order = 0)
-                    ) + (
-                        (SELECT COUNT(*) FROM history.war_attacks) - (SELECT COUNT(*) FROM history.war_attacks WHERE attack_order = 0)
-                    ) AS cnt
-                """).fetchone()["cnt"]
+                row = conn.execute("""
+                    SELECT
+                        (SELECT COUNT(*) FROM main.war_attacks)
+                        - (SELECT COUNT(*) FROM main.war_attacks WHERE attack_order = 0)
+                        - (SELECT COUNT(*) FROM history.war_attacks WHERE attack_order = 0) AS cnt
+                """).fetchone()
+                return row["cnt"] + self._history_war_attacks_total(conn)
 
         def _q_players_count() -> int:
             # Linked CoC accounts (small table — avoids a 22 M-row UNION dedup
@@ -10241,6 +10252,44 @@ class WarHistoryDB:
         except sqlite3.Error as e:
             logging.error(f"[DB-STATS-SYNC] Failed to get global db statistics: {e}")
             return {'clans_count': 0, 'wars_count': 0, 'attacks_count': 0, 'players_count': 0, 'players_tracked_count': 0}
+
+    def _history_war_attacks_total(self, conn: Any) -> int:
+        """Row count of history.war_attacks from the running count (HISTORY_WA_COUNT_KEY); a full
+        COUNT(*) only when the key is missing, unreadable or older than HISTORY_WA_RECOUNT_DAYS.
+        A recount taken while a migration is running is used but not stored: a batch committed
+        between the count and the store would otherwise be lost from the running count."""
+        import json
+        from datetime import datetime, timedelta, timezone
+
+        now = datetime.now(timezone.utc)
+        row = conn.execute("SELECT value FROM bot_metadata WHERE key = ?", (HISTORY_WA_COUNT_KEY,)).fetchone()
+        if row is not None:
+            try:
+                data = json.loads(row["value"])
+                if now - datetime.fromisoformat(data["recounted_at_utc"]) < timedelta(days=HISTORY_WA_RECOUNT_DAYS):
+                    return int(data["count"])
+            except (ValueError, KeyError, TypeError):
+                pass
+
+        total = conn.execute("SELECT COUNT(*) AS cnt FROM history.war_attacks").fetchone()["cnt"]
+        try:
+            import QBcore as _qbcore
+            migrating = bool(getattr(_qbcore, "db_migration_active", False))
+        except ImportError:
+            migrating = False
+        if migrating:
+            logging.info(f"[DB-STATS-SYNC] history.war_attacks recounted ({total:,}); not stored — migration running")
+            return int(total)
+        with self._sync_write_lock:
+            conn.execute(
+                "INSERT INTO bot_metadata (key, value) VALUES (?, ?) "
+                "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                (HISTORY_WA_COUNT_KEY, json.dumps({"count": int(total), "recounted_at_utc": now.isoformat()})),
+            )
+            if self._should_commit():
+                conn.commit()
+        logging.info(f"[DB-STATS-SYNC] history.war_attacks recounted: {total:,} rows (running count reset)")
+        return int(total)
 
     async def preload_global_db_statistics_from_snapshot(self) -> bool:
         """Restore the in-memory global-DB-statistics cache from the last exact snapshot
@@ -13210,7 +13259,7 @@ class WarHistoryDB:
             try:
                 await self._conn.execute("BEGIN")
                 if boundary_id is not None:
-                    await self._conn.execute(
+                    ins_cur = await self._conn.execute(
                         f"INSERT OR IGNORE INTO history.{table} ({columns}) "
                         f"SELECT {columns} FROM main.{table} "
                         f"WHERE date >= ? AND date < ? AND id <= ?",
@@ -13221,7 +13270,7 @@ class WarHistoryDB:
                         (window_start, window_end, boundary_id),
                     )
                 else:
-                    await self._conn.execute(
+                    ins_cur = await self._conn.execute(
                         f"INSERT OR IGNORE INTO history.{table} ({columns}) "
                         f"SELECT {columns} FROM main.{table} WHERE date >= ? AND date < ?",
                         (window_start, window_end),
@@ -13231,6 +13280,14 @@ class WarHistoryDB:
                         (window_start, window_end),
                     )
                 moved = del_cur.rowcount if del_cur.rowcount and del_cur.rowcount > 0 else 0
+                if table == "war_attacks" and ins_cur.rowcount and ins_cur.rowcount > 0:
+                    # Running history row count for the global stats (tracker #0155); a no-op
+                    # until the stats have stored a first full count.
+                    await self._conn.execute(
+                        "UPDATE bot_metadata SET value = json_set(value, '$.count', "
+                        "json_extract(value, '$.count') + ?) WHERE key = ?",
+                        (ins_cur.rowcount, HISTORY_WA_COUNT_KEY),
+                    )
                 await self._conn.commit()
             except Exception:
                 await self._conn.rollback()
@@ -13801,6 +13858,11 @@ class WarHistoryDB:
         await self._conn.execute("PRAGMA temp_store=FILE")
         _db_dir = os.path.dirname(str(self.db_path))
         await self._conn.execute(f"PRAGMA temp_store_directory='{_db_dir}'")
+
+        # This path does not keep the running history row count; drop it so the next stats run
+        # recounts (tracker #0155).
+        await self._conn.execute("DELETE FROM bot_metadata WHERE key = ?", (HISTORY_WA_COUNT_KEY,))
+        await self._conn.commit()
 
         logging.info("[HIST-MIGRATE-FAST] Dropping secondary indexes on main + history war_attacks...")
         await self._drop_war_attacks_secondary_indexes()

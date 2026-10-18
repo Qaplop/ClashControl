@@ -1,6 +1,16 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-18 (4)
+- Changed (tracker #0155): the global stats no longer COUNT(*) history.war_attacks every night.
+  Since idx_wa_player_tag was dropped (Build 194) that count scans idx_wa_player_tag_date (47 s on
+  DEV; PROD stats warm-up 51 -> 92 s). The migration now keeps a running count in bot_metadata
+  (history_war_attacks_count, +inserted rows per batch, same transaction); a full recount runs
+  when the key is missing or 7+ days old, never stored while a migration runs.
+  fast_bulk_history_migration() drops the key. The first stats run after deploy recounts once.
+  Files: clashcontrol/db_manager.py, docs, tests/unit/test_history_wa_running_count.py.
+  Build 199. 4015 tests pass.
+
 2026-10-18 (3)
 - Fixed: CWL DM answer buttons (sign-up and reminder) acknowledge the click before writing the
   answer, then edit the DM through the interaction token. The write used to come first and could

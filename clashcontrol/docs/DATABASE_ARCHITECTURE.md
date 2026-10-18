@@ -2213,6 +2213,19 @@ but the ordering is now correct on both.
   small cache sizes (the swap rule in `config.py`; the gain is small once the indexes are gone).
 - The drop frees ~2.6 GB in history (reused by the migration's inserts) and leaves main's free
   list ~11%, under the 15% VACUUM threshold — no surprise VACUUM.
+- **Follow-up (2026-10-18, Build 199): running count of `history.war_attacks`.** The global stats'
+  `COUNT(*) FROM history.war_attacks` had been scanning the small `idx_wa_player_tag`; after the
+  drop it scans `idx_wa_player_tag_date` (47 s on DEV; PROD's stats warm-up went 51 -> 92 s).
+  History only grows through the migration, so `_migrate_date_window_batched()` now adds each
+  `war_attacks` batch's inserted rows (`INSERT OR IGNORE` rowcount) to `bot_metadata`
+  `history_war_attacks_count` in the same transaction, and the stats read it
+  (`_history_war_attacks_total()`). A full recount runs when the key is missing or older than
+  7 days (`HISTORY_WA_RECOUNT_DAYS`), which also absorbs manual scripts that write history
+  directly; a recount during a running migration is used but not stored.
+  `fast_bulk_history_migration()` deletes the key first.
+- **Follow-up (2026-10-18, Build 198): nightly Step 0.8** (`clans.created_at` back to the first war)
+  checks only clans stored within `CLAN_CREATED_AT_WINDOW_DAYS` (30). The full pass took 80-327 s on
+  PROD right after the migration to correct 3-20 clans.
 
 ### Random pre-existing index corruption — always run a quick_check after big DB ops
 After a migration+VACUUM on the DEV DB (2026-07-12), `PRAGMA integrity_check` found

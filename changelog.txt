@@ -1,6 +1,15 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-18 (2)
+- Changed: an answered CWL sign-up DM keeps its season + guild line above the "thanks" (it used
+  to keep only the Bench legend). The line is its own key now, cwl.template.dm_header, shared by
+  build_cwl_signup_dm and rerender_cwl_dm_after_response via cwl_signup_dm_header(); dm_body /
+  dm_body_bench no longer contain it. Kept only when the DM started with it, so reminder DMs
+  and sign-up DMs sent before Build 196 finalize as before.
+  Files: clashcontrol/QBdiscocmdshelper_cwl.py, clashcontrol/ui_cwl_roster.py,
+  translations/*.json, tests/unit/test_cwl_bench_dm_layout.py. Build 197. 4003 tests pass.
+
 2026-10-18
 - Changed: the CWL sign-up DM's first line now names the guild that sent it ("Sign-up for CWL
   season **2026-11** on the **<guild>** server!"), in all five languages, with and without the

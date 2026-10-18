@@ -189,3 +189,62 @@ async def test_confirming_the_legend_dm_keeps_the_legend_above_the_thanks(monkey
     new_content = message.edit.await_args.kwargs["content"]
     assert new_content.startswith(legend)
     assert "P1" in new_content.split(legend, 1)[1]
+
+
+@pytest.mark.parametrize("bench", [False, True])
+@pytest.mark.asyncio
+async def test_answering_a_signup_dm_keeps_its_season_and_guild_line(monkeypatch, bench):
+    """2026-10-18: the answered DM used to drop its first line, losing season and server."""
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.QBdiscocmdshelper_cwl import build_cwl_signup_dm
+    from clashcontrol.ui_cwl_roster import rerender_cwl_dm_after_response
+
+    guild = MagicMock()
+    guild.name = "Clan Castle HQ"
+    monkeypatch.setitem(sys.modules, "QBcore", MagicMock(bot=MagicMock(get_guild=MagicMock(return_value=guild))))
+    db = MagicMock()
+    db.get_cwl_player_season_status_rows_by_dm_message_sync = MagicMock(return_value=[
+        {"player_tag": "#P1", "player_name": "P1", "status": "confirmed"},
+    ])
+    db.get_cwl_event_by_id_sync = MagicMock(return_value={"guild_id": "1"})
+    monkeypatch.setattr(CACHE, "db_manager", db)
+
+    sent, _ = build_cwl_signup_dm(7, 1, "2026-10", "777", "#P1", "P1", with_legend=True, bench=bench)
+    message = MagicMock()
+    message.id = 100
+    message.content = sent
+    message.edit = AsyncMock()
+
+    await rerender_cwl_dm_after_response(
+        message, 7, "2026-10", "777", action="confirm", player_name="P1", interaction=None,
+    )
+
+    new_content = message.edit.await_args.kwargs["content"]
+    assert new_content.split("\n", 1)[0] == sent.split("\n", 1)[0]
+    assert "**2026-10**" in new_content and "**Clan Castle HQ**" in new_content
+    assert ("**Bench**" in new_content) == bench
+
+
+@pytest.mark.asyncio
+async def test_answering_a_reminder_dm_adds_no_signup_line(monkeypatch):
+    from clashcontrol.cache_manager import CACHE
+    from clashcontrol.ui_cwl_roster import rerender_cwl_dm_after_response
+
+    monkeypatch.setitem(sys.modules, "QBcore", MagicMock(bot=MagicMock(get_guild=MagicMock(return_value=None))))
+    db = MagicMock()
+    db.get_cwl_player_season_status_rows_by_dm_message_sync = MagicMock(return_value=[
+        {"player_tag": "#P1", "player_name": "P1", "status": "confirmed"},
+    ])
+    db.get_cwl_event_by_id_sync = MagicMock(return_value={"guild_id": "1"})
+    monkeypatch.setattr(CACHE, "db_manager", db)
+
+    message = MagicMock()
+    message.id = 100
+    message.content = "📋 Please answer each of your still-pending CWL sign-ups for season **2026-10** below:"
+    message.edit = AsyncMock()
+
+    await rerender_cwl_dm_after_response(
+        message, 7, "2026-10", "777", action="confirm", player_name="P1", interaction=None,
+    )
+
+    assert "2026-10" not in message.edit.await_args.kwargs["content"]

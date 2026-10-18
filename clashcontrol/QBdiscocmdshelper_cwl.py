@@ -3897,26 +3897,38 @@ def build_cwl_signup_dm(
         # gets exactly one enrollment DM per season, sent by whichever guild's event got there
         # first, so a guild-only rule would hand out the option by luck of who sent it.
         bench = cwl_bench_enabled_for(discord_id, guild_id)
-    # The DM arrives outside any server, so its first line names the sending guild — a player in
-    # several ClashControl guilds can't otherwise tell which one is asking. Gateway cache only.
-    import QBcore
-
-    bot = getattr(QBcore, "bot", None)
-    guild = bot.get_guild(int(guild_id)) if bot is not None else None
-    guild_name = getattr(guild, "name", None)
-    if not isinstance(guild_name, str) or not guild_name:
-        guild_name = str(guild_id)
-    content = t(
-        'cwl.template.dm_body_bench' if bench and with_legend else 'cwl.template.dm_body',
+    legend = bench and with_legend
+    body = t(
+        'cwl.template.dm_body_bench' if legend else 'cwl.template.dm_body',
         guild_id=guild_id,
         user_id=discord_id,
-        season=season,
-        guild_name=guild_name,
         player_name=player_name or player_tag,
         **signup_dm_icons(),
     )
+    header = cwl_signup_dm_header(guild_id, season, discord_id)
+    content = f"{header}\n\n{body}" if legend else f"{header}\n{body}"
     view = build_cwl_signup_response_view(event_id, player_tag, guild_id, bench=bench)
     return content, view
+
+
+def cwl_signup_dm_header(guild_id: Any, season: str, discord_id: Any) -> str:
+    """The sign-up DM's first line: season and sending guild. The DM arrives outside any server,
+    so a player in several ClashControl guilds can't otherwise tell which one is asking
+    (2026-10-18). Shared by build_cwl_signup_dm and rerender_cwl_dm_after_response, so the line
+    survives the player's answer. Guild name from the gateway cache, else the guild id."""
+    from clashcontrol.i18n import t
+    import QBcore
+
+    bot = getattr(QBcore, "bot", None)
+    try:
+        guild = bot.get_guild(int(guild_id)) if bot is not None else None
+    except (TypeError, ValueError):
+        guild = None
+    guild_name = getattr(guild, "name", None)
+    if not isinstance(guild_name, str) or not guild_name:
+        guild_name = str(guild_id)
+    return t('cwl.template.dm_header', guild_id=guild_id, user_id=discord_id,
+             season=season, guild_name=guild_name)
 
 
 async def send_cwl_signup_template_dm(

@@ -3453,8 +3453,17 @@ async def rerender_cwl_dm_after_response(
         # message that carried the legend keeps it above its "thanks".
         legend = t('cwl.template.bench_explanation', user_id=discord_id, guild_id=guild_id,
                    **signup_dm_icons())
-        if legend in (getattr(message, "content", None) or ""):
+        original = getattr(message, "content", None)
+        original = original if isinstance(original, str) else ""
+        if legend in original:
             content = f"{legend}\n\n{content}"
+        # Likewise the sign-up DM's season + guild line (2026-10-18) — without it an answered DM
+        # no longer says which season or server it was for. Reminder DMs never carried it.
+        from clashcontrol.QBdiscocmdshelper_cwl import cwl_signup_dm_header
+
+        header = cwl_signup_dm_header(guild_id, season, discord_id)
+        if original.startswith(header):
+            content = f"{header}\n\n{content}" if legend in original else f"{header}\n{content}"
         view = None
 
     if interaction is not None:

@@ -598,6 +598,22 @@ async def leaderboard(
     subs = CACHE.get_all_subscriptions_flat()
     if not interaction.channel:
         return
+    # The board is posted into this channel as a normal message, so the bot must be able to see
+    # and post here — a slash command reaches the bot even where it can't (2026-10-18: 50001 in a
+    # channel without "View Channel" ended as "unexpected error"). Name what's missing instead.
+    if interaction.guild is not None:
+        from clashcontrol.bot_permissions import check_channel_feature, format_issues_message
+        _issues = check_channel_feature(interaction.guild, "leaderboard", interaction.channel.id)
+        if _issues:
+            logging.info(
+                f"[LEADERBOARD] /leaderboard refused in guild {interaction.guild.name} ({interaction.guild.id}), "
+                f"channel {interaction.channel.id}: {[(i.kind, i.perms) for i in _issues]} — user informed"
+            )
+            await interaction.followup.send(
+                format_issues_message(_issues, guild_id=interaction.guild.id, user_id=str(interaction.user.id)),
+                ephemeral=True,
+            )
+            return
     channel_id = str(interaction.channel.id)
     subscribed = [s for s in subs.get(channel_id, []) if s.get('clan_tag') != 'PLAYERREGISTRATION']  # type: ignore[misc]
 

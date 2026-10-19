@@ -87,7 +87,7 @@ BOT_VERSION: str = "1.3.44"
 # .github/copilot-instructions.md.  BOT_VERSION answers "which release is this?";
 # BOT_BUILD answers "which edit of it is actually running?", which is the question that
 # matters when reading the server-machine's log after a file-copy deploy.
-BOT_BUILD: int = 200
+BOT_BUILD: int = 201
 
 
 def source_fingerprint() -> str:
@@ -373,6 +373,23 @@ async def on_app_command_error(interaction: discord.Interaction, error: app_comm
     if _original_early and isinstance(_original_early, (aiohttp.ServerDisconnectedError, aiohttp.ClientConnectionResetError, aiohttp.ClientConnectorError)):
         logging.warning(f"Network disconnect during {command_info} ({type(_original_early).__name__}) — skipping user reply")
         return
+    # A 403 — also one our own wrappers re-raised (e.g. LeaderboardPostingError) — is a missing
+    # permission, not a bug: one WARNING naming the refused call, no ERROR + traceback (2026-10-18,
+    # /leaderboard in a channel the bot can't see ended as "unexpected error").
+    if _original_early is not None:
+        from clashcontrol.log_throttle import find_discord_forbidden
+        _forbidden = find_discord_forbidden(_original_early)
+        if _forbidden is not None:
+            try:
+                _resp = getattr(_forbidden, "response", None)
+                logging.warning(
+                    f"Slash command 403 in {command_info} ({guild_info}): Discord refused "
+                    f"{getattr(_resp, 'method', '?')} {getattr(_resp, 'url', '?')} "
+                    f"({_forbidden.code}: {_forbidden.text})"
+                )
+            except Exception:
+                pass
+            return await send(t('commands.errors.access_denied', guild_id=None), ephemeral=True)
 
     try:
         logging.error(f"Slash command error: {error} | User: {user_info} | Command: {command_info} | Location: {guild_info}")

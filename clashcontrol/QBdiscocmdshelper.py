@@ -446,6 +446,10 @@ async def _delete_messages_by_filter(
                         )
                         logging.debug(f"Deleted message {msg_id} in channel {channel_id}")
                         await asyncio.sleep(0.5)  # pace deletions to avoid Discord rate limits
+                    except discord.NotFound:
+                        # Already gone (deleted by hand) — the goal of this step; same as the
+                        # interaction-path deleter above.
+                        logging.info(f"Message {msg_id} already deleted, removing from cache")
                     except Exception as e:
                         logging.warning(f"Could not delete message {msg_id}: {e}")
             keys_to_delete.append(k)
@@ -1792,7 +1796,7 @@ async def complete_account_linking_flow(
             # Verification FAILED - send error message immediately and return
             from clashcontrol.i18n import t
             verification_message = t('playerregistration.player_verification_failed', guild_id=guild.id if guild else None, message=verify_msg)
-            logging.warning(f"Verification failed for player {player_name} ({player_tag})")
+            logging.info(f"[USER ERROR] Verification failed for player {player_name} ({player_tag}) — user informed")
             
             # Send error message to user immediately
             if send_success_message:

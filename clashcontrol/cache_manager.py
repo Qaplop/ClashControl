@@ -1987,7 +1987,7 @@ class CacheManager:
                 logging.info(f"API token validation SUCCESS for {normalized_tag}")
                 return True, "API token validated successfully"
             else:
-                logging.warning(f"API token validation FAILED for {normalized_tag}")
+                logging.info(f"[USER ERROR] API token validation FAILED for {normalized_tag} (token does not match the player)")
                 return False, "API token is invalid or doesn't belong to this player"
                 
         except Exception as e:
@@ -1996,7 +1996,7 @@ class CacheManager:
                 logging.warning(f"API token validation FAILED for {normalized_tag}: forbidden/403")
                 return False, "API token is invalid or doesn't belong to this player"
             elif "not found" in error_msg or "404" in error_msg:
-                logging.warning(f"API token validation FAILED for {normalized_tag}: player not found")
+                logging.info(f"[USER ERROR] API token validation FAILED for {normalized_tag}: player not found")
                 return False, "Player not found"
             # Removed unreachable generic Exception clause
             logging.error(f"API token validation ERROR for {normalized_tag}: {e}")

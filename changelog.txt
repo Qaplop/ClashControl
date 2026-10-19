@@ -1,6 +1,22 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-19 (1)
+- Fixed: /leaderboard in a channel the bot can't post in (PROD 2026-10-18 17:50/18:57, "That's
+  Test Server", no "View Channel") ended as an ERROR with traceback and an "unexpected error"
+  reply. It now checks its channel first (check_channel_feature "leaderboard") and replies with
+  the translated permission warning naming what is missing.
+- Fixed: the global slash-command error handler treats any 403 — also one wrapped in our own
+  exceptions (find_discord_forbidden) — as one WARNING naming the refused call plus the
+  "access denied" reply, before the generic ERROR logging.
+- Changed: log levels for things that are not bot faults: an already deleted leaderboard message
+  (10008) in the subscription deleter is INFO like in the interaction deleter; a wrong API token
+  or unknown player during verification is INFO "[USER ERROR]" (403 stays a WARNING — it can
+  mean the bot's own key).
+  Files: QBdiscordcmds.py, QBcore.py, clashcontrol/QBdiscocmdshelper.py,
+  clashcontrol/cache_manager.py, tests/discord/test_leaderboard_channel_permissions.py.
+  Build 201. 4029 tests pass.
+
 2026-10-18 (5)
 - Fixed: "Load more…" in the Link Account player select failed on servers with more than 48
   unlinked players (PROD 2026-10-18 14:05/14:07, "That's Test Server": 50035 "Must be between 1

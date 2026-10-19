@@ -211,7 +211,11 @@ class BotConfig:
     # indefinitely. Lowered 90 -> 30 on 2026-09-01: the migration no longer blocks Discord
     # commands (it sets QBcore.db_migration_active, not db_maintenance_mode), so this no longer
     # gates availability — it now only bounds how long the write lock is contended.
-    history_migration_time_budget_minutes: float = 30.0
+    # Raised 30 -> 60 on 2026-10-19 (tracker #0155): on PROD the walk moves ~650 rows/s even after
+    # the index drop, i.e. ~1.2M rows in 30 min — below the ~1.2M/day baseline and far below the
+    # 2.0-2.3M-row CWL days, so it fell further behind every night. 60 min moves ~2.3M. Update
+    # cycles wait for the whole nightly run, so this delays them, not Discord commands.
+    history_migration_time_budget_minutes: float = 60.0
 
     # --- SQLite memory budget (tracker #0106, 2026-09-07) -----------------------------------
     # THE GOVERNING CONSTRAINT: the NAS's swap file lives on the HDD root volume, not on the
@@ -580,9 +584,9 @@ def load_config() -> BotConfig:
     except ValueError:
         history_migration_nightly_row_budget = 3_000_000
     try:
-        history_migration_time_budget_minutes = float(os.getenv("HISTORY_MIGRATION_TIME_BUDGET_MINUTES", "30"))
+        history_migration_time_budget_minutes = float(os.getenv("HISTORY_MIGRATION_TIME_BUDGET_MINUTES", "60"))
     except ValueError:
-        history_migration_time_budget_minutes = 30.0
+        history_migration_time_budget_minutes = 60.0
 
     # SQLite memory budget — see the dataclass fields for the 2026-09-07 measurements behind
     # these defaults. Env-overridable so PROD can be retuned without a code change if the

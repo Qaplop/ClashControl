@@ -575,7 +575,11 @@ async def assign_role_to_member(member: discord.Member, role: discord.Role, reas
         _log_role_refused(member, role, "assign", "Discord refused it (403) although the cached permissions allow it")
         return False
     except discord.HTTPException as e:
-        logging.error(f"[ROLE-SYNC] HTTPException assigning role '{role.name}' to {member.id}: {e}")
+        # A Discord 5xx is transient; the next cycle retries (2026-10-17/19: two 503s).
+        _status = getattr(e, "status", 0)
+        _log = logging.warning if isinstance(_status, int) and _status >= 500 else logging.error
+        _log(f"[ROLE-SYNC] HTTPException assigning role '{role.name}' to {member.id} in guild "
+             f"{member.guild.name} ({member.guild.id}): {e}")
         return False
 
 
@@ -603,7 +607,11 @@ async def remove_role_from_member(member: discord.Member, role: discord.Role, re
         _log_role_refused(member, role, "remove", "Discord refused it (403) although the cached permissions allow it")
         return False
     except discord.HTTPException as e:
-        logging.error(f"[ROLE-SYNC] HTTPException removing role '{role.name}' from {member.id}: {e}")
+        # A Discord 5xx is transient; the next cycle retries (2026-10-17/19: two 503s).
+        _status = getattr(e, "status", 0)
+        _log = logging.warning if isinstance(_status, int) and _status >= 500 else logging.error
+        _log(f"[ROLE-SYNC] HTTPException removing role '{role.name}' from {member.id} in guild "
+             f"{member.guild.name} ({member.guild.id}): {e}")
         return False
 
 
@@ -858,6 +866,22 @@ async def _sync_roles_for_user_impl(
         family_data = CACHE.clan_families.get(family_id, {})
         guild_member_clans.update(family_data.get("clans", []))
 
+    # The three role systems below only VOTE (want / don't want a role); the votes are applied
+    # once at the end, and a role any system wants is never removed. Applying each system's
+    # changes directly made a role configured for two jobs flip every cycle — e.g. Breachers
+    # uses one role as both member_role_id and coc_role_member_id: the CoC step removed it from
+    # every elder, the member-role step re-added it (2026-10-16..19: ~2,900 role changes/day,
+    # occasional Discord 503s). One add/remove per role, with the reason of the system that
+    # decided it.
+    wanted: Dict[int, Tuple[discord.Role, str]] = {}
+    unwanted: Dict[int, Tuple[discord.Role, str]] = {}
+
+    def _want(role: discord.Role, reason: str) -> None:
+        wanted.setdefault(role.id, (role, reason))
+
+    def _drop(role: discord.Role, reason: str) -> None:
+        unwanted.setdefault(role.id, (role, reason))
+
     # --- CoC in-game role sync ---
     if coc_role_enabled:
         # Only award a CoC role if the user's player account is actually in
@@ -874,9 +898,9 @@ async def _sync_roles_for_user_impl(
             if not role:
                 continue
             if coc_role_key == highest_coc_role:
-                await assign_role_to_member(member, role, reason="ClashControl CoC role sync")
+                _want(role, "ClashControl CoC role sync")
             else:
-                await remove_role_from_member(member, role, reason="ClashControl CoC role sync")
+                _drop(role, "ClashControl CoC role sync")
 
     # --- Clan role sync ---
     if clan_role_enabled:
@@ -890,9 +914,9 @@ async def _sync_roles_for_user_impl(
             if not role:
                 continue
             if clan_tag in user_clan_tags:
-                await assign_role_to_member(member, role, reason="ClashControl clan role sync")
+                _want(role, "ClashControl clan role sync")
             else:
-                await remove_role_from_member(member, role, reason="ClashControl clan role sync")
+                _drop(role, "ClashControl clan role sync")
 
     # --- Member role sync (assign-only, never revoked by the bot) ---
     # Only assigns the role when the user doesn't have it yet.
@@ -933,11 +957,23 @@ async def _sync_roles_for_user_impl(
                                 _eligible = True
                                 break
                     if _eligible:
-                        await assign_role_to_member(member, _member_disc_role, reason="ClashControl member role sync")
+                        _want(_member_disc_role, "ClashControl member role sync")
                         _has_member_role = True
+                else:
+                    # Assign-only, never revoked by the bot — but it must also never be taken
+                    # away by another system that shares its role id.
+                    _want(_member_disc_role, "ClashControl member role sync")
                 # Remove newbie role whenever member role is present
                 if _has_member_role and _newbie_disc_role and _newbie_disc_role in member.roles:
-                    await remove_role_from_member(member, _newbie_disc_role, reason="ClashControl member role sync (newbie role removed)")
+                    _drop(_newbie_disc_role, "ClashControl member role sync (newbie role removed)")
+
+    # Apply: remove what some system doesn't want and none wants; add what any system wants.
+    # assign/remove_role_from_member() are no-ops when the member already has / lacks the role.
+    for role_id, (role, reason) in unwanted.items():
+        if role_id not in wanted:
+            await remove_role_from_member(member, role, reason=reason)
+    for role, reason in wanted.values():
+        await assign_role_to_member(member, role, reason=reason)
 
     return True
 

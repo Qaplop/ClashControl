@@ -2223,6 +2223,11 @@ but the ordering is now correct on both.
   7 days (`HISTORY_WA_RECOUNT_DAYS`), which also absorbs manual scripts that write history
   directly; a recount during a running migration is used but not stored.
   `fast_bulk_history_migration()` deletes the key first.
+- **Follow-up (2026-10-19, Build 202): time budget 30 -> 60 min.** First PROD night without the
+  two indexes: 652 rows/s (DEV gained ~3x, PROD only ~1.45x), i.e. ~1.2M rows per 30 min — below
+  the ~1.2M/day baseline and far below the 2.0-2.3M-row CWL days. 60 min moves ~2.3M. The value
+  is set in `.env` (`HISTORY_MIGRATION_TIME_BUDGET_MINUTES`), which overrides the code default.
+  Update cycles wait for the whole nightly run, so the longer budget delays them, not commands.
 - **Follow-up (2026-10-18, Build 198): nightly Step 0.8** (`clans.created_at` back to the first war)
   checks only clans stored within `CLAN_CREATED_AT_WINDOW_DAYS` (30). The full pass took 80-327 s on
   PROD right after the migration to correct 3-20 clans.

@@ -1,6 +1,21 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-10-19 (2)
+- Fixed: role sync flipped roles that a server configured for two jobs — removed and re-added
+  them twice per 5-minute cycle (PROD 2026-10-16..19: ~2,900 role changes/day across 7 members;
+  the two Discord 503s on 10-17/10-19 hit this churn). Breachers uses one role as member_role_id
+  and coc_role_member_id; Spartans shares its member role with a clan role and its newbie role
+  with the CoC Member role. _sync_roles_for_user_impl() now collects every system's
+  want/don't-want first and applies them once; a role any system wants is never removed. A
+  Discord 5xx on a role change is a WARNING (retried next cycle) and names the guild.
+- Changed (tracker #0155): history migration time budget default 30 -> 60 min (also in
+  .env.example). On PROD the walk moved 652 rows/s after the index drop — ~1.2M rows per 30 min,
+  less than one day's data. PROD's .env sets the value explicitly and must be changed there.
+  Files: clashcontrol/guild_role_manager.py, clashcontrol/config.py, .env.example,
+  .github/copilot-instructions.md, docs, tests/unit/test_role_sync_shared_role.py.
+  Build 202. 4033 tests pass.
+
 2026-10-19 (1)
 - Fixed: /leaderboard in a channel the bot can't post in (PROD 2026-10-18 17:50/18:57, "That's
   Test Server", no "View Channel") ended as an ERROR with traceback and an "unexpected error"

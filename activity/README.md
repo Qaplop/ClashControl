@@ -367,6 +367,18 @@ restarts, at the cost of needing one domain in the same Cloudflare account.
    supervisor logged `WRN cloudflared exited unexpectedly -- restarting in 5s` and a fresh tunnel
    reconnected within seconds; a full NAS reboot afterward also came back up clean through the
    same Boot-up trigger, now pointing at the supervisor.
+
+   **Autoupdate is what keeps PROD patched** — there is no manual upgrade routine. `cloudflared`
+   checks daily (`autoupdateFreq=86400000` in the log), swaps the binary under
+   `/volume1/@cloudflared/bin/`, logs `ERR Initiating shutdown error="cloudflared has been updated
+   to version X"` (the `ERR` label is normal for this), and the supervisor restarts it ~5 s
+   later on the new version. Confirmed on the Cloudflare eMudhra advisory (2026-10-20): the NAS
+   went 2026.10.2 → .3 → .4 on its own, a day after the fix shipped, with no action needed. To
+   check what PROD runs: `/proc/$(pgrep -x cloudflared)/exe --version` (a plain `cloudflared
+   --version` only shows the binary on disk) and `grep -i updated /var/log/cloudflared-prod-bridge.log | tail`.
+   The `ping_group_range` warning at every start is harmless (no ICMP diagnostics). **DEV
+   (Windows, `winget`, started by hand) has no supervisor** and only autoupdates while the
+   tunnel is running — after a security advisory run `winget upgrade --id Cloudflare.cloudflared`.
 9. **Wire the Worker to it**: `cd activity/server && npx wrangler secret put BRIDGE_URL --env prod`
    → `https://bridge-prod.clashcontrol.uk` (no trailing slash).
 10. **Smoke test**: launch the Activity from a real PROD guild, confirm the clan-config table

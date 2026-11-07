@@ -285,6 +285,37 @@ def build_war_payload(coc_war_obj: Any, my_clan: Any, enemy_clan: Any) -> Dict[s
     return payload
 
 
+def prime_war_lazy_properties(war_obj: Any) -> None:
+    """Force coc.py's generator-backed war properties to evaluate once, on the calling thread.
+
+    ``coc.war_clans.WarClan.members`` and ``ClanWarMember.attacks`` are ``cached_property``s
+    fed by one-shot generators (``_iter_members`` / ``__iter_attacks``). The first reader
+    consumes the generator; a second thread entering it while the first is mid-iteration
+    raises ``ValueError: generator already executing`` and the loser's work is lost for the cycle.
+
+    ``get_league_war()`` hands the SAME object to both clans of a CWL match, and Phase 1 saves
+    each clan in its own ``asyncio.to_thread(save_war_object)`` (plus ``build_war_payload()`` on
+    the loop thread), so two readers really do meet on one object (PROD 2026-11-01 15:08 and
+    2026-11-02 09:49: one temp file each skipped). Evaluating the properties here, on the event
+    loop before the object is shared, makes every later read a plain list lookup.
+
+    Never raises: a malformed/partial war object is the consumers' problem, not this helper's.
+
+    Args:
+        war_obj: A ``coc.ClanWar`` (or anything shaped like one); ``None`` is tolerated.
+    """
+    for _side_name in ("clan", "opponent"):
+        _side = getattr(war_obj, _side_name, None)
+        if _side is None:
+            continue
+        try:
+            _ = _side.members    # consumes _iter_members
+            _ = _side.attacks    # consumes every member's __iter_attacks
+            _ = _side.defenses   # derived from the other side's (now cached) attacks
+        except Exception as _ex:  # noqa: BLE001 - priming is best-effort
+            logging.debug(f"[WAR-PRIME] could not prime {_side_name} of war object: {_ex}")
+
+
 class CacheManager:
     """
     Centralized cache manager providing single-source-of-truth for all ClashControl runtime and persistent data.
@@ -3721,6 +3752,11 @@ class CacheManager:
             lambda: self.coc_client.get_league_war(war_tag),  # type: ignore[union-attr]
             operation_name=f"get_league_war({war_tag})"
         )
+
+        # Evaluate coc.py's one-shot generator properties NOW, on the loop thread, before the
+        # object can be shared: both clans of a match get this same instance and read it from
+        # different worker threads ("generator already executing" otherwise).
+        prime_war_lazy_properties(result)
 
         # ── Store in cache ───────────────────────────────────────────────
         _state = str(getattr(result, 'state', '') or '').lower().replace(' ', '')

@@ -3277,7 +3277,17 @@ async def _cwlopponent_select_callback(
         )
         return
 
-    await interaction.followup.send(embeds=embeds[:10])
+    try:
+        await interaction.followup.send(embeds=embeds[:10])
+    except discord.NotFound:
+        # 10008 Unknown Message: the user dismissed/deleted the "thinking" placeholder while the
+        # analysis was running (PROD 2026-11-02 19:25 — an ERROR with traceback). Nobody is left to
+        # read the result, so this is not a bot fault.
+        logging.info(
+            f"[CWLOPPONENT] followup target gone before the analysis for {opp_clan_tag} was sent "
+            f"(user dismissed the response) — dropping it"
+        )
+        return
     _log_cmd_done(interaction, "analyse cwlopponent")
 
 

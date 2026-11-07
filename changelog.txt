@@ -1,6 +1,21 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-11-07 (1)
+- Fixed: "generator already executing" when saving a CWL war (PROD 2026-11-01 15:08, 2026-11-02
+  09:49; one temp file skipped each time). get_league_war() hands the same coc.py war object to
+  both clans of a match and Phase 1 saves each clan in its own worker thread; coc.py's
+  WarClan.members / ClanWarMember.attacks are one-shot generators. New
+  prime_war_lazy_properties() evaluates them once on the loop thread when the war is fetched.
+- Fixed: /clan management for a guild with no clan asked the CoC API for clan "" three times
+  (HTTP 400 -> ERROR, PROD 2026-11-01 14:40). get_player_list() skips blank tags in its live merge.
+- Fixed: /analyse cwl_opponent logged an ERROR traceback when the user dismissed the "thinking"
+  response before the analysis was ready (10008, PROD 2026-11-02 19:25); now one INFO line.
+  Files: clashcontrol/cache_manager.py, clashcontrol/QBdiscocmdshelper.py, QBdiscordcmds.py,
+  QBcore.py, clashcontrol/docs/COPILOT_PITFALLS_COOKBOOK.md (Pitfall 69),
+  .github/copilot-instructions.md (Pitfall 48), tests/unit/test_war_prime_lazy_properties.py.
+  Build 203. 4038 tests pass.
+
 2026-10-19 (2)
 - Fixed: role sync flipped roles that a server configured for two jobs — removed and re-added
   them twice per 5-minute cycle (PROD 2026-10-16..19: ~2,900 role changes/day across 7 members;

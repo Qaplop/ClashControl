@@ -3104,3 +3104,22 @@ server-side, but what the user sees is wrong until they reload.
   after the send (`view.sent_message = msg`). This is what `/clan management` does since Build 150.
 - Editing an EXISTING message's view (mode switch, refresh, lock/unlock) is fine. Only the
   first appearance of the components must not come from an edit.
+
+## Pitfall 69: coc.py war objects are lazy and one-shot — two threads on one object raise `generator already executing`
+
+**Symptom (PROD 2026-11-01 15:08 and 2026-11-02 09:49):** `ERROR Failed to save war object to ...:
+generator already executing`, traceback ending in `coc/war_clans.py` `WarClan.members` →
+`sorted(self._iter_members, ...)`. One temp war file skipped for that cycle (the next cycle
+rewrote it), but it is a real race, not noise.
+
+**Cause:** `WarClan.members` and `ClanWarMember.attacks` are `cached_property`s fed by ONE-SHOT
+generators; the first reader consumes them. `CACHE.get_league_war()` returns the SAME instance for
+both clans of a CWL match, and Phase 1 saves each clan in its own `asyncio.to_thread(save_war_object)`
+(plus `build_war_payload()` on the loop thread). Two readers inside one generator → `ValueError`.
+
+**Rule:**
+- Evaluate the lazy properties once, on the loop thread, before an object can be shared:
+  `cache_manager.prime_war_lazy_properties(war)` (called from `get_league_war()` on every fetch).
+- Any NEW place that fans one coc.py war/clan object out to several threads must prime it first
+  (or serialise the readers, as `process_orphaned_cwl_wars()` does with its per-war-tag lock).
+- Tests: `tests/unit/test_war_prime_lazy_properties.py` (includes a deterministic reproduction).

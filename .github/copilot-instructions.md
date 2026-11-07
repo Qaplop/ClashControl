@@ -446,6 +446,8 @@ All pitfalls: short snippets + details in ../clashcontrol/docs/COPILOT_PITFALLS_
 
 47) A message from `interaction.followup.send(..., wait=True)` has **no guild**: the follow-up webhook is partial, so discord.py builds the message on a `PartialMessageable` without `guild_id` and `message.guild` is `None` (`original_response()` is fine). A view that later rebuilds itself from `sent_message.guild` then silently loses everything guild-specific. Confirmed 2026-10-11 (tracker #0153): /setup's "Open settings" CWL panel lost its season select and every button on Refresh, and its labels fell back to English. Set `message.guild = guild` right after sending, as `ui_config_audit.open_settings_panel()` does.
 
+48) coc.py war/clan objects are lazy and one-shot (`WarClan.members`, `ClanWarMember.attacks` are `cached_property`s over generators) → two threads reading one object raise `ValueError: generator already executing` and lose that save. `get_league_war()` returns the SAME instance for both clans of a CWL match, and Phase 1 saves each clan in its own `asyncio.to_thread`. Call `cache_manager.prime_war_lazy_properties(war)` on the loop thread before fanning an object out to threads (`get_league_war()` already does). Confirmed PROD 2026-11-01/02, Build 203. See Pitfall 69.
+
 ---
 
 ## Implementation Workflow

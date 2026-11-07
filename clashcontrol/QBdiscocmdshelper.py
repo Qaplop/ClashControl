@@ -3103,6 +3103,13 @@ async def get_player_list(
     th_levels: Dict[str, int] = {}  # Store TH levels from API
     if use_live_api:
         for clan_tag in clan_tags:
+            if not clan_tag or not str(clan_tag).strip("# "):
+                # A blank tag is what /clan management passes for a guild that has no clan yet
+                # (PROD 2026-11-01 14:40, new guild BURGERSTUBE): the CoC API answers
+                # "At least one filtering parameter must exist" (400), which coc_retry retried
+                # three times and logged as an ERROR. There is nothing to fetch.
+                logging.debug("get_player_list: skipping blank clan tag for the live API merge")
+                continue
             try:
                 clan_obj = await CACHE.coc_clan_cache.get_clan(clan_tag)
                 for member in clan_obj.members:

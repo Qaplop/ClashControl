@@ -23,6 +23,7 @@ import discord
 
 from clashcontrol.cache_manager import CACHE
 from clashcontrol.constants import CWL_LEAGUE_ORDER, cwl_start_at_in_season
+from clashcontrol.formatting import text_display_width, truncate_to_width
 from clashcontrol.db_manager import CWL_RETENTION_MONTHS_NEW_GUILD
 from clashcontrol.emojis import bench_emoji, signup_dm_icons
 
@@ -136,6 +137,24 @@ def compute_avg_stars_per_attack(player_tags: List[str], *, now: Optional[dateti
             continue
         averages[tag] = round(sum(a["stars"] for a in attacks) / len(attacks), 2)
     return averages
+
+
+# Widest clan-name cell of the CWL management table, in display columns. A name's len() is not its
+# width: full-width/decorated names ("！！ＡＫＡＴＳＵＫＩ！！", tracker #0158) are 2 columns per
+# character, and an uncapped column stretched the whole table until Discord wrapped every row.
+_CWL_TABLE_NAME_MAX_WIDTH = 15
+
+
+def _fit_clan_name_cell(name: str) -> str:
+    """Clan name capped to _CWL_TABLE_NAME_MAX_WIDTH display columns (ends in "…" when cut)."""
+    if text_display_width(name) <= _CWL_TABLE_NAME_MAX_WIDTH:
+        return name
+    return truncate_to_width(name, _CWL_TABLE_NAME_MAX_WIDTH - 1).rstrip() + "…"
+
+
+def _pad_display(text: str, width: int) -> str:
+    """Right-pad with spaces to `width` DISPLAY columns (str.ljust pads by character count)."""
+    return text + " " * max(0, width - text_display_width(text))
 
 
 def cwl_start_at_compact(cwl_start_at: Optional[str], timezone_name: str = "UTC") -> Optional[str]:
@@ -551,19 +570,19 @@ async def format_clan_management_cwl_management(
                 cwl_start_at_compact(clan.get("cwl_start_at"), timezone_name)
                 or t('cwl.management.start_time_unset', guild_id=guild_id_int)
             )
-            rows.append((clan_name, tier_short, str(clan["roster_size"]), start_display))
+            rows.append((_fit_clan_name_cell(clan_name), tier_short, str(clan["roster_size"]), start_display))
 
-        name_w = max(len(header_clan), *(len(r[0]) for r in rows))
+        name_w = max(text_display_width(header_clan), *(text_display_width(r[0]) for r in rows))
         tier_w = max(len(header_tier), *(len(r[1]) for r in rows))
         roster_w = max(len(header_roster), *(len(r[2]) for r in rows))
         start_w = max(len(header_start), *(len(r[3]) for r in rows))
 
         table_lines = [
-            f"{header_clan.ljust(name_w)}  {header_tier.ljust(tier_w)}  {header_roster.ljust(roster_w)}  {header_start}",
+            f"{_pad_display(header_clan, name_w)}  {header_tier.ljust(tier_w)}  {header_roster.ljust(roster_w)}  {header_start}",
             f"{'-' * name_w}  {'-' * tier_w}  {'-' * roster_w}  {'-' * start_w}",
         ]
         for name, tier_short, roster, start_display in rows:
-            table_lines.append(f"{name.ljust(name_w)}  {tier_short.ljust(tier_w)}  {roster.ljust(roster_w)}  {start_display}")
+            table_lines.append(f"{_pad_display(name, name_w)}  {tier_short.ljust(tier_w)}  {roster.ljust(roster_w)}  {start_display}")
         clans_block = "```\n" + "\n".join(table_lines) + "\n```"
     embed.add_field(
         name=t('cwl.management.clans_block_title', guild_id=guild_id_int),

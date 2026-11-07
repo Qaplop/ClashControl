@@ -1,6 +1,14 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-11-07 (2)
+- Fixed (tracker #0158): the CWL management clan table was misaligned for long or full-width clan
+  names (AKATSUKI with "！！ＡＫＡＴＳＵＫＩ！！"): the name column was sized with len(), so a
+  name 2 columns per character stretched the code block until Discord wrapped every row. Names are
+  now capped at 15 display columns (cut with "…") and padded by display width.
+  Files: clashcontrol/QBdiscocmdshelper_cwl.py, QBcore.py,
+  tests/unit/test_cwl_table_long_clan_names.py. Build 204. 4042 tests pass.
+
 2026-11-07 (1)
 - Fixed: "generator already executing" when saving a CWL war (PROD 2026-11-01 15:08, 2026-11-02
   09:49; one temp file skipped each time). get_league_war() hands the same coc.py war object to

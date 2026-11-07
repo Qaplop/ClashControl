@@ -1998,9 +1998,11 @@ class WarHistoryDB:
         cursor = await self._conn.execute(
             """
             SELECT ec.event_id AS event_id, ec.clan_tag AS clan_tag,
-                   ec.cwl_start_at AS cwl_start_at, e.cwl_season AS cwl_season
+                   ec.cwl_start_at AS cwl_start_at, e.cwl_season AS cwl_season,
+                   COALESCE(gc.timezone_name, 'UTC') AS timezone_name
             FROM cwl_event_clans ec
             JOIN cwl_events e ON e.id = ec.event_id
+            LEFT JOIN guild_config gc ON gc.guild_id = e.guild_id
             WHERE ec.cwl_start_at IS NOT NULL AND ec.locked_at IS NULL
               AND length(e.cwl_season) = 7
             """
@@ -2009,7 +2011,7 @@ class WarHistoryDB:
         repaired = []
         try:
             for row in rows:
-                fixed = cwl_start_at_for_season(row["cwl_start_at"], row["cwl_season"])
+                fixed = cwl_start_at_for_season(row["cwl_start_at"], row["cwl_season"], row["timezone_name"])
                 if fixed == row["cwl_start_at"]:
                     continue
                 await self._conn.execute(

@@ -470,7 +470,7 @@ CWL_START_HOUR_UTC = 8
 CWL_START_WINDOW_HOURS = 48
 
 
-def cwl_start_at_for_season(cwl_start_at: object, cwl_season: str) -> str:
+def cwl_start_at_for_season(cwl_start_at: object, cwl_season: str, timezone_name: str = "UTC") -> str:
     """Return a per-clan `cwl_start_at` ("YYYY-MM-DDTHH:MMZ", UTC) that lies inside *cwl_season*'s
     start window, moving it there if it doesn't.
 
@@ -478,6 +478,12 @@ def cwl_start_at_for_season(cwl_start_at: object, cwl_season: str) -> str:
     its offset from THAT season's official start (1st 08:00 UTC) and is re-applied to this one, so
     a clan that always starts "the 1st at 16:15" keeps doing so; the result is clamped into the
     window. A missing or unparseable value becomes the season's official start.
+
+    The carry-over keeps the LOCAL wall-clock time of day (and the local day offset) in
+    *timezone_name*, not the UTC offset: admins think "18:15", and the stored UTC instant moves by an
+    hour when daylight saving changes between the two seasons (EU 2026: 18:15 CEST on 1 October
+    became 17:15 CET on 1 November, because the UTC time was carried over). With the default "UTC"
+    the result is identical to a plain UTC carry-over.
 
     Tracker #0145/#0147/#0148: the season carry-over copied last season's full timestamp, so the
     October roster DMs told players to switch "before 1 September" and the switch alarms fired at
@@ -487,11 +493,13 @@ def cwl_start_at_for_season(cwl_start_at: object, cwl_season: str) -> str:
         cwl_start_at: Stored start time, or None.
         cwl_season: Regular season key "YYYY-MM". Any other shape returns *cwl_start_at*
             unchanged (or "" if it was empty), since there is no window to check against.
+        timezone_name: The guild's IANA zone (guild_config.timezone_name). Unknown/empty -> UTC.
 
     Returns:
         A "YYYY-MM-DDTHH:MMZ" string inside the season's window.
     """
     from datetime import datetime, timedelta
+    from zoneinfo import ZoneInfo
 
     fmt = "%Y-%m-%dT%H:%M"
     try:
@@ -507,9 +515,22 @@ def cwl_start_at_for_season(cwl_start_at: object, cwl_season: str) -> str:
     if season_start <= value <= season_end:
         return f"{value.strftime(fmt)}Z"
 
+    from datetime import timezone as _tz
+    try:
+        zone = ZoneInfo(timezone_name or "UTC")
+    except Exception:
+        zone = ZoneInfo("UTC")
+
+    def _local(utc_naive: datetime) -> datetime:
+        return utc_naive.replace(tzinfo=_tz.utc).astimezone(zone).replace(tzinfo=None)
+
     own_season_start = value.replace(day=1, hour=CWL_START_HOUR_UTC, minute=0)
-    offset = value - own_season_start
-    rebased = min(max(season_start + offset, season_start), season_end)
+    value_local = _local(value)
+    day_offset = (value_local.date() - _local(own_season_start).date()).days
+    target_day = _local(season_start).date() + timedelta(days=day_offset)
+    candidate_local = datetime.combine(target_day, value_local.time())
+    candidate = candidate_local.replace(tzinfo=zone).astimezone(_tz.utc).replace(tzinfo=None)
+    rebased = min(max(candidate, season_start), season_end)
     return f"{rebased.strftime(fmt)}Z"
 
 

@@ -50,7 +50,10 @@ UNIQUE (event_id, clan_tag)
   (`{season}-01T08:00Z` to +48h, the Activity picker's clamp). Any writer that derives a start
   time from another season (the season carry-over) must pass it through
   `cwl_start_at_for_season()` (`clashcontrol/constants.py`), which keeps the time of day and moves
-  the date. Copying the raw value carried "2026-09-01T16:15Z" into the 2026-10 event, so the
+  the date. It works on the guild's LOCAL wall-clock time (`guild_config.timezone_name`, passed as
+  the third argument), not the UTC offset: the stored value is a UTC instant, so a plain UTC
+  carry-over moved "18:15" to "17:15" when daylight saving changed between two seasons (EU,
+  2026-10 -> 2026-11). Admins expect the clock time to stay. Copying the raw value carried "2026-09-01T16:15Z" into the 2026-10 event, so the
   roster DMs named last month's date and the switch alarms fired at once (tracker #0145). A
   startup repair (`_repair_cwl_start_times_outside_season`) fixes any stored value outside its
   season for clans that haven't started yet.

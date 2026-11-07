@@ -1040,7 +1040,8 @@ class CwlCarryOverPromptView(discord.ui.View):
                     "roster_size": previous_settings.get(clan_tag, {}).get("roster_size", 15),
                     "tier_order": previous_settings.get(clan_tag, {}).get("tier_order", 0),
                     "cwl_start_at": cwl_start_at_for_season(
-                        previous_settings.get(clan_tag, {}).get("cwl_start_at"), self.target_season
+                        previous_settings.get(clan_tag, {}).get("cwl_start_at"), self.target_season,
+                        CACHE.server_config.get(str(self.guild_id), {}).get("timezone_name") or "UTC",
                     ),
                     "participating": clan_tag in played_last_season,
                 }

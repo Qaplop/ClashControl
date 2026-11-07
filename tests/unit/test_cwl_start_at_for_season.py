@@ -100,3 +100,29 @@ class TestRepairStartTimesOutsideSeason:
         await db._repair_cwl_start_times_outside_season()
 
         assert _starts(db, event_id) == {"#LOCKED": "2026-09-01T16:15Z"}
+
+
+class TestCarryOverKeepsLocalWallClockAcrossDst:
+    """The 2026-10 -> 2026-11 carry-over crosses the EU DST end (25 Oct): 18:15 CEST must stay
+    18:15 CET, i.e. the stored UTC value moves from 16:15Z to 17:15Z."""
+
+    def test_berlin_keeps_18_15_local(self):
+        assert cwl_start_at_for_season("2026-10-01T16:15Z", "2026-11", "Europe/Berlin") == "2026-11-01T17:15Z"
+
+    def test_berlin_spring_forward_keeps_local_time(self):
+        # 2027-03-28 is the EU DST start: 18:15 CET (17:15Z) -> 18:15 CEST (16:15Z)
+        assert cwl_start_at_for_season("2027-02-01T17:15Z", "2027-04", "Europe/Berlin") == "2027-04-01T16:15Z"
+
+    def test_day_offset_is_kept_in_local_days(self):
+        assert cwl_start_at_for_season("2026-10-02T16:15Z", "2026-11", "Europe/Berlin") == "2026-11-02T17:15Z"
+
+    def test_utc_and_unknown_zones_behave_like_a_plain_utc_carry_over(self):
+        assert cwl_start_at_for_season("2026-10-01T16:15Z", "2026-11", "UTC") == "2026-11-01T16:15Z"
+        assert cwl_start_at_for_season("2026-10-01T16:15Z", "2026-11", "Not/AZone") == "2026-11-01T16:15Z"
+        assert cwl_start_at_for_season("2026-10-01T16:15Z", "2026-11") == "2026-11-01T16:15Z"
+
+    def test_result_is_still_clamped_into_the_window(self):
+        assert cwl_start_at_for_season("2026-10-05T16:15Z", "2026-11", "Europe/Berlin") == "2026-11-03T08:00Z"
+
+    def test_value_inside_the_window_is_unchanged(self):
+        assert cwl_start_at_for_season("2026-11-01T17:15Z", "2026-11", "Europe/Berlin") == "2026-11-01T17:15Z"

@@ -1,6 +1,16 @@
 Change-Log: (The markers like "2026-03-08" are dates, so DON'T count them up but always use TODAY as the correct marker and always add the latest chang to the TOP of the file )
 ===========
 
+2026-11-07 (3)
+- Fixed: CWL start times shifted by one hour across the autumn clock change (2026-11: 18:15 became
+  17:15). cwl_start_at is stored as a UTC instant and the season carry-over kept its UTC time, so
+  a daylight-saving change between two seasons moved the local time. cwl_start_at_for_season()
+  now takes the guild's timezone_name and keeps the local wall-clock time and local day offset
+  (UTC guilds behave as before); the season carry-over and the startup repair pass it. Start
+  times already carried over into 2026-11 are NOT rewritten - admins correct those by hand.
+  Files: clashcontrol/constants.py, ui_cwl_roster.py, db_manager.py, QBcore.py,
+  docs/CWL_ROSTER_PLANNING_PLAN.md, tests/unit/test_cwl_start_at_for_season.py. Build 205. 4048 tests pass.
+
 2026-11-07 (2)
 - Fixed (tracker #0158): the CWL management clan table was misaligned for long or full-width clan
   names (AKATSUKI with "！！ＡＫＡＴＳＵＫＩ！！"): the name column was sized with len(), so a
